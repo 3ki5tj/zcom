@@ -1,0 +1,12 @@
+Simple version of safer string library
+
+It should support
+s_copy() to replace strcpy
+s_cat()  to replace strcat
+s_fget() to replace fgets
+s_finish()  free all allo
+
+Technique: using an adjacent header to provide size information
+
+
+
