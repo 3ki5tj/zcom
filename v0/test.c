@@ -16,8 +16,8 @@ int main(void)
     printf("%3d: %6u, %s\n", i, strlen(s), s);
   }
   sscpy(s, "new");
-  ssshrink(s);
-  ssdeleteall();
+  ssshr(s);
+  ssdelall();
   return 0;
 }
 
