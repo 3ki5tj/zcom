@@ -29,8 +29,6 @@ static size_t sshashval_(const char *p)
 {
   size_t val=(size_t)p;
   val = val*1664525u+1013904223u;
-  val = val*1664525u+1013904223u;
-  val = val*1664525u+1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 
@@ -84,18 +82,15 @@ static void sslistremove_(ssinfo_t *hp, int f)
 /* (re)allocate memory for (*php)->next, update list, return the new string
  * n is the number of nonempty characters, obtained e.g. from strlen()
  * we create a new header if *php is NULL
- * the allocate string will be no less than the requested size
- * BIGGEST TROUBLE-MAKER
  * */
 static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
 {
   ssinfo_t *h=NULL, *hp;
   size_t size;
 
-  if(php == NULL){
+  if(php == NULL)
     sserror_("NULL pointer to resize");
-    exit(1);
-  }
+  
   /* we use the following if to assign hp and h, so the order is crucial */
   if((hp=*php) == NULL || (h=hp->next)->size < (n+1) || !overalloc){
     size = sscalcsize_(n, 0);
@@ -131,22 +126,19 @@ static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
 /* delete a string, shrink memory, etc ... */
 void ssmanage(char *s, unsigned flags)
 {
-  ssinfo_t *hp;
+  ssinfo_t *hp,*head;
   unsigned opt = flags & 0xFF;
-  size_t hashval=0;
+  size_t hashval=0,i;
 
   if(flags & SSSINGLE){
     if(s == NULL || (hp=sslistfind_(s, &hashval)) == NULL)
       return;
     ssmanage_low_(hp, opt);
   }else{
-    int i;
-    ssinfo_t *head;
-    for(i=0; i<SSHASHSIZ; i++){
+    for(i=0; i<SSHASHSIZ; i++)
       for(hp=head=ssbase_+i; hp->next && hp->next != head; hp=hp->next)
         /* we must not operate on h itself, which renders the iterator h invalid */
         ssmanage_low_(hp, opt);
-    }
   }
 }
 

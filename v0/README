@@ -2,7 +2,7 @@ Simple version of safer string library
 
 It should support
 sscpy() to replace strcpy
-sscat()  to replace strcat
+sscat() to replace strcat
 
 Technique: using an adjacent header to provide size information
 
@@ -13,4 +13,7 @@ simple_double_linked_list:
 
 simple_list: 
   a simple linked list, safe but slow verification
+
+hash:
+  hash table version, resizing makes items jumping around.
 
