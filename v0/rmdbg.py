@@ -7,7 +7,7 @@ f=open('ss.c', 'r')
 in_lines=f.readlines()
 f.close()
 
-verbose=3
+verbose=2
 
 bad_keys=['SSDBG_']
 print "bad :", bad_keys
