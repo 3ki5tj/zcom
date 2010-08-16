@@ -6,3 +6,11 @@ sscat()  to replace strcat
 
 Technique: using an adjacent header to provide size information
 
+Master branch only has clean code from the best branch.
+
+simple_double_linked_list: 
+  use a signature mark, unsafe but fast verification
+
+simple_list: 
+  a simple linked list, safe but slow verification
+
