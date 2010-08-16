@@ -7,19 +7,44 @@
 #include <stdarg.h>
 #include "ss.h"
 
-#define SSMINSIZ_BITS 8
-#define SSMINSIZ      (1u<<SSMINSIZ_BITS)
+#define SSMINBITS  8   /* change this value to 0 during debug */
+#define SSMINSIZ   (1u<<SSMINBITS)
+#define SSHASHBITS 8
+#define SSHASHSIZ  (1<<SSHASHBITS)  
 
 typedef struct tag_ssinfo{
   size_t size;
+  size_t hashval;
   struct tag_ssinfo *next;
 }ssinfo_t;
 
-static struct tag_ssinfo ssbase_[1]={{0u,NULL}};
+static struct tag_ssinfo ssbase_[SSHASHSIZ]={{0u,0u,NULL}};
 
 #define sserror_ printf
 
-/* calculate memory required to accommendate a string of n nonzero characters  */
+/* we accept a string instead of a point to ssinfo_t
+ * because the former is more frequently used in e.g. looking-up
+ * */
+static size_t sshashval_(const char *p)
+{
+  size_t val=(size_t)p;
+#ifdef SSDBG_
+/*
+  printf("Hash val=%#x ", val);
+*/
+#endif
+  val = val*1664525u+1013904223u;
+  val = val*1664525u+1013904223u;
+  val = val*1664525u+1013904223u;
+#ifdef SSDBG_
+/*
+  printf("-->=%#x\n", val);
+*/
+#endif  
+  return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
+}
+
+/* calculate memory needed for a string of n nonzero characters */
 static size_t sscalcsize_(size_t n, int ah)
 {
   n = (n/SSMINSIZ + 1) * SSMINSIZ;
@@ -30,46 +55,52 @@ static size_t sscalcsize_(size_t n, int ah)
 /* slow but safe way of verifying the validity of a string
  * by enumerate the whole linked list 
  * return the *previous* item to the requested one */
-static ssinfo_t *sslistfind_(char *s)
+static ssinfo_t *sslistfind_(char *s, size_t *val)
 {
   ssinfo_t *hp;
 
-  for(hp=ssbase_; hp->next != ssbase_; hp=hp->next)
+  *val=sshashval_(s);
+  for(hp = ssbase_ + *val; hp->next != ssbase_; hp=hp->next)
     if((char *)(hp->next+1) == s)
       return hp;
   return NULL;
 }
 
-/* simply add h to the begining of the list */
+/* simply add h to the begining of the list 
+ * we do not accept a precalculated hash value, 
+ * since realloc might have changed it
+ * */
 static ssinfo_t *sslistadd_(ssinfo_t *h)
 {
-  if(ssbase_->next == NULL) /* initialize the base */
-    ssbase_->next = ssbase_;
+  ssinfo_t *head;
 
-  h->next = ssbase_->next;
-  ssbase_->next = h;
-  return ssbase_;
+  head = ssbase_ + sshashval_( (char *)(h+1) );
+  if(head->next == NULL) /* initialize the base */
+    head->next = head;
+
+  h->next = head->next;
+  head->next = h;
+  return head;
 }
 
-/* remove hp->next */
-static void sslistremove_(ssinfo_t *hp)
-{
-  ssinfo_t *h=hp->next;
-  hp->next=h->next;
-  free(h);
-}
 #ifdef SSDBG_
 static void ssdump_(ssinfo_t *hp)
 {
+  size_t val;
   fflush(stdout);
-  printf("header: %p, prev: %p, next: %p, base: %p, size: %8u, string: %p\n",
-      hp->next, hp, hp->next->next, ssbase_, hp->next->size, (char *)(hp->next+1));
+  val=sshashval_((char *)(hp->next+1));
+  printf("key: %4u, this: %p ", val, hp->next); fflush(stdout);
+  printf("[%6u], ", strlen((char *)(hp->next+1))); fflush(stdout);
+  printf("prev: %p, next: %p, ", hp, hp->next->next); fflush(stdout); 
+  printf("head: %p, size: %8u, string: %p\n",
+      ssbase_+val, hp->next->size, (char *)(hp->next+1));
   fflush(stdout);
 }
 static void ssdumpall_(const char *fmt, ...)
 {
-  ssinfo_t *hp;
-  int i;
+  ssinfo_t *hp, *head;
+  int i, j;
+  size_t val;
   va_list args;
   
   if(fmt){
@@ -79,28 +110,61 @@ static void ssdumpall_(const char *fmt, ...)
     va_end(args);
   }
   fflush(stdout);
-  for(hp=ssbase_, i=0; hp->next != ssbase_; hp=hp->next, i++){
-    printf("i=%4d:", i);
-    ssdump_(hp);
+  for(i=0; i<SSHASHSIZ; i++){
+    head=ssbase_+i;
+    if(head->next==head || head->next==NULL) continue;
+    for(hp=head, j=0; hp->next != head; hp=hp->next, j++){
+      printf("i=%4d,j=%4d:", i, j);
+      ssdump_(hp);
+      val=sshashval_((char *)(hp->next+1));
+      if(val != i){
+        printf("HASH CORRUPTED, val is %u\n", val);
+        exit(1);
+      }
+    }
   }
 }
 #endif
+/* remove hp->next */
+static void sslistremove_(ssinfo_t *hp, int f)
+{
+  ssinfo_t *h=hp->next;
+#ifdef SSDBG_
+
+  ssdumpall_("sslistremove_, hp=%p, free=%d\n", hp, f);
+  if(h==NULL || h->next==NULL){
+    ssdumpall_("REMOVE NULL: h=%p hp=%p\n", h, hp); fflush(stdout);
+    exit(1);
+  }else{
+    printf("trying to remove hp=%p, h=%p ", hp, h); fflush(stdout);
+    printf("h->next: %p\n", h->next); fflush(stdout);
+  }
+
+#endif
+  hp->next=h->next;
+  if(f) free(h);
+}
 
 /* (re)allocate memory for (*php)->next, update list, return the new string
+ * n is the number of nonempty characters, obtained e.g. from strlen()
  * we create a new header if *php is NULL
  * the allocate string will be no less than the requested size
+ * BIGGEST TROUBLE-MAKER
  * */
-static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
+static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
 {
   ssinfo_t *h=NULL, *hp;
+  size_t size;
 
   if(php == NULL){
     sserror_("NULL pointer to resize");
     exit(1);
   }
   /* we use the following if to assign hp and h, so the order is crucial */
-  if((hp=*php) == NULL || (h=hp->next)->size < size || !overalloc){
+  if((hp=*php) == NULL || (h=hp->next)->size < (n+1) || !overalloc){
+    size = sscalcsize_(n, 0);
 #ifdef SSDBG_
+    
     if(hp != NULL){
         printf("this is prechecking, hp=%p size=%u\n", hp, hp->size); fflush(stdout);
         printf("hp->next=%p, size=%u\n",
@@ -108,9 +172,7 @@ static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
         printf("hp->next->next=%p, size=%u\n",
             hp->next->next, hp->next->next->size); fflush(stdout);
     }
-#endif
     
-#ifdef SSDBG_
     if(hp != NULL){
       printf("h=%p ", h); fflush(stdout);
       if(h==NULL){
@@ -119,29 +181,40 @@ static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
       }
       printf("current size=%u ", h->size); fflush(stdout);
     }
-    printf("request %u after %u, overalloc=%d\n", size, sscalcsize_(size,0), overalloc);
+    printf("request %u+1 bytes, will allocate %u, overalloc=%d\n", 
+        n, size, overalloc);
+
 #endif
-    size = sscalcsize_(size, 0);
     if(h == NULL || size != h->size){
-      if((h=realloc(h, sizeof(*hp)+size)) == NULL){
+      /* since realloc will change the hash value of h
+       * we have to remove the old entry first without free() 
+       * hp->next will be freed by realloc */
+      if(hp != NULL)
+        sslistremove_(hp, 0);
+      if((h=realloc(h, sizeof(*h)+size)) == NULL){
         sserror_("no memory for resizing\n");
         return NULL;
       }
-      if(hp != NULL){ /* no need to change h's position in the list */
 #ifdef SSDBG_
-        printf("this is re-sizing, hp=%p size=%u\n", hp, hp->size); fflush(stdout);
-        printf("h=%p, size=%u\n", h, h->size); fflush(stdout);
-#endif
-        hp->next = h;
-      }else{ /* absorb the new header */
-#ifdef SSDBG_
+
+      if(hp != NULL){ 
+          printf("this is re-sizing, hp=%p size=%u\n", hp, hp->size); fflush(stdout);
+          printf("h=%p, size=%u\n", h, h->size); fflush(stdout);
+
+      }else{ /* a brand-new header */
         printf("this is a new object\n");
-#endif
-        *php=hp=sslistadd_(h);
       }
+
+#endif
+      if(hp == NULL) /* clear the first byte if we start from nothing */
+        *(char *)(h+1) = '\0';
+      *php=hp=sslistadd_(h);
       hp->next->size = size;
 #ifdef SSDBG_
-      ssdumpall_(NULL); 
+
+      ssdumpall_("at the end of a resizing\n");
+      getchar();
+
 #endif
     }
   }
@@ -151,7 +224,15 @@ static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
 static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
 {
   if(opt == SSDELETE)
-    sslistremove_(hp);
+#ifdef SSDBG_
+  {
+    ssdumpall_("manage delete call, hp=%p\n", hp);
+#endif
+    sslistremove_(hp, 1);
+#ifdef SSDBG_
+
+  }
+#endif
   else if(opt==SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
   else
@@ -163,23 +244,31 @@ void ssmanage(char *s, unsigned flags)
 {
   ssinfo_t *hp;
   unsigned opt = flags & 0xFF;
+  size_t hashval=0;
 
   if(flags & SSSINGLE){
-    if(s == NULL || (hp=sslistfind_(s)) == NULL)
+    if(s == NULL || (hp=sslistfind_(s, &hashval)) == NULL)
       return;
     ssmanage_low_(hp, opt);
 #ifdef SSDBG_    
     ssdumpall_("after ssmanage single mode\n");
 #endif
   }else{
-    for(hp=ssbase_; hp->next != ssbase_; hp=hp->next){
-      /* we must not operate on h itself, which renders the iterator h invalid */
+    int i;
+    ssinfo_t *head;
+    for(i=0; i<SSHASHSIZ; i++){
+      for(hp=head=ssbase_+i; hp->next && hp->next != head; hp=hp->next)
 #ifdef SSDBG__
-      printf("hahaha hp=%p, hp->next=%p, base=%p ", hp, hp->next, ssbase_); fflush(stdout);
-      printf("hp->next->next=%p, hp->next:s=%u\n", 
+      {
+        printf("hahaha hp=%p, hp->next=%p, base=%p ", hp, hp->next, ssbase_); fflush(stdout);
+        printf("hp->next->next=%p, hp->next:s=%u\n", 
           hp->next->next, strlen((char *)(hp->next+1)) ); getchar();
 #endif
-      ssmanage_low_(hp, opt);
+        /* we must not operate on h itself, which renders the iterator h invalid */
+        ssmanage_low_(hp, opt);
+#ifdef SSDBG__
+      }
+#endif
     }
   }
 }
@@ -192,25 +281,26 @@ void ssmanage(char *s, unsigned flags)
 char *sscpyx(char **ps, const char *t)
 {
   ssinfo_t *hp=NULL;
-  size_t size=0;
+  size_t size=0, hashval=0;
   char *s, *p;
 
-  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s)) == NULL)
+  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s, &hashval)) == NULL)
     return NULL;
   if(t != NULL)
     while(t[size])
       size++;
 #ifdef SSDBG_
   if(t){
-    printf("sscpyx: size of t=%u, strlen=%u\n", size, strlen(t));
+    printf("sscpyx: size of t=%u, strlen=%u\n", size, strlen(t)); fflush(stdout);
     if(strlen(t) != size){
       fprintf(stderr, "Fatal error\n");
       exit(1);
     }
   }
   if(ps && *ps){
-    printf("sscpyx: cap=%u, size=%u\n", hp->next->size, strlen(*ps));
+    printf("sscpyx: cap=%u, strlen=%u\n", hp->next->size, strlen(*ps)); fflush(stdout);
   }
+  printf("sscpyx: requesting: %u bytes\n", size); fflush(stdout);
 #endif
   if((s=ssresize_(&hp, size, 1)) == NULL)
     return NULL;
@@ -224,7 +314,7 @@ char *sscpyx(char **ps, const char *t)
       ;
 #ifdef SSDBG_
   if(t){
-    printf("sscpyx: p-s=%u\ns=%s\n", p-s, s); getchar();
+    printf("sscpyx: p-s=%u\ns=%s\n", (unsigned)(p-s), s); getchar();
   }
 #endif
   if(ps != NULL)
@@ -235,10 +325,10 @@ char *sscpyx(char **ps, const char *t)
 char *sscatx(char **ps, const char *t)
 {
   ssinfo_t *hp;
-  size_t size=0;
+  size_t size=0, hashval=0;
   char *s, *p;
 
-  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s)) == NULL || t == NULL)
+  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s, &hashval)) == NULL || t == NULL)
     return NULL;
   while(t[size])
     size++;
@@ -248,8 +338,8 @@ char *sscatx(char **ps, const char *t)
   for(p=s; *p; p++) ; /* move p to the end of the string */
   size += p-s;
 #ifdef SSDBG_
-  printf("sscatx: size of s=%u, p-s=%u, cap=%u\ns=%s\nt=%s\n",
-      size, p-s, hp->next->size, s, t);
+  printf("sscatx: requested size of s=%u, p-s=%u, current cap=%u\ns=%s\nt=%s\n",
+      size, (unsigned)(p-s), hp->next->size, s, t); fflush(stdout);
 #endif
   if((s=ssresize_(&hp, size, 1)) == NULL)
     return NULL;
@@ -265,12 +355,12 @@ char *sscatx(char **ps, const char *t)
     for(p=*ps=s; *p; p++)
       ;
 #ifdef SSDBG_
-  printf("sscatx: p-s=%u\n", p-s);
+  printf("sscatx: p-s=%u, p=%p, s=%p\n", (unsigned)(p-s), p, s);
 #endif
   for(; (*p++ = *t++); )
     ;
 #ifdef SSDBG_
-  printf("sscatx: p-s=%u\ns=%s\n", p-s, s); getchar();
+  printf("sscatx: p-s=%u\ns=%s\n", (unsigned)(p-s), s); getchar();
 #endif
   return s;
 }
