@@ -29,6 +29,7 @@ static size_t sscalcsize_(size_t n, int hdr)
   return n;
 }
 
+/* fast but sloppy way of verifying the validity of a string */
 static ssinfo_t *sslistfind_(char *s)
 {
   ssinfo_t *hdr;
@@ -37,7 +38,7 @@ static ssinfo_t *sslistfind_(char *s)
   hdr = (ssinfo_t *)s - 1;
 
   /* trying to access hdr->mark may lead to an error,
-   * but this is a program error anyway */
+   * but this is programmer's fault anyway */
   if(hdr->mark != SSMARK){
     sserror_("trying to use an alien string\n");
     return NULL;
