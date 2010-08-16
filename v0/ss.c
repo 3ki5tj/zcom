@@ -6,7 +6,8 @@
 #include <string.h>
 #include "ss.h"
 
-#define SSMINSIZ (1u<<8)
+#define SSMINSIZ_BITS 8
+#define SSMINSIZ      (1u<<SSMINSIZ_BITS)
 
 typedef struct tag_ssinfo{
   size_t size;
@@ -20,12 +21,12 @@ static struct tag_ssinfo ssbase_[1]={{0u,NULL,NULL,SSMARK}};
 
 #define sserror_ printf
 
-/* calculate memory required to accommendate a size-byte string */
-static size_t sscalcsize_(size_t size, int hdr)
+/* calculate memory required to accommendate a string of n nonzero characters  */
+static size_t sscalcsize_(size_t n, int hdr)
 {
-  size = (size/SSMINSIZ+1) * SSMINSIZ;
-  if(hdr) size+=sizeof(ssinfo_t);
-  return size;
+  n = (n/SSMINSIZ + 1) * SSMINSIZ;
+  if(hdr) n+=sizeof(ssinfo_t);
+  return n;
 }
 
 static ssinfo_t *sslistfind_(char *s)
@@ -63,7 +64,10 @@ static void sslistremove_(ssinfo_t *hdr)
   free(hdr);
 }
 
-/* (re)allocate memory for *phdr, update list, return the new string */
+/* (re)allocate memory for *phdr, update list, return the new string
+ * we create a new header if *phdr is NULL
+ * the allocate string will be no less than the requested size
+ * */
 static char *ssresize_(ssinfo_t **phdr, size_t size, int overalloc)
 {
   ssinfo_t *hdr;
@@ -83,8 +87,8 @@ static char *ssresize_(ssinfo_t **phdr, size_t size, int overalloc)
         hdr->next->prev = hdr->prev->next = hdr;
       else{ /* absorb the new string */
         sslistadd_(hdr);
-        *phdr = hdr;
       }
+      *phdr = hdr;
       hdr->size = size;
       hdr->mark = SSMARK;
     }
@@ -92,29 +96,13 @@ static char *ssresize_(ssinfo_t **phdr, size_t size, int overalloc)
   return (char *)(hdr+1);
 }
 
+#ifdef SSDBG_
 static void ssdump_(ssinfo_t *hdr)
 {
-  printf("header: %p, prev: %p, next: %p, base: %p, size: %6d, string: %p\n", 
+  printf("header: %p, prev: %p, next: %p, base: %p, size: %8u, string: %p\n", 
       hdr, hdr->prev, hdr->next, ssbase_, hdr->size, (char *)hdr+sizeof(*hdr));
 }
-
-/* return a newly created string with its content copied from t */
-char *ssnew(const char *t)
-{
-  ssinfo_t *hdr=NULL;
-  size_t size;
-  char *s;
-
-  size = t ? strlen(t) : 0;
-  if((s=ssresize_(&hdr, size, 1)) == NULL)
-    return NULL;
-  else if(t)
-    return strcpy(s, t);
-  else{
-    s[0]='\0';
-    return s;
-  }
-}
+#endif
 
 /* manually delete a string */
 void ssdelete(char *s)
@@ -140,38 +128,92 @@ void ssmanage(int opt)
   }
 }
 
-char *sscopy_x(char **ps, const char *t)
+/* copy t to *ps, if ps is not NULL, and return the result 
+ * if ps or *ps is NULL, we return a string created from t
+ *   *ps is set to the same value if ps is not NULL
+ * otherwise, we update the record that corresponds to *ps 
+ * */
+char *sscpyx(char **ps, const char *t)
 {
-  ssinfo_t *hdr;
+  ssinfo_t *hdr=NULL;
+  size_t size=0;
+  char *s, *p;
 
-  if(ps == NULL || t == NULL)
+  if(ps != NULL && (s=*ps) != NULL && (hdr=sslistfind_(s)) == NULL) 
     return NULL;
-
-  if(*ps == NULL) return *ps = ssnew(t);
-
-  if((hdr=sslistfind_(*ps)) == NULL) 
+  if(t != NULL)
+    while(t[size]) 
+      size++;
+#ifdef SSDBG_
+  if(t){
+    printf("sscpyx: size of t=%u, strlen=%u\n", size, strlen(t));
+    if(strlen(t) != size){
+      fprintf(stderr, "Fatal error\n");
+      exit(1);
+    }
+  }
+  if(ps && *ps){
+    printf("sscpyx: cap=%u, size=%u\n", hdr->size, strlen(*ps));
+  }
+#endif  
+  if((s=ssresize_(&hdr, size, 1)) == NULL) 
     return NULL;
-
-  if((*ps=ssresize_(&hdr, strlen(t)+1, 1)) == NULL) 
-    return NULL;
-  else
-    return strcpy(*ps, t);
+#ifdef SSDBG_
+  printf("sscpyx: after resizing, cap=%u\n", hdr->size);
+#endif  
+  if(t == NULL) 
+    s[0] = '\0';
+  else /* copy t to s */ 
+    for(p=s; (*p++ = *t++); ) 
+      ;
+#ifdef SSDBG_
+  if(t){
+    printf("sscpyx: p-s=%u\ns=%s\n", p-s, s); getchar();
+  }
+#endif
+  if(ps != NULL) 
+    *ps = s;
+  return s;
 }
 
-char *sscat_x(char **ps, const char *t)
+char *sscatx(char **ps, const char *t)
 {
   ssinfo_t *hdr;
-  size_t size;
+  size_t size=0;
+  char *s, *p;
+  const char *q;
 
-  if(ps == NULL || *ps == NULL || (hdr=sslistfind_(*ps)) == NULL || t == NULL) 
+  if(ps == NULL || (s=*ps) == NULL || (hdr=sslistfind_(s)) == NULL || t == NULL) 
     return NULL;
-
-  size = strlen(*ps);
-  size += strlen(t)+1;
-  if((*ps=ssresize_(&hdr, size, 1)) == NULL)
+  while(t[size]) 
+    size++;
+#ifdef SSDBG_
+  printf("sscatx: size of t=%u\n", size);
+#endif
+  for(p=s; *p; p++) ; /* move p to the end of the string */
+  size += p-s;
+#ifdef SSDBG_
+  printf("sscatx: size of s=%u, p-s=%u, cap=%u\ns=%s\nt=%s\n", 
+      size, p-s, hdr->size, s, t);
+#endif
+  if((s=ssresize_(&hdr, size, 1)) == NULL)
     return NULL;
-  else 
-    return strcat(*ps, t);
+#ifdef SSDBG_
+  printf("sscatx: after resize s=%s\naddr: %p\nprev: %p\ncap=%u\n", 
+      s, s, *ps, hdr->size);
+#endif
+  if(s != *ps) /* move to the end of s */
+    for(p=*ps=s; *p; p++)
+      ;
+#ifdef SSDBG_
+  printf("sscatx: p-s=%u\n", p-s); 
+#endif
+  for(; (*p++ = *t++); )
+    ;
+#ifdef SSDBG_
+  printf("sscatx: p-s=%u\ns=%s\n", p-s, s); getchar();
+#endif  
+  return s;
 }
 
 #endif

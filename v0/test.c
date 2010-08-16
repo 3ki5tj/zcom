@@ -3,19 +3,19 @@
 
 int main(void)
 {
-  int i,aprev=0;
+  int i;
   char *sa="A", *sb="B";
   char *s=NULL, *t=NULL, *r=NULL;
   
   s=ssnew(sa);
   t=ssnew(sb);
-  for(i=1; i<=20; i++){
-    sscopy(r, s);
+  for(i=1; i<=16; i++){
+    sscpy(r, s);
     sscat(s, t);
-    sscopy(t, r);
-    printf("%3d: %s\n", i, s);
+    sscpy(t, r);
+    printf("%3d: %6u, %s\n", i, strlen(s), s);
   }
-  sscopy(s, "new");
+  sscpy(s, "new");
   ssshrink();
   ssfinish();
   return 0;
