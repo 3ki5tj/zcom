@@ -7,19 +7,34 @@
 #include <stdarg.h>
 #include "ss.h"
 
-#define SSMINSIZ_BITS 8
-#define SSMINSIZ      (1u<<SSMINSIZ_BITS)
+#define SSMINBITS  8   /* change this value to 0 during debug */
+#define SSMINSIZ   (1u<<SSMINBITS)
+#define SSHASHBITS 8
+#define SSHASHSIZ  (1<<SSHASHBITS)  
 
 typedef struct tag_ssinfo{
   size_t size;
+  size_t hashval;
   struct tag_ssinfo *next;
 }ssinfo_t;
 
-static struct tag_ssinfo ssbase_[1]={{0u,NULL}};
+static struct tag_ssinfo ssbase_[SSHASHSIZ]={{0u,0u,NULL}};
 
 #define sserror_ printf
 
-/* calculate memory required to accommendate a string of n nonzero characters  */
+/* we accept a string instead of a point to ssinfo_t
+ * because the former is more frequently used in e.g. looking-up
+ * */
+static size_t sshashval_(const char *p)
+{
+  size_t val=(size_t)p;
+  val = val*1664525u+1013904223u;
+  val = val*1664525u+1013904223u;
+  val = val*1664525u+1013904223u;
+  return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
+}
+
+/* calculate memory needed for a string of n nonzero characters */
 static size_t sscalcsize_(size_t n, int ah)
 {
   n = (n/SSMINSIZ + 1) * SSMINSIZ;
@@ -30,61 +45,73 @@ static size_t sscalcsize_(size_t n, int ah)
 /* slow but safe way of verifying the validity of a string
  * by enumerate the whole linked list 
  * return the *previous* item to the requested one */
-static ssinfo_t *sslistfind_(char *s)
+static ssinfo_t *sslistfind_(char *s, size_t *val)
 {
   ssinfo_t *hp;
 
-  for(hp=ssbase_; hp->next != ssbase_; hp=hp->next)
+  *val=sshashval_(s);
+  for(hp = ssbase_ + *val; hp->next != ssbase_; hp=hp->next)
     if((char *)(hp->next+1) == s)
       return hp;
   return NULL;
 }
 
-/* simply add h to the begining of the list */
+/* simply add h to the begining of the list 
+ * we do not accept a precalculated hash value, 
+ * since realloc might have changed it
+ * */
 static ssinfo_t *sslistadd_(ssinfo_t *h)
 {
-  if(ssbase_->next == NULL) /* initialize the base */
-    ssbase_->next = ssbase_;
+  ssinfo_t *head;
 
-  h->next = ssbase_->next;
-  ssbase_->next = h;
-  return ssbase_;
+  head = ssbase_ + sshashval_( (char *)(h+1) );
+  if(head->next == NULL) /* initialize the base */
+    head->next = head;
+
+  h->next = head->next;
+  head->next = h;
+  return head;
 }
 
 /* remove hp->next */
-static void sslistremove_(ssinfo_t *hp)
+static void sslistremove_(ssinfo_t *hp, int f)
 {
   ssinfo_t *h=hp->next;
   hp->next=h->next;
-  free(h);
+  if(f) free(h);
 }
 
 /* (re)allocate memory for (*php)->next, update list, return the new string
+ * n is the number of nonempty characters, obtained e.g. from strlen()
  * we create a new header if *php is NULL
  * the allocate string will be no less than the requested size
+ * BIGGEST TROUBLE-MAKER
  * */
-static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
+static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
 {
   ssinfo_t *h=NULL, *hp;
+  size_t size;
 
   if(php == NULL){
     sserror_("NULL pointer to resize");
     exit(1);
   }
   /* we use the following if to assign hp and h, so the order is crucial */
-  if((hp=*php) == NULL || (h=hp->next)->size < size || !overalloc){
-    
-    size = sscalcsize_(size, 0);
+  if((hp=*php) == NULL || (h=hp->next)->size < (n+1) || !overalloc){
+    size = sscalcsize_(n, 0);
     if(h == NULL || size != h->size){
-      if((h=realloc(h, sizeof(*hp)+size)) == NULL){
+      /* since realloc will change the hash value of h
+       * we have to remove the old entry first without free() 
+       * hp->next will be freed by realloc */
+      if(hp != NULL)
+        sslistremove_(hp, 0);
+      if((h=realloc(h, sizeof(*h)+size)) == NULL){
         sserror_("no memory for resizing\n");
         return NULL;
       }
-      if(hp != NULL){ /* no need to change h's position in the list */
-        hp->next = h;
-      }else{ /* absorb the new header */
-        *php=hp=sslistadd_(h);
-      }
+      if(hp == NULL) /* clear the first byte if we start from nothing */
+        *(char *)(h+1) = '\0';
+      *php=hp=sslistadd_(h);
       hp->next->size = size;
     }
   }
@@ -94,7 +121,7 @@ static char *ssresize_(ssinfo_t **php, size_t size, int overalloc)
 static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
 {
   if(opt == SSDELETE)
-    sslistremove_(hp);
+    sslistremove_(hp, 1);
   else if(opt==SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
   else
@@ -106,15 +133,19 @@ void ssmanage(char *s, unsigned flags)
 {
   ssinfo_t *hp;
   unsigned opt = flags & 0xFF;
+  size_t hashval=0;
 
   if(flags & SSSINGLE){
-    if(s == NULL || (hp=sslistfind_(s)) == NULL)
+    if(s == NULL || (hp=sslistfind_(s, &hashval)) == NULL)
       return;
     ssmanage_low_(hp, opt);
   }else{
-    for(hp=ssbase_; hp->next != ssbase_; hp=hp->next){
-      /* we must not operate on h itself, which renders the iterator h invalid */
-      ssmanage_low_(hp, opt);
+    int i;
+    ssinfo_t *head;
+    for(i=0; i<SSHASHSIZ; i++){
+      for(hp=head=ssbase_+i; hp->next && hp->next != head; hp=hp->next)
+        /* we must not operate on h itself, which renders the iterator h invalid */
+        ssmanage_low_(hp, opt);
     }
   }
 }
@@ -127,10 +158,10 @@ void ssmanage(char *s, unsigned flags)
 char *sscpyx(char **ps, const char *t)
 {
   ssinfo_t *hp=NULL;
-  size_t size=0;
+  size_t size=0, hashval=0;
   char *s, *p;
 
-  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s)) == NULL)
+  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s, &hashval)) == NULL)
     return NULL;
   if(t != NULL)
     while(t[size])
@@ -150,10 +181,10 @@ char *sscpyx(char **ps, const char *t)
 char *sscatx(char **ps, const char *t)
 {
   ssinfo_t *hp;
-  size_t size=0;
+  size_t size=0, hashval=0;
   char *s, *p;
 
-  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s)) == NULL || t == NULL)
+  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s, &hashval)) == NULL || t == NULL)
     return NULL;
   while(t[size])
     size++;
