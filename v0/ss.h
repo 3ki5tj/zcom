@@ -2,14 +2,17 @@
 #define SS_H__
 #include <string.h>
 
-#define ssnew(t)    sscpyx(NULL, t)
-#define sscpy(s, t) sscpyx(&(s), t)
-#define sscat(s, t) sscatx(&(s), t)
-#define ssfinish()  ssmanage(0)
-#define ssshrink()  ssmanage(1)
+enum{ SSDELETE, SSSHRINK, SSSINGLE=0x1000};
 
-void ssdelete(char *);
-void ssmanage(int);
+#define ssnew(t)       sscpyx(NULL, t)
+#define sscpy(s, t)    sscpyx(&(s), t)
+#define sscat(s, t)    sscatx(&(s), t)
+#define ssdelete(s)    ssmanage(s, SSDELETE|SSSINGLE)
+#define ssshrink(s)    ssmanage(s, SSSHRINK|SSSINGLE)
+#define ssdeleteall()  ssmanage(NULL, SSDELETE)
+#define ssshrinkall()  ssmanage(NULL, SSHRINK)
+
+void ssmanage(char *, unsigned);
 char *sscpyx(char **, const char *);
 char *sscatx(char **, const char *);
 
