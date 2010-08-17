@@ -43,12 +43,13 @@ static size_t sscalcsize_(size_t n, int ah)
 /* slow but safe way of verifying the validity of a string
  * by enumerate the whole linked list 
  * return the *previous* item to the requested one */
-static ssinfo_t *sslistfind_(char *s, size_t *val)
+static ssinfo_t *sslistfind_(char *s)
 {
   ssinfo_t *hp;
 
-  *val=sshashval_(s);
-  for(hp = ssbase_ + *val; hp->next != ssbase_; hp=hp->next)
+  if(s == NULL)
+    return NULL;
+  for(hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp=hp->next)
     if((char *)(hp->next+1) == s)
       return hp;
   return NULL;
@@ -128,10 +129,10 @@ void ssmanage(char *s, unsigned flags)
 {
   ssinfo_t *hp,*head;
   unsigned opt = flags & 0xFF;
-  size_t hashval=0,i;
+  size_t i;
 
   if(flags & SSSINGLE){
-    if(s == NULL || (hp=sslistfind_(s, &hashval)) == NULL)
+    if(s == NULL || (hp=sslistfind_(s)) == NULL)
       return;
     ssmanage_low_(hp, opt);
   }else{
@@ -150,10 +151,10 @@ void ssmanage(char *s, unsigned flags)
 char *sscpyx(char **ps, const char *t)
 {
   ssinfo_t *hp=NULL;
-  size_t size=0, hashval=0;
+  size_t size=0;
   char *s, *p;
 
-  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s, &hashval)) == NULL)
+  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s)) == NULL)
     return NULL;
   if(t != NULL)
     while(t[size])
@@ -173,10 +174,10 @@ char *sscpyx(char **ps, const char *t)
 char *sscatx(char **ps, const char *t)
 {
   ssinfo_t *hp;
-  size_t size=0, hashval=0;
+  size_t size=0;
   char *s, *p;
 
-  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s, &hashval)) == NULL || t == NULL)
+  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s)) == NULL || t == NULL)
     return NULL;
   while(t[size])
     size++;
@@ -199,7 +200,7 @@ char *sscatx(char **ps, const char *t)
  * */
 char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
 {
-  size_t n, max, hashval;
+  size_t n, max;
   int c;
   char *s;
   ssinfo_t *hp;
@@ -209,7 +210,7 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   if((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
     if((s=sscpyx(ps,NULL)) == NULL)
       return NULL;
-  if((hp=sslistfind_(s, &hashval)) == NULL)
+  if((hp=sslistfind_(s)) == NULL)
     return NULL;
 
   max=hp->next->size-1;
