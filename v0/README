@@ -7,6 +7,8 @@ ssfgets() to replace fgets()
 
 Technique: using an adjacent header to provide size information
 
+Branch
+==========
 Master branch only has clean code from the best branch.
 
 simple_double_linked_list: 
@@ -18,3 +20,8 @@ simple_list:
 hash:
   hash table version, resizing makes items jumping around.
 
+
+Usage Note
+==========
+Array, char s[], or an unintialized pointer, char *s, shouldn't
+be pass to an argument supposed to be a managed string
