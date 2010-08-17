@@ -192,5 +192,41 @@ char *sscatx(char **ps, const char *t)
   return s;
 }
 
+/* get a string *ps from file fp
+ * *ps can be NULL, in which case memory is allocated
+ * *pn is number of characters read (including '\n', but not the terminal null)
+ * delim is the '\n' for reading a singe line
+ * */
+char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
+{
+  size_t n, max, hashval;
+  int c;
+  char *s;
+  ssinfo_t *hp;
+
+  if(ps == NULL || fp == NULL)
+    return NULL;
+  if((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
+    if((s=sscpyx(ps,NULL)) == NULL)
+      return NULL;
+  if((hp=sslistfind_(s, &hashval)) == NULL)
+    return NULL;
+
+  max=hp->next->size-1;
+  for(n = 0; (c=fgetc(fp)) != EOF; ){
+    if(n+1 > max){ /* request space for n+1 nonblank characters */
+      if((*ps=s=ssresize_(&hp, n+1, 1)) == NULL)
+        return NULL;
+      max = hp->next->size - 1;
+    }
+    s[n++] = (char)(unsigned char)c;
+    if(c == delim) 
+      break;
+  }
+  s[n] = '\0';
+  if(pn != NULL)
+    *pn = n;
+  return (n > 0) ? s : NULL;
+}
 #endif
 
