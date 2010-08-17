@@ -1,8 +1,9 @@
 Simple version of safer string library
 
 It should support
-sscpy() to replace strcpy
-sscat() to replace strcat
+sscpy() to replace strcpy()
+sscat() to replace strcat()
+ssfgets() to replace fgets()
 
 Technique: using an adjacent header to provide size information
 
