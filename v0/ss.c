@@ -36,7 +36,7 @@ static size_t sshashval_(const char *p)
 static size_t sscalcsize_(size_t n, int ah)
 {
   n = (n/SSMINSIZ + 1) * SSMINSIZ;
-  if(ah) n+=sizeof(ssinfo_t);
+  if (ah) n += sizeof(ssinfo_t);
   return n;
 }
 
@@ -47,10 +47,10 @@ static ssinfo_t *sslistfind_(char *s)
 {
   ssinfo_t *hp;
 
-  if(s == NULL)
+  if (s == NULL)
     return NULL;
-  for(hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp=hp->next)
-    if((char *)(hp->next+1) == s)
+  for (hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp = hp->next)
+    if ((char *)(hp->next+1) == s)
       return hp;
   return NULL;
 }
@@ -64,7 +64,7 @@ static ssinfo_t *sslistadd_(ssinfo_t *h)
   ssinfo_t *head;
 
   head = ssbase_ + sshashval_( (char *)(h+1) );
-  if(head->next == NULL) /* initialize the base */
+  if (head->next == NULL) /* initialize the base */
     head->next = head;
 
   h->next = head->next;
@@ -75,9 +75,9 @@ static ssinfo_t *sslistadd_(ssinfo_t *h)
 /* remove hp->next */
 static void sslistremove_(ssinfo_t *hp, int f)
 {
-  ssinfo_t *h=hp->next;
-  hp->next=h->next;
-  if(f) free(h);
+  ssinfo_t *h = hp->next;
+  hp->next = h->next;
+  if (f) free(h);
 }
 
 /* (re)allocate memory for (*php)->next, update list, return the new string
@@ -89,25 +89,25 @@ static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
   ssinfo_t *h=NULL, *hp;
   size_t size;
 
-  if(php == NULL)
+  if (php == NULL)
     sserror_("NULL pointer to resize");
   
   /* we use the following if to assign hp and h, so the order is crucial */
-  if((hp=*php) == NULL || (h=hp->next)->size < (n+1) || !overalloc){
+  if ((hp=*php) == NULL || (h = hp->next)->size < (n+1) || !overalloc) {
     size = sscalcsize_(n, 0);
-    if(h == NULL || size != h->size){
+    if (h == NULL || size != h->size) {
       /* since realloc will change the hash value of h
        * we have to remove the old entry first without free() 
        * hp->next will be freed by realloc */
-      if(hp != NULL)
+      if (hp != NULL)
         sslistremove_(hp, 0);
-      if((h=realloc(h, sizeof(*h)+size)) == NULL){
+      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
         sserror_("no memory for resizing\n");
         return NULL;
       }
-      if(hp == NULL) /* clear the first byte if we start from nothing */
+      if (hp == NULL) /* clear the first byte if we start from nothing */
         *(char *)(h+1) = '\0';
-      *php=hp=sslistadd_(h);
+      *php = hp = sslistadd_(h);
       hp->next->size = size;
     }
   }
@@ -116,9 +116,9 @@ static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
 
 static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
 {
-  if(opt == SSDELETE)
+  if (opt == SSDELETE)
     sslistremove_(hp, 1);
-  else if(opt==SSSHRINK)
+  else if (opt==SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
   else
     sserror_("unknown manage option");
@@ -131,13 +131,13 @@ void ssmanage(char *s, unsigned flags)
   unsigned opt = flags & 0xFF;
   size_t i;
 
-  if(flags & SSSINGLE){
-    if(s == NULL || (hp=sslistfind_(s)) == NULL)
+  if (flags & SSSINGLE) {
+    if (s == NULL || (hp = sslistfind_(s)) == NULL)
       return;
     ssmanage_low_(hp, opt);
-  }else{
-    for(i=0; i<SSHASHSIZ; i++)
-      for(hp=head=ssbase_+i; hp->next && hp->next != head; hp=hp->next)
+  } else {
+    for (i=0; i<SSHASHSIZ; i++)
+      for (hp = head = ssbase_+i; hp->next && hp->next != head; hp = hp->next)
         /* we must not operate on h itself, which renders the iterator h invalid */
         ssmanage_low_(hp, opt);
   }
@@ -154,19 +154,19 @@ char *sscpyx(char **ps, const char *t)
   size_t size=0;
   char *s, *p;
 
-  if(ps != NULL && (s=*ps) != NULL && (hp=sslistfind_(s)) == NULL)
+  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL)
     return NULL;
-  if(t != NULL)
+  if (t != NULL)
     while(t[size])
       size++;
-  if((s=ssresize_(&hp, size, 1)) == NULL)
+  if ((s = ssresize_(&hp, size, 1)) == NULL)
     return NULL;
-  if(t == NULL)
+  if (t == NULL)
     s[0] = '\0';
   else /* copy t to s */
-    for(p=s; (*p++ = *t++); )
+    for (p = s; (*p++ = *t++); )
       ;
-  if(ps != NULL)
+  if (ps != NULL)
     *ps = s;
   return s;
 }
@@ -177,18 +177,18 @@ char *sscatx(char **ps, const char *t)
   size_t size=0;
   char *s, *p;
 
-  if(ps == NULL || (s=*ps) == NULL || (hp=sslistfind_(s)) == NULL || t == NULL)
+  if (ps == NULL || (s=*ps) == NULL || (hp = sslistfind_(s)) == NULL || t == NULL)
     return NULL;
-  while(t[size])
+  while (t[size])
     size++;
-  for(p=s; *p; p++) ; /* move p to the end of the string */
+  for (p = s; *p; p++) ; /* move p to the end of the string */
   size += p-s;
-  if((s=ssresize_(&hp, size, 1)) == NULL)
+  if ((s = ssresize_(&hp, size, 1)) == NULL)
     return NULL;
-  if(s != *ps) /* move to the end of s */
-    for(p=*ps=s; *p; p++)
+  if (s != *ps) /* move to the end of s */
+    for (p = *ps = s; *p; p++)
       ;
-  for(; (*p++ = *t++); )
+  for (; (*p++ = *t++); )
     ;
   return s;
 }
@@ -205,27 +205,26 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   char *s;
   ssinfo_t *hp;
 
-  if(ps == NULL || fp == NULL)
+  if (ps == NULL || fp == NULL)
     return NULL;
-  if((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
-    if((s=sscpyx(ps,NULL)) == NULL)
+  if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
+    if ((s = sscpyx(ps,NULL)) == NULL)
       return NULL;
-  if((hp=sslistfind_(s)) == NULL)
+  if ((hp = sslistfind_(s)) == NULL)
     return NULL;
-
-  max=hp->next->size-1;
-  for(n = 0; (c=fgetc(fp)) != EOF; ){
-    if(n+1 > max){ /* request space for n+1 nonblank characters */
-      if((*ps=s=ssresize_(&hp, n+1, 1)) == NULL)
+  max = hp->next->size-1;
+  for (n = 0; (c = fgetc(fp)) != EOF; ) {
+    if (n+1 > max) { /* request space for n+1 nonblank characters */
+      if ((*ps = s = ssresize_(&hp, n+1, 1)) == NULL)
         return NULL;
       max = hp->next->size - 1;
     }
     s[n++] = (char)(unsigned char)c;
-    if(c == delim) 
+    if (c == delim) 
       break;
   }
   s[n] = '\0';
-  if(pn != NULL)
+  if (pn != NULL)
     *pn = n;
   return (n > 0) ? s : NULL;
 }
