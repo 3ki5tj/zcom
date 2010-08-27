@@ -7,8 +7,12 @@
 #include <stdarg.h>
 #include "ss.h"
 
-#define SSMINSIZ   256 /* change this value to 1 debugging */
+#ifndef SSMINSIZ /* to override the block size, define it before inclusion */
+#define SSMINSIZ 256 /* change this value to 1 for debugging */
+#endif
+#ifndef SSHASHBITS
 #define SSHASHBITS 8
+#endif
 #define SSHASHSIZ  (1<<SSHASHBITS)  
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
@@ -149,10 +153,12 @@ void ssmanage(char *s, unsigned flags)
  *   *ps is set to the same value if ps is not NULL
  * otherwise, we update the record that corresponds to *ps
  *
+ * minsize: to request a minimal size for the resulting buffer
+ *
  * If flags & SSCAT:
  * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
  * */
-char *sscpycatx(char **ps, const char *t, unsigned flags)
+char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
 {
   struct ssheader *hp=NULL;
   size_t size=0u, sizes=0u;
@@ -170,6 +176,8 @@ char *sscpycatx(char **ps, const char *t, unsigned flags)
         sizes++;
     size += sizes;
   }  /* sizes is always 0 in case of copying */
+  if (size < minsize)
+    size = minsize;
   if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
     return NULL;
   if (t != NULL)
@@ -195,7 +203,7 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   if (ps == NULL || fp == NULL)
     return NULL;
   if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
-    if ((s = sscpycatx(ps,NULL,0)) == NULL)
+    if ((s = sscpycatx(ps, NULL, 0, 0u)) == NULL)
       return NULL;
   if ((hp = sslistfind_(s)) == NULL)
     return NULL;

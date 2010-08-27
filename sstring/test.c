@@ -28,6 +28,11 @@ int main(void)
   char *sa="A", *sb="B";
   char *s=NULL, *t=NULL, *r=NULL;
   
+  r = ssnew(512);
+  for (i=0; i<512; i++) 
+    r[i] = 'j';
+  r[i] = '\0';
+
   s = ssdup(sa);
   t = ssdup(sb);
   for (i = 1; i <= 16; i++) {
