@@ -836,7 +836,7 @@ ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
   for (j = 0; j < cfg->n; j++) 
     if (cfg->key[j] != NULL && strcmp(cfg->key[j], key) == 0) { 
       if (fmt[0]=='%' && fmt[1]=='s') { /* string case */
-        *(char **)var = ssnew(cfg->value[j]); /* make a copy and return */
+        *(char **)var = ssdup(cfg->value[j]); /* make a copy and return */
         return 0;
       } else { /* use sscanf for other cases, like int,float,... */
         if (EOF == sscanf(cfg->value[j], fmt, var))
@@ -947,7 +947,7 @@ ZCSTRCLS int wtrace_buf(const char *fmt, ...)
   va_list args;
 
   if (fname == NULL) /* set the default file name */ 
-    fname = ssnew("TRACE");
+    fname = ssdup("TRACE");
 
   /* to finish up */
   if(fmt == NULL) goto NORMAL;
@@ -1097,7 +1097,7 @@ ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int
   int i,j,imax,imin;
   double sum,*p,delta;
 
-  filename = ssnew((fname != NULL) ? fname : "HIST");
+  filename = ssdup((fname != NULL) ? fname : "HIST");
   
   if ((fp=fopen(filename, "w")) == NULL) {
     printf("cannot write history file [%s].\n", filename);
@@ -1171,7 +1171,7 @@ ZCSTRCLS logfile_t* logopen(char *filenm)
   }
   /* We merely copy the name of the file,
    * the file is not opened until the first logprintf call */
-  log->fname = ssnew(filenm);
+  log->fname = ssdup(filenm);
   log->flag=0;
   return log;
 }
@@ -1537,7 +1537,7 @@ ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
   int i,j;
   double c,x,x2,*h;
 
-  filename = ssnew((fname != NULL) ? fname : "ZT");
+  filename = ssdup((fname != NULL) ? fname : "ZT");
   if((fp=fopen(filename, "w"))==NULL || beta==NULL){
     fprintf(stderr, "cannot write file [%s].\n", fname);
     return 1;
@@ -1627,7 +1627,7 @@ ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
     char *p,*q,*format,ch;
     int i;
 
-    format = ssnew(fmt);
+    format = ssdup(fmt);
 
     /* to seek the first conversion */
     for(p=format; *p; p++) if(*p=='%'){ if(p[1]=='%' || p[1]=='*') p++; else break;}

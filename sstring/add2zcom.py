@@ -1,26 +1,29 @@
 #!/usr/bin/env python
 
-# integrate ss.h into zcom.c
-# currently assume the debug information has already been stripped away
+'''
+integrate ss.c and ss.h into zcom.c
+currently assume the debug information has already been stripped away
+'''
 
 import os, shutil;
 
-# strip away the #ifndef, #define, #endif triplet, and things outside them
 def strip_def(src, verbose=1):
-  n = len(src)
-  start = -1
+  '''
+  strip away the #ifndef, #define, #endif triplet, and things outside them
+  '''
+  n = len(src) # number of lines
   for i in range(n):
-    if src[i].startswith("#ifndef"):
+    if src[i].lstrip().startswith("#ifndef"):
       start = i
       if verbose: 
         print "#ifndef found in line", start
       break
-  if start < 0:
+  else:
     return src # no "#ifdef" found
 
   # look for the following "#define"
   start += 1
-  if not src[start].startswith("#define"):
+  if not src[start].lstrip().startswith("#define"):
     return src
   if verbose: 
     print "#define found in line", start
@@ -28,12 +31,11 @@ def strip_def(src, verbose=1):
   start += 1  # beginning of the main code
 
   # search for the final "#endif"
-  finish = -1
   for i in range(n, start, -1):
-    if src[i-1].startswith("#endif"):
+    if src[i-1].lstrip().startswith("#endif"):
       finish = i - 1
       break
-  if finish < 0:
+  else:
     return src
   
   if verbose: 
@@ -41,8 +43,10 @@ def strip_def(src, verbose=1):
 
   return src[start : finish]
 
-# add storage class, 'prefix', to global function and variables in the header
 def add_storage_class(hdr, prefix):
+  '''
+  add storage class, 'prefix', to global function and variables in the header
+  '''
   for i in range(len(hdr)):
     arr = hdr[i].split()
     if len(arr) > 0:
@@ -50,22 +54,23 @@ def add_storage_class(hdr, prefix):
     else:
       continue
     
-    # not we cannot handle more complex cases
+    #  NOTE: we cannot handle more complex cases
     if first_word in ("void", "char", "int", "unsigned", "long", "float", "double"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 
 
-# find the module specified by 
-# #ifdef  name
-# #ifndef name__
-# #define name__
-# ...
-# #endif 
-# #endif
-# in 'src'
-# insert 'module' inside
 def insert_module(src, name, module, verbose=1):
+  '''
+  find the block specified by 
+    #ifdef  name
+    #ifndef name__
+    #define name__
+    ...
+    #endif 
+    #endif
+  in 'src' and insert 'module' into ...
+  '''
   n = len(src)
   namein = name + "__"
   plevel = 0
