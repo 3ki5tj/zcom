@@ -112,7 +112,7 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
 {
   if (opt == SSDELETE)
     sslistremove_(hp, 1);
-  else if (opt==SSSHRINK)
+  else if (opt == SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
   else
     sserror_("unknown manage option");

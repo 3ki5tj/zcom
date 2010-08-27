@@ -83,7 +83,12 @@
 #endif
 
 #ifndef ZCOM_PICK
-  /* modules are sorted by their current popularity */
+  #ifndef ZCOM_ERROR
+  #define ZCOM_ERROR
+  #endif
+  #ifndef ZCOM_SS
+  #define ZCOM_SS
+  #endif
   #ifndef ZCOM_RNG
   #define ZCOM_RNG
   #endif
@@ -117,9 +122,16 @@
   #ifndef ZCOM_ENDIAN
   #define ZCOM_ENDIAN
   #endif
-  #ifndef ZCOM_ERROR
+#endif
+
+/* build dependencies */
+#if (defined(ZCOM_RNG)  || defined(ZCOM_TRACE) || defined(ZCOM_CFG) || \
+     defined(ZCOM_HIST) || defined(ZCOM_LOG)   || defined(ZCOM_ZT) )
+  #define ZCOM_SS  /* needs file name support */
+#endif
+
+#ifdef ZCOM_SS
   #define ZCOM_ERROR
-  #endif
 #endif
 
 /* manage storage class: static is still the safer choice
@@ -168,6 +180,276 @@
   #endif
 #endif
 
+#ifdef  ZCOM_ERROR
+#ifndef ZCOM_ERROR__
+#define ZCOM_ERROR__
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+/* print an error message, then quit */
+/* newer compilers should support macros with variable-length arguments */
+#if ( (defined(__GNUC__)&&(__GNUC__>=3)) || (defined(__xlC__)&&(__xlC__>=0x0700)) || (defined(_MSC_VER)&&(_MSC_VER>=1400)) )
+#define zcom_fatal(fmt, ...)  zcom_fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
+ZCSTRCLS void zcom_fatal_(const char *file, int lineno, const char *fmt, ...)
+#else
+ZCSTRCLS void zcom_fatal(const char *fmt, ...)
+#endif
+{
+  va_list args;
+  fprintf(stderr, "Fatal ");
+  if(file != NULL) fprintf(stderr, "%s ", file);
+  if(lineno > 0)   fprintf(stderr, "%d ", lineno);
+  fprintf(stderr, "| ");
+  va_start(args, fmt);
+  vfprintf(stderr, fmt, args);
+  va_end(args);
+  exit(1);
+}
+
+#endif /* ZCOM_ERROR__ */
+#endif /* ZCOM_ERROR */
+
+
+#ifdef  ZCOM_SS
+#ifndef ZCOM_SS__
+#define ZCOM_SS__
+
+enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
+
+#define ssnew(t)       sscpycatx(NULL, (t), 0)
+#define sscpy(s, t)    sscpycatx(&(s), (t), 0)
+#define sscat(s, t)    sscpycatx(&(s), (t), SSCAT)
+#define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)
+#define ssshr(s)       ssmanage((s), SSSHRINK|SSSINGLE)
+#define ssdelall()     ssmanage(NULL, SSDELETE)
+#define ssshrall()     ssmanage(NULL, SSHRINK)
+#define ssfgets(s, pn, fp)    ssfgetx(&(s), (pn), '\n', (fp))
+#define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
+
+ZCSTRCLS void ssmanage(char *, unsigned);
+ZCSTRCLS char *sscpycatx(char **, const char *, unsigned);
+ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
+#define SSMINSIZ   256 /* change this value to 1 debugging */
+#define SSHASHBITS 8
+#define SSHASHSIZ  (1<<SSHASHBITS)  
+#define SSOVERALLOC 1
+#define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
+#ifdef ZCOM_ERROR
+#define sserror_ zcom_fatal
+#else
+#define sserror_ printf
+#endif
+
+struct ssheader{
+  size_t size;
+  size_t hashval;
+  struct ssheader *next;
+} ssbase_[SSHASHSIZ] = {{0u, 0u, NULL}};
+
+/* we use the string address instead of that of the pointer 
+ * to struct ssheader to compute the Hash value,
+ * because the former is more frequently used in e.g. looking-up
+ * */
+static size_t sshashval_(const char *p)
+{
+  size_t val=(size_t)p;
+  val = val*1664525u+1013904223u;
+  return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
+}
+
+/* 
+ * return the *previous* header to the one that associates with s
+ * first locate the list from the Hash value, then enumerate the linked list.
+ * */
+static struct ssheader *sslistfind_(char *s)
+{
+  struct ssheader *hp;
+
+  if (s == NULL)
+    return NULL;
+  for (hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp = hp->next)
+    if ((char *)(hp->next + 1) == s)
+      return hp;
+  return NULL;
+}
+
+/* 
+ * simply add the entry h at the begining of the list 
+ * we do not accept a precalculated hash value, 
+ * since realloc might have changed it
+ * */
+static struct ssheader *sslistadd_(struct ssheader *h)
+{
+  struct ssheader *head;
+
+  head = ssbase_ + sshashval_( (char *)(h+1) );
+  if (head->next == NULL) /* initialize the base */
+    head->next = head;
+  h->next = head->next;
+  head->next = h;
+  return head;
+}
+
+/* remove hp->next */
+static void sslistremove_(struct ssheader *hp, int f)
+{
+  struct ssheader *h = hp->next;
+  
+  hp->next = h->next;
+  if (f) free(h);
+}
+
+/* (re)allocate memory for (*php)->next, update list, return the new string
+ * n is the number of nonempty characters, obtained e.g. from strlen().
+ * create a new header if *php is NULL, in this case, the first character
+ * of the string is '\0'
+ * */
+static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
+{
+  struct ssheader *h=NULL, *hp;
+  size_t size;
+
+  if (php == NULL)
+    sserror_("NULL pointer to resize");
+  
+  /* we use the following if to assign hp and h, so the order is crucial */
+  if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
+    size = sscalcsize_(n);
+    if (h == NULL || size != h->size) {
+      /* since realloc will change the hash value of h
+       * we have to remove the old entry first without free() 
+       * hp->next will be freed by realloc */
+      if (hp != NULL)
+        sslistremove_(hp, 0);
+      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
+        sserror_("no memory for resizing\n");
+        return NULL;
+      }
+      if (hp == NULL) /* clear the first byte if we start from nothing */
+        *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
+      *php = hp = sslistadd_(h);
+      hp->next->size = size;
+    }
+  }
+  return (char *)(hp->next + 1);
+}
+
+static void ssmanage_low_(struct ssheader *hp, unsigned opt)
+{
+  if (opt == SSDELETE)
+    sslistremove_(hp, 1);
+  else if (opt == SSSHRINK)
+    ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
+  else
+    sserror_("unknown manage option");
+}
+
+/* delete a string, shrink memory, etc ... */
+void ssmanage(char *s, unsigned flags)
+{
+  struct ssheader *hp,*head;
+  unsigned opt = flags & 0xFF;
+  size_t i;
+
+  if (flags & SSSINGLE) {
+    if (s == NULL || (hp = sslistfind_(s)) == NULL)
+      return;
+    ssmanage_low_(hp, opt);
+  } else {
+    for (i=0; i<SSHASHSIZ; i++)
+      for (hp = head = ssbase_+i; hp->next && hp->next != head; hp = hp->next)
+        /* we must not operate on h itself, which renders the iterator h invalid */
+        ssmanage_low_(hp, opt);
+  }
+}
+
+/* 
+ * copy/cat t to *ps
+ *
+ * If (flags & SSCAT) == 0:
+ * copy t to *ps, if ps is not NULL, and return the result
+ * if ps or *ps is NULL, we return a string created from t
+ *   *ps is set to the same value if ps is not NULL
+ * otherwise, we update the record that corresponds to *ps
+ *
+ * If flags & SSCAT:
+ * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
+ * */
+char *sscpycatx(char **ps, const char *t, unsigned flags)
+{
+  struct ssheader *hp=NULL;
+  size_t size=0u, sizes=0u;
+  char *s=NULL, *p;
+
+  /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
+  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL)
+    return NULL;
+  if (t != NULL) 
+    while (t[size]) /* compute the length of t */
+      size++;
+  if (flags & SSCAT) {
+    if (s != NULL)  /* s is also NULL, if ps itself is NULL */
+      while (s[sizes]) /* compute the length of s */
+        sizes++;
+    size += sizes;
+  }  /* sizes is always 0 in case of copying */
+  if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
+    return NULL;
+  if (t != NULL)
+    for (p = s + sizes; (*p++ = *t++); ) /* copy/cat the string */
+      ;
+  if (ps != NULL)
+    *ps = s;
+  return s;
+}
+
+/* get a string *ps from file fp
+ * *ps can be NULL, in which case memory is allocated
+ * *pn is number of characters read (including '\n', but not the terminal null)
+ * delim is the '\n' for reading a singe line
+ * */
+char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
+{
+  size_t n, max;
+  int c;
+  char *s;
+  struct ssheader *hp;
+
+  if (ps == NULL || fp == NULL)
+    return NULL;
+  if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
+    if ((s = sscpycatx(ps,NULL,0)) == NULL)
+      return NULL;
+  if ((hp = sslistfind_(s)) == NULL)
+    return NULL;
+  max = hp->next->size-1;
+  for (n = 0; (c = fgetc(fp)) != EOF; ) {
+    if (n+1 > max) { /* request space for n+1 nonblank characters */
+      if ((*ps = s = ssresize_(&hp, n+1, SSOVERALLOC)) == NULL)
+        return NULL;
+      max = hp->next->size - 1;
+    }
+    s[n++] = (char)(unsigned char)c;
+    if (c == delim) 
+      break;
+  }
+  s[n] = '\0';
+  if (pn != NULL)
+    *pn = n;
+  return (n > 0) ? s : NULL;
+}
+#endif /* ZCOM_SS__ */
+#endif /* ZCOM_SS */
+
+
 #ifdef  ZCOM_RNG
 /* we have to define another macro ZCOM_RNG__ in order to avoid multiple inclusion
  * a single ZCOM_C__ won't do, because different module-set may be selected */
@@ -182,6 +464,7 @@
 #define rnd0()        ((1.0/4294967296.0)*mtrand(0,0,NULL))  /* divide by 2^32 */
 #define mtsave(fn)    mtrand(1,0,fn)
 #define mtsetfile(fn) mtrand(2,0,fn)
+#define mtfinish(fn)  mtrand(3,0,fn)
 
 /* The following random number generator algorithm Mersenne Twister
    was developped by Makoto Matsumoto and Takuji Nishimura */
@@ -198,23 +481,26 @@
  *    if it is unsuccessful, seed0, if unzero, is used to initialize the RNG
  * 1: save the current state to `fname'
  * 2: change the default file name
+ * 3: save state and finish 
  * */
 ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname)
 {
   static int mtindex_=-1; /* means it is not initialized */
   static unsigned long mt_[N_MT]; /* the array for the state vector  */
-  static char mtfname[FILENAME_MAX]="MTSEED";
+  static char *mtfname=NULL;
 
   unsigned long y;
   static unsigned long mag01[2]={0, 0x9908b0dfUL}; /* MATRIX_A */
   int k,nz=0;
 
-#define MTSETFNAME() if(fname!= NULL && strlen(fname)<sizeof(mtfname)) strcpy(mtfname, fname)
+  if (fname != NULL) /* if fname is given (not NULL), always use it */
+    sscpy(mtfname, fname);
+  else if (mtfname == NULL) /* otherwise if mtfname is missing, use the default */
+    sscpy(mtfname, "MTSEED");
 
-  if(action==1){ /* to save the current state */
+  if (action == 1 || action == 3) { /* to save the current state or finish */
     FILE *fp;
     if(mtindex_<0) return 1; /* RNG was never used, so it cannot be saved */
-    MTSETFNAME();
     if((fp=fopen(mtfname, "w"))==NULL){
       fprintf(stderr, "mtrand: cannot save state to %s.\n", mtfname);
       return 1;
@@ -223,9 +509,12 @@ ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname
     for(k=0; k<N_MT; k++)
       fprintf(fp, "%lu\n", mt_[k]);
     fclose(fp);
+    if (action == 3) {
+      ssdel(mtfname);
+      mtfname = NULL;
+    }
     return 0;
   }else if(action == 2){
-    MTSETFNAME();
     return 0;
   }else if(action != 0){
     fprintf(stderr, "mtrand: unknown action %d\n", action);
@@ -237,7 +526,6 @@ ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname
     char s[64]="",err=1;
 
     /* here we try to initialize the array from file */
-    MTSETFNAME();
     if((fp=fopen(mtfname, "r")) != NULL){
       if(fgets(s, sizeof s, fp) == NULL){
         fprintf(stderr, "mtrand: cannot read the first line of %s, probably an empty file.\n", mtfname);
@@ -363,78 +651,65 @@ for MPI, please only do it on the master node, then use MPI_Bcast
 #include <string.h>
 #include <ctype.h>
 
-typedef struct tagcfgdata_t{ // a mini registry (as in windows)
-  int n; // number of lines
-  char**key,**value; // key[i] is the key, value[i] is the value
-  char *buf; // original buffer
-  int dyn_alloc; // whether dynamically allocated
+typedef struct tagcfgdata_t{
+  int n; /* number of lines */
+  char**key,**value; /* key[i] is the key, value[i] is the value */
+  char *buf; /* the whole configuration file */
+  int dyn_alloc; /* whether the struct itself is dynamically allocated */
 }cfgdata_t;
 
 #define isspace_(c) isspace((unsigned char)(c))
 
 /* load the whole configuration file into memory (return value); parse it to entries
    note: the order of cfg and filenm are exchanged */
-ZCSTRCLS int cfgload(cfgdata_t *cfg, char *filenm){
+ZCSTRCLS int cfgload(cfgdata_t *cfg, char *filenm)
+{
   FILE *fp;
-  long i,j,size;
+  long i,j;
+  size_t size=0;
   char *p,*q,*lin;
+
   if((fp=fopen(filenm, "rb")) == NULL){
     fprintf(stderr,"cannot open the configuration file [%s]\n", filenm);
     return 1;
   }
-  fseek(fp,0,SEEK_END);
-  size=ftell(fp);
-  if(size<=0){
-    fprintf(stderr,"bad or empty config file.\n");
-    fclose(fp);
-    return 2;
-  }
-
-  /* load the whole config file into buf */
-  if((cfg->buf=malloc(size+2))==NULL){
-    fprintf(stderr, "cannot open allocate buffer\n");
-    return 3;
-  }
-  /* rewind(fp); */
-  /* GROMACS screwed up rewind in futil.h, so we haved to use fseek instead */
-  fseek(fp, 0, SEEK_SET);
-  if((size_t)size != fread(cfg->buf, 1, size, fp)){
+  
+  if (ssfgetall(cfg->buf, &size, fp) == NULL) {
     fprintf(stderr, "error reading file %s\n", filenm);
     return 4;
   }
-  cfg->buf[size]='\n'; /* in case the file is not ended by a new line, we add one */
-  size++;
-  cfg->buf[size]='\0';
+  sscat(cfg->buf, "\n"); /* in case the file is not ended by a new line, we add one */
   fclose(fp);
+
 #ifdef CFGDBG
   printf("the cfg is loaded, size=%d\n", size);
 #endif
 
   /* count the number of lines for allocating the key-table */
-  for(i=0,cfg->n=0; i<size; i++){
-    if(cfg->buf[i] == '\n' || cfg->buf[i] == '\r'){
-      if(i>0 && cfg->buf[i-1]=='\\'){
+  for (i = 0, cfg->n = 0; i<size; i++) {
+    if (cfg->buf[i] == '\n' || cfg->buf[i] == '\r') {
+      if (i>0 && cfg->buf[i-1]=='\\') {
         /* allow multiple-line splicing by replacing cr, lf with spaces
            parse should be aware of these additional spaces */
         cfg->buf[i-1]=' ';
         cfg->buf[i]=' ';
-      }else{
+      } else {
         cfg->buf[i]='\0';
         (cfg->n)++;
       }
 
-      for(j=i+1; j<size; j++){
+      for (j = i+1; j < size; j++) {
         /* we replace immediately followed cr & lf by spaces for
            efficiency (to avoid a large key table for blank lines) */
-        if( isspace_(cfg->buf[j]) ){
+        if ( isspace_(cfg->buf[j]) ) {
           cfg->buf[j]=' ';
-        }else{
+        } else {
           break;
         }
         /* note: parser should be insensitive to leading spaces */
       }
 #ifdef CFGDBG
-      if(j-1>=i+1) printf("j=%d to %d are replaced by spaces\n", i+1,j-1);
+      if (j-1 >= i+1) printf("j=%d to %d are replaced by spaces\n", i+1,j-1);
 #endif
     }
   }
@@ -442,11 +717,11 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, char *filenm){
   printf("# of lines: %d\n", cfg->n);
 #endif
 
-  cfg->key=calloc(cfg->n, sizeof(char*));
-  cfg->value=calloc(cfg->n, sizeof(char*));
+  cfg->key   = calloc(cfg->n, sizeof(char*));
+  cfg->value = calloc(cfg->n, sizeof(char*));
 
   /* load lines into the keytable, not parsed yet */
-  for(p=q=cfg->buf,j=0,i=0; i<size; i++){
+  for(p=q=cfg->buf,j=0,i=0; i < size; i++){
     if(cfg->buf[i]=='\0'){
       cfg->key[j] = p;
       j++;
@@ -518,8 +793,8 @@ ZCSTRCLS cfgdata_t *cfgopen(char *filenm){
 
 ZCSTRCLS void cfgclose(cfgdata_t *cfg){
   free(cfg->value); cfg->value=NULL;
-  free(cfg->key); cfg->key=NULL;
-  free(cfg->buf); cfg->buf=NULL;
+  free(cfg->key);   cfg->key=NULL;
+  ssdel(cfg->buf);  cfg->buf=NULL;
   if(cfg->dyn_alloc) free(cfg);
 }
 
@@ -532,36 +807,25 @@ ZCSTRCLS void cfgclose(cfgdata_t *cfg){
    In case fmt is "%s", a duplicate of the string will be assigned to (*var)
    */
 ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt){
-  char *p,*q,*sval;
   int j;
 
-  if(cfg->key == NULL || var==NULL || key==NULL || fmt==NULL){
+  if (cfg->key == NULL || var==NULL || key==NULL || fmt==NULL) {
     fprintf(stderr, "cfgget: NULL pointer.\n");
-    //getchar();
     return 1;
   }
 
-  for(j=0; j<cfg->n; j++){
-    /* now 'p' -> key, key matching */
-    p = cfg->key[j];
-    if(p && strcmp(key, p) == 0) {
-      if(fmt[0]=='%' && fmt[1]=='s'){ /* string case */
-        sval=cfg->value[j];
-        if((q=malloc((strlen(sval)+1)*sizeof(char))) == NULL){
-          fprintf(stderr, "cfgget: no memory to duplicate string for key=%s\n", cfg->key[j]);
-        }else{
-          strcpy(q, cfg->value[j]);
-        }
-        (*((char **)var))=q;
+  for (j = 0; j < cfg->n; j++) 
+    if (cfg->key[j] != NULL && strcmp(cfg->key[j], key) == 0) { 
+      if (fmt[0]=='%' && fmt[1]=='s') { /* string case */
+        *(char **)var = ssnew(cfg->value[j]); /* make a copy and return */
         return 0;
-      }else{ /* other cases, like int,float,... */
-        if(EOF == sscanf(cfg->value[j], fmt, var))
+      } else { /* use sscanf for other cases, like int,float,... */
+        if (EOF == sscanf(cfg->value[j], fmt, var))
           return 2; /* input error */
         else
           return 0;
       }
     }
-  }
   return 1; /* no match */
 }
 
@@ -660,15 +924,18 @@ ZCSTRCLS int wtrace_buf(const char *fmt, ...)
   static int cnt=0, once=0, i;
   static char *buf,*msg=NULL;
   static FILE *fp=NULL;
-  static char fname[FILENAME_MAX]="TRACE", mode[8]="w";
+  static char *fname=NULL, mode[8]="w";
   va_list args;
 
+  if (fname == NULL) /* set the default file name */ 
+    fname = ssnew("TRACE");
+
   /* to finish up */
-  if(fmt==NULL) goto NORMAL;
+  if(fmt == NULL) goto NORMAL;
 
   /* start the command mode if the format string start with "%@"
    * the command mode allows setting parameters */
-  if(fmt[0]=='%' && fmt[1]=='@'){
+  if (fmt[0] == '%' && fmt[1] == '@') {
     const char *cmd=fmt+2, *p;
     /* we no longer allow commands after the tracing starts */
     if(once) goto NORMAL;
@@ -677,9 +944,10 @@ ZCSTRCLS int wtrace_buf(const char *fmt, ...)
     va_start(args, fmt);
     if(strncmp(cmd, "filename", 8)==0){
       p=va_arg(args, const char *);
-      if(p!=NULL && strlen(p)<sizeof(fname)){
-        strcpy(fname, p);
-        if(verbose) fprintf(stderr, "The default trace file is now %s\n", fname);
+      if (p != NULL) {
+        sscpy(fname, p);
+        if (verbose)
+          fprintf(stderr, "The trace file is now %s\n", fname);
       }
     }else if(strncmp(cmd, "freq", 4) == 0){
       flush_interval=va_arg(args, int);
@@ -761,8 +1029,8 @@ NORMAL:
   }
 
   if((++cnt % flush_interval == 0) || fmt==NULL){
-    if(once) mode[0]='a'; else mode[0]='w';
-    if( (fp=fopen(fname, mode)) == NULL ){
+    mode[0] = (char)(once ? 'a' : 'w');
+    if ( (fp=fopen(fname, mode)) == NULL ) {
       fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
       return 1;
     }
@@ -770,11 +1038,17 @@ NORMAL:
     buf[0]='\0';
     fclose(fp);
 
-    if(fmt==NULL){ /* finishing up */
-      if(msg){ free(msg); msg=NULL; }
-      cnt=0;
-      once=0;
-      if(verbose) fprintf(stderr, "finishing up tracing, file %s\n", fname);
+    if (fmt == NULL) { /* finishing up */
+      if (msg != NULL) { 
+        free(msg); 
+        msg = NULL; 
+      }
+      if (fname != NULL) {
+        free(fname);
+        fname = NULL;
+      }
+      cnt = 0;
+      once = 0;
     }else{  /* subsequent calls will append instead of write the trace file */
       once=1;
     }
@@ -783,7 +1057,6 @@ NORMAL:
 }
 #endif /* ZCOM_TRACE__ */
 #endif /* ZCOM_TRACE */
-
 
 
 #ifdef  ZCOM_DIST
@@ -798,19 +1071,20 @@ NORMAL:
 #define WD_NOZEROES   0x0004
 #define wdist(h,rows,cols,base,inc,fname)  wdistex(h,rows,cols,base,inc,WD_ADDAHALF,fname)
 
-ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int flag, char *fname){
-  char filename[FILENAME_MAX]="HIST";
+ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int flag, char *fname)
+{
+  char *filename;
   FILE *fp;
   int i,j,imax,imin;
   double sum,*p,delta;
 
-  if(fname != NULL && strlen(fname)<sizeof(filename)) 
-    strcpy(filename, fname);
-  if((fp=fopen(filename, "w")) == NULL){
+  filename = ssnew((fname != NULL) ? fname : "HIST");
+  
+  if ((fp=fopen(filename, "w")) == NULL) {
     printf("cannot write history file [%s].\n", filename);
     return 1;
   }
-  delta=((flag&WD_ADDAHALF)?0.5:0);
+  delta = (flag & WD_ADDAHALF) ? 0.5 : 0;
 
   for(j=0; j<rows; j++){
     p=h+j*cols;
@@ -837,8 +1111,9 @@ ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int
     }
     fprintf(fp,"\n");
   }
-
   fclose(fp);
+  
+  ssdel(filename);
   return 0;
 }
 
@@ -858,28 +1133,32 @@ ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int
  */
 typedef struct tag_logfile_t{
   FILE *fp;
-  char fname[FILENAME_MAX];
+  char *fname;
   int flag;
 }logfile_t;
 
 #define LOG_WRITESCREEN  0x01
 #define LOG_FLUSHAFTER   0x02
 #define LOG_NOWRITEFILE  0x10
-ZCSTRCLS logfile_t* logopen(char *filenm){
+ZCSTRCLS logfile_t* logopen(char *filenm)
+{
   logfile_t *log;
-  if(  strlen(filenm)>=FILENAME_MAX ||
-      (log=calloc(1, sizeof(logfile_t))) == NULL){
+  
+  if (filenm == NULL) /* assign a default name */
+    filenm = "LOG";
+  if ((log=calloc(1, sizeof(*log))) == NULL) {
     fprintf(stderr, "cannot allocate memory for log file %s\n", filenm);
     return NULL;
   }
   /* We merely copy the name of the file,
    * the file is not opened until the first logprintf call */
-  strcpy(log->fname, filenm);
+  log->fname = ssnew(filenm);
   log->flag=0;
   return log;
 }
 
-ZCSTRCLS int logprintf(logfile_t *log, char *fmt, ...){
+ZCSTRCLS int logprintf(logfile_t *log, char *fmt, ...)
+{
   va_list args;
   if(log==NULL) return 1;
 
@@ -903,7 +1182,8 @@ ZCSTRCLS int logprintf(logfile_t *log, char *fmt, ...){
 }
 
 /* close & reopen log file to make sure that stuff is written to disk */
-ZCSTRCLS int loghardflush(logfile_t *log){
+ZCSTRCLS int loghardflush(logfile_t *log)
+{
   if(log->fp==NULL || log->fname==NULL) return 1;
   fclose(log->fp);
   if((log->fp=fopen(log->fname, "a"))==NULL){
@@ -912,16 +1192,25 @@ ZCSTRCLS int loghardflush(logfile_t *log){
   }
   return 0;
 }
-ZCSTRCLS void logclose(logfile_t *log) {
-  if(log->fp != NULL){
+
+ZCSTRCLS void logclose(logfile_t *log) 
+{
+  if (log == NULL) 
+    return;
+  if (log->fp != NULL) {
     fclose(log->fp);
-    log->fp=NULL;
+    log->fp = NULL;
+  }
+  if (log->fname != NULL) {
+    ssdel(log->fname);
+    log->fname = NULL;
   }
   free(log);
 }
 
 #ifdef LOGTST
-int main(void){
+int main(void)
+{
   logfile_t *mylog;
   char msg[256];
   if((mylog=logopen("my.log")) == NULL) return 1;
@@ -1224,13 +1513,12 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 /* write ln(Z) versus temperature */
 ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
          double base, double inc, double erg0, const char *fname){
-  char filename[FILENAME_MAX]="ZT";
+  char *filename;
   FILE *fp;
   int i,j;
   double c,x,x2,*h;
 
-  if(fname!=NULL && strlen(fname)<sizeof(filename)) 
-    strcpy(filename, fname);
+  filename = ssnew((fname != NULL) ? fname : "ZT");
   if((fp=fopen(filename, "w"))==NULL || beta==NULL){
     fprintf(stderr, "cannot write file [%s].\n", fname);
     return 1;
@@ -1258,7 +1546,7 @@ ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
       ((lnz!=NULL)?(lnz[j]-beta[j]*erg0):0), x, (beta[j]*beta[j])*x2, c);
   }
   fclose(fp);
-
+  ssdel(filename);
   return 0;
 }
 
@@ -1320,9 +1608,7 @@ ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
     char *p,*q,*format,ch;
     int i;
 
-    for(i=0; fmt[i]; i++) ; /* i=strlen(fmt)+1 */
-    if((format=malloc(i+1))==NULL) return 1;
-    for(p=format; *fmt;) *p++ = *fmt++; *p='\0'; /* strcpy(format,fmt); */
+    format = ssnew(fmt);
 
     /* to seek the first conversion */
     for(p=format; *p; p++) if(*p=='%'){ if(p[1]=='%' || p[1]=='*') p++; else break;}
@@ -1340,7 +1626,7 @@ ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
     }else{
       fscanf(fp, format); /* no conversion */
     }
-    free(format);
+    ssdel(format);
 
 #else
     va_start(args, fmt);
@@ -2097,272 +2383,4 @@ ZCSTRCLS unsigned char *zcom_fix_endian(void *output, void *input, size_t len, i
 #endif /* ZCOM_ENDIAN */
 
 
-#ifdef  ZCOM_ERROR
-#ifndef ZCOM_ERROR__
-#define ZCOM_ERROR__
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-
-/* print an error message, then quit */
-/* newer compilers should support macros with variable-length arguments */
-#if ( (defined(__GNUC__)&&(__GNUC__>=3)) || (defined(__xlC__)&&(__xlC__>=0x0700)) || (defined(_MSC_VER)&&(_MSC_VER>=1400)) )
-#define zcom_fatal(fmt, ...)  zcom_fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
-ZCSTRCLS void zcom_fatal_(const char *file, int lineno, const char *fmt, ...)
-#else
-ZCSTRCLS void zcom_fatal(const char *fmt, ...)
-#endif
-{
-  va_list args;
-  fprintf(stderr, "Fatal ");
-  if(file != NULL) fprintf(stderr, "%s ", file);
-  if(lineno > 0)   fprintf(stderr, "%d ", lineno);
-  fprintf(stderr, "| ");
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  va_end(args);
-  exit(1);
-}
-
-#endif /* ZCOM_ERROR__ */
-#endif /* ZCOM_ERROR */
-
-
-#ifdef  ZCOM_SS
-#ifndef ZCOM_SS__
-#define ZCOM_SS__
-
-enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
-
-#define ssnew(t)       sscpycatx(NULL, (t), 0)
-#define sscpy(s, t)    sscpycatx(&(s), (t), 0)
-#define sscat(s, t)    sscpycatx(&(s), (t), SSCAT)
-#define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)
-#define ssshr(s)       ssmanage((s), SSSHRINK|SSSINGLE)
-#define ssdelall()     ssmanage(NULL, SSDELETE)
-#define ssshrall()     ssmanage(NULL, SSHRINK)
-#define ssfgets(s, pn, fp)    ssfgetx(&(s), (pn), '\n', (fp))
-#define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
-
-ZCSTRCLS void ssmanage(char *, unsigned);
-ZCSTRCLS char *sscpycatx(char **, const char *, unsigned);
-ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-
-#define SSMINSIZ   256 /* change this value to 1 debugging */
-#define SSHASHBITS 8
-#define SSHASHSIZ  (1<<SSHASHBITS)  
-#define SSOVERALLOC 1
-#define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
-#ifdef ZCOM_ERROR
-#define sserror_ zcom_fatal
-#else
-#define sserror_ printf
-#endif
-
-struct ssheader{
-  size_t size;
-  size_t hashval;
-  struct ssheader *next;
-} ssbase_[SSHASHSIZ] = {{0u, 0u, NULL}};
-
-/* we use the string address instead of that of the pointer 
- * to struct ssheader to compute the Hash value,
- * because the former is more frequently used in e.g. looking-up
- * */
-static size_t sshashval_(const char *p)
-{
-  size_t val=(size_t)p;
-  val = val*1664525u+1013904223u;
-  return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
-}
-
-/* 
- * return the *previous* header to the one that associates with s
- * first locate the list from the Hash value, then enumerate the linked list.
- * */
-static struct ssheader *sslistfind_(char *s)
-{
-  struct ssheader *hp;
-
-  if (s == NULL)
-    return NULL;
-  for (hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp = hp->next)
-    if ((char *)(hp->next + 1) == s)
-      return hp;
-  return NULL;
-}
-
-/* 
- * simply add the entry h at the begining of the list 
- * we do not accept a precalculated hash value, 
- * since realloc might have changed it
- * */
-static struct ssheader *sslistadd_(struct ssheader *h)
-{
-  struct ssheader *head;
-
-  head = ssbase_ + sshashval_( (char *)(h+1) );
-  if (head->next == NULL) /* initialize the base */
-    head->next = head;
-  h->next = head->next;
-  head->next = h;
-  return head;
-}
-
-/* remove hp->next */
-static void sslistremove_(struct ssheader *hp, int f)
-{
-  struct ssheader *h = hp->next;
-  
-  hp->next = h->next;
-  if (f) free(h);
-}
-
-/* (re)allocate memory for (*php)->next, update list, return the new string
- * n is the number of nonempty characters, obtained e.g. from strlen().
- * create a new header if *php is NULL, in this case, the first character
- * of the string is '\0'
- * */
-static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
-{
-  struct ssheader *h=NULL, *hp;
-  size_t size;
-
-  if (php == NULL)
-    sserror_("NULL pointer to resize");
-  
-  /* we use the following if to assign hp and h, so the order is crucial */
-  if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
-    size = sscalcsize_(n);
-    if (h == NULL || size != h->size) {
-      /* since realloc will change the hash value of h
-       * we have to remove the old entry first without free() 
-       * hp->next will be freed by realloc */
-      if (hp != NULL)
-        sslistremove_(hp, 0);
-      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
-        sserror_("no memory for resizing\n");
-        return NULL;
-      }
-      if (hp == NULL) /* clear the first byte if we start from nothing */
-        *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
-      *php = hp = sslistadd_(h);
-      hp->next->size = size;
-    }
-  }
-  return (char *)(hp->next + 1);
-}
-
-static void ssmanage_low_(struct ssheader *hp, unsigned opt)
-{
-  if (opt == SSDELETE)
-    sslistremove_(hp, 1);
-  else if (opt==SSSHRINK)
-    ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
-  else
-    sserror_("unknown manage option");
-}
-
-/* delete a string, shrink memory, etc ... */
-void ssmanage(char *s, unsigned flags)
-{
-  struct ssheader *hp,*head;
-  unsigned opt = flags & 0xFF;
-  size_t i;
-
-  if (flags & SSSINGLE) {
-    if (s == NULL || (hp = sslistfind_(s)) == NULL)
-      return;
-    ssmanage_low_(hp, opt);
-  } else {
-    for (i=0; i<SSHASHSIZ; i++)
-      for (hp = head = ssbase_+i; hp->next && hp->next != head; hp = hp->next)
-        /* we must not operate on h itself, which renders the iterator h invalid */
-        ssmanage_low_(hp, opt);
-  }
-}
-
-/* 
- * copy/cat t to *ps
- *
- * If (flags & SSCAT) == 0:
- * copy t to *ps, if ps is not NULL, and return the result
- * if ps or *ps is NULL, we return a string created from t
- *   *ps is set to the same value if ps is not NULL
- * otherwise, we update the record that corresponds to *ps
- *
- * If flags & SSCAT:
- * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
- * */
-char *sscpycatx(char **ps, const char *t, unsigned flags)
-{
-  struct ssheader *hp=NULL;
-  size_t size=0u, sizes=0u;
-  char *s=NULL, *p;
-
-  /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
-  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL)
-    return NULL;
-  if (t != NULL) 
-    while (t[size]) /* compute the length of t */
-      size++;
-  if (flags & SSCAT) {
-    if (s != NULL)  /* s is also NULL, if ps itself is NULL */
-      while (s[sizes]) /* compute the length of s */
-        sizes++;
-    size += sizes;
-  }  /* sizes is always 0 in case of copying */
-  if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
-    return NULL;
-  if (t != NULL)
-    for (p = s + sizes; (*p++ = *t++); ) /* copy/cat the string */
-      ;
-  if (ps != NULL)
-    *ps = s;
-  return s;
-}
-
-/* get a string *ps from file fp
- * *ps can be NULL, in which case memory is allocated
- * *pn is number of characters read (including '\n', but not the terminal null)
- * delim is the '\n' for reading a singe line
- * */
-char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
-{
-  size_t n, max;
-  int c;
-  char *s;
-  struct ssheader *hp;
-
-  if (ps == NULL || fp == NULL)
-    return NULL;
-  if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
-    if ((s = sscpycatx(ps,NULL,0)) == NULL)
-      return NULL;
-  if ((hp = sslistfind_(s)) == NULL)
-    return NULL;
-  max = hp->next->size-1;
-  for (n = 0; (c = fgetc(fp)) != EOF; ) {
-    if (n+1 > max) { /* request space for n+1 nonblank characters */
-      if ((*ps = s = ssresize_(&hp, n+1, SSOVERALLOC)) == NULL)
-        return NULL;
-      max = hp->next->size - 1;
-    }
-    s[n++] = (char)(unsigned char)c;
-    if (c == delim) 
-      break;
-  }
-  s[n] = '\0';
-  if (pn != NULL)
-    *pn = n;
-  return (n > 0) ? s : NULL;
-}
-#endif /* ZCOM_SS__ */
-#endif /* ZCOM_SS */
 
