@@ -25,3 +25,11 @@ Usage Note
 ==========
 Array, char s[], or an unintialized pointer, char *s, shouldn't
 be pass to an argument supposed to be a managed string
+
+Chain rule cannot be used, like
+  sscat(sscpy(s, t), r);
+sscat/sscpy are macros, they ask for s's address.
+
+Lack of an interface to initialize a buffer with a fixed size
+
+
