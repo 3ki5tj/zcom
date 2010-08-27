@@ -26,8 +26,8 @@ struct ssheader{
  * */
 static size_t sshashval_(const char *p)
 {
-  size_t val=(size_t)p;
-  val = val*1664525u+1013904223u;
+  size_t val = (size_t)p;
+  val = val*1664525u + 1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 

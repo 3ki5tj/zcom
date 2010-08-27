@@ -28,8 +28,8 @@ int main(void)
   char *sa="A", *sb="B";
   char *s=NULL, *t=NULL, *r=NULL;
   
-  s = ssnew(sa);
-  t = ssnew(sb);
+  s = ssdup(sa);
+  t = ssdup(sb);
   for (i = 1; i <= 16; i++) {
     sscpy(r, s); /* make a copy of the old s */
     sscat(s, t); /* s = s+t */

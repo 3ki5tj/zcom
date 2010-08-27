@@ -4,7 +4,7 @@
 
 enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 
-#define ssnew(t)       sscpycatx(NULL, (t), 0)
+#define ssdup(t)       sscpycatx(NULL, (t), 0)
 #define sscpy(s, t)    sscpycatx(&(s), (t), 0)
 #define sscat(s, t)    sscpycatx(&(s), (t), SSCAT)
 #define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)

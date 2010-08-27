@@ -4,6 +4,8 @@ It should support
 sscpy() to replace strcpy()
 sscat() to replace strcat()
 ssfgets() to replace fgets()
+----
+ssdup() corresponds to strdup()
 
 Technique: using an adjacent header to provide size information
 
@@ -31,5 +33,8 @@ Chain rule cannot be used, like
 sscat/sscpy are macros, they ask for s's address.
 
 Lack of an interface to initialize a buffer with a fixed size
+  Tentatively rename ssnew to ssdup
+  ssnew(n) now accept a number for buffer size
+
 
 
