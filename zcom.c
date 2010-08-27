@@ -1044,7 +1044,7 @@ NORMAL:
         msg = NULL; 
       }
       if (fname != NULL) {
-        free(fname);
+        ssdel(fname);
         fname = NULL;
       }
       cnt = 0;
