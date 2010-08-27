@@ -19,7 +19,17 @@
 #ifdef ZCOM_ERROR
 #define sserror_ zcom_fatal
 #else
-#define sserror_ printf
+/* print an error message and quit */
+void sserror_(char *fmt, ...)
+{
+  va_list args;
+
+  va_start(args, fmt);
+  fprintf(stderr, "fatal error: ");
+  fprintf(stderr, fmt, args);
+  va_end(args);
+  exit(1);
+}
 #endif
 
 struct ssheader{
