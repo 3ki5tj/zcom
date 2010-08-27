@@ -28,12 +28,12 @@ int main(void)
   char *sa="A", *sb="B";
   char *s=NULL, *t=NULL, *r=NULL;
   
-  s=ssnew(sa);
-  t=ssnew(sb);
-  for(i=1; i<=16; i++){
-    sscpy(r, s);
-    sscat(s, t);
-    sscpy(t, r);
+  s = ssnew(sa);
+  t = ssnew(sb);
+  for (i = 1; i <= 16; i++) {
+    sscpy(r, s); /* make a copy of the old s */
+    sscat(s, t); /* s = s+t */
+    sscpy(t, r); /* t = old s */
     printf("%3d: %6u, %s\n", i, strlen(s), s);
   }
   sscpy(s, "new");

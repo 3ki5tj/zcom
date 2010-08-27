@@ -7,22 +7,21 @@
 #include <stdarg.h>
 #include "ss.h"
 
-#define SSMINBITS  8   /* change this value to 0 during debug */
-#define SSMINSIZ   (1u<<SSMINBITS)
+#define SSMINSIZ   256 /* change this value to 1 debugging */
 #define SSHASHBITS 8
 #define SSHASHSIZ  (1<<SSHASHBITS)  
+#define SSOVERALLOC 1
 
-typedef struct tag_ssinfo{
+struct ssheader{
   size_t size;
   size_t hashval;
-  struct tag_ssinfo *next;
-}ssinfo_t;
-
-static struct tag_ssinfo ssbase_[SSHASHSIZ]={{0u,0u,NULL}};
+  struct ssheader *next;
+} ssbase_[SSHASHSIZ] = {{0u, 0u, NULL}};
 
 #define sserror_ printf
 
-/* we accept a string instead of a point to ssinfo_t
+/* we use the string address instead of that of the pointer 
+ * to struct ssheader to compute the Hash value,
  * because the former is more frequently used in e.g. looking-up
  * */
 static size_t sshashval_(const char *p)
@@ -36,32 +35,34 @@ static size_t sshashval_(const char *p)
 static size_t sscalcsize_(size_t n, int ah)
 {
   n = (n/SSMINSIZ + 1) * SSMINSIZ;
-  if (ah) n += sizeof(ssinfo_t);
+  if (ah) n += sizeof(struct ssheader);
   return n;
 }
 
-/* slow but safe way of verifying the validity of a string
- * by enumerate the whole linked list 
- * return the *previous* item to the requested one */
-static ssinfo_t *sslistfind_(char *s)
+/* 
+ * return the *previous* header to the one that associates with s
+ * first locate the list from the Hash value, then enumerate the linked list.
+ * */
+static struct ssheader *sslistfind_(char *s)
 {
-  ssinfo_t *hp;
+  struct ssheader *hp;
 
   if (s == NULL)
     return NULL;
   for (hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp = hp->next)
-    if ((char *)(hp->next+1) == s)
+    if ((char *)(hp->next + 1) == s)
       return hp;
   return NULL;
 }
 
-/* simply add h to the begining of the list 
+/* 
+ * simply add the entry h at the begining of the list 
  * we do not accept a precalculated hash value, 
  * since realloc might have changed it
  * */
-static ssinfo_t *sslistadd_(ssinfo_t *h)
+static struct ssheader *sslistadd_(struct ssheader *h)
 {
-  ssinfo_t *head;
+  struct ssheader *head;
 
   head = ssbase_ + sshashval_( (char *)(h+1) );
   if (head->next == NULL) /* initialize the base */
@@ -73,27 +74,28 @@ static ssinfo_t *sslistadd_(ssinfo_t *h)
 }
 
 /* remove hp->next */
-static void sslistremove_(ssinfo_t *hp, int f)
+static void sslistremove_(struct ssheader *hp, int f)
 {
-  ssinfo_t *h = hp->next;
+  struct ssheader *h = hp->next;
   hp->next = h->next;
   if (f) free(h);
 }
 
 /* (re)allocate memory for (*php)->next, update list, return the new string
- * n is the number of nonempty characters, obtained e.g. from strlen()
- * we create a new header if *php is NULL
+ * n is the number of nonempty characters, obtained e.g. from strlen().
+ * create a new header if *php is NULL, in this case, the first character
+ * of the string is '\0'
  * */
-static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
+static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
 {
-  ssinfo_t *h=NULL, *hp;
+  struct ssheader *h=NULL, *hp;
   size_t size;
 
   if (php == NULL)
     sserror_("NULL pointer to resize");
   
   /* we use the following if to assign hp and h, so the order is crucial */
-  if ((hp=*php) == NULL || (h = hp->next)->size < (n+1) || !overalloc) {
+  if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
     size = sscalcsize_(n, 0);
     if (h == NULL || size != h->size) {
       /* since realloc will change the hash value of h
@@ -106,15 +108,15 @@ static char *ssresize_(ssinfo_t **php, size_t n, int overalloc)
         return NULL;
       }
       if (hp == NULL) /* clear the first byte if we start from nothing */
-        *(char *)(h+1) = '\0';
+        *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
       *php = hp = sslistadd_(h);
       hp->next->size = size;
     }
   }
-  return (char *)(hp->next+1);
+  return (char *)(hp->next + 1);
 }
 
-static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
+static void ssmanage_low_(struct ssheader *hp, unsigned opt)
 {
   if (opt == SSDELETE)
     sslistremove_(hp, 1);
@@ -127,7 +129,7 @@ static void ssmanage_low_(ssinfo_t *hp, unsigned opt)
 /* delete a string, shrink memory, etc ... */
 void ssmanage(char *s, unsigned flags)
 {
-  ssinfo_t *hp,*head;
+  struct ssheader *hp,*head;
   unsigned opt = flags & 0xFF;
   size_t i;
 
@@ -143,53 +145,43 @@ void ssmanage(char *s, unsigned flags)
   }
 }
 
-/* copy t to *ps, if ps is not NULL, and return the result
+/* 
+ * copy/cat t to *ps
+ *
+ * If (flags & SSCAT) == 0:
+ * copy t to *ps, if ps is not NULL, and return the result
  * if ps or *ps is NULL, we return a string created from t
  *   *ps is set to the same value if ps is not NULL
  * otherwise, we update the record that corresponds to *ps
+ *
+ * If flags & SSCAT:
+ * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
  * */
-char *sscpyx(char **ps, const char *t)
+char *sscpycatx(char **ps, const char *t, unsigned flags)
 {
-  ssinfo_t *hp=NULL;
-  size_t size=0;
-  char *s, *p;
+  struct ssheader *hp=NULL;
+  size_t size=0u, sizes=0u;
+  char *s=NULL, *p;
 
+  /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
   if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL)
     return NULL;
-  if (t != NULL)
-    while(t[size])
+  if (t != NULL) 
+    while (t[size]) /* compute the length of t */
       size++;
-  if ((s = ssresize_(&hp, size, 1)) == NULL)
+  if (flags & SSCAT) {
+    if (s != NULL)  /* s is also NULL, if ps itself is NULL */
+      while (s[sizes]) /* compute the length of s */
+        sizes++;
+    size += sizes;
+  }  /* sizes is always 0 in case of copying */
+  if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
     return NULL;
-  if (t == NULL)
-    s[0] = '\0';
-  else /* copy t to s */
-    for (p = s; (*p++ = *t++); )
+  if (t != NULL)
+    for (p = s + sizes; (*p++ = *t++); ) /* copy/cat the string */
       ;
   if (ps != NULL)
     *ps = s;
-  return s;
-}
-
-char *sscatx(char **ps, const char *t)
-{
-  ssinfo_t *hp;
-  size_t size=0;
-  char *s, *p;
-
-  if (ps == NULL || (s=*ps) == NULL || (hp = sslistfind_(s)) == NULL || t == NULL)
-    return NULL;
-  while (t[size])
-    size++;
-  for (p = s; *p; p++) ; /* move p to the end of the string */
-  size += p-s;
-  if ((s = ssresize_(&hp, size, 1)) == NULL)
-    return NULL;
-  if (s != *ps) /* move to the end of s */
-    for (p = *ps = s; *p; p++)
-      ;
-  for (; (*p++ = *t++); )
-    ;
   return s;
 }
 
@@ -203,19 +195,19 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   size_t n, max;
   int c;
   char *s;
-  ssinfo_t *hp;
+  struct ssheader *hp;
 
   if (ps == NULL || fp == NULL)
     return NULL;
   if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
-    if ((s = sscpyx(ps,NULL)) == NULL)
+    if ((s = sscpycatx(ps,NULL,0)) == NULL)
       return NULL;
   if ((hp = sslistfind_(s)) == NULL)
     return NULL;
   max = hp->next->size-1;
   for (n = 0; (c = fgetc(fp)) != EOF; ) {
     if (n+1 > max) { /* request space for n+1 nonblank characters */
-      if ((*ps = s = ssresize_(&hp, n+1, 1)) == NULL)
+      if ((*ps = s = ssresize_(&hp, n+1, SSOVERALLOC)) == NULL)
         return NULL;
       max = hp->next->size - 1;
     }
