@@ -1,5 +1,5 @@
-#ifndef SAFESTRING
-#define SAFESTRING 1
+#ifndef SAFESTRING__
+#define SAFESTRING__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,14 +11,14 @@
 #define SSHASHBITS 8
 #define SSHASHSIZ  (1<<SSHASHBITS)  
 #define SSOVERALLOC 1
+#define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
+#define sserror_ printf
 
 struct ssheader{
   size_t size;
   size_t hashval;
   struct ssheader *next;
 } ssbase_[SSHASHSIZ] = {{0u, 0u, NULL}};
-
-#define sserror_ printf
 
 /* we use the string address instead of that of the pointer 
  * to struct ssheader to compute the Hash value,
@@ -29,14 +29,6 @@ static size_t sshashval_(const char *p)
   size_t val=(size_t)p;
   val = val*1664525u+1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
-}
-
-/* calculate memory needed for a string of n nonzero characters */
-static size_t sscalcsize_(size_t n, int ah)
-{
-  n = (n/SSMINSIZ + 1) * SSMINSIZ;
-  if (ah) n += sizeof(struct ssheader);
-  return n;
 }
 
 /* 
@@ -67,7 +59,6 @@ static struct ssheader *sslistadd_(struct ssheader *h)
   head = ssbase_ + sshashval_( (char *)(h+1) );
   if (head->next == NULL) /* initialize the base */
     head->next = head;
-
   h->next = head->next;
   head->next = h;
   return head;
@@ -77,6 +68,7 @@ static struct ssheader *sslistadd_(struct ssheader *h)
 static void sslistremove_(struct ssheader *hp, int f)
 {
   struct ssheader *h = hp->next;
+  
   hp->next = h->next;
   if (f) free(h);
 }
@@ -96,7 +88,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
-    size = sscalcsize_(n, 0);
+    size = sscalcsize_(n);
     if (h == NULL || size != h->size) {
       /* since realloc will change the hash value of h
        * we have to remove the old entry first without free() 
