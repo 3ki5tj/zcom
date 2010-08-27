@@ -223,9 +223,10 @@ ZCSTRCLS void zcom_fatal(const char *fmt, ...)
 
 enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 
-#define ssdup(t)       sscpycatx(NULL, (t), 0)
-#define sscpy(s, t)    sscpycatx(&(s), (t), 0)
-#define sscat(s, t)    sscpycatx(&(s), (t), SSCAT)
+#define ssnew(n)       sscpycatx(NULL, NULL, (n),    0)
+#define ssdup(t)       sscpycatx(NULL, (t),   0,     0)
+#define sscpy(s, t)    sscpycatx(&(s), (t),   0,     0)
+#define sscat(s, t)    sscpycatx(&(s), (t),   0, SSCAT)
 #define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)
 #define ssshr(s)       ssmanage((s), SSSHRINK|SSSINGLE)
 #define ssdelall()     ssmanage(NULL, SSDELETE)
@@ -234,19 +235,33 @@ enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 #define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
 
 ZCSTRCLS void ssmanage(char *, unsigned);
-ZCSTRCLS char *sscpycatx(char **, const char *, unsigned);
+ZCSTRCLS char *sscpycatx(char **, const char *, size_t, unsigned);
 ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
 
 
-#define SSMINSIZ   256 /* change this value to 1 debugging */
+#ifndef SSMINSIZ /* to override the block size, define it before inclusion */
+#define SSMINSIZ 256 /* change this value to 1 for debugging */
+#endif
+#ifndef SSHASHBITS
 #define SSHASHBITS 8
+#endif
 #define SSHASHSIZ  (1<<SSHASHBITS)  
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
 #ifdef ZCOM_ERROR
 #define sserror_ zcom_fatal
 #else
-#define sserror_ printf
+/* print an error message and quit */
+void sserror_(char *fmt, ...)
+{
+  va_list args;
+
+  va_start(args, fmt);
+  fprintf(stderr, "fatal error: ");
+  fprintf(stderr, fmt, args);
+  va_end(args);
+  exit(1);
+}
 #endif
 
 struct ssheader{
@@ -380,10 +395,12 @@ void ssmanage(char *s, unsigned flags)
  *   *ps is set to the same value if ps is not NULL
  * otherwise, we update the record that corresponds to *ps
  *
+ * minsize: to request a minimal size for the resulting buffer
+ *
  * If flags & SSCAT:
  * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
  * */
-char *sscpycatx(char **ps, const char *t, unsigned flags)
+char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
 {
   struct ssheader *hp=NULL;
   size_t size=0u, sizes=0u;
@@ -401,6 +418,8 @@ char *sscpycatx(char **ps, const char *t, unsigned flags)
         sizes++;
     size += sizes;
   }  /* sizes is always 0 in case of copying */
+  if (size < minsize)
+    size = minsize;
   if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
     return NULL;
   if (t != NULL)
@@ -426,7 +445,7 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   if (ps == NULL || fp == NULL)
     return NULL;
   if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
-    if ((s = sscpycatx(ps,NULL,0)) == NULL)
+    if ((s = sscpycatx(ps, NULL, 0, 0u)) == NULL)
       return NULL;
   if ((hp = sslistfind_(s)) == NULL)
     return NULL;
