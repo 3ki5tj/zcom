@@ -1,0 +1,21 @@
+Common code
+
+Individual module should have their separate directories, except
+  zcom.c, which is a combination of all frequently used ones.
+
+Code should be concise and limited in size, 
+  If possible, make them includable.
+  File names should be short.
+
+Try to use symbolic links to files in this folder if possible, 
+  otherwise try to use rsync to other locations
+
+zcom.c:   a combination of useful routines
+sstring:  safe string
+is2:      two dimensional ising model
+
+Notes:
+zcom.c should not have a routine like zcom_finish()
+  because in case of multiple inclusion, zcom_finish is defined in the first instance,
+  it has no knowledge of modules included later.
+
