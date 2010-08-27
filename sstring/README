@@ -32,8 +32,12 @@ Chain rule cannot be used, like
   sscat(sscpy(s, t), r);
 sscat/sscpy are macros, they ask for s's address.
 
-Lack of an interface to initialize a buffer with a fixed size
-  Tentatively rename ssnew to ssdup
+Use add2zcom.py to integrate the latest version into zcom.c
+
+
+CHANGELOG
+==========
+Aug. 27, 2010  Tentatively rename ssnew to ssdup
   ssnew(n) now accept a number for buffer size
 
 

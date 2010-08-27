@@ -1,6 +1,5 @@
 #ifndef SS_H__
 #define SS_H__
-#include <string.h>
 
 enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 

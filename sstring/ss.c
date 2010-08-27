@@ -1,5 +1,5 @@
-#ifndef SAFESTRING__
-#define SAFESTRING__
+#ifndef SS__
+#define SS__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +12,11 @@
 #define SSHASHSIZ  (1<<SSHASHBITS)  
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
+#ifdef ZCOM_ERROR
+#define sserror_ zcom_fatal
+#else
 #define sserror_ printf
+#endif
 
 struct ssheader{
   size_t size;
@@ -26,8 +30,7 @@ struct ssheader{
  * */
 static size_t sshashval_(const char *p)
 {
-  size_t val = (size_t)p;
-  val = val*1664525u + 1013904223u;
+  size_t val = (size_t)p * 1664525u + 1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 

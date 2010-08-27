@@ -216,9 +216,14 @@ ZCSTRCLS void zcom_fatal(const char *fmt, ...)
 #ifndef ZCOM_SS__
 #define ZCOM_SS__
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
 enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 
-#define ssnew(t)       sscpycatx(NULL, (t), 0)
+#define ssdup(t)       sscpycatx(NULL, (t), 0)
 #define sscpy(s, t)    sscpycatx(&(s), (t), 0)
 #define sscat(s, t)    sscpycatx(&(s), (t), SSCAT)
 #define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)
@@ -232,10 +237,6 @@ ZCSTRCLS void ssmanage(char *, unsigned);
 ZCSTRCLS char *sscpycatx(char **, const char *, unsigned);
 ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
 
 #define SSMINSIZ   256 /* change this value to 1 debugging */
 #define SSHASHBITS 8
@@ -260,8 +261,7 @@ struct ssheader{
  * */
 static size_t sshashval_(const char *p)
 {
-  size_t val=(size_t)p;
-  val = val*1664525u+1013904223u;
+  size_t val = (size_t)p * 1664525u + 1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 
