@@ -542,11 +542,11 @@ ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname
 
   if(mtindex_ < 0){   /* initialize from the seed */
     FILE *fp;
-    char s[64]="",err=1;
+    char *s=NULL,err=1;
 
     /* here we try to initialize the array from file */
     if ((fp=fopen(mtfname, "r")) != NULL) {
-      if (fgets(s, sizeof s, fp) == NULL) {
+      if (ssfgets(s, NULL, fp) == NULL) {
         fprintf(stderr, "mtrand: cannot read the first line of %s, probably an empty file.\n", mtfname);
         goto CLOSEFILE;
       }
@@ -570,6 +570,7 @@ ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname
       }
 CLOSEFILE:
       fclose(fp);
+      ssdel(s);
     }
     if(!nz) err=1;
     if(err){
@@ -1232,10 +1233,10 @@ ZCSTRCLS void logclose(logfile_t *log)
 int main(void)
 {
   logfile_t *mylog;
-  char msg[256];
+  char *msg=NULL;
   if((mylog=logopen("my.log")) == NULL) return 1;
   printf("please write something: ");
-  logprintf(mylog, "the input is [%s]\n", fgets(msg, sizeof msg, stdin));
+  logprintf(mylog, "the input is [%s]\n", ssfgets(msg, NULL, stdin));
   loghardflush(mylog);
   printf("log file is hard flushed. please check...");
   getchar();
@@ -1573,14 +1574,14 @@ ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
 ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, int *cnt, double erg0, int max, int flag, char *fname){
   double T;
   FILE *fp;
-  char s[1024];
+  char *s=NULL;
   double enrg,hcap;
 
   if((fp=fopen(fname, "r"))==NULL){
     printf("cannot read file [%s]", fname);
     return 1;
   }
-  for((*cnt)=0; fgets(s, sizeof s, fp); ){
+  for((*cnt)=0; ssfgets(s, NULL, fp); ){
     if((*cnt)>=max) break;
     if(s[0] == '#') continue; // comment line
     sscanf(s, "%lf%lf%lf%lf\n", &T, &lnz[*cnt], &enrg, &hcap);
