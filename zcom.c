@@ -545,13 +545,13 @@ ZCSTRCLS unsigned long mtrand(int action, unsigned long seed0, const char *fname
     char s[64]="",err=1;
 
     /* here we try to initialize the array from file */
-    if((fp=fopen(mtfname, "r")) != NULL){
-      if(fgets(s, sizeof s, fp) == NULL){
+    if ((fp=fopen(mtfname, "r")) != NULL) {
+      if (fgets(s, sizeof s, fp) == NULL) {
         fprintf(stderr, "mtrand: cannot read the first line of %s, probably an empty file.\n", mtfname);
         goto CLOSEFILE;
       }
 
-      if(strncmp(s, "MTSEED", 6) != 0){ /* to check the first line */
+      if (strncmp(s, "MTSEED", 6) != 0) { /* to check the first line */
         fprintf(stderr, "mtrand: corrupted seed file.\n");
       }else{
         if( fscanf(fp, "%d", &mtindex_) != 1){
@@ -818,13 +818,16 @@ ZCSTRCLS void cfgclose(cfgdata_t *cfg){
 }
 
 
-/* read the value of a given variable from the current configuration file,
-   the name of variable is given by `key',
-   if the key is matched, its value is saved to `*var' through sscanf.
-   if the function succeeds, it returns 0.
-   A comment line in the configuration file starts with '#', '%' or '!'.
-   In case fmt is "%s", a duplicate of the string will be assigned to (*var)
-   */
+/* Read the value of a given variable from the current configuration file,
+ * the name of variable is given by `key',
+ * If the key is matched, its value is saved to `*var' through sscanf,
+ *   otherwise, the content in *var is not modified.
+ * If the function succeeds, it returns 0.
+ * A comment line in the configuration file starts with '#', '%' or '!'.
+ * In case fmt is "%s", (*var) is a string, or a pointer to char.
+ *   The space for (*var) will be managed through sscpy, which should *not*
+ *   to be free'd.  Instead, ssdel should be called if really necessary.
+ * */
 ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt){
   int j;
 
@@ -836,7 +839,7 @@ ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
   for (j = 0; j < cfg->n; j++) 
     if (cfg->key[j] != NULL && strcmp(cfg->key[j], key) == 0) { 
       if (fmt[0]=='%' && fmt[1]=='s') { /* string case */
-        *(char **)var = ssdup(cfg->value[j]); /* make a copy and return */
+        sscpy( *(char **)var, cfg->value[j]); /* make a copy and return */
         return 0;
       } else { /* use sscanf for other cases, like int,float,... */
         if (EOF == sscanf(cfg->value[j], fmt, var))
@@ -941,7 +944,7 @@ ZCSTRCLS int wtrace_buf(const char *fmt, ...)
   static int verbose=1;
   static int flush_interval=1000;
   static int cnt=0, once=0, i;
-  static char *buf,*msg=NULL;
+  static char *buf=NULL, *msg=NULL;
   static FILE *fp=NULL;
   static char *fname=NULL, mode[8]="w";
   va_list args;
@@ -1003,25 +1006,18 @@ NORMAL:
     return 0;
   }
 
-  if(cnt==0){
-    /* we allocate msg and buf together, because msg may be (though unlikely)
-     * involved in an unsafe vsprintf(), which might cause overflow.
-     * in this case, the continuous space can help prevent a system crash,
-     * although buf can be corrupted */
-    msg=calloc(maxlen*(flush_interval+1), 1);
-    if(msg==NULL){
-      fprintf(stderr, "cannot allocate buffer.\n");
-      return 1;
-    }
-    msg[0]='\0';
-    buf=msg+maxlen;
-    buf[0]='\0';
+  if (cnt == 0) { /* allocate msg and buf first */
+    msg = ssnew(maxlen * 3); /* leave some margin */
+    buf = ssnew(maxlen * flush_interval);
   }
 
-  if(msg==NULL) return 1;
+  if (msg == NULL || buf == NULL) {
+    fprintf(stderr, "no buffer found.\n");
+    return 1;
+  }
 
-  if(fmt != NULL){
-    if(strlen(fmt) >= (size_t)maxlen){
+  if (fmt != NULL) {
+    if (strlen(fmt) >= (size_t)maxlen) {
       fprintf(stderr, "the format string is too long.\n");
       return 1;
     }
@@ -1034,33 +1030,38 @@ NORMAL:
 #endif
 
 #if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__) || defined(_MSC_VER) )
-    i=vsnprintf(msg, maxlen, fmt, args);
+    i = vsnprintf(msg, maxlen, fmt, args);
 #else
     /* we use vsprintf if vsnprintf is unavailable */
-    i=vsprintf(msg, fmt, args);
+    i = vsprintf(msg, fmt, args);
 #endif
     va_end(args);
-    if(i>=maxlen){
+    if (i >= maxlen) {
       fprintf(stderr, "the message is too long.\n");
       return 1;
     }
-    strcat(buf, msg);
+    sscat(buf, msg);
   }
 
-  if((++cnt % flush_interval == 0) || fmt==NULL){
+  /* flush buffered contents to file, and possibly finish up */
+  if ((++cnt % flush_interval == 0) || fmt == NULL) {
     mode[0] = (char)(once ? 'a' : 'w');
     if ( (fp=fopen(fname, mode)) == NULL ) {
       fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
       return 1;
     }
     fputs(buf, fp);
-    buf[0]='\0';
+    buf[0] = '\0';
     fclose(fp);
 
     if (fmt == NULL) { /* finishing up */
       if (msg != NULL) { 
-        free(msg); 
+        ssdel(msg); 
         msg = NULL; 
+      }
+      if (buf != NULL) {
+        ssdel(buf);
+        buf = NULL;
       }
       if (fname != NULL) {
         ssdel(fname);
@@ -1616,33 +1617,47 @@ ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
     return 1;
   }
 
-  if(flag[0]=='w'){
+  if (flag[0] == 'w') {
     va_start(args, fmt);
     vfprintf(fp, fmt, args);
     va_end(args);
-  }else{
+  } else { /* reading from fmt */
 
 #ifdef _MSC_VER
+    /* a simplified version of vfscanf() */
     void *ptr;
     char *p,*q,*format,ch;
     int i;
 
     format = ssdup(fmt);
 
-    /* to seek the first conversion */
-    for(p=format; *p; p++) if(*p=='%'){ if(p[1]=='%' || p[1]=='*') p++; else break;}
-    if(*p){
+    /* seek the first conversion */
+    for (p = format; *p; p++) 
+      if (*p == '%') { 
+        if(p[1]=='%' || p[1]=='*') 
+          p++; 
+        else 
+          break;
+      }
+    if (*p) {
       va_start(args, fmt);
-      ptr=va_arg(args, void *);
-      do{
-        for(q=p+1; *q; q++) if(*q=='%'){ if(q[1]=='%' || q[1]=='*') q++; else break;}
-        if( (ch=*q) != 0) *q='\0';
-        i=fscanf(fp, p, ptr);
-        if(i && ch) ptr=va_arg(args, void *); /* next conversion */
+      ptr = va_arg(args, void *);
+      do {
+        for (q = p+1; *q; q++) 
+          if(*q == '%'){ 
+            if(q[1] == '%' || q[1] == '*') 
+              q++; 
+            else break;
+          }
+        if ( (ch=*q) != 0) 
+          *q='\0';
+        i = fscanf(fp, p, ptr);
+        if (i && ch) 
+          ptr = va_arg(args, void *); /* next conversion */
         (*(p=q)) = ch;
-      }while(*q);
+      } while(*q);
       va_end(args);
-    }else{
+    } else {
       fscanf(fp, format); /* no conversion */
     }
     ssdel(format);
