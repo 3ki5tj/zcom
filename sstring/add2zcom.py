@@ -2,10 +2,11 @@
 
 '''
 integrate ss.c and ss.h into zcom.c
-currently assume the debug information has already been stripped away
+debug code in ss.c is removed first by calling rmdbg
 '''
 
-import os, shutil;
+import os, shutil
+import rmdbg
 
 def strip_def(src, verbose=1):
   '''
@@ -58,7 +59,6 @@ def add_storage_class(hdr, prefix):
     if first_word in ("void", "char", "int", "unsigned", "long", "float", "double"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
-
 
 def insert_module(src, name, module, verbose=1):
   '''
@@ -119,22 +119,18 @@ def main(verbose=1):
   fn_ss_h = os.path.splitext(fn_ss_c)[0] + ".h"
   fn_zcom_bak = fn_zcom_c + ".bak"
 
-  # call rmdbg.py to remove debug information
-  # ...
-
   # 1. read the source code
-  f=open(fn_ss_c, 'r')
-  src=f.readlines()
-  f.close()
+  src = open(fn_ss_c, 'r').readlines()
+  # call rmdbg.py to remove debug information
+  src = rmdbg.rmdbg(src)
   # strip away the #ifndef, #define, #endif triplet
   src = strip_def(src)
   # print ''.join(src)
 
   # 2. read the header
-  f=open(fn_ss_h, 'r')
-  header = f.readlines()
-  f.close()
-  header = add_storage_class(strip_def(header), strcls)
+  header = open(fn_ss_h, 'r').readlines()
+  header = strip_def(header)
+  header = add_storage_class(header, strcls)
 
   # 3. insert the header to the source code
   pivot = -1
@@ -143,29 +139,23 @@ def main(verbose=1):
         src[i].find('"ss.h"', 7) >= 0):
       pivot = i
       break
-  if verbose:
-    if pivot < 0:
-      print "cannot find where to insert headers"
-    else:
-      print "pivot is found at", pivot
+  else:
+    print "cannot find where to insert headers\n", ''.join( src )
+    return 1
+  if verbose: print "pivot is found at", pivot
   src = src[:pivot] + header + src[pivot+1:]
   #print ''.join(src)
 
   # 4. load zcom.c and insert the source into it 
-  f=open(fn_zcom_c, 'r')
-  zcom = f.readlines()
-  f.close()
+  zcom = open(fn_zcom_c, 'r').readlines()
   # insertion
   zcom = insert_module(zcom, "ZCOM_SS", src)
   #print ''.join(zcom)
   
   # 5. save it back to zcom.c
-  # make a backup
-  shutil.copy2(fn_zcom_c, fn_zcom_bak)
-  f = open(fn_zcom_c, 'w')
-  f.write(''.join(zcom))
-  f.close()
+  shutil.copy2(fn_zcom_c, fn_zcom_bak) # make a backup first
+  open(fn_zcom_c, 'w').write(''.join(zcom))
 
 if __name__ == "__main__":
-    main()
+  main()
 
