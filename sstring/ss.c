@@ -101,7 +101,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   size_t size;
 
   if (php == NULL)
-    sserror_("NULL pointer to resize");
+    sserror_("ssresize_: NULL pointer to resize");
   
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
@@ -113,7 +113,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
       if (hp != NULL)
         sslistremove_(hp, 0);
       if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
-        sserror_("no memory for resizing\n");
+        sserror_("ssresize_: no memory for %u\n", size);
         return NULL;
       }
       if (hp == NULL) /* clear the first byte if we start from nothing */
@@ -175,8 +175,10 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
   char *s=NULL, *p;
 
   /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
-  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL)
+  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL) {
+    fprintf(stderr, "sscpycatx: string is not previously registered!\n");
     return NULL;
+  }
   if (t != NULL) 
     while (t[size]) /* compute the length of t */
       size++;
@@ -188,8 +190,9 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
   }  /* sizes is always 0 in case of copying */
   if (size < minsize)
     size = minsize;
-  if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) /* change size */
+  if ((s = ssresize_(&hp, size, SSOVERALLOC)) == NULL) { /* change size */
     return NULL;
+  }
   if (t != NULL)
     for (p = s + sizes; (*p++ = *t++); ) /* copy/cat the string */
       ;
