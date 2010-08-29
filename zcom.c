@@ -191,10 +191,10 @@
 /* print an error message, then quit */
 /* newer compilers should support macros with variable-length arguments */
 #if ( (defined(__GNUC__)&&(__GNUC__>=3)) || (defined(__xlC__)&&(__xlC__>=0x0700)) || (defined(_MSC_VER)&&(_MSC_VER>=1400)) )
-#define zcom_fatal(fmt, ...)  zcom_fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
-ZCSTRCLS void zcom_fatal_(const char *file, int lineno, const char *fmt, ...)
+#define fatal(fmt, ...)  fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
+ZCSTRCLS void fatal_(const char *file, int lineno, const char *fmt, ...)
 #else
-ZCSTRCLS void zcom_fatal(const char *fmt, ...)
+ZCSTRCLS void fatal(const char *fmt, ...)
 #endif
 {
   va_list args;
@@ -228,13 +228,14 @@ enum { SSCAT=1, SSDELETE=2, SSSHRINK=3, SSSINGLE=0x1000 };
 #define sscpy(s, t)    sscpycatx(&(s), (t),   0,     0)
 #define sscat(s, t)    sscpycatx(&(s), (t),   0, SSCAT)
 #define ssdel(s)       ssmanage((s), SSDELETE|SSSINGLE)
+#define ssdelete(s)    { ssdel(s); (s)=NULL; }
 #define ssshr(s)       ssmanage((s), SSSHRINK|SSSINGLE)
 #define ssdelall()     ssmanage(NULL, SSDELETE)
 #define ssshrall()     ssmanage(NULL, SSHRINK)
 #define ssfgets(s, pn, fp)    ssfgetx(&(s), (pn), '\n', (fp))
 #define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
 
-ZCSTRCLS void ssmanage(char *, unsigned);
+ZCSTRCLS void  ssmanage(char *, unsigned);
 ZCSTRCLS char *sscpycatx(char **, const char *, size_t, unsigned);
 ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
 
@@ -249,7 +250,7 @@ ZCSTRCLS char *ssfgetx(char **, size_t *, int, FILE *fp);
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
 #ifdef ZCOM_ERROR
-#define sserror_ zcom_fatal
+#define sserror_ fatal
 #else
 /* print an error message and quit */
 void sserror_(char *fmt, ...)
@@ -2371,7 +2372,7 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
  * A conversion takes place only if the two differ.
  * The enidan-corrected variable is saved in output, however,
  * for in-place conversion, pass NULL to output. */
-ZCSTRCLS unsigned char *zcom_fix_endian(void *output, void *input, size_t len, int tobig)
+ZCSTRCLS unsigned char *fix_endian(void *output, void *input, size_t len, int tobig)
 {
   size_t i, ir;
   static int sysbig=-1;

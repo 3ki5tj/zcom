@@ -17,7 +17,7 @@
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
 #ifdef ZCOM_ERROR
-#define sserror_ zcom_fatal
+#define sserror_ fatal
 #else
 /* print an error message and quit */
 void sserror_(char *fmt, ...)
