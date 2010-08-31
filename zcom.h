@@ -1524,13 +1524,17 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 #include <stdarg.h>
 #include <math.h>
 
-#define rzt(lnz,beta,cnt,erg0,max,flag,fname) \
-  rztx(lnz,beta,NULL,NULL,cnt,erg0,max,flag,fname)
 ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
     double base, double inc, double erg0, const char *fname);
+
+#define rzt(lnz,beta,cnt,erg0,max,flag,fname) \
+  rztx(lnz,beta,NULL,NULL,cnt,erg0,max,flag,fname)
+
 ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, 
     int *cnt, double erg0, int max, int flag, const char *fname);
+
 ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...);
+
 ZCSTRCLS int refinelnZ(double beta[], double X[], double *lnZbeta0, double *h, 
     double *lng, int Tcnt, int Ecnt, double Ebase, double Einc, int flag,
     char *filename, char *DOSname, double err, int repmax);
@@ -2388,7 +2392,11 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
 #ifndef ZCOM_ENDIAN__
 #define ZCOM_ENDIAN__
 
+
 #include <stdio.h>
+
+ZCSTRCLS unsigned char *fix_endian(void *output, void *input, size_t len, int tobig);
+
 
 /* Correct endianness from the current operating system to the desired one
  * The desired endianness is specified by tobig, while
@@ -2396,43 +2404,40 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
  * A conversion takes place only if the two differ.
  * The enidan-corrected variable is saved in output, however,
  * for in-place conversion, pass NULL to output. */
-ZCSTRCLS unsigned char *fix_endian(void *output, void *input, size_t len, int tobig)
+unsigned char *fix_endian(void *output, void *input, size_t len, int tobig)
 {
   size_t i, ir;
-  static int sysbig=-1;
-  unsigned char *fixed=(unsigned char *)output;
-  unsigned char *p=(unsigned char *)input;
+  static int sysbig = -1;
+  unsigned char *fixed = (unsigned char *) output;
+  unsigned char *p     = (unsigned char *) input;
 
-  if(sysbig<0){ /* initial determine the machine's endianess */
-    unsigned int feff=0xFEFF;
-    unsigned char *s;
-    s=(unsigned char *)(&feff);
-    sysbig = ((*s==0xFF)?0:1);
-    fprintf(stderr, "The current system is %s-endian.\n", (sysbig?"big":"little"));
+  if (sysbig < 0) { /* initial determine the machine's endianess */
+    unsigned int feff = 0xFEFF;
+    unsigned char *s  = (unsigned char *)&feff;
+
+    sysbig = (*s == 0xFF) ? 0 : 1;
   }
 
-  if(tobig==sysbig){ /* no conversion is required */
-    if(fixed==NULL){
+  if (tobig == sysbig) { /* no conversion is required */
+    if (fixed == NULL) {
       return p;
-    }else{
-      for(i=0; i<len; i++) fixed[i]=p[i];
+    } else {
+      for (i = 0; i < len; i++) 
+        fixed[i] = p[i];
       return fixed;
     }
-  }else{
-
-    if(fixed==NULL){ /* in-place conversion */
-      for(i=0; i<(len/2); i++){
+  } else {
+    if (fixed == NULL) { /* in-place conversion */
+      for (i = 0; i < (len/2); i++) {
         char ch;
-        ir=len-i-1;
-        ch=p[i];
-        p[i]=p[ir];
-        p[ir]=ch;
+        ir = len - i - 1;
+        ch    = p[i];
+        p[i]  = p[ir];
+        p[ir] = ch;
       }
-    }else{ /* out-of-place conversion */
-      for(i=0; i<len; i++){
-        for(i=0; i<len; i++)
-          fixed[len-i-1]=p[i];
-      }
+    } else { /* out-of-place conversion */
+      for (i = 0; i < len; i++)
+        fixed[len - i - 1] = p[i];
     }
   }
   return p;
