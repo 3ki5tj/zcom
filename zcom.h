@@ -1261,11 +1261,19 @@ int main(void)
 #ifndef ZCOM_LU__
 #define ZCOM_LU__
 
+/* LU decomposition part  */
+
+#include <stdio.h>
 #include <math.h>
-/* LU decomposition part : */
+
+ZCSTRCLS int lusolve(double *a, double *b, int n);
+ZCSTRCLS int ludcmp(double *a, int *idx, int n);
+ZCSTRCLS int lubksb(double *a, double *b, int *idx, int n);
+
 
 /* solve A x = b by L U decomposition */
-ZCSTRCLS int lusolve(double *a, double *b, int n){
+int lusolve(double *a, double *b, int n)
+{
   int i,j,k,imax=0;
   double x,max,sum;
   const double mintol=1e-16; /* absolute minimal value for a pivot */
@@ -1331,7 +1339,8 @@ ZCSTRCLS int lusolve(double *a, double *b, int n){
   The diagonal belongs to U, the diagonal of L is 1's
   idx[] as output can have duplicated indices, but this is readable by
 */
-ZCSTRCLS int ludcmp(double *a, int *idx, int n){
+int ludcmp(double *a, int *idx, int n)
+{
   int i,j,k,imax;
   double x,max,sum, *scal;
   const double mintol=1e-16; /* absolute minimal value for a pivot */
@@ -1390,53 +1399,31 @@ ZCSTRCLS int ludcmp(double *a, int *idx, int n){
 }
 
 /* backward substitution for L U x = b */
-ZCSTRCLS int lubksb(double *a, double *b, int *idx, int n){
+int lubksb(double *a, double *b, int *idx, int n)
+{
   int i, j, id;
   double x;
 
-  for(i=0; i<n; i++) // unscramble indices
-    if((id=idx[i]) != i) { x=b[id]; b[id]=b[i]; b[i]=x; }
-
-  for(i=0; i<n; i++) { // L y = b
-    for(x=b[i],j=0; j<i; j++) x-=a[i*n+j]*b[j];
-    b[i]=x;
-  }
-  for(i=n-1; i>=0; i--) { // U x = y.
-    x=b[i];
-    for(j=i+1; j<n; j++) x-=a[i*n+j]*b[j];
-    b[i]=x/a[i*n+i];
-  }
-  return 0;
-}
-#ifdef LUTST
-#define N 3
-int main(void){
-  double A[N][N]={{1,0.5,1.0/3},{0.5,1.0/3,0.25},{1.0/3,.25,.2}}, a[N][N];
-  double b[N]={1,2,3}, x[N];
-  int i,j,index[N];
-
-  memcpy(a, A, sizeof(double)*N*N);
-  memcpy(x, b, sizeof(double)*N);
-  lusolve((double *)a, x, N);
-  for(i=0; i<N; i++) printf("%d: %g\n", i, x[i]);
-
-  memcpy(a, A, sizeof(double)*N*N);
-  memcpy(x, b, sizeof(double)*N);
-  ludcmp((double *)a, index, N);
-  for(i=0; i<N; i++){
-    printf("%d: ", index[i]);
-    for(j=0; j<N; j++){
-      printf("%10.6f ", a[i][j]);
+  for (i = 0; i < n; i++) /* unscramble indices */
+    if ((id=idx[i]) != i) { 
+      x     = b[id]; 
+      b[id] = b[i]; 
+      b[i]  = x; 
     }
-    printf("\n");
+
+  for (i = 0; i < n; i++) { /* L y = b */
+    for (x = b[i], j = 0; j < i; j++) 
+      x -= a[i*n+j] * b[j];
+    b[i] = x;
   }
-
-  lubksb(a, x, index, N);
-  for(i=0; i<N; i++) printf("%d: %g\n", i, x[i]);
-
+  for (i = n - 1; i >= 0; i--) { /* U x = y */
+    x = b[i];
+    for (j = i + 1; j < n; j++) 
+      x -= a[i*n+j] * b[j];
+    b[i] = x / a[i*n+i];
+  }
   return 0;
 }
-#endif /* LUTST */
 
 #endif /* ZCOM_LU__ */
 #endif /* ZCOM_LU */
@@ -1580,7 +1567,9 @@ ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
   return 0;
 }
 
-ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, int *cnt, double erg0, int max, int flag, char *fname){
+ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, 
+    int *cnt, double erg0, int max, int flag, char *fname)
+{
   double T;
   FILE *fp;
   char *s=NULL;
