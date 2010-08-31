@@ -1518,16 +1518,28 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 #ifndef ZCOM_ZT__
 #define ZCOM_ZT__
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
 
-#define rzt(lnz,beta,cnt,erg0,max,flag,fname) rztx(lnz,beta,NULL,NULL,cnt,erg0,max,flag,fname)
+#define rzt(lnz,beta,cnt,erg0,max,flag,fname) \
+  rztx(lnz,beta,NULL,NULL,cnt,erg0,max,flag,fname)
+ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
+    double base, double inc, double erg0, const char *fname);
+ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, 
+    int *cnt, double erg0, int max, int flag, const char *fname);
+ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...);
+ZCSTRCLS int refinelnZ(double beta[], double X[], double *lnZbeta0, double *h, 
+    double *lng, int Tcnt, int Ecnt, double Ebase, double Einc, int flag,
+    char *filename, char *DOSname, double err, int repmax);
+
 
 /* write ln(Z) versus temperature */
-ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
-         double base, double inc, double erg0, const char *fname){
+int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
+         double base, double inc, double erg0, const char *fname)
+{
   char *filename;
   FILE *fp;
   int i,j;
@@ -1565,8 +1577,8 @@ ZCSTRCLS int wztf(double *lnz, double *beta, double *hist, int rows, int cols,
   return 0;
 }
 
-ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv, 
-    int *cnt, double erg0, int max, int flag, char *fname)
+int rztx(double *lnz, double *beta, double *erg, double *cv, 
+    int *cnt, double erg0, int max, int flag, const char *fname)
 {
   double T;
   FILE *fp;
@@ -1605,7 +1617,8 @@ ZCSTRCLS int rztx(double *lnz, double *beta, double *erg, double *cv,
 int vfscanf(FILE *fp, const char *fmt, va_list ap);
 
 /* read and write simple data to file */
-ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
+int rwonce(const char *flag, const char *fname, const char *fmt, ...)
+{
   FILE *fp;
   va_list args;
 
@@ -1670,8 +1683,8 @@ ZCSTRCLS int rwonce(const char *flag, const char *fname, const char *fmt, ...){
   return 0;
 }
 
-// return log(exp(a)+exp(b))
-#define LOGBIG 40.0  // error is 4e-18
+/* return log(exp(a)+exp(b)) */
+#define LOGBIG 40.0  /* error is 4e-18 */
 static __inline double logadd(double a, double b){
   double c;
   if(a>b) return (  ((c=a-b)>LOGBIG) ? a : (a+log(1+exp(-c)))  );
@@ -1681,10 +1694,10 @@ static __inline double logadd(double a, double b){
 #define RZ_ADDAHALF   0x0001
 #define RZ_OVERWRITE  0x0002
 
-// refine lnZ through iteration
-ZCSTRCLS int refinelnZ(double beta[], double X[], double *lnZbeta0, double *h, double *lng,
-  int Tcnt, int Ecnt, double Ebase, double Einc, int flag,
-  char *filename, char *DOSname, double err, int repmax)
+/* refine lnZ through iteration */
+int refinelnZ(double beta[], double X[], double *lnZbeta0, double *h, 
+    double *lng, int Tcnt, int Ecnt, double Ebase, double Einc, int flag,
+    char *filename, char *DOSname, double err, int repmax)
 {
   FILE *fp;
   int i,j,icnt;
@@ -1795,6 +1808,7 @@ ZCSTRCLS int refinelnZ(double beta[], double X[], double *lnZbeta0, double *h, d
   free(lnZ); free(lnN); free(lnm);
   return 0;
 }
+
 
 #endif /* ZCOM_ZT__ */
 #endif /* ZCOM_ZT */
@@ -2424,9 +2438,6 @@ ZCSTRCLS unsigned char *fix_endian(void *output, void *input, size_t len, int to
   return p;
 }
 
-
 #endif /* ZCOM_ENDIAN__ */
 #endif /* ZCOM_ENDIAN */
-
-
 

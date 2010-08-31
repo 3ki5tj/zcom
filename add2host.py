@@ -15,6 +15,7 @@ fn_host     = "zcom.h"
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 1
+defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt'];
 
 def strip_def(src, verbose = 1):
   '''
@@ -257,7 +258,7 @@ def handle_params():
     usage()
   
   deflist = []
-  for fn in ['ss', 'rng', 'cfg', 'dihcalc', 'lu']:
+  for fn in defmodules: 
     modnm = get_mod_name(fn)
     deflist += [(fn, modnm)]
   
