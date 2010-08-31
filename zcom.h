@@ -919,16 +919,157 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 #ifndef ZCOM_TRACE__
 #define ZCOM_TRACE__
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
-#ifdef ZCHAVEVAM
-/* we use variadic macros if possible */
+#ifdef ZCHAVEVAM  /* we use variadic macros if possible */
+
 #define wtrace(fmt, ...)     wtrace_x(0, fmt, ## __VA_ARGS__)
 #define wtrace_buf(fmt, ...) wtrace_x(1, fmt, ## __VA_ARGS__)
-/* Buffered (flags=0) or unbuffered (flags=1) output
+ZCSTRCLS int wtrace_x(int, const char*, ...);
+
+#else /* otherwise default to the buffered version */
+
+#define wtrace wtrace_buf
+ZCSTRCLS int wtrace_buf(const char *, ...);
+
+#endif /* ZCHAVEVAM */
+
+
+/* determine if vsnprintf is available */
+#ifndef HAVE_VSNPRINTF
+#if ( defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__) || defined(_MSC_VER) )
+#define HAVE_VSNPRINTF 1
+#ifdef _MSC_VER
+#ifndef vsnprintf
+#define vsnprintf _vsnprintf
+#endif /* VC define vsnprintf */
+#endif /* _MSC_VER */
+#endif /* good compilers */
+#endif /* HAS_VSNPRINTF */
+
+/* handle a trace command inside a format string 
+ * return nonzero to quit and enter the normal mode */
+static int trace_cmd_(const char *cmd, va_list args, int once, 
+    char **pfname, int *freq, int *verbose)
+{
+  const char *p;
+
+  if ((p = strchr(cmd, '=')) == NULL)
+    return 1;
+  
+  if (once) {
+    fprintf(stderr, "trace: changing setting after something "
+        "has already been written to file is invalid\n");
+    return 0;
+  }
+  
+  if (strncmp(cmd, "filename", 8) == 0) {
+
+    p = va_arg(args, const char *);
+    if (p != NULL) {
+      sscpy(*pfname, p);
+      if (*verbose)
+        fprintf(stderr, "The trace file is now %s\n", *pfname);
+    }
+  } else if (strncmp(cmd, "freq", 4) == 0) {
+    *freq = va_arg(args, int);
+    if (*verbose)
+      fprintf(stderr, "change frequency of writing trace to %d\n", *freq);
+  } else if (strncmp(cmd, "verbose", 7) == 0) {
+    *verbose = va_arg(args, int);
+  } else {
+    fprintf(stderr, "unknown command: %s\n", cmd);
+    return 1;
+  }
+  return 0;
+}
+
+/* write trace in unbuffered mode
+ * note: system may have provided certain buffer */
+static int wtrace_unbuf_low_(int cnt, int freq, 
+    const char *fname, const char *mode, const char *fmt, va_list args)
+{
+  static FILE *fp = NULL;
+
+  if (cnt == 0) {
+    if ((fp = fopen(fname, mode)) == NULL) {
+      fprintf(stderr, "cannot write file %s with mode %s\n", 
+          fname, mode);
+      return 1;
+    }
+  }
+
+  if (fmt != NULL) 
+    vfprintf(fp, fmt, args);
+
+  if ((cnt + 1) == freq || fmt == NULL) {
+    fclose(fp);
+  }
+  return 0;
+}
+
+/* write trace in memory-buffered mode */
+static int wtrace_buf_low_(int cnt, int freq,
+    char *fname, const char *mode, const char *fmt, va_list args)
+{
+  const  int   maxmsg = 1024;
+  static char *msg = NULL, *buf = NULL;
+  int i;
+  
+  /* buffered mode */
+  if (cnt == 0) { /* allocate msg and buf first */
+    msg = ssnew(maxmsg * 2); /* leave some margin */
+    buf = ssnew(maxmsg * freq);
+  }
+  if (msg == NULL || buf == NULL) {
+    fprintf(stderr, "no buffer found.\n");
+    return 1;
+  }
+  if (fmt != NULL) {
+    if (strlen(fmt) >= (size_t) maxmsg) {
+      fprintf(stderr, "the format string is too long.\n");
+      return 1;
+    }
+#ifdef HAVE_VSNPRINTF 
+    i = vsnprintf(msg, maxmsg, fmt, args);
+#else /* we use vsprintf if vsnprintf is unavailable */
+    i = vsprintf(msg, fmt, args);
+#endif
+    if (i >= maxmsg) {
+      fprintf(stderr, "the message is too long.\n");
+      return 1;
+    }
+    sscat(buf, msg);
+  }
+
+  /* flush buffered contents to file, and possibly finish up */
+  if ((cnt + 1) % freq == 0 || fmt == NULL) {
+    FILE *fp;
+
+    if ((fp = fopen(fname, mode)) == NULL ) {
+      fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
+      return 1;
+    }
+    fputs(buf, fp);
+    buf[0] = '\0';
+    fclose(fp);
+
+    if (fmt == NULL) { /* finishing up */
+      if (msg != NULL) ssdelete(msg); 
+      if (buf != NULL) ssdelete(buf);
+    }
+  }
+  return 0;
+}
+
+/* 
+ * write trace using 
+ * unbuffered (flags = 0) or buffered (flags = 1) output
+ * but mixing the two modes is a major mistake!
  *
  * pass NULL to `fmt' to finish up
  * In addition, we support simple commands in `fmt'
@@ -938,148 +1079,54 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
  * if fmt="%@freq=%d", the next argument is 100,
  *    then we refresh every 100 calls.
  * */
-ZCSTRCLS int wtrace_x(int wtrace_flags_, const char *fmt, ...)
-
+#ifdef ZCHAVEVAM
+int wtrace_x(int wtrace_flags_, const char *fmt, ...)
 #else
-
-/* if variadic macros are unavailable, we only define the buffered version */
-#define wtrace wtrace_buf
-static int wtrace_flags_=1;
-ZCSTRCLS int wtrace_buf(const char *fmt, ...)
+static int wtrace_flags_ = 1;
+int wtrace_buf(const char *fmt, ...)
 #endif
 {
-  const int maxlen=1024;
-  static int verbose=1;
-  static int flush_interval=1000;
-  static int cnt=0, once=0, i;
-  static char *buf=NULL, *msg=NULL;
-  static FILE *fp=NULL;
-  static char *fname=NULL, mode[8]="w";
+  static int   verbose = 1;
+  static int   freq = 1000;
+  static int   cnt = 0, once = 0;
+  static char *fname = NULL, mode[8] = "w";
   va_list args;
+  int i;
 
   if (fname == NULL) /* set the default file name */ 
     fname = ssdup("TRACE");
 
-  /* to finish up */
-  if(fmt == NULL) goto NORMAL;
-
   /* start the command mode if the format string start with "%@"
    * the command mode allows setting parameters */
-  if (fmt[0] == '%' && fmt[1] == '@') {
-    const char *cmd=fmt+2, *p;
-    /* we no longer allow commands after the tracing starts */
-    if(once) goto NORMAL;
-
-    if((p=strchr(fmt, '='))==NULL) goto NORMAL;
+  if (fmt != NULL && fmt[0] == '%' && fmt[1] == '@') {
     va_start(args, fmt);
-    if(strncmp(cmd, "filename", 8)==0){
-      p=va_arg(args, const char *);
-      if (p != NULL) {
-        sscpy(fname, p);
-        if (verbose)
-          fprintf(stderr, "The trace file is now %s\n", fname);
-      }
-    }else if(strncmp(cmd, "freq", 4) == 0){
-      flush_interval=va_arg(args, int);
-    }else if(strncmp(cmd, "verbose", 7) == 0){
-      verbose=va_arg(args,int);
-    }else{ /* unknown command */
-      goto NORMAL;
-    }
+    i = trace_cmd_(fmt + 2, args, once, &fname, &freq, &verbose);
     va_end(args);
-    return 0;
+    if (i == 0) return 0;
   }
 
-NORMAL:
-  if(wtrace_flags_ == 0){ /* unbuffered version */
-    if(cnt==0){
-      if(once) mode[0]='a'; else mode[0]='w';
-      if( (fp=fopen(fname, mode)) == NULL ){
-        fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
-        return 1;
-      }
-    }
+  va_start(args, fmt);
+  mode[0] = (char)(once ? 'a' : 'w');
+  if (wtrace_flags_ == 0) { /* unbuffered version */
+    i = wtrace_unbuf_low_(cnt, freq, fname, mode, fmt, args);
+  } else { /* buffered version */
+    i = wtrace_buf_low_(cnt, freq, fname, mode, fmt, args);
+  }
+  va_end(args);
 
-    if(fmt != NULL){
-      va_start(args, fmt);
-      vfprintf(fp, fmt, args);
-      va_end(args);
-    }
-
-    if((++cnt == 1000) || fmt==NULL){
-      cnt=0;
-      fclose(fp);
-    }
-    once=1;
-    return 0;
+  /* fmt == NULL means finishing up, once = 0 for a fresh start */
+  if (fmt == NULL) { /* finishing up */
+    once = 0; /* once = 0 for a fresh start */
+    cnt  = 0;
+    if (fname) ssdelete(fname);
+  } else {
+    once = 1;
+    cnt++;
   }
 
-  if (cnt == 0) { /* allocate msg and buf first */
-    msg = ssnew(maxlen * 3); /* leave some margin */
-    buf = ssnew(maxlen * flush_interval);
-  }
-
-  if (msg == NULL || buf == NULL) {
-    fprintf(stderr, "no buffer found.\n");
-    return 1;
-  }
-
-  if (fmt != NULL) {
-    if (strlen(fmt) >= (size_t)maxlen) {
-      fprintf(stderr, "the format string is too long.\n");
-      return 1;
-    }
-
-    va_start(args, fmt);
-#ifdef _MSC_VER
-  #ifndef vsnprintf
-    #define vsnprintf _vsnprintf
-  #endif
-#endif
-
-#if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__) || defined(_MSC_VER) )
-    i = vsnprintf(msg, maxlen, fmt, args);
-#else
-    /* we use vsprintf if vsnprintf is unavailable */
-    i = vsprintf(msg, fmt, args);
-#endif
-    va_end(args);
-    if (i >= maxlen) {
-      fprintf(stderr, "the message is too long.\n");
-      return 1;
-    }
-    sscat(buf, msg);
-  }
-
-  /* flush buffered contents to file, and possibly finish up */
-  if ((++cnt % flush_interval == 0) || fmt == NULL) {
-    mode[0] = (char)(once ? 'a' : 'w');
-    if ( (fp=fopen(fname, mode)) == NULL ) {
-      fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
-      return 1;
-    }
-    fputs(buf, fp);
-    buf[0] = '\0';
-    fclose(fp);
-
-    if (fmt == NULL) { /* finishing up */
-      if (msg != NULL) { 
-        ssdelete(msg); 
-      }
-      if (buf != NULL) {
-        ssdelete(buf);
-      }
-      if (fname != NULL) {
-        ssdelete(fname);
-      }
-      cnt = 0;
-      once = 0;
-    }else{  /* subsequent calls will append instead of write the trace file */
-      once=1;
-    }
-  }
-  return 0;
+  return i;
 }
+
 #endif /* ZCOM_TRACE__ */
 #endif /* ZCOM_TRACE */
 

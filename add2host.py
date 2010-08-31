@@ -15,7 +15,7 @@ fn_host     = "zcom.h"
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 1
-defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 'endian', 'log'];
+defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 'endian', 'log', 'trace'];
 
 def strip_def(src, verbose = 1):
   '''
