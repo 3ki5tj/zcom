@@ -18,6 +18,8 @@ endian:         write with endian
 lu:             LU decomposition
 log:            log file
 zt:             Z-algorithm related
+trace:          write trace
+dist:           write distribution
 is2:            two dimensional ising model
 
 zcom.h:         a combination of useful routines
