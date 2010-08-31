@@ -187,6 +187,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 /* print an error message, then quit */
 /* newer compilers should support macros with variable-length arguments */
@@ -198,13 +199,20 @@ ZCSTRCLS void fatal(const char *fmt, ...)
 #endif
 {
   va_list args;
+
   fprintf(stderr, "Fatal ");
-  if(file != NULL) fprintf(stderr, "%s ", file);
-  if(lineno > 0)   fprintf(stderr, "%d ", lineno);
+  if(file != NULL) 
+    fprintf(stderr, "%s ", file);
+  if(lineno > 0)   
+    fprintf(stderr, "%d ", lineno);
   fprintf(stderr, "| ");
+  
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
+  if (fmt[strlen(fmt) - 1] != '\n') 
+    fprintf(stderr, "\n"); /* add a new line if needed */ 
   va_end(args);
+  
   exit(1);
 }
 
@@ -674,25 +682,25 @@ for MPI, please only do it on the master node, then use MPI_Bcast
 #include <string.h>
 #include <ctype.h>
 
-typedef struct tagcfgdata_t{
-  int n; /* number of lines */
-  char**key,**value; /* key[i] is the key, value[i] is the value */
-  char *buf; /* the whole configuration file */
-  int dyn_alloc; /* whether the struct itself is dynamically allocated */
-}cfgdata_t;
+typedef struct {
+  int    n;           /* number of lines */
+  int    canfree;     /* whether the struct is dynamically allocated */
+  char **key,**value; /* key[i] = value[i] */
+  char  *buf;         /* the whole configuration file */
+} cfgdata_t;
 
 #define isspace_(c) isspace((unsigned char)(c))
 
 /* load the whole configuration file into memory (return value); parse it to entries
    note: the order of cfg and filenm are exchanged */
-ZCSTRCLS int cfgload(cfgdata_t *cfg, char *filenm)
+ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
 {
   FILE *fp;
   long i,j;
   size_t size=0;
   char *p,*q,*lin;
 
-  if((fp=fopen(filenm, "rb")) == NULL){
+  if ((fp = fopen(filenm, "rb")) == NULL) {
     fprintf(stderr,"cannot open the configuration file [%s]\n", filenm);
     return 1;
   }
@@ -764,61 +772,72 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, char *filenm)
 
     /* remove the the leading spaces */
     for(; *lin && isspace_(*lin); lin++) ;
-    cfg->key[j]=lin;
+    cfg->key[j] = lin;
     /* skip a blank or comment line */
-    if(lin[0]=='\0' || strchr("#%!;", lin[0])!=NULL){
-      cfg->key[j]=NULL;
+    if (lin[0] == '\0' || strchr("#%!;", lin[0]) != NULL) {
+      cfg->key[j] = NULL;
       continue;
     }
 
     /* remove trailing space and ';' */
-    for(q =lin+strlen(lin)-1;
-        q>=lin && (isspace_(*q)||*q==';'); q--) *q='\0';
+    for (q =lin+strlen(lin)-1;
+         q >=lin && (isspace_(*q)||*q==';'); q--) *q='\0';
 
-    if((q=strchr(lin, '=')) == NULL){ /* skip a line without '=' */
-      cfg->key[j]=NULL;
+    if ((q = strchr(lin, '=')) == NULL) { /* skip a line without '=' */
+      cfg->key[j] = NULL;
       continue;
     }
 
     /* find the end of key --> 'q' */
-    *q='\0';
-    p=q+1;
-    for(--q; isspace_(*q); q--) *q='\0';
-    for(; (*p) && isspace_(*p); p++) ; /* skip leading space, 'p' -> value */
-    cfg->value[j]=p;
+    *q = '\0';
+    p  = q + 1;
+    for (--q; isspace_(*q); q--) *q='\0';
+    for (; (*p) && isspace_(*p); p++) ; /* skip leading space, 'p' -> value */
+    cfg->value[j] = p;
   }
 
 #ifdef CFGDBG
-  for(j=0; j<cfg->n; j++){ if(cfg->key[j]) printf("key=%s, value=%s\n",cfg->key[j], cfg->value[j]); }
-  printf("%d lines\n",cfg->n); getchar();
-#endif
+  for (j = 0; j < cfg->n; j++) { 
+    if (cfg->key[j] != NULL) 
+      printf("key=%s, value=%s\n", cfg->key[j], cfg->value[j]); 
+  }
+  printf("%d lines\n",cfg->n); 
+  getchar();
 
+#endif
   return 0;
 }
 
 #undef isspace_
 
 /* a wrapper of cfgload to make it more like fopen */
-ZCSTRCLS cfgdata_t *cfgopen(char *filenm){
+ZCSTRCLS cfgdata_t *cfgopen(const char *filenm)
+{
   cfgdata_t *cfg;
-  if((cfg=calloc(1,sizeof(cfgdata_t)))==NULL){
+
+  if ((cfg = calloc(1, sizeof(*cfg))) == NULL) {
     fprintf(stderr, "cannot allocate space for cfgdata_t.\n");
     return NULL;
   }
-  if(cfgload(cfg,filenm) != 0){
+  if (cfgload(cfg, filenm) != 0) {
     free(cfg);
     return NULL;
   }
-  cfg->dyn_alloc=1;
+  cfg->canfree = 1; /* so it can be safely freed */
   return cfg;
 }
 
 
-ZCSTRCLS void cfgclose(cfgdata_t *cfg){
-  free(cfg->value); cfg->value=NULL;
-  free(cfg->key);   cfg->key=NULL;
+ZCSTRCLS void cfgclose(cfgdata_t *cfg) 
+{
+  int canfree = cfg->canfree; /* save the value before memset */
+
+  free(cfg->value);
+  free(cfg->key);
   ssdelete(cfg->buf);
-  if(cfg->dyn_alloc) free(cfg);
+  memset(cfg, 0, sizeof(*cfg));
+  if (canfree) 
+    free(cfg);
 }
 
 
@@ -832,7 +851,8 @@ ZCSTRCLS void cfgclose(cfgdata_t *cfg){
  *   The space for (*var) will be managed through sscpy, which should *not*
  *   to be free'd.  Instead, ssdel should be called if really necessary.
  * */
-ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt){
+ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
+{
   int j;
 
   if (cfg->key == NULL || var==NULL || key==NULL || fmt==NULL) {
@@ -862,7 +882,8 @@ ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
    e.g. if key="arr", entries in configuration files are `arr0', `arr1', ...
    indices are from i0 to iN-1;
    if the function succeeds, it returns 0. */
-ZCSTRCLS int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize, const char *key, const char* fmt, int i0, int iN){
+ZCSTRCLS int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize, const char *key, const char* fmt, int i0, int iN)
+{
   int i;
   char *var, itemname[128];
   var=(char*)varr;
@@ -880,7 +901,8 @@ ZCSTRCLS int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize, const 
 #endif
 
 #ifdef ZCOM_CFG_TST
-int main(void){
+int main(void)
+{
   int nr, cnt, i;
   float tmin, tmax;
   float arr[10];
