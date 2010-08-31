@@ -4,7 +4,7 @@
 remove debug code from ss.c
 """
 
-def rmdbg(in_lines, badkeys=['SSDBG_'], verbose=2):
+def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', '_LEGACY'], verbose=2):
   """
   read lines from instr, remove badkeys, 
   return 

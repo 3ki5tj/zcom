@@ -709,47 +709,49 @@ double grand0(void)
 #define ZCOM_CFG__
 
 /*
- * =======================================================================
+ * =====================================================================
  *
  * Configuration file
  *
- * ========================================================================
+ * =====================================================================
  *
- now cfgload should be replaced by cfgopen (more like fopen)
+ * First, use cfgopen() to open a configuration file
+ *
+ * To load a parameter,
+ *   cfgget(fp, &var, "var_name", scanf_fmt);
+ * 
+ * Finally, use cfgclose() to finish up
+ */
 
-   USAGE:
-  to load parameters use
-  cfgget(fp, &var, "var_name", scanf_fmt);
-  cfgget(fp, &arr_size, "arr_size", "%d");
-
-  to save parameters, use fprintf :-)
-
-for MPI, please only do it on the master node, then use MPI_Bcast
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
 typedef struct {
-  int    n;           /* number of lines */
-  int    canfree;     /* whether the struct is dynamically allocated */
-  char **key,**value; /* key[i] = value[i] */
-  char  *buf;         /* the whole configuration file */
+ZCSTRCLS   int    n;           /* number of lines */
+ZCSTRCLS   int    canfree;     /* whether the struct is dynamically allocated */
+ZCSTRCLS   char **key,**value; /* key[i] = value[i] */
+ZCSTRCLS   char  *buf;         /* the whole configuration file */
 } cfgdata_t;
+
+cfgdata_t *cfgopen(const char *filenm);
+ZCSTRCLS void cfgclose(cfgdata_t *cfg);
+ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
+
 
 #define isspace_(c) isspace((unsigned char)(c))
 
-/* load the whole configuration file into memory (return value); parse it to entries
-   note: the order of cfg and filenm are exchanged */
-ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
+/* load the whole configuration file into memory (return value); 
+ * parse it to entries, return 0 if successful */
+static int cfgload(cfgdata_t *cfg, const char *filenm)
 {
   FILE *fp;
-  long i,j;
+  long i, j;
   size_t size=0;
   char *p,*q,*lin;
 
-  if ((fp = fopen(filenm, "rb")) == NULL) {
+  if ((fp = fopen(filenm, "r")) == NULL) {
     fprintf(stderr,"cannot open the configuration file [%s]\n", filenm);
     return 1;
   }
@@ -761,9 +763,6 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
   sscat(cfg->buf, "\n"); /* in case the file is not ended by a new line, we add one */
   fclose(fp);
 
-#ifdef CFGDBG
-  printf("the cfg is loaded, size=%d\n", size);
-#endif
 
   /* count the number of lines for allocating the key-table */
   for (i = 0, cfg->n = 0; i<size; i++) {
@@ -788,14 +787,8 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
         }
         /* note: parser should be insensitive to leading spaces */
       }
-#ifdef CFGDBG
-      if (j-1 >= i+1) printf("j=%d to %d are replaced by spaces\n", i+1,j-1);
-#endif
     }
   }
-#ifdef CFGDBG
-  printf("# of lines: %d\n", cfg->n);
-#endif
 
   cfg->key   = calloc(cfg->n, sizeof(char*));
   cfg->value = calloc(cfg->n, sizeof(char*));
@@ -811,9 +804,6 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
     }
   }
   cfg->n=j;
-#ifdef CFGDBG
-  fprintf(stderr, "load %d lines.\n", cfg->n);
-#endif
 
   /* now parse lines: separate values from keys */
   for(j=0; j<cfg->n; j++){
@@ -845,22 +835,13 @@ ZCSTRCLS int cfgload(cfgdata_t *cfg, const char *filenm)
     cfg->value[j] = p;
   }
 
-#ifdef CFGDBG
-  for (j = 0; j < cfg->n; j++) { 
-    if (cfg->key[j] != NULL) 
-      printf("key=%s, value=%s\n", cfg->key[j], cfg->value[j]); 
-  }
-  printf("%d lines\n",cfg->n); 
-  getchar();
-
-#endif
   return 0;
 }
 
 #undef isspace_
 
 /* a wrapper of cfgload to make it more like fopen */
-ZCSTRCLS cfgdata_t *cfgopen(const char *filenm)
+cfgdata_t *cfgopen(const char *filenm)
 {
   cfgdata_t *cfg;
 
@@ -877,7 +858,7 @@ ZCSTRCLS cfgdata_t *cfgopen(const char *filenm)
 }
 
 
-ZCSTRCLS void cfgclose(cfgdata_t *cfg) 
+void cfgclose(cfgdata_t *cfg) 
 {
   int canfree = cfg->canfree; /* save the value before memset */
 
@@ -885,7 +866,7 @@ ZCSTRCLS void cfgclose(cfgdata_t *cfg)
   free(cfg->key);
   ssdelete(cfg->buf);
   memset(cfg, 0, sizeof(*cfg));
-  if (canfree) 
+  if (canfree) /* free cfg if it is created by cfgopen */
     free(cfg);
 }
 
@@ -900,7 +881,7 @@ ZCSTRCLS void cfgclose(cfgdata_t *cfg)
  *   The space for (*var) will be managed through sscpy, which should *not*
  *   to be free'd.  Instead, ssdel should be called if really necessary.
  * */
-ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
+int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 {
   int j;
 
@@ -924,60 +905,6 @@ ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
   return 1; /* no match */
 }
 
-#ifdef ZCOM_CFG_LEGACY
-/* read the value of a given array variable from the current configuration file,
-   the size of each array item is given by `itemsize',
-   the name of the array starts with `key' followed by an index
-   e.g. if key="arr", entries in configuration files are `arr0', `arr1', ...
-   indices are from i0 to iN-1;
-   if the function succeeds, it returns 0. */
-ZCSTRCLS int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize, const char *key, const char* fmt, int i0, int iN)
-{
-  int i;
-  char *var, itemname[128];
-  var=(char*)varr;
-  if(strlen(key)>sizeof(itemname)-16){
-    fprintf(stderr, "key name is too long\n");
-    return 1;
-  }
-  for(i=i0; i<iN; i++){
-    sprintf(itemname, "%s%d", key, i);
-    cfgget(cfg, var, itemname, fmt);
-    var+=itemsize;
-  }
-  return 0;
-}
-#endif
-
-#ifdef ZCOM_CFG_TST
-int main(void)
-{
-  int nr, cnt, i;
-  float tmin, tmax;
-  float arr[10];
-  char*p=NULL;
-  cfgdata_t *cfg;
-  if((cfg=cfgopen("test.cfg")) == NULL){
-    printf("error reading\n");
-    return 1;
-  }
-  cfgget(cfg, &nr, "nrtemp", "%d");
-  cfgget(cfg, &tmin, "tmin", "%f");
-  cfgget(cfg, &tmax, "tmax", "%f");
-  cfgget(cfg, &cnt, "arrcnt", "%d");
-  cfggetarr(cfg, arr, sizeof(float), "arr", "%f", 0, cnt);
-  cfgget(cfg, &p, "scode", "%s");
-  cfgclose(cfg);
-
-  printf("nr=%d, (%g,%g), cnt=%d\n", nr,tmin,tmax,cnt);
-  for(i=0; i<cnt; i++){
-    printf("arr[%d]=%g\n", i, arr[i]);
-  }
-  printf("scode=\"%s\"\n", p);
-
-  return 0;
-}
-#endif
 
 #endif /* ZCOM_CFG__ */
 #endif /* ZCOM_CFG */
