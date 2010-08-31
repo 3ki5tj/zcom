@@ -16,9 +16,6 @@ strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 1
 
-fn_source   = ""    # e.g., "ss/ss"
-mod_name    = ""    # name in host
-
 def strip_def(src, verbose = 1):
   '''
   strip away the 
@@ -136,97 +133,97 @@ def strpbrk(s, char_set):
   except:
     return -1
 
-def set_mod_name(name):
+def get_mod_name(name):
   '''
   set the module name inside host
   '''
   global mod_name
 
   if name.startswith(host_prefix):
-    mod_name = name
+    modname = name
   else: 
     # make a guess
     shortnm = os.path.basename(name).upper()
     pos = shortnm.find('.')
     if pos >= 0:
       shortnm = shortnm[:pos]
-    mod_name = host_prefix + shortnm
-  return mod_name
+    modname = host_prefix + shortnm
+  return modname
 
 
-def integrate():
+def integrate(srclist):
   '''
   integrate fn_source to fn_host
+  with a template fn_host_t (with .0 extension)
   '''
+
+  # 1. load the template fn_host_t 
+  fn_host_t  = fn_host + ".0"
+  host_src = open(fn_host_t, 'r').readlines()
+   
+  for fn_source, mod_name in srclist:
+    if fn_source.find(os.sep) < 0:
+      # make abc --> abc/abc
+      fn_source = os.path.join(fn_source, fn_source)
   
-  # make a local copy
-  fn_src_l = fn_source
-
-  if fn_src_l.find(os.sep) < 0:
-    # make abc --> abc/abc
-    fn_src_l = os.path.join(fn_src_l, fn_src_l)
-
-  # derive other file names
-  fn_source_c = fn_src_l + ".c"
-  fn_source_h = fn_src_l + ".h"
-  fn_host_bak = fn_host + ".bak"
-  # short name
-  fn_src     = os.path.basename(fn_src_l)
-  fn_src_c   = fn_src + ".c"
-  fn_src_h   = fn_src + ".h"
-  if verbose:
-    print "short names are %s and %s" % (fn_src_c, fn_src_h)
-
-  print ("integrating module %s (%s, %s) to %s" 
-      % (mod_name, fn_source_c, fn_source_h, fn_host))
-  if verbose:
-    raw_input("press Enter to continue...")
-
-
-  # 1. read the source code
-  src = open(fn_source_c, 'r').readlines()
-  # call rmdbg.py to remove debug information
-  src = rmdbg.rmdbg(src)
-  # strip away the outmost #ifndef, #define, #endif triplet
-  src = strip_def(src)
-
-  # 2. read the header
-  header = open(fn_source_h, 'r').readlines()
-  header = strip_def(header)
-  header = add_storage_class(header, strcls)
-
-  # 3. insert the header to the source code
-  pivot = -1
-  for i in range(len(src)):
-    if (src[i].startswith("#include") and 
-        src[i].find('"' + fn_src_h + '"', 7) >= 0):
-      pivot = i
-      break
-  else:
-    print "cannot find where to insert headers\n", 
-    raw_input("press Enter to see the current file")
-    print ''.join( src )
-    return 1
-  if verbose: 
-    print "pivot is found at", pivot
-  src = src[:pivot] + header + src[pivot + 1:]
-
-  # 4. load fn_host and insert the source into it 
-  host_src = open(fn_host, 'r').readlines()
-  # insertion
-  host_src = insert_module(host_src, mod_name, src)
+    # derive other file names
+    fn_source_c = fn_source + ".c"
+    fn_source_h = fn_source + ".h"
+    fn_host_bak = fn_host + ".bak"
+    # short name
+    fn_src     = os.path.basename(fn_source)
+    fn_src_c   = fn_src + ".c"
+    fn_src_h   = fn_src + ".h"
+    if verbose:
+      print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-  # 5. save it back to fn_host
-  shutil.copy2(fn_host, fn_host_bak) # make a backup first
+    print ("integrating module %s (%s, %s) to %s (%s)" 
+        % (mod_name, fn_source_c, fn_source_h, fn_host, fn_host_t))
+    if verbose:
+      raw_input("press Enter to continue...")
+  
+  
+    # 2. read the source code
+    src = open(fn_source_c, 'r').readlines()
+    # call rmdbg.py to remove debug information
+    src = rmdbg.rmdbg(src)
+    # strip away the outmost #ifndef, #define, #endif triplet
+    src = strip_def(src)
+  
+    # 3. read the header
+    header = open(fn_source_h, 'r').readlines()
+    header = strip_def(header)
+    header = add_storage_class(header, strcls)
+  
+    # 4. insert the header to the source code
+    pivot = -1
+    for i in range(len(src)):
+      if (src[i].startswith("#include") and 
+          src[i].find('"' + fn_src_h + '"', 7) >= 0):
+        pivot = i
+        break
+    else:
+      print "cannot find where to insert headers\n", 
+      raw_input("press Enter to see the current file")
+      print ''.join( src )
+      return 1
+    if verbose: 
+      print "pivot is found at", pivot
+    src = src[:pivot] + header + src[pivot + 1:]
+    
+    # 5. insert the source code into the host
+    host_src = insert_module(host_src, mod_name, src)
+
+  # 6. save it back to fn_host
+  #shutil.copy2(fn_host, fn_host_bak) # make a backup first
   open(fn_host, 'w').write(''.join(host_src))
 
 def usage():
   """
   print usage and die
   """
-  print sys.argv[0], "[Options]"
+  print sys.argv[0], "[Options] module(s)"
   print "Options:"
-  print " -s:  --src,     source code to be integrated"
   print " -o:  --host,    host file to absorb an addition"
   print " -c:  --strcls,  storage class"
   print " -p:  --prefix,  prefix of the host "
@@ -241,7 +238,7 @@ def handle_params():
   global fn_host, fn_source, strcls, host_prefix, verbose, mod_name
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "h:v:s:o:c:p:i:m:", 
+    opts, args = getopt.getopt(sys.argv[1:], "h:v:o:c:p:i:m:", 
          ["help", "prefix=", "strcls=", "host=", "src=", 
            "verbose=", "module="])
   except getopt.GetoptError, err:
@@ -252,8 +249,6 @@ def handle_params():
   for o, a in opts:
     if o in ("-v", "--verbose"):
       verbose = int(a)
-    elif o in ("-s", "--src", "-i"):
-      fn_source = a
     elif o in ("-h", "--host", "-o"):
       fn_host = a
     elif o in ("-c", "--strcls"):
@@ -264,19 +259,23 @@ def handle_params():
       mod_name = a
     elif o in ("-h", "--help"):
       usage()
- 
-  if fn_source == "":
+
+  if len(args) == 0:
     usage()
 
-  if mod_name == "":
-    set_mod_name(fn_source)
+  srclist = []
+  for fn in args:
+    modnm = get_mod_name(fn)
+    srclist += [(fn, modnm)]
+
+  return srclist
 
 def main():
   '''
   driver
   '''
-  handle_params()
-  integrate()
+  srclist = handle_params()
+  integrate(srclist)
 
 if __name__ == "__main__":
   main()
