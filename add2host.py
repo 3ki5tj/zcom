@@ -61,14 +61,18 @@ def add_storage_class(hdr, prefix):
   add storage class, 'prefix', to global function and variables in the header
   '''
   for i in range(len(hdr)):
-    arr = hdr[i].split()
+    line = hdr[i]
+    arr = line.split()
     if len(arr) > 0:
-      first_word = arr[0]
+      if line[0:1].isspace():
+        continue
+      else:
+        first_word = arr[0]
     else:
       continue
     
     #  NOTE: we cannot handle more complex cases
-    if first_word in ("void", "char", "int", "unsigned", "long", "float", "double"):
+    if first_word in ("void", "char", "int", "unsigned", "long", "float", "double", "cfgdata_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 

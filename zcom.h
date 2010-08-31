@@ -119,6 +119,9 @@
   #ifndef ZCOM_RV2
   #define ZCOM_RV2
   #endif
+  #ifndef ZCOM_DIHCALC
+  #define ZCOM_DIHCALC
+  #endif
   #ifndef ZCOM_ENDIAN
   #define ZCOM_ENDIAN
   #endif
@@ -132,6 +135,10 @@
 
 #ifdef ZCOM_SS
   #define ZCOM_ERROR
+#endif
+
+#ifdef ZCOM_DIHCALC
+  #define ZCOM_RV3
 #endif
 
 /* manage storage class: static is still the safer choice
@@ -729,13 +736,13 @@ double grand0(void)
 #include <ctype.h>
 
 typedef struct {
-ZCSTRCLS   int    n;           /* number of lines */
-ZCSTRCLS   int    canfree;     /* whether the struct is dynamically allocated */
-ZCSTRCLS   char **key,**value; /* key[i] = value[i] */
-ZCSTRCLS   char  *buf;         /* the whole configuration file */
+  int    n;           /* number of lines */
+  int    canfree;     /* whether the struct is dynamically allocated */
+  char **key,**value; /* key[i] = value[i] */
+  char  *buf;         /* the whole configuration file */
 } cfgdata_t;
 
-cfgdata_t *cfgopen(const char *filenm);
+ZCSTRCLS cfgdata_t *cfgopen(const char *filenm);
 ZCSTRCLS void cfgclose(cfgdata_t *cfg);
 ZCSTRCLS int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
 
@@ -1938,9 +1945,15 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
   sum[2]=a[2]*s1+b[2]*s2;
   return sum;
 }
+#endif /* ZCOM_RV3__ */
+#endif /* ZCOM_RV3 */
+
+#ifdef  ZCOM_DIHCALC
+#ifndef ZCOM_DIHCALC__
+#define ZCOM_DIHCALC__
 
 /* structure for dihedral calculation */
-typedef struct tagdihcalc_t{
+typedef struct {
   real phi; /* cis is zero, clockwise positive */
   real cosphi; /* cos(m, n) */
   real sign; /* (0, pi) is 1.0, otherwise -1.0 */
@@ -2191,9 +2204,8 @@ ZCSTRCLS real rv3_calcdih(dihcalc_t *dc,
   return phi;
 }
 
-#endif /* ZCOM_RV3__ */
-#endif /* ZCOM_RV3 */
-
+#endif /* ZCOM_CALCDIH__ */
+#endif /* ZCOM_CALCDIH */
 
 #ifdef ZCOM_RV2
 #ifndef ZCOM_RV2__
