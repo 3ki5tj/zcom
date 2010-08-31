@@ -1,10 +1,6 @@
 #ifndef SS__
 #define SS__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
 #include "ss.h"
 
 #ifndef SSMINSIZ /* to override the block size, define it before inclusion */
@@ -16,11 +12,12 @@
 #define SSHASHSIZ  (1<<SSHASHBITS)  
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
+
 #ifdef ZCOM_ERROR
 #define sserror_ fatal
 #else
 /* print an error message and quit */
-void sserror_(char *fmt, ...)
+static void sserror_(char *fmt, ...)
 {
   va_list args;
 
