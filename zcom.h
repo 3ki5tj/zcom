@@ -200,8 +200,7 @@
 #include <string.h>
 
 /* print an error message and die */
-/* newer compilers should support macros with variable-length arguments */
-#if ( (defined(__GNUC__)&&(__GNUC__>=3)) || (defined(__xlC__)&&(__xlC__>=0x0700)) || (defined(_MSC_VER)&&(_MSC_VER>=1400)) )
+#ifdef ZCHAVEVAM
 #define fatal(fmt, ...)  fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
 ZCSTRCLS void fatal_(const char *file, int lineno, const char *fmt, ...)
 #else
@@ -1254,7 +1253,6 @@ int main(void)
 
 #endif /* ZCOM_LOG__ */
 #endif /* ZCOM_LOG */
-
 
 
 #ifdef  ZCOM_LU
