@@ -15,7 +15,8 @@ fn_host     = "zcom.h"
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 1
-defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 'endian', 'log', 'trace'];
+defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 
+    'endian', 'log', 'trace', 'dist'];
 
 def strip_def(src, verbose = 1):
   '''
@@ -168,7 +169,7 @@ def integrate(srclist):
   fn_host_t  = fnr[0] + ".0" + fnr[1]
   print "Host: %s, template: %s" % (fn_host, fn_host_t)
   host_src = open(fn_host_t, 'r').readlines()
-   
+
   for fn_source, mod_name in srclist:
     if fn_source.find(os.sep) < 0:
       # make abc --> abc/abc
@@ -280,14 +281,12 @@ def handle_params():
     elif o in ("-h", "--help"):
       usage()
 
-  srclist += args
-
-  if len(srclist) == 0:
-    usage()
-
   for fn in args:
     modnm = get_mod_name(fn)
     srclist += [(fn, modnm)]
+
+  if len(srclist) == 0:
+    usage()
 
   return srclist
 
