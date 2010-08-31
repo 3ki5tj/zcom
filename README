@@ -13,6 +13,11 @@ Try to use symbolic links to files in this folder if possible,
 ss:             safe string
 rng:            random number generator
 cfg:            configuration file
+dihcalc:        calculate dihedral
+endian:         write with endian
+lu:             LU decomposition
+log:            log file
+zt:             Z-algorithm related
 is2:            two dimensional ising model
 
 zcom.h:         a combination of useful routines

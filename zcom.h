@@ -1151,6 +1151,7 @@ ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int
 #ifdef  ZCOM_LOG
 #ifndef ZCOM_LOG__
 #define ZCOM_LOG__
+
 /*
  * =======================================================================
  *
@@ -1158,16 +1159,27 @@ ZCSTRCLS int wdistex(double *h, int rows, int cols, double base, double inc, int
  *
  * ========================================================================
  */
-typedef struct tag_logfile_t{
+
+#include <stdio.h>
+#include <stdarg.h>
+
+typedef struct {
   FILE *fp;
   char *fname;
   int flag;
-}logfile_t;
+} logfile_t;
 
 #define LOG_WRITESCREEN  0x01
 #define LOG_FLUSHAFTER   0x02
 #define LOG_NOWRITEFILE  0x10
-ZCSTRCLS logfile_t* logopen(char *filenm)
+
+logfile_t *logopen(char *filenm);
+ZCSTRCLS int logprintf(logfile_t *log, char *fmt, ...);
+ZCSTRCLS int loghardflush(logfile_t *log);
+ZCSTRCLS void logclose(logfile_t *log);
+
+
+logfile_t *logopen(char *filenm)
 {
   logfile_t *log;
   
@@ -1184,43 +1196,48 @@ ZCSTRCLS logfile_t* logopen(char *filenm)
   return log;
 }
 
-ZCSTRCLS int logprintf(logfile_t *log, char *fmt, ...)
+int logprintf(logfile_t *log, char *fmt, ...)
 {
   va_list args;
-  if(log==NULL) return 1;
 
-  if(log->fp==NULL) log->fp = fopen(log->fname, "w");
-  if(log->fp==NULL){
+  if (log == NULL) return 1;
+
+  if (log->fp == NULL) 
+    log->fp = fopen(log->fname, "w");
+  if (log->fp == NULL) {
     fprintf(stderr, "log [%s] cannot be opened.\n", log->fname);
     return 1;
   }
-  if((log->flag&LOG_NOWRITEFILE) == 0){
+  if ((log->flag & LOG_NOWRITEFILE) == 0) {
     va_start(args, fmt);
     vfprintf(log->fp, fmt, args);
     va_end(args);
   }
-  if(log->flag&LOG_WRITESCREEN){
+  if (log->flag & LOG_WRITESCREEN) {
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
   }
-  if(log->flag&LOG_FLUSHAFTER) fflush(log->fp);
+  if (log->flag & LOG_FLUSHAFTER) 
+    fflush(log->fp);
   return 0;
 }
 
 /* close & reopen log file to make sure that stuff is written to disk */
-ZCSTRCLS int loghardflush(logfile_t *log)
+int loghardflush(logfile_t *log)
 {
-  if(log->fp==NULL || log->fname==NULL) return 1;
+  if (log->fp == NULL || log->fname == NULL) 
+    return 1;
   fclose(log->fp);
-  if((log->fp=fopen(log->fname, "a"))==NULL){
-    fprintf(stderr, "cannot reopen the log file [%s].\n",log->fname);
+  if ((log->fp = fopen(log->fname, "a")) == NULL) {
+    fprintf(stderr, "cannot reopen the log file [%s].\n",
+        log->fname);
     return 1;
   }
   return 0;
 }
 
-ZCSTRCLS void logclose(logfile_t *log) 
+void logclose(logfile_t *log) 
 {
   if (log == NULL) 
     return;
@@ -1233,23 +1250,6 @@ ZCSTRCLS void logclose(logfile_t *log)
   }
   free(log);
 }
-
-#ifdef LOGTST
-int main(void)
-{
-  logfile_t *mylog;
-  char *msg=NULL;
-  if((mylog=logopen("my.log")) == NULL) return 1;
-  printf("please write something: ");
-  logprintf(mylog, "the input is [%s]\n", ssfgets(msg, NULL, stdin));
-  loghardflush(mylog);
-  printf("log file is hard flushed. please check...");
-  getchar();
-  logprintf(mylog, "finished.\n");
-  logclose(mylog);
-  return 0;
-}
-#endif
 
 #endif /* ZCOM_LOG__ */
 #endif /* ZCOM_LOG */
