@@ -72,7 +72,8 @@ def add_storage_class(hdr, prefix):
       continue
     
     #  NOTE: we cannot handle more complex cases
-    if first_word in ("void", "char", "int", "unsigned", "long", "float", "double", "cfgdata_t"):
+    if first_word in ("void", "char", "int", "unsigned", "long", 
+        "real", "float", "double", "cfgdata_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 
@@ -230,6 +231,7 @@ def usage():
   """
   print sys.argv[0], "[Options] module(s)"
   print " Options:"
+  print " -a:  --all,     all default modules"
   print " -o:  --host,    host file to absorb an addition"
   print " -c:  --strcls,  storage class"
   print " -p:  --prefix,  prefix of the host "
@@ -246,17 +248,26 @@ def handle_params():
   global fn_host, fn_source, strcls, host_prefix, verbose, mod_name
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "h:v:o:c:p:i:m:", 
-         ["help", "prefix=", "strcls=", "host=", "src=", 
+    opts, args = getopt.getopt(sys.argv[1:], "h:v:o:c:p:i:m:a", 
+         ["help", "prefix=", "strcls=", "host=", "src=", "all", 
            "verbose=", "module="])
   except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
     usage()
   
+  deflist = []
+  for fn in ['ss', 'rng', 'cfg', 'dihcal']:
+    modnm = get_mod_name(fn)
+    deflist += [(fn, modnm)]
+  
+  srclist = []
+
   for o, a in opts:
     if o in ("-v", "--verbose"):
       verbose = int(a)
+    elif o in ("-a", "--all"):
+      srclist += deflist
     elif o in ("-h", "--host", "-o"):
       fn_host = a
     elif o in ("-c", "--strcls"):
@@ -268,10 +279,11 @@ def handle_params():
     elif o in ("-h", "--help"):
       usage()
 
-  if len(args) == 0:
+  srclist += args
+
+  if len(srclist) == 0:
     usage()
 
-  srclist = []
   for fn in args:
     modnm = get_mod_name(fn)
     srclist += [(fn, modnm)]
