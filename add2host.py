@@ -158,7 +158,9 @@ def integrate(srclist):
   '''
 
   # 1. load the template fn_host_t 
-  fn_host_t  = fn_host + ".0"
+  fnr = os.path.splitext(fn_host)
+  fn_host_t  = fnr[0] + ".0" + fnr[1]
+  print "Host: %s, template: %s" % (fn_host, fn_host_t)
   host_src = open(fn_host_t, 'r').readlines()
    
   for fn_source, mod_name in srclist:
@@ -223,11 +225,13 @@ def usage():
   print usage and die
   """
   print sys.argv[0], "[Options] module(s)"
-  print "Options:"
+  print " Options:"
   print " -o:  --host,    host file to absorb an addition"
   print " -c:  --strcls,  storage class"
   print " -p:  --prefix,  prefix of the host "
-  print " -v:  --verbose, verbose"
+  print " -v:  --verbose, verbose\n"
+  print " Example:"
+  print sys.argv[0], "ss rng cfg"
   exit(1)
 
 def handle_params():
