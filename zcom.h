@@ -1952,6 +1952,9 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
 #ifndef ZCOM_DIHCALC__
 #define ZCOM_DIHCALC__
 
+#include <stdio.h>
+#include <math.h>
+
 /* structure for dihedral calculation */
 typedef struct {
   real phi; /* cis is zero, clockwise positive */
@@ -1970,7 +1973,7 @@ typedef struct {
   int (*pbc_rv3_diff)(const void *, const real *xi, const real *xj, real *xij); /* a function to handle pbc */
     /* parameter order follows from the gromacs convention: the last is the difference
      * between the first two */
-}dihcalc_t;
+} dihcalc_t;
 
 #define DIHCALC_GRAD  0x0001
 #define DIHCALC_DIV   0x0002
@@ -1985,6 +1988,13 @@ typedef struct {
 #define DIHCALC_ALL   (DIHCALC_FOUR|DIHCALC_GRAD|DIHCALC_DIV)
 /* only I and L, so no divergence */
 #define DIHCALC_ENDS  (DIHCALC_GRAD|DIHCALC_I|DIHCALC_L)
+
+#define rv3_calcdihv(dc, x, idx, flags) \
+  rv3_calcdih(dc,x[idx[0]],x[idx[1]],x[idx[2]],x[idx[3]],flags)
+ZCSTRCLS real rv3_calcdih(dihcalc_t *dc,
+    const real *xi, const real *xj, const real *xk, const real *xl,
+    unsigned int flags);
+
 
 /* Calculates the dihedral angle, its gradient and the divegence
    of a conjugate field (to the gradient).
@@ -2028,8 +2038,7 @@ typedef struct {
    is used, *all* moments d4ij, d4ik, ... , d4kl are calculated for safety.
    But only the involved ones are used to combined to produce the divergence.
  */
-#define rv3_calcdihv(dc, x, idx, flags) rv3_calcdih(dc,x[idx[0]],x[idx[1]],x[idx[2]],x[idx[3]],flags)
-ZCSTRCLS real rv3_calcdih(dihcalc_t *dc,
+real rv3_calcdih(dihcalc_t *dc,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags)
 {
@@ -2039,11 +2048,11 @@ ZCSTRCLS real rv3_calcdih(dihcalc_t *dc,
   real m[3], n[3]; /* the planar vector of xij x xkj,  and xkj x xkj */
   const real cosmax=(real)(1.0-6e-8);
 
-  if(dc!=NULL && dc->pbc_rv3_diff != NULL){ /* handle pbc */
+  if (dc != NULL && dc->pbc_rv3_diff != NULL) { /* handle pbc */
     dc->t1 = (*dc->pbc_rv3_diff)(dc->pbc, xi, xj, xij);
     dc->t2 = (*dc->pbc_rv3_diff)(dc->pbc, xk, xj, xkj);
     dc->t3 = (*dc->pbc_rv3_diff)(dc->pbc, xk, xl, xkl);
-  }else{
+  } else {
     rv3_diff(xij, xi, xj);
     rv3_diff(xkj, xk, xj);
     rv3_diff(xkl, xk, xl);
@@ -2179,25 +2188,26 @@ ZCSTRCLS real rv3_calcdih(dihcalc_t *dc,
                 +2.0f*(ljvkj*gknvv-ijvkj*gkmvv)*(ijlj*sinmn);
 
         /* summarize */
-        if((flags&DIHCALC_FOUR)==DIHCALC_FOUR){
-          tmp1=dc->d4jj+dc->d4kk;
-          tmp2=dc->d4ij+dc->d4ik+dc->d4jk+dc->d4jl+dc->d4kl;
+        if ((flags&DIHCALC_FOUR) == DIHCALC_FOUR) {
+          tmp1 = dc->d4jj + dc->d4kk;
+          tmp2 = dc->d4ij + dc->d4ik+dc->d4jk+dc->d4jl+dc->d4kl;
         }else{
-          tmp1=tmp2=0.0f;
-          if(doj){ tmp1+=dc->d4jj; }
-          if(dok){ tmp1+=dc->d4kk; }
-          if(doi&&doj) tmp2+=dc->d4ij;
-          if(doi&&dok) tmp2+=dc->d4ik;
-          if(doj&&dok) tmp2+=dc->d4jk;
-          if(doj&&dol) tmp2+=dc->d4jl;
-          if(dok&&dol) tmp2+=dc->d4kl;
+          tmp1 = tmp2 = 0.0f;
+          if (doj){ tmp1 += dc->d4jj; }
+          if (dok){ tmp1 += dc->d4kk; }
+          if (doi && doj) tmp2 += dc->d4ij;
+          if (doi && dok) tmp2 += dc->d4ik;
+          if (doj && dok) tmp2 += dc->d4jk;
+          if (doj && dol) tmp2 += dc->d4jl;
+          if (dok && dol) tmp2 += dc->d4kl;
         }
         dc->div = -2.0f*(tmp1+2.0f*tmp2)*(invg2*invg2);
       } /* do divengence */
 
-    }else{ /* clear the gradients */
+    } else { /* clear the gradients */
       int j;
-      for(j=0; j<4; j++) rv3_zero(dc->grad[j]);
+      for (j = 0; j < 4; j++) 
+        rv3_zero(dc->grad[j]);
     }
   }
 

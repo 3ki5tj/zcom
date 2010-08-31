@@ -257,7 +257,7 @@ def handle_params():
     usage()
   
   deflist = []
-  for fn in ['ss', 'rng', 'cfg', 'dihcal']:
+  for fn in ['ss', 'rng', 'cfg', 'dihcalc']:
     modnm = get_mod_name(fn)
     deflist += [(fn, modnm)]
   
