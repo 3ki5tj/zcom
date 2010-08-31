@@ -1,7 +1,7 @@
 Common code
 
 Individual module should have their separate directories, except
-  zcom.c, which is a combination of all frequently used ones.
+  zcom.h, which is a combination of all frequently used ones.
 
 Code should be concise and limited in size, 
   If possible, make them includable.
@@ -10,12 +10,18 @@ Code should be concise and limited in size,
 Try to use symbolic links to files in this folder if possible, 
   otherwise try to use rsync to other locations
 
-zcom.c:   a combination of useful routines
-sstring:  safe string
-is2:      two dimensional ising model
+ss:             safe string
+rng:            random number generator
+cfg:            configuration file
+is2:            two dimensional ising model
+
+zcom.h:         a combination of useful routines
+zcom.h.0:       template that creates zcom.h
+add2host.py     add modules to zcom.h using the template zcom.h.0
+          
 
 Notes:
-zcom.c should not have a routine like zcom_finish()
+zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,
   it has no knowledge of modules included later.
 
