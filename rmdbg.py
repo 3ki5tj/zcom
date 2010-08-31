@@ -9,7 +9,8 @@ def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], ver
   read lines from instr, remove badkeys, 
   return 
   """
-  print "The debug code signatures are", badkeys
+  if verbose > 0:
+    print "The debug code signatures are", badkeys
   
   out_lines=[]
   plevel=0

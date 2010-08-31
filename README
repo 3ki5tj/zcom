@@ -25,6 +25,7 @@ is2:            two dimensional ising model
 zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h
 add2host.py     add modules to zcom.h using the template zcom.0.h
+                useful ./add2host.py -a
           
 
 Notes:

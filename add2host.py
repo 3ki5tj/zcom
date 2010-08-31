@@ -14,11 +14,11 @@ module attributes, set before use
 fn_host     = "zcom.h"
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
-verbose     = 1
+verbose     = 0
 defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 
     'endian', 'log', 'trace', 'dist'];
 
-def strip_def(src, verbose = 1):
+def strip_def(src):
   '''
   strip away the 
     #ifndef FILE__
@@ -186,7 +186,7 @@ def integrate(srclist):
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("integrating module %s (%s, %s) to %s (%s)" 
+    print ("integrating module %-12s (%-20s, %-20s) to %s (%s)" 
         % (mod_name, fn_source_c, fn_source_h, fn_host, fn_host_t))
     if verbose:
       raw_input("press Enter to continue...")
@@ -195,7 +195,7 @@ def integrate(srclist):
     # 2. read the source code
     src = open(fn_source_c, 'r').readlines()
     # call rmdbg.py to remove debug information
-    src = rmdbg.rmdbg(src)
+    src = rmdbg.rmdbg(src, verbose=verbose)
     # strip away the outmost #ifndef, #define, #endif triplet
     src = strip_def(src)
   
