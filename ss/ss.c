@@ -135,7 +135,7 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
 /* delete a string, shrink memory, etc ... */
 void ssmanage(char *s, unsigned flags)
 {
-  struct ssheader *hp,*head;
+  struct ssheader *hp, *head;
   unsigned opt = flags & 0xFF;
   size_t i;
 

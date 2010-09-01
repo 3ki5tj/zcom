@@ -187,8 +187,8 @@
   #endif
 #endif
 
-/* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__ 
- * in order to avoid multiple inclusion a single ZCOM_ABC__ won't do, 
+/* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
+ * in order to avoid multiple inclusion a single ZCOM_ABC__ won't do,
  * because different module-set may be selected */
 #ifdef  ZCOM_ERROR
 #ifndef ZCOM_ERROR__
@@ -210,18 +210,18 @@ ZCSTRCLS void fatal(const char *fmt, ...)
   va_list args;
 
   fprintf(stderr, "Fatal ");
-  if (file != NULL) 
+  if (file != NULL)
     fprintf(stderr, "%s ", file);
-  if (lineno > 0)   
+  if (lineno > 0)
     fprintf(stderr, "%d ", lineno);
   fprintf(stderr, "| ");
-  
+
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
-  if (fmt[strlen(fmt) - 1] != '\n') 
-    fprintf(stderr, "\n"); /* add a new line if needed */ 
+  if (fmt[strlen(fmt) - 1] != '\n')
+    fprintf(stderr, "\n"); /* add a new line if needed */
   va_end(args);
-  
+
   exit(1);
 }
 
@@ -309,7 +309,7 @@ ZCSTRCLS void fatal(const char *fmt, ...)
  * It can compare strings with or without cases,
  * and it can convert strings to different cases.
  *
- * To balance the string comparison and copying, 
+ * To balance the string comparison and copying,
  * we make the return value int, instead of char *.
  *
  * In case of string-copying, it returns
@@ -319,47 +319,47 @@ ZCSTRCLS void fatal(const char *fmt, ...)
  * */
 int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 {
-  size_t i,j;
-  int cs, ct, docase,doupper;
+  size_t i, j;
+  int cs, ct, docase, doupper;
 
-  docase=(flags&ZCOM_DOCASE); /* do case conversion */
-  doupper=(flags&ZCOM_UPPER);
+  docase = (flags & ZCOM_DOCASE); /* do case conversion */
+  doupper = (flags & ZCOM_UPPER);
 
-  if(flags&ZCOM_STRCMP){ /* comparison, size_s is ignored */
-    if(s==NULL||t==NULL) return 0;
-    for(i=0; ; i++){
-      cs=s[i];
-      ct=t[i];
-      if(docase){
-        cs=tolower((unsigned char)cs);
-        ct=tolower((unsigned char)ct);
+  if (flags & ZCOM_STRCMP) { /* comparison, size_s is ignored */
+    if (s == NULL||t == NULL) return 0;
+    for (i = 0; ; i++) {
+      cs = s[i];
+      ct = t[i];
+      if (docase) {
+        cs = tolower((unsigned char)cs);
+        ct = tolower((unsigned char)ct);
       }
-      if(cs==0 || ct==0 || cs != ct) break;
+      if (cs == 0 || ct == 0 || cs != ct) break;
     }
     return cs-ct;
-  }else if(flags & (ZCOM_STRCPY|ZCOM_STRCAT)){ /* copying and */
-    if(size_s==0 || s==NULL || t==NULL) return 1;
+  } else if (flags & (ZCOM_STRCPY | ZCOM_STRCAT)) { /* copying and */
+    if (size_s == 0 || s == NULL || t == NULL) return 1;
     /* t[size_s-1] should be '\0' */
-    i=0;
-    if(flags&ZCOM_STRCAT) while(s[i]) i++;
-    for(j=0; i<size_s-1; i++,j++){
-      ct=t[j];
-      if(docase && (ct!=0)){
-        ct=(unsigned char)(char)ct;
-        if(doupper){
-          cs=toupper(ct);
-        }else{
-          cs=tolower(ct);
+    i = 0;
+    if (flags & ZCOM_STRCAT) while(s[i]) i++;
+    for (j = 0; i < size_s-1; i++, j++) {
+      ct = t[j];
+      if (docase && (ct != 0)) {
+        ct = (unsigned char)(char)ct;
+        if (doupper) {
+          cs = toupper(ct);
+        } else {
+          cs = tolower(ct);
         }
-      }else{
-        cs=ct;
+      } else {
+        cs = ct;
       }
-      s[i]=(char)cs;
-      if(ct==0) break;
+      s[i] = (char)cs;
+      if (ct == 0) break;
     }
-    if(i==size_s-1) s[i]='\0';
-    return (t[j]!='\0');
-  }else{ /* unknown flag */
+    if (i == size_s-1) s[i] = '\0';
+    return (t[j] != '\0');
+  } else { /* unknown flag */
     fprintf(stderr, "zcom_strconv: invalid flags=%#x.\n", flags);
     return 0;
   }
@@ -402,19 +402,20 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
 
-ZCINLINE void rv3_zero(real *x){x[0]=0.0f; x[1]=0.0f; x[2]=0.0f; }
-ZCINLINE void rv3_copy(real *x, const real *src){x[0]=src[0]; x[1]=src[1]; x[2]=src[2]; }
+ZCINLINE void rv3_zero(real *x) { x[0] = 0.0f; x[1] = 0.0f; x[2] = 0.0f; }
+ZCINLINE void rv3_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; }
 
-ZCINLINE real rv3_sqr (const real *x){return x[0]*x[0]+x[1]*x[1]+x[2]*x[2];}
-ZCINLINE real rv3_norm(const real *x){return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);}
+ZCINLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
+ZCINLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
 
-ZCINLINE real *rv3_normalize(real *x){
-  real r=rv3_norm(x);
-  if(r>0.0){
-    r=1.0f/r;
-    x[0]*=r;
-    x[1]*=r;
-    x[2]*=r;
+ZCINLINE real *rv3_normalize(real *x)
+{
+  real r = rv3_norm(x);
+  if (r > 0.0) {
+    r = 1.0f/r;
+    x[0] *= r;
+    x[1] *= r;
+    x[2] *= r;
   }
   return x;
 }
@@ -425,88 +426,100 @@ ZCINLINE real rv3_dot(const real *x, const real *y)
   return x[0]*y[0]+x[1]*y[1]+x[2]*y[2];
 }
 
-ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y){
-  z[0]=x[1]*y[2]-x[2]*y[1];
-  z[1]=x[2]*y[0]-x[0]*y[2];
-  z[2]=x[0]*y[1]-x[1]*y[0];
+ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y)
+{
+  z[0] = x[1]*y[2]-x[2]*y[1];
+  z[1] = x[2]*y[0]-x[0]*y[2];
+  z[2] = x[0]*y[1]-x[1]*y[0];
   return z;
 }
 
-ZCINLINE real *rv3_neg(real *x){
-  x[0]-=x[0];
-  x[1]-=x[1];
-  x[2]-=x[2];
+ZCINLINE real *rv3_neg(real *x)
+{
+  x[0] -= x[0];
+  x[1] -= x[1];
+  x[2] -= x[2];
   return x;
 }
 
-ZCINLINE real *rv3_neg2(real *nx, const real *x){
-  nx[0]=-x[0];
-  nx[1]=-x[1];
-  nx[2]=-x[2];
+ZCINLINE real *rv3_neg2(real *nx, const real *x)
+{
+  nx[0] = -x[0];
+  nx[1] = -x[1];
+  nx[2] = -x[2];
   return nx;
 }
 
-ZCINLINE real *rv3_inc(real *x, const real *dx){
-  x[0]+=dx[0];
-  x[1]+=dx[1];
-  x[2]+=dx[2];
+ZCINLINE real *rv3_inc(real *x, const real *dx)
+{
+  x[0] += dx[0];
+  x[1] += dx[1];
+  x[2] += dx[2];
   return x;
 }
-ZCINLINE real *rv3_dec(real *x, const real *dx){
-  x[0]-=dx[0];
-  x[1]-=dx[1];
-  x[2]-=dx[2];
+ZCINLINE real *rv3_dec(real *x, const real *dx)
+{
+  x[0] -= dx[0];
+  x[1] -= dx[1];
+  x[2] -= dx[2];
   return x;
 }
-ZCINLINE real *rv3_sinc(real *x, real *dx, real s){
-  x[0]+=s*dx[0];
-  x[1]+=s*dx[1];
-  x[2]+=s*dx[2];
+ZCINLINE real *rv3_sinc(real *x, real *dx, real s)
+{
+  x[0] += s*dx[0];
+  x[1] += s*dx[1];
+  x[2] += s*dx[2];
   return x;
 }
-ZCINLINE real *rv3_smul(real *x, real s){
-  x[0]*=s;
-  x[1]*=s;
-  x[2]*=s;
+ZCINLINE real *rv3_smul(real *x, real s)
+{
+  x[0] *= s;
+  x[1] *= s;
+  x[2] *= s;
   return x;
 }
 
 /* if y == x, just use smul */
-ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s){
-  y[0]=x[0]*s;
-  y[1]=x[1]*s;
-  y[2]=x[2]*s;
+ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s)
+{
+  y[0] = x[0]*s;
+  y[1] = x[1]*s;
+  y[2] = x[2]*s;
   return y;
 }
 
 /* for in-place difference use rv3_dec */
-ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b){
-  diff[0]=a[0]-b[0];
-  diff[1]=a[1]-b[1];
-  diff[2]=a[2]-b[2];
+ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b)
+{
+  diff[0] = a[0]-b[0];
+  diff[1] = a[1]-b[1];
+  diff[2] = a[2]-b[2];
   return diff;
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b){
-  sum[0]=a[0]+b[0];
-  sum[1]=a[1]+b[1];
-  sum[2]=a[2]+b[2];
+ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b)
+{
+  sum[0] = a[0]+b[0];
+  sum[1] = a[1]+b[1];
+  sum[2] = a[2]+b[2];
   return sum;
 }
 
 /* sum = -a-b */
-ZCINLINE real *rv3_nsum2(real *sum, const real *a, const real *b){
-  sum[0]=-a[0]-b[0];
-  sum[1]=-a[1]-b[1];
-  sum[2]=-a[2]-b[2];
+ZCINLINE real *rv3_nsum2(real *sum, const real *a, const real *b)
+{
+  sum[0] = -a[0]-b[0];
+  sum[1] = -a[1]-b[1];
+  sum[2] = -a[2]-b[2];
   return sum;
 }
 
-ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, real s2){
-  sum[0]=a[0]*s1+b[0]*s2;
-  sum[1]=a[1]*s1+b[1]*s2;
-  sum[2]=a[2]*s1+b[2]*s2;
+ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, real s2)
+{
+  sum[0] = a[0]*s1+b[0]*s2;
+  sum[1] = a[1]*s1+b[1]*s2;
+  sum[2] = a[2]*s1+b[2]*s2;
   return sum;
 }
 #endif /* ZCOM_RV3__ */
@@ -545,90 +558,103 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
 
-ZCINLINE void rv2_zero(real *x){x[0]=0; x[1]=0; }
-ZCINLINE void rv2_copy(real *x, const real *src){x[0]=src[0]; x[1]=src[1]; }
+ZCINLINE void rv2_zero(real *x) { x[0] = 0; x[1] = 0; }
+ZCINLINE void rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; }
 
-ZCINLINE real rv2_sqr(const real *x){return x[0]*x[0]+x[1]*x[1];}
-ZCINLINE real rv2_norm(const real *x){return (real)sqrt(x[0]*x[0]+x[1]*x[1]);}
+ZCINLINE real rv2_sqr(const real *x) { return x[0]*x[0]+x[1]*x[1]; }
+ZCINLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); }
 
-ZCINLINE real *rv2_normalize(real *x){
-  real r=rv2_norm(x);
-  if(r>0.0){
-    r=1.0/r;
-    x[0]*=r;
-    x[1]*=r;
+ZCINLINE real *rv2_normalize(real *x)
+{
+  real r = rv2_norm(x);
+  if (r > 0.0) {
+    r = 1.0/r;
+    x[0] *= r;
+    x[1] *= r;
   }
   return x;
 }
 
-ZCINLINE real rv2_dot(const real *x, const real *y){return x[0]*y[0]+x[1]*y[1];}
+ZCINLINE real rv2_dot(const real *x, const real *y) { return x[0]*y[0]+x[1]*y[1]; }
 
-ZCINLINE real rv2_cross(const real *x, const real *y){
+ZCINLINE real rv2_cross(const real *x, const real *y)
+{
   return x[0]*y[1]-x[1]*y[0];
 }
 
-ZCINLINE real *rv2_neg(real *x){
-  x[0]-=x[0];
-  x[1]-=x[1];
+ZCINLINE real *rv2_neg(real *x)
+{
+  x[0] -= x[0];
+  x[1] -= x[1];
   return x;
 }
 
-ZCINLINE real *rv2_neg2(real *nx, const real *x){
-  nx[0]=-x[0];
-  nx[1]=-x[1];
+ZCINLINE real *rv2_neg2(real *nx, const real *x)
+{
+  nx[0] = -x[0];
+  nx[1] = -x[1];
   return nx;
 }
 
-ZCINLINE real *rv2_inc(real *x, const real *dx){
-  x[0]+=dx[0];
-  x[1]+=dx[1];
+ZCINLINE real *rv2_inc(real *x, const real *dx)
+{
+  x[0] += dx[0];
+  x[1] += dx[1];
   return x;
 }
-ZCINLINE real *rv2_dec(real *x, const real *dx){
-  x[0]-=dx[0];
-  x[1]-=dx[1];
+ZCINLINE real *rv2_dec(real *x, const real *dx)
+{
+  x[0] -= dx[0];
+  x[1] -= dx[1];
   return x;
 }
-ZCINLINE real *rv2_sinc(real *x, real *dx, real s){
-  x[0]+=s*dx[0];
-  x[1]+=s*dx[1];
+ZCINLINE real *rv2_sinc(real *x, real *dx, real s)
+{
+  x[0] += s*dx[0];
+  x[1] += s*dx[1];
   return x;
 }
-ZCINLINE real *rv2_smul(real *x, real s){
-  x[0]*=s;
-  x[1]*=s;
+ZCINLINE real *rv2_smul(real *x, real s)
+{
+  x[0] *= s;
+  x[1] *= s;
   return x;
 }
-ZCINLINE real *rv2_smul2(real *y, const real *x, real s){
-  y[0]=x[0]*s;
-  y[1]=x[1]*s;
+ZCINLINE real *rv2_smul2(real *y, const real *x, real s)
+{
+  y[0] = x[0]*s;
+  y[1] = x[1]*s;
   return y;
 }
 
 /* for in-place difference use rv3_dec */
-ZCINLINE real *rv2_diff(real *diff, const real *a, const real *b){
-  diff[0]=a[0]-b[0];
-  diff[1]=a[1]-b[1];
+ZCINLINE real *rv2_diff(real *diff, const real *a, const real *b)
+{
+  diff[0] = a[0]-b[0];
+  diff[1] = a[1]-b[1];
   return diff;
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b){
-  sum[0]=a[0]+b[0];
-  sum[1]=a[1]+b[1];
+ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b)
+{
+  sum[0] = a[0]+b[0];
+  sum[1] = a[1]+b[1];
   return sum;
 }
 
 /* sum = -a-b */
-ZCINLINE real *rv2_nsum2(real *sum, const real *a, const real *b){
-  sum[0]=-a[0]-b[0];
-  sum[1]=-a[1]-b[1];
+ZCINLINE real *rv2_nsum2(real *sum, const real *a, const real *b)
+{
+  sum[0] = -a[0]-b[0];
+  sum[1] = -a[1]-b[1];
   return sum;
 }
 
-ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, real s2){
-  sum[0]=a[0]*s1+b[0]*s2;
-  sum[1]=a[1]*s1+b[1]*s2;
+ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, real s2)
+{
+  sum[0] = a[0]*s1+b[0]*s2;
+  sum[1] = a[1]*s1+b[1]*s2;
   return sum;
 }
 
