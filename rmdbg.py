@@ -79,7 +79,7 @@ def main(input, output):
   """
 
   # read input, call rmdbg, and write to output
-  open(output, 'w').write(''.join( rmdbg(open(input, 'r').readlines()) ))
+  open(output, 'w').writelines( rmdbg(open(input, 'r').readlines()) )
 
 if __name__ == "__main__":
   main('ss.c', 'ss.clean.c')
