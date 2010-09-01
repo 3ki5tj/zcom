@@ -9,7 +9,7 @@
 #ifndef SSHASHBITS
 #define SSHASHBITS 8
 #endif
-#define SSHASHSIZ  (1<<SSHASHBITS)  
+#define SSHASHSIZ   (1 << SSHASHBITS)
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
 
@@ -33,19 +33,19 @@ struct ssheader{
   size_t size;
   size_t hashval;
   struct ssheader *next;
-} ssbase_[SSHASHSIZ] = {{0u, 0u, NULL}};
+} ssbase_[SSHASHSIZ] = {{ 0u, 0u, NULL }};
 
-/* we use the string address instead of that of the pointer 
+/* we use the string address instead of that of the pointer
  * to struct ssheader to compute the Hash value,
  * because the former is more frequently used in e.g. looking-up
  * */
 static size_t sshashval_(const char *p)
 {
-  size_t val = (size_t)p * 1664525u + 1013904223u;
+  size_t val = (size_t) p * 1664525u + 1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 
-/* 
+/*
  * return the *previous* header to the one that associates with s
  * first locate the list from the Hash value, then enumerate the linked list.
  * */
@@ -61,9 +61,9 @@ static struct ssheader *sslistfind_(char *s)
   return NULL;
 }
 
-/* 
- * simply add the entry h at the begining of the list 
- * we do not accept a precalculated hash value, 
+/*
+ * simply add the entry h at the begining of the list
+ * we do not accept a precalculated hash value,
  * since realloc might have changed it
  * */
 static struct ssheader *sslistadd_(struct ssheader *h)
@@ -82,7 +82,7 @@ static struct ssheader *sslistadd_(struct ssheader *h)
 static void sslistremove_(struct ssheader *hp, int f)
 {
   struct ssheader *h = hp->next;
-  
+
   hp->next = h->next;
   if (f) free(h);
 }
@@ -94,18 +94,18 @@ static void sslistremove_(struct ssheader *hp, int f)
  * */
 static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
 {
-  struct ssheader *h=NULL, *hp;
+  struct ssheader *h = NULL, *hp;
   size_t size;
 
   if (php == NULL)
     sserror_("ssresize_: NULL pointer to resize");
-  
+
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
     size = sscalcsize_(n);
     if (h == NULL || size != h->size) {
       /* since realloc will change the hash value of h
-       * we have to remove the old entry first without free() 
+       * we have to remove the old entry first without free()
        * hp->next will be freed by realloc */
       if (hp != NULL)
         sslistremove_(hp, 0);
@@ -144,14 +144,14 @@ void ssmanage(char *s, unsigned flags)
       return;
     ssmanage_low_(hp, opt);
   } else {
-    for (i=0; i<SSHASHSIZ; i++)
+    for (i = 0; i < SSHASHSIZ; i++)
       for (hp = head = ssbase_+i; hp->next && hp->next != head; hp = hp->next)
         /* we must not operate on h itself, which renders the iterator h invalid */
         ssmanage_low_(hp, opt);
   }
 }
 
-/* 
+/*
  * copy/cat t to *ps
  *
  * If (flags & SSCAT) == 0:
@@ -167,16 +167,16 @@ void ssmanage(char *s, unsigned flags)
  * */
 char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
 {
-  struct ssheader *hp=NULL;
-  size_t size=0u, sizes=0u;
-  char *s=NULL, *p;
+  struct ssheader *hp = NULL;
+  size_t size = 0u, sizes = 0u;
+  char *s = NULL, *p;
 
   /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
   if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL) {
     fprintf(stderr, "sscpycatx: string is not previously registered!\n");
     return NULL;
   }
-  if (t != NULL) 
+  if (t != NULL)
     while (t[size]) /* compute the length of t */
       size++;
   if (flags & SSCAT) {
@@ -224,8 +224,8 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
         return NULL;
       max = hp->next->size - 1;
     }
-    s[n++] = (char)(unsigned char)c;
-    if (c == delim) 
+    s[n++] = (char)(unsigned char) c;
+    if (c == delim)
       break;
   }
   s[n] = '\0';
