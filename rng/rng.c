@@ -62,9 +62,9 @@ static void mtloadstate_(int *pindex, unsigned long arr[], const char *fname,
         goto CLOSEFILE;
       }
       if (*pindex < 0) /* request updating */
-        *pindex = N_MT; 
+        *pindex = N_MT;
       for (k = 0; k < N_MT; k++) {
-        if (fscanf(fp, "%lu", &arr[k]) != 1) 
+        if (fscanf(fp, "%lu", &arr[k]) != 1)
           break;
         if (arr[k] != 0) /* a non-zero number */
           nz = 1;
@@ -78,14 +78,14 @@ CLOSEFILE:
     fclose(fp);
     ssdel(s);
   }
-  
+
   if (!nz) /* last item read is zero */
     err = 1;
 
   if (err) {
-    if (seed0 != 0) 
+    if (seed0 != 0)
       mtseed0 = seed0;
-    arr[0]= mtseed0 & 0xffffffffUL;
+    arr[0] = mtseed0 & 0xffffffffUL;
     for (k = 1; k < N_MT; k++) {
       arr[k] = (1812433253UL * (arr[k-1] ^ (arr[k-1]>>30)) + k) & 0xffffffffUL;
     } /* the masking step is for 64-bit machines */
@@ -96,12 +96,12 @@ CLOSEFILE:
 /* return an unsigned random number */
 static unsigned long  mtrandlow_(int *pindex, unsigned long arr[])
 {
-  const unsigned long mag01[2]={0, 0x9908b0dfUL}; /* MATRIX_A */
+  const unsigned long mag01[2]={ 0, 0x9908b0dfUL }; /* MATRIX_A */
   unsigned long x;
   int k;
-  
+
   if (*pindex >= N_MT) { /* generate N_MT words at one time */
-    for (k = 0; k < N_MT - M_MT; k++){
+    for (k = 0; k < N_MT - M_MT; k++) {
       x = (arr[k] & UMASK_MT) | (arr[k+1] & LMASK_MT);
       arr[k] = arr[k+M_MT] ^ (x>>1) ^ mag01[x&1UL];
     }
@@ -130,7 +130,7 @@ static unsigned long  mtrandlow_(int *pindex, unsigned long arr[])
  *           for the first call, we try to load the state from file `fname',
  *           if it is unsuccessful, seed0, if unzero, is used to initialize the RNG
  * MTA_SAVE: save the current state to `fname'
- * MTA_DONE: save state and finish 
+ * MTA_DONE: save state and finish
  * MTA_FNAM: change the default file name
  * */
 unsigned long mtrand(int action, unsigned long seed0, const char *fname0)
@@ -144,24 +144,24 @@ unsigned long mtrand(int action, unsigned long seed0, const char *fname0)
   else if (fname == NULL) /* otherwise,  use the default */
     sscpy(fname, "MTSEED");
 
-  switch(action) {
+  switch (action) {
   case MTA_RAND:   /* generate random number */
-    if (index < 0) 
+    if (index < 0)
       mtloadstate_(&index, arr, fname, seed0);
     return mtrandlow_(&index, arr);
 
   case MTA_SAVE:   /* save the current state  */
     mtsavestate_(index, arr, fname);
     break;
-  
+
   case MTA_DONE:   /* finish up */
     mtsavestate_(index, arr, fname);
     ssdelete(fname);
     break;
-  
+
   case MTA_FNAM:   /* set fname, done */
     break;
-  
+
   default:
     fprintf(stderr, "mtrand: unknown action %d\n", action);
   }
@@ -181,11 +181,11 @@ double grand0(void)
   const double  tol = 1e-15; /* 1e-13 allows fac of 1.0/(6e-8) */
   static double save = 0.0;
   static int    stock = 0;
-  double fac,r2,x,y;
+  double fac, r2, x, y;
 
-  if (stock) { 
-    stock = 0; 
-    return save; 
+  if (stock) {
+    stock = 0;
+    return save;
   }
 
   for (;;) {
@@ -194,7 +194,7 @@ double grand0(void)
     r2 = x * x + y * y;
     /* to make sure it's inside a unit circle, and
        r2 can be a denominator */
-    if (r2 < 1.0 && r2 > tol) 
+    if (r2 < 1.0 && r2 > tol)
       break;
   }
   fac   = sqrt(-2.0*log(r2)/r2);

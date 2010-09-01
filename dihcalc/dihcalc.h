@@ -36,7 +36,7 @@ typedef struct {
 #define DIHCALC_ENDS  (DIHCALC_GRAD|DIHCALC_I|DIHCALC_L)
 
 #define rv3_calcdihv(dc, x, idx, flags) \
-  rv3_calcdih(dc,x[idx[0]],x[idx[1]],x[idx[2]],x[idx[3]],flags)
+  rv3_calcdih(dc, x[idx[0]], x[idx[1]], x[idx[2]], x[idx[3]], flags)
 real rv3_calcdih(dihcalc_t *dc,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags);

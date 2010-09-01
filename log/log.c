@@ -15,17 +15,17 @@
 logfile_t *logopen(char *filenm)
 {
   logfile_t *log;
-  
+
   if (filenm == NULL) /* assign a default name */
     filenm = "LOG";
-  if ((log=calloc(1, sizeof(*log))) == NULL) {
+  if ((log = calloc(1, sizeof(*log))) == NULL) {
     fprintf(stderr, "cannot allocate memory for log file %s\n", filenm);
     return NULL;
   }
   /* We merely copy the name of the file,
    * the file is not opened until the first logprintf call */
   log->fname = ssdup(filenm);
-  log->flag=0;
+  log->flag = 0;
   return log;
 }
 
@@ -35,7 +35,7 @@ int logprintf(logfile_t *log, char *fmt, ...)
 
   if (log == NULL) return 1;
 
-  if (log->fp == NULL) 
+  if (log->fp == NULL)
     log->fp = fopen(log->fname, "w");
   if (log->fp == NULL) {
     fprintf(stderr, "log [%s] cannot be opened.\n", log->fname);
@@ -51,7 +51,7 @@ int logprintf(logfile_t *log, char *fmt, ...)
     vprintf(fmt, args);
     va_end(args);
   }
-  if (log->flag & LOG_FLUSHAFTER) 
+  if (log->flag & LOG_FLUSHAFTER)
     fflush(log->fp);
   return 0;
 }
@@ -59,7 +59,7 @@ int logprintf(logfile_t *log, char *fmt, ...)
 /* close & reopen log file to make sure that stuff is written to disk */
 int loghardflush(logfile_t *log)
 {
-  if (log->fp == NULL || log->fname == NULL) 
+  if (log->fp == NULL || log->fname == NULL)
     return 1;
   fclose(log->fp);
   if ((log->fp = fopen(log->fname, "a")) == NULL) {
@@ -70,9 +70,9 @@ int loghardflush(logfile_t *log)
   return 0;
 }
 
-void logclose(logfile_t *log) 
+void logclose(logfile_t *log)
 {
-  if (log == NULL) 
+  if (log == NULL)
     return;
   if (log->fp != NULL) {
     fclose(log->fp);
