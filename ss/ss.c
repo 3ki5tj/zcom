@@ -101,7 +101,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
     sserror_("ssresize_: NULL pointer to resize");
 
   /* we use the following if to assign hp and h, so the order is crucial */
-  if ((hp=*php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
+  if ((hp = *php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
     size = sscalcsize_(n);
     if (h == NULL || size != h->size) {
       /* since realloc will change the hash value of h
@@ -172,7 +172,7 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
   char *s = NULL, *p;
 
   /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
-  if (ps != NULL && (s=*ps) != NULL && (hp = sslistfind_(s)) == NULL) {
+  if (ps != NULL && (s = *ps) != NULL && (hp = sslistfind_(s)) == NULL) {
     fprintf(stderr, "sscpycatx: string is not previously registered!\n");
     return NULL;
   }
@@ -212,7 +212,7 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
 
   if (ps == NULL || fp == NULL)
     return NULL;
-  if ((s=*ps) == NULL) /* allocate an initial buffer if *ps is NULL */
+  if ((s = *ps) == NULL) /* allocate an initial buffer if *ps is NULL */
     if ((s = sscpycatx(ps, NULL, 0, 0u)) == NULL)
       return NULL;
   if ((hp = sslistfind_(s)) == NULL)

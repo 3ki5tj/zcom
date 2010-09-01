@@ -12,7 +12,7 @@ int wdistex(double *h, int rows, int cols, double base, double inc,
   const char *filename;
   FILE *fp;
   int i, j, imax, imin;
-  double sum,*p, delta;
+  double sum, *p, delta;
 
   filename = (fname != NULL) ? fname : "HIST";
 

@@ -84,7 +84,7 @@ real rv3_calcdih(dihcalc_t *dc,
   }
   phi = (real)acos(cosphi);
   vol = rv3_dot(n, xij);
-  sign = ((vol > 0.0f)?1.0f:(-1.0f));
+  sign = ((vol > 0.0f) ? 1.0f : (-1.0f));
   phi *= sign;
   if (dc != NULL) {
     dc->phi = phi;

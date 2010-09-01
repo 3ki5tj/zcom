@@ -96,7 +96,7 @@ CLOSEFILE:
 /* return an unsigned random number */
 static unsigned long  mtrandlow_(int *pindex, unsigned long arr[])
 {
-  const unsigned long mag01[2]={ 0, 0x9908b0dfUL }; /* MATRIX_A */
+  const unsigned long mag01[2] = { 0, 0x9908b0dfUL }; /* MATRIX_A */
   unsigned long x;
   int k;
 

@@ -322,11 +322,11 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
   size_t i, j;
   int cs, ct, docase, doupper;
 
-  docase = (flags & ZCOM_DOCASE); /* do case conversion */
-  doupper = (flags & ZCOM_UPPER);
+  docase = (flags&ZCOM_DOCASE); /* do case conversion */
+  doupper = (flags&ZCOM_UPPER);
 
-  if (flags & ZCOM_STRCMP) { /* comparison, size_s is ignored */
-    if (s == NULL||t == NULL) return 0;
+  if (flags&ZCOM_STRCMP) { /* comparison, size_s is ignored */
+    if (s == NULL || t == NULL) return 0;
     for (i = 0; ; i++) {
       cs = s[i];
       ct = t[i];
@@ -337,11 +337,11 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
       if (cs == 0 || ct == 0 || cs != ct) break;
     }
     return cs-ct;
-  } else if (flags & (ZCOM_STRCPY | ZCOM_STRCAT)) { /* copying and */
+  } else if (flags & (ZCOM_STRCPY|ZCOM_STRCAT)) { /* copying and */
     if (size_s == 0 || s == NULL || t == NULL) return 1;
     /* t[size_s-1] should be '\0' */
     i = 0;
-    if (flags & ZCOM_STRCAT) while(s[i]) i++;
+    if (flags&ZCOM_STRCAT) while(s[i]) i++;
     for (j = 0; i < size_s-1; i++, j++) {
       ct = t[j];
       if (docase && (ct != 0)) {

@@ -28,7 +28,7 @@ static int cfgload_(cfgdata_t *cfg, const char *filenm)
   FILE *fp;
   long i, j;
   size_t size = 0;
-  char *p,*q,*lin;
+  char *p, *q, *lin;
 
   if ((fp = fopen(filenm, "r")) == NULL) {
     fprintf(stderr,"cannot open the configuration file [%s]\n", filenm);
