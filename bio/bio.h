@@ -13,7 +13,7 @@
  * 1. define the following variables in your function
  *   FILE *fp;
  *   int endn, err;
- *   (no need for to define `err' in writing a file)
+ *   (no need for to define `endn' or `err' in writing a file)
  *
  * 2. define a label ERR for error exit
  *
