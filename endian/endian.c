@@ -4,52 +4,53 @@
 #include "endian.h"
 
 /* Correct endianness from the current operating system to the desired one
- * The desired endianness is specified by tobig, while
+ * operates on an array of `n' objects, each of `size' bytes
+ * The target endianness is specified by endtar, whereas
  * the endianness of the current operating system is automatically computed.
  * A conversion takes place only if the two differ.
- * The enidan-corrected variable is saved in output, however,
- * for in-place conversion, pass NULL to output. */
-unsigned char *fix_endian(void *output, void *input, size_t len, int tobig)
+ * If output is not NULL, the enidan-corrected array is saved there, 
+ * otherwise an in-place conversion is assumed and input is returned
+ * */
+void *fix_endian(void *output, void *input, size_t size, size_t n, int endtar)
 {
-  size_t i, ir;
-  static int sysbig = -1;
-  unsigned char *fixed = (unsigned char *) output;
-  unsigned char *p     = (unsigned char *) input;
+  static int endsys = -1;
+  unsigned char *dest = (unsigned char *) output;
+  unsigned char *src  = (unsigned char *) input;
+  unsigned char *p, *q, ch;
+  size_t i, r, j;
 
-  if (sysbig < 0) { /* initial determine the machine's endianess */
-    unsigned int feff = 0xFEFF;
-    unsigned char *s  = (unsigned char *)&feff;
-
-    sysbig = (*s == 0xFF) ? 0 : 1;
+  if (endsys < 0) { /* initial determine the machine's endianess */
+    unsigned feff = 0xFEFF; /* assume unsigned is at least 16-bit */
+      
+    p  = (unsigned char *) &feff;
+    endsys = (*p == 0xFF) ? 0 : 1;
 #ifdef ENDIAN_DBG_
     fprintf(stderr, "The current system is %s-endian.\n", 
-        sysbig ? "big" : "little");
+        endsys ? "big" : "little");
 #endif
   }
 
-  if (tobig == sysbig) { /* no conversion is required */
-    if (fixed == NULL) {
-      return p;
-    } else {
-      for (i = 0; i < len; i++) 
-        fixed[i] = p[i];
-      return fixed;
-    }
-  } else {
-    if (fixed == NULL) { /* in-place conversion */
-      for (i = 0; i < (len/2); i++) {
-        char ch;
-        ir = len - i - 1;
-        ch    = p[i];
-        p[i]  = p[ir];
-        p[ir] = ch;
+  if (endtar == endsys) { /* no conversion is required */
+    /* out-of-place: just copy array; in-place: do nothing */
+    return (dest != NULL) ? memcpy(dest, src, size * n) : src;
+  } 
+
+  for (p = src, q = dest, j = 0; j < n; j++, p += size) {
+    /* reverse bytes for each object */
+    if (dest == NULL) { /* in-place conversion */
+      for (i = 0; i < (size/2); i++) {
+        r = size - i - 1;
+        ch   = p[i];
+        p[i] = p[r];
+        p[r] = ch;
       }
     } else { /* out-of-place conversion */
-      for (i = 0; i < len; i++)
-        fixed[len - i - 1] = p[i];
+      for (i = 0; i < size; i++)
+        q[size - i - 1] = p[i];
+      q += size;
     }
   }
-  return p;
+  return (dest != NULL) ? dest : src;
 }
 
 #endif
