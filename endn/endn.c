@@ -41,6 +41,7 @@ void *endn_flip(void *dest, void *src, size_t size, size_t n)
   return (dest != NULL) ? dest : src;  
 }
 
+#ifdef ENDN_LEGACY
 /* Correct endianness from the current operating system to the desired one
  * operates on an array of `n' objects, each of `size' bytes
  * The target endianness is specified by `endn', whereas
@@ -63,6 +64,7 @@ void *endn_convert(void *dest, void *src, size_t size, size_t n, int endn)
     return endn_flip(dest, src, size, n);
   }
 }
+#endif
 
 /* write data in ptr to file with a specific endian 'endn' */
 size_t endn_fwrite(const void *ptr, size_t size, size_t n, FILE *fp, int endn)

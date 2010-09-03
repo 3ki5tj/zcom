@@ -46,7 +46,7 @@
 
 /* read an array of size n, set err, fix endian */
 #define BIO_RATOM_(arr, n)                                            \
-  if (endn_fread(arr, sizeof(*(arr)), n, fp, endn) != n) {            \
+  if ((n) > 0 && endn_fread(arr, sizeof(*(arr)), n, fp, endn) != n) { \
     fprintf(stderr, "error while reading %s, size %u, "               \
         BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);     \
     err = 1;                                                          \
@@ -91,7 +91,8 @@
 
 /* write an array of size n with endian being BIO_ENDNDEF */
 #define BIO_WATOM_(arr, n)                                            \
-  if (endn_fwrite(arr, sizeof(*(arr)), n, fp, BIO_ENDNDEF) != n) {    \
+  if ((n) > 0 &&                                                      \
+      endn_fwrite(arr, sizeof(*(arr)), n, fp, BIO_ENDNDEF) != n) {    \
     fprintf(stderr, "error while reading %s, size %u, "               \
         BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);     \
     err = 1;                                                          \
