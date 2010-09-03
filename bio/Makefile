@@ -1,5 +1,7 @@
 all: test
 
+CC = gcc -O0 -g3 -Wall
+
 test: test.c bio.h endn.c
 	$(CC) -DENDN_DBG -o $@ $< endn.c
 

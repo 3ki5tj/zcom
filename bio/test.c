@@ -51,7 +51,7 @@ ERR:
 static int bwrite(const char *fname)
 {
   FILE *fp;
-  int err, size;
+  int size;
 
   if ((fp=fopen(fname, "w")) == NULL) {
     fprintf(stderr, "cannot write file %s\n", fname);

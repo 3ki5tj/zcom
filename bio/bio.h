@@ -5,15 +5,20 @@
 #include <stdio.h>
 
 /* 
- * Helper macros for reading binary files
+ * Helper macros for reading binary files with endianness
+ * support.  However, sizeof(int) must remain the same
+ * between system and file.
  *
  * To use these macros in a function:
  * 1. define the following variables in your function
  *   FILE *fp;
  *   int endn, err;
+ *   (no need for to define `err' in writing a file)
  *
  * 2. define a label ERR for error exit
  *
+ * 3. in reading a file, use BIO_INITENDIAN to determine 
+ *    the correct endianness
  * */
 
 #ifndef BIO_ENDNDEF
@@ -89,22 +94,20 @@
 /* read a double to x, match it with xref */
 #define BIO_RMD(x, xref, eps)  BIO_RD(x); BIO_MD(x, xref, eps)
 
-/* write an array of size n with endian being BIO_ENDNDEF */
+/* write an array of size n with endian being BIO_ENDNDEF
+ * we do not set err, directly goto ERR */
 #define BIO_WATOM_(arr, n)                                            \
   if ((n) > 0 &&                                                      \
       endn_fwrite(arr, sizeof(*(arr)), n, fp, BIO_ENDNDEF) != n) {    \
     fprintf(stderr, "error while reading %s, size %u, "               \
         BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);     \
-    err = 1;                                                          \
-  } else { err = 0; }
+    goto ERR;                                                         \
+  }
 
-/* write an array, set error */
-#define BIO_WNA_(arr, n, tp) BIO_CHECKTP_(*(arr), tp) BIO_WATOM_(arr, n)
-/* write a single variable x of type tp, set err if error occurs */
-#define BIO_W1A_(x, tp) BIO_WNA_(&(x), 1, tp)
-
-#define BIO_WNB_(arr, n, tp) { BIO_WNA_(arr, n, tp); if (err) goto ERR; }
-#define BIO_W1B_(x, tp) { BIO_W1A_(x, tp); if (err) goto ERR; }
+/* write an array, go to ERR if error occurs */
+#define BIO_WNB_(arr, n, tp) BIO_CHECKTP_(*(arr), tp) BIO_WATOM_(arr, n)
+/* write a single variable, go to ERR if error occurs */
+#define BIO_W1B_(x, tp) BIO_WNB_(&(x), 1, tp)
 
 #define BIO_WI(x)           BIO_W1B_(x, int)
 #define BIO_WIARR(x, n)     BIO_WNB_(x, n, int)
