@@ -15,8 +15,7 @@ fn_host     = "zcom.h"
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 0
-defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 
-    'endn', 'bio', 'log', 'trace', 'dist'];
+
 
 def strip_def(src):
   '''
@@ -186,7 +185,7 @@ def integrate(srclist):
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("integrating module %-12s (%-20s, %-20s) to %s (%s)" 
+    print ("integrating module %-12s (%-18s, %-18s) to %s (%s)" 
         % (mod_name, fn_source_c, fn_source_h, fn_host, fn_host_t))
     if verbose:
       raw_input("press Enter to continue...")
@@ -258,6 +257,20 @@ def handle_params():
     print str(err) # will print something like "option -a not recognized"
     usage()
   
+  defroot = "."
+  
+  # list all sub directories under defroot
+  # skip modules starting with an underscore or a dot
+  # also skip the test folder
+  defmodules = []
+  for d in os.listdir(defroot):
+    if (os.path.isdir(d) and 
+        not d[0:1] in ('.', '_') and 
+        d != "test"):
+      defmodules += [d]
+
+  # for each directory, guess a module name 'modnm'
+  # add the pair to deflist
   deflist = []
   for fn in defmodules: 
     modnm = get_mod_name(fn)
@@ -295,6 +308,7 @@ def main():
   driver
   '''
   srclist = handle_params()
+  print "modules:", srclist
   integrate(srclist)
 
 if __name__ == "__main__":

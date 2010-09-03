@@ -4,8 +4,7 @@ Individual module should have their separate directories, except
   zcom.h, which is a combination of all frequently used ones.
 
 Code should be concise and limited in size, 
-  If possible, make them includable.
-  File names should be short.
+  module names should be short.
 
 Try to use symbolic links to files in this folder if possible, 
   otherwise try to use rsync to other locations
@@ -27,7 +26,8 @@ zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h
 add2host.py     add modules to zcom.h using the template zcom.0.h
                 useful ./add2host.py -a
-          
+
+modules with a leading underscore are experimental, and not added to zcom.h
 
 Notes:
 Try to apply cspacer.py under ~/app/bin to check the source here from time to time
