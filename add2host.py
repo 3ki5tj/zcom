@@ -16,7 +16,7 @@ strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 0
 defmodules  = ['ss', 'rng', 'cfg', 'dihcalc', 'lu', 'zt', 
-    'endn', 'log', 'trace', 'dist'];
+    'endn', 'bio', 'log', 'trace', 'dist'];
 
 def strip_def(src):
   '''

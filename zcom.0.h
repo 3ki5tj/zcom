@@ -141,6 +141,10 @@
   #define ZCOM_RV3
 #endif
 
+#ifdef ZCOM_BIO
+  #define ZCOM_ENDN
+#endif
+
 /* manage storage class: static is still the safer choice
    to avoid naming conclict.  Example:
    both m.c and n.c include this file,
@@ -710,11 +714,18 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
   #endif
 #endif
 
-
 #ifdef  ZCOM_ENDN
 #ifndef ZCOM_ENDN__
 #define ZCOM_ENDN__
 
 #endif /* ZCOM_ENDN__ */
 #endif /* ZCOM_ENDN */
+
+#ifdef  ZCOM_BIO
+#ifndef ZCOM_BIO__
+#define ZCOM_BIO__
+
+#endif /* ZCOM_BIO__ */
+#endif /* ZCOM_BIO */
+
 

@@ -102,11 +102,30 @@ int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
 {
   if (1 != fread(src, size, 1, fp))
     return -1;
+#ifdef ENDN_DBG
+  if (size == sizeof(int))
+    printf("A: 0x%X vs. 0x%X size = %u, cmp = %d\n",
+      *(int *)src, *(int *)ref, (unsigned)size, 
+      memcmp(src, ref, size));
+#endif
   if (memcmp(src, ref,  size) == 0)
     return 0;
   /* alter the endianness, and test again */
   endn_flip(NULL, src, size, 1);
-  return (memcpy(src, ref, size) == 0) ? 1 : -1;
+#ifdef ENDN_DBG
+  if (size == sizeof(int))
+    printf("B: 0x%X vs. 0x%X size = %u, cmp = %d\n", 
+      *(int *)src, *(int *)ref, (unsigned)size, 
+      memcmp(src, ref, size));
+#endif
+  return (memcmp(src, ref, size) == 0) ? 1 : -1;
+}
+
+/* special case of endn_rmatchi for integer, convenient for iref 
+ * could be something like sizeof(int), which has no address */
+int endn_rmatchi(int *src, int iref, FILE *fp)
+{
+  return endn_rmatch(src, &iref, sizeof(int), fp);
 }
 
 /* read data from file to ptr with endianness changed if 'flip' is 1 
