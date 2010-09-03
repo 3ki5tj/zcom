@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "endian.h"
+#include "endn.h"
 
 static void pint(int i)
 {
@@ -15,12 +15,12 @@ static void pint(int i)
 }
 
 /* in-place conversion */
-#define END2BIG(from) fix_endian_inp(&(from), sizeof(from), 1, 1)
-#define END2LIT(from) fix_endian_inp(&(from), sizeof(from), 1, 0)
+#define END2BIG(from) endn_converti(&(from), sizeof(from), 1, 1)
+#define END2LIT(from) endn_converti(&(from), sizeof(from), 1, 0)
 
 /* out-of-place conversion */
-#define END2BIGO(to, from) fix_endian(&(to), &(from), sizeof(from), 1, 1)
-#define END2LITO(to, from) fix_endian(&(to), &(from), sizeof(from), 1, 0)
+#define END2BIGO(to, from) endn_converti(&(to), &(from), sizeof(from), 1, 1)
+#define END2LITO(to, from) endn_converti(&(to), &(from), sizeof(from), 1, 0)
 
 static void test1(void)
 {

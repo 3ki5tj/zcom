@@ -122,8 +122,8 @@
   #ifndef ZCOM_DIHCALC
   #define ZCOM_DIHCALC
   #endif
-  #ifndef ZCOM_ENDIAN
-  #define ZCOM_ENDIAN
+  #ifndef ZCOM_ENDN
+  #define ZCOM_ENDN
   #endif
 #endif
 
@@ -711,10 +711,10 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
 #endif
 
 
-#ifdef  ZCOM_ENDIAN
-#ifndef ZCOM_ENDIAN__
-#define ZCOM_ENDIAN__
+#ifdef  ZCOM_ENDN
+#ifndef ZCOM_ENDN__
+#define ZCOM_ENDN__
 
-#endif /* ZCOM_ENDIAN__ */
-#endif /* ZCOM_ENDIAN */
+#endif /* ZCOM_ENDN__ */
+#endif /* ZCOM_ENDN */
 

@@ -1,7 +1,17 @@
-#ifndef ENDIAN_C__
-#define ENDIAN_C__
+#ifndef ENDN_C__
+#define ENDN_C__
 
-#include "endian.h"
+#include "endn.h"
+
+/* return the system endian, 1: big endian, 0: little endian */
+int endn_system(void)
+{
+  unsigned feff = 0xFEFF; /* assume unsigned is at least 16-bit */
+  unsigned char *p;
+      
+  p  = (unsigned char *) &feff;
+  return (*p == 0xFF) ? 0 : 1;
+}
 
 /* Correct endianness from the current operating system to the desired one
  * operates on an array of `n' objects, each of `size' bytes
@@ -11,7 +21,7 @@
  * If output is not NULL, the enidan-corrected array is saved there, 
  * otherwise an in-place conversion is assumed and input is returned
  * */
-void *fix_endian(void *output, void *input, size_t size, size_t n, int endtar)
+void *endn_convert(void *output, void *input, size_t size, size_t n, int endtar)
 {
   static int endsys = -1;
   unsigned char *dest = (unsigned char *) output;
@@ -20,10 +30,7 @@ void *fix_endian(void *output, void *input, size_t size, size_t n, int endtar)
   size_t i, r, j;
 
   if (endsys < 0) { /* initial determine the machine's endianess */
-    unsigned feff = 0xFEFF; /* assume unsigned is at least 16-bit */
-      
-    p  = (unsigned char *) &feff;
-    endsys = (*p == 0xFF) ? 0 : 1;
+    endsys = endn_system();
 #ifdef ENDIAN_DBG_
     fprintf(stderr, "The current system is %s-endian.\n", 
         endsys ? "big" : "little");
@@ -52,6 +59,8 @@ void *fix_endian(void *output, void *input, size_t size, size_t n, int endtar)
   }
   return (dest != NULL) ? dest : src;
 }
+
+
 
 #endif
 
