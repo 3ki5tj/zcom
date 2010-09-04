@@ -192,7 +192,7 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 
   for (j = 0; j < cfg->n; j++)
     if (cfg->key[j] != NULL && strcmp(cfg->key[j], key) == 0) {
-      if (fmt[0] == '%' && fmt[1] == 's') { /* string case */
+      if (strcmp(fmt, "%s") == 0) { /* string case */
         sscpy( *(char **)var, cfg->value[j]); /* make a copy and return */
         return 0;
       } else { /* use sscanf for other cases, like int, float,... */
