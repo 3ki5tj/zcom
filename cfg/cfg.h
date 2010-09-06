@@ -100,19 +100,31 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
     erract;                                                           \
   }
 
-
-/* allocate array, and initialize it with function def()
- * tp should be a pointer type, like int *, or double *,
+/* initialize a static array arr with def
  * def can be a number, or an expression using the index ia_  */
+#define CFG_INITARR_(arr, cnt, def) \
+    size_t ia_;                                                             \
+    for (ia_ = 0; ia_ < (cnt); ia_++) arr[ia_] = (def);
+
+/* allocate array, and initialize it with function def
+ * tp should be a pointer type, like int *, or double * */
 #define CFG_DARR_(arr, tp, def, cnt, desc, errmsg, erract)                  \
   if (sizeof(arr[0]) != sizeof(*((tp)arr))) {                               \
-    fprintf(stderr, "array %s is not of type %s\n", #arr, #tp);             \
+    fprintf(stderr, "dynamic array %s is not of type %s\n", #arr, #tp);     \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
   } else if ((arr = calloc( (cnt), sizeof(arr[0]) )) == NULL) {             \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, errmsg, erract);                  \
   } else {                                                                  \
-    size_t ia_;                                                             \
-    for (ia_ = 0; ia_ < (cnt); ia_++) arr[ia_] = (def);                     \
+    CFG_INITARR_(arr, cnt, def)                                             \
+  }
+
+/* initialize a static array */
+#define CFG_SARR_(arr, tp, def, cnt, desc)                                  \
+  if (sizeof(arr[0]) != sizeof(tp)) {                                       \
+    fprintf(stderr, "static array %s is not of type %s\n", #arr, #tp);      \
+    CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
+  } else {                                                                  \
+    CFG_INITARR_(arr, cnt, def)                                             \
   }
 
 
