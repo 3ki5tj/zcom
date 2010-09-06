@@ -159,8 +159,8 @@ def get_mod_name(name):
 
 def integrate(srclist):
   '''
-  integrate fn_source to fn_host
-  with a template fn_host_t (with .0 extension)
+  integrate fn_source to fn_host (output)
+  according to a template fn_host_t (with .0 extension)
   '''
 
   # 1. load the template fn_host_t 
@@ -185,15 +185,15 @@ def integrate(srclist):
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("integrating module %-12s (%-18s, %-18s) to %s (%s)" 
-        % (mod_name, fn_source_c, fn_source_h, fn_host, fn_host_t))
+    print ("integrating module %-12s (%-18s, %-18s) to %s" 
+        % (mod_name, fn_source_c, fn_source_h, fn_host_t))
     if verbose:
       raw_input("press Enter to continue...")
   
   
     # 2. read the source code
     src = open(fn_source_c, 'r').readlines()
-    # call rmdbg.py to remove debug information
+    # call rmdbg.py to remove debug/legacy code
     src = rmdbg.rmdbg(src, verbose=verbose)
     # strip away the outmost #ifndef, #define, #endif triplet
     src = strip_def(src)
@@ -223,8 +223,16 @@ def integrate(srclist):
     host_src = insert_module(host_src, mod_name, src)
 
   # 6. save it back to fn_host
-  #shutil.copy2(fn_host, fn_host_bak) # make a backup first
-  open(fn_host, 'w').write(''.join(host_src))
+  # save first to a temporary file,
+  # overwrite the original if necessary
+  fn_host_tmp = fn_host + ".tmp"
+  open(fn_host_tmp, 'w').write(''.join(host_src))
+  if os.system('cmp '+fn_host_tmp + ' '+ fn_host):
+    shutil.copy(fn_host_tmp, fn_host)
+  else:
+    print "no need to update", fn_host
+  os.remove(fn_host_tmp)
+
 
 def usage():
   """
@@ -313,4 +321,5 @@ def main():
 
 if __name__ == "__main__":
   main()
+
 

@@ -33,7 +33,6 @@ static int trace_cmd_(const char *cmd, va_list args, int once,
   }
   
   if (strncmp(cmd, "filename", 8) == 0) {
-
     p = va_arg(args, const char *);
     if (p != NULL) {
       sscpy(*pfname, p);
