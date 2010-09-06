@@ -18,110 +18,102 @@ void cfgclose(cfgdata_t *cfg);
 int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
 
 /* 
- * Helper macros for reading structure member
- * 
- * assume the following variables are defined
- * cfgdata_t *cfg;
- *
- * define macro CFG_STPTR as a pointer variable to the structure
- *
- * define macro CFG_STPFX as the common prefix for variables in the 
- * configuration file, e.g., if a configuration file has
- *   abc_color = yellow
- *   abc_number = 3
- * then CFG_STPFX is "abc_"
- *
- * a label ERR at the function exit
- *
- * */
+ * Helper macros for automating reading variables
+ */
 
 /* return a format string from a type
  * undetermined format goto "%%"  */
-#define CFG_TP2FMT(tp) \
+#define CFG_TP2FMT_(tp) \
     (strcmp(#tp, "int")       == 0 ? "%d"  : \
      strcmp(#tp, "unsigned")  == 0 ? "%u"  : \
      strcmp(#tp, "float")     == 0 ? "%f"  : \
      strcmp(#tp, "double")    == 0 ? "%lf" : \
-     strcmp(#tp, "char *")    == 0 ? "%s"  : "%%")
+     strcmp(#tp, "char *")    == 0 ? "%s"  : \
+     strcmp(#tp, "null")      == 0 ? ""    : "%%")
 
-#define CFG_MISERROR(var, key, tp, def)                               \
-    fprintf(stderr, "cannot read variable %s (key: %s) of type %s, "  \
-        "file: %s, line: %d\n", #var, key, #tp, __FILE__, __LINE__);  \
-    goto ERR;
+#define CFG_PRINT_FILE_LINE_() \
+    fprintf(stderr, "file: %s, line: %d\n", __FILE__, __LINE__); 
 
-#define CFG_MISDFLT(var, key, tp, def)                                      \
-    fprintf(stderr, "assume default value %s for %s (key: %s) of type %s, " \
-        "file: %s, line: %d\n", #def, #var, key, #tp, __FILE__, __LINE__); 
+#ifndef CFG_FATAL_ACTION_  /* for programmer's mistake */
+#define CFG_FATAL_ACTION_  exit(1)
+#endif
 
-/* first guess a format, then read `var' through `name',  macro `missing' 
- * is called if the entry is not found in the configuration file   */
-#define CFG_GET_(var, name, tp, def, missing) {                       \
-  char *fmt_ = CFG_TP2FMT(tp);                                        \
-  if (fmt_[1] == '%') {  /* unable to determine format */             \
-    fprintf(stderr, "cannot determine format for %s, "                \
-        "file: %s, line: %d\n", #tp, __FILE__, __LINE__);             \
-    goto ERR;                                                         \
+/* print a message leading by `msg', and execute `action' 
+ * low level error handling */
+#define CFG_ERRMSG_(var, key, tp, def, desc, msg, action) {           \
+    fprintf(stderr, "%s: var: %s, key: %s, type: %s\n",               \
+        msg, #var, key, #tp);                                         \
+    if (desc != NULL) fprintf(stderr, "desc: %s, ", desc);            \
+    CFG_PRINT_FILE_LINE_()                                            \
+    action; }
+
+/* first guess a format, then read `var' through `name',
+ * if the variable is missing, mismsg is printed, with misact
+ * is called if the entry is not found in the configuration file   
+ * the whole process is skipped if null is passed to tp 
+ * */
+#define CFG_GET_(cfg, var, name, tp, def, desc, mismsg, misact) {     \
+  char *fmt_ = CFG_TP2FMT_(tp);                                       \
+  if (fmt_[0] == '\0') {                                              \
+    /* do nothing */ ;                                                \
+  } else if (fmt_[1] == '%') {  /* unable to determine format */      \
+    fprintf(stderr, "cannot determine format for %s\n", #tp);         \
+    CFG_PRINT_FILE_LINE_()                                            \
+    CFG_FATAL_ACTION_; /* fatal: programmer's mistake */              \
   } else if (sizeof(var) != sizeof(tp)) {                             \
-    fprintf(stderr, "var. %s does not seem to be a %s, "              \
-        "file: %s, line: %d\n", #var, #tp, __FILE__, __LINE__);       \
-    goto ERR;                                                         \
+    fprintf(stderr, "var. %s is not of type %s\n", #var, #tp);        \
+    CFG_PRINT_FILE_LINE_()                                            \
+    CFG_FATAL_ACTION_; /* fatal: programmer's mistake */              \
   } else if (0 != cfgget(cfg, &(var), name, fmt_)) {                  \
-    missing(var, name, tp, def)                                       \
+    CFG_ERRMSG_(var, name, tp, def, desc, mismsg, misact);            \
   }  }
 
-/* variable to structure member */
-#define CFG_STMBR(var)  (CFG_STPTR->var)
-/* variable to key in configuration file */
-#define CFG_STKEY(var)   CFG_STPFX #var
-
-/* get structure member var, error if missing */
-#define CFG_SMGETMUST(var, tp)                                        \
-  CFG_GET_(CFG_STMBR(var), CFG_STKEY(var), tp, 0, CFG_MISERROR)
-
-/* manually supply an other name */
-#define CFG_SMGETMUST1(var, name, tp)                                 \
-  CFG_GET_(CFG_STMBR(var), CFG_STKEY(name), tp, 0, CFG_MISERROR)
-
-/* get structure member var, assume default if missing 
- * for string, def should be NULL or ssdup(...) */
-#define CFG_SMGETDFLT(var, tp, def)                                   \
-  CFG_STMBR(var) = def;                                               \
-  CFG_GET_(CFG_STMBR(var), CFG_STKEY(var), tp, def, CFG_MISDFLT)
-
-/* get structure member if cond is true, or def is set */
-#define CFG_SMGETOPTN(var, tp, def, cond)                             \
-  CFG_STMBR(var) = def;                                               \
-  if (cond)                                                           \
-    CFG_GET_(CFG_STMBR(var), CFG_STKEY(var), tp, def, CFG_MISDFLT)
-  
-
-/* demand structure member if cond is true, or def is set */
-#define CFG_SMGETOPTM(var, tp, def, cond)                             \
-  CFG_STMBR(var) = def;                                               \
-  if (cond)                                                           \
-    CFG_GET_(CFG_STMBR(var), CFG_STKEY(var), tp, def, CFG_MISERROR)
-
-#define CFG_TESTLT(var, ref)                                          \
-  if ((var) >= (ref)) {                                               \
-    fprintf(stderr, "invalid value %s >= %s, "                        \
-        "file: %s, line: %d\n", #var, #ref, __FILE__, __LINE__);      \
-    goto ERR;                                                         \
+/* conditionally (t0) get var from configuration file, 
+ * then check if condition t1 is met, if not, misact is executed
+ * neither t0 nor t1 should be empty, but can be 1 or 0;
+ * finally, expression `eval', which can be empty, is evaluated;
+ * a default value 'def' is always assigned at the beginning for safety,
+ * the design is based on the concern that if anything fails
+ * an uninitialized variable can be dangerous
+ * */
+#define CFG_GETC_(cfg, var, key, tp, def, t0, t1, eval, desc, mismsg, misact) \
+  var = def;                                                                  \
+  if (CFG_TEST_(t0)) {                                                        \
+    CFG_GET_(cfg, var, key, tp, def, desc, mismsg, misact)                    \
+    CFG_TESTERR_(t1, misact)                                                  \
+    eval;                                                                     \
   }
 
-#define CFG_TESTGT(var, ref)                                          \
-  if ((var) <= (ref)) {                                               \
-    fprintf(stderr, "invalid value %s <= %s, "                        \
-        "file: %s, line: %d\n", #var, #ref, __FILE__, __LINE__);      \
-    goto ERR;                                                         \
+/* test if expression t is true
+ * t should *not* be empty 
+ * t can be 1; since we tested #t[0], compilers usually don't complain
+ *   the condition is always true; a further safer choice is probably
+ *   strcmp(#t, "1") == 0
+ * */
+#define CFG_TEST_(t) ((#t[0] == '1' && #t[1] == '\0') ? 1 : (t))
+
+/* if condition 'cond' is not true, execute `erract' */
+#define CFG_TESTERR_(t, erract)                                       \
+  if ( !CFG_TEST_(t) )  {                                             \
+    fprintf(stderr, "failed cond: %s\n", #t);                         \
+    CFG_PRINT_FILE_LINE_()                                            \
+    erract;                                                           \
   }
 
-#define CFG_TESTIN(var, min, max)                                     \
-  if ((var) < min || (var) > max) {                                   \
-    fprintf(stderr, "invalid value %s outof (%s, %s), "               \
-      "file: %s, line: %d\n", #var, #min, #max, __FILE__, __LINE__);  \
-    goto ERR;                                                         \
-  }
 
+/* allocate array, and initialize it with function def()
+ * tp should be a pointer type, like int *, or double *,
+ * def can be a number, or an expression using the index ia_  */
+#define CFG_DARR_(arr, tp, def, cnt, desc, errmsg, erract)                  \
+  if (sizeof(arr[0]) != sizeof(*((tp)arr))) {                               \
+    fprintf(stderr, "array %s is not of type %s\n", #arr, #tp);             \
+    CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
+  } else if ((arr = calloc( (cnt), sizeof(arr[0]) )) == NULL) {             \
+    CFG_ERRMSG_(arr, #arr, tp, def, desc, errmsg, erract);                  \
+  } else {                                                                  \
+    size_t ia_;                                                             \
+    for (ia_ = 0; ia_ < (cnt); ia_++) arr[ia_] = (def);                     \
+  }
 
 
 #endif  /* CFG_H__ */
