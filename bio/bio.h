@@ -45,7 +45,7 @@
   BIO_CHECKTP_(x, int)                                                \
   if ((endn = endn_rmatchi(&(x), ref, fp)) < 0) {                     \
     fprintf(stderr, "%s 0x%X cannot match %s 0x%X\n",                 \
-      #x, x, #ref, ref);                                              \
+      #x, (unsigned) x, #ref, (unsigned) ref);                        \
     goto ERR;                                                         \
   } }
 

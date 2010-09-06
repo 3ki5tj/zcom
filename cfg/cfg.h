@@ -43,8 +43,9 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
 #define CFG_ERRMSG_(var, key, tp, def, desc, msg, action) {           \
     fprintf(stderr, "%s: var: %s, key: %s, type: %s\n",               \
         msg, #var, key, #tp);                                         \
-    if (desc != NULL) fprintf(stderr, "desc: %s, ", desc);            \
-    CFG_PRINT_FILE_LINE_()                                            \
+    if (desc[0] != '\0') fprintf(stderr, "desc: %s, ", desc);         \
+    fprintf(stderr, "def: %s\n", #def);                               \
+    /* CFG_PRINT_FILE_LINE_() */                                      \
     action; }
 
 /* first guess a format, then read `var' through `name',
@@ -109,7 +110,7 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
 /* allocate array, and initialize it with function def
  * tp should be a pointer type, like int *, or double * */
 #define CFG_DARR_(arr, tp, def, cnt, desc, errmsg, erract)                  \
-  if (sizeof(arr[0]) != sizeof(*((tp)arr))) {                               \
+  if (sizeof(arr[0]) != sizeof(*(tp)arr)) {                               \
     fprintf(stderr, "dynamic array %s is not of type %s\n", #arr, #tp);     \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
   } else if ((arr = calloc( (cnt), sizeof(arr[0]) )) == NULL) {             \
