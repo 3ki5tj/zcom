@@ -185,6 +185,8 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 {
   int j;
 
+  if (cfg == NULL) return 1;
+
   if (cfg->key == NULL || var == NULL || key == NULL || fmt == NULL) {
     fprintf(stderr, "cfgget: NULL pointer.\n");
     return 1;
@@ -212,7 +214,7 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
    e.g. if key="arr", entries in configuration files are `arr0', `arr1', ...
    indices are from i0 to iN-1;
    if the function succeeds, it returns 0. */
-ZCSTRCLS int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize,
+int cfggetarr(cfgdata_t *cfg, void const *varr, size_t itemsize,
     const char *key, const char* fmt, int i0, int iN)
 {
   int i;

@@ -32,41 +32,39 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
      strcmp(#tp, "null")      == 0 ? ""    : "%%")
 
 #define CFG_PRINT_FILE_LINE_() \
-    fprintf(stderr, "file: %s, line: %d\n", __FILE__, __LINE__); 
+    fprintf(stderr, "file: %s, line: %d\n", __FILE__, __LINE__)
 
 #ifndef CFG_FATAL_ACTION_  /* for programmer's mistake */
-#define CFG_FATAL_ACTION_  exit(1)
+#define CFG_FATAL_ACTION_  { CFG_PRINT_FILE_LINE_(); exit(1); }
 #endif
 
 /* print a message leading by `msg', and execute `action' 
  * low level error handling */
 #define CFG_ERRMSG_(var, key, tp, def, desc, msg, action) {           \
-    fprintf(stderr, "%s: var: %s, key: %s, type: %s\n",               \
-        msg, #var, key, #tp);                                         \
-    if (desc[0] != '\0') fprintf(stderr, "desc: %s, ", desc);         \
-    fprintf(stderr, "def: %s\n", #def);                               \
+    fprintf(stderr, "%s: var: %s, key: %s, type: %s, def: %s\n",      \
+        msg, #var, key, #tp, #def);                                   \
+    /* if (desc[0] != '\0') fprintf(stderr, "desc: %s, ", desc); */   \
+    /* fprintf(stderr, "def: %s\n\n", #def); */                       \
     /* CFG_PRINT_FILE_LINE_() */                                      \
     action; }
 
-/* first guess a format, then read `var' through `name',
+/* first guess a format, then read `var' through `key' (char *),
  * if the variable is missing, mismsg is printed, with misact
  * is called if the entry is not found in the configuration file   
  * the whole process is skipped if null is passed to tp 
  * */
-#define CFG_GET_(cfg, var, name, tp, def, desc, mismsg, misact) {     \
+#define CFG_GET_(cfg, var, key, tp, def, desc, mismsg, misact) {      \
   char *fmt_ = CFG_TP2FMT_(tp);                                       \
   if (fmt_[0] == '\0') {                                              \
     /* do nothing */ ;                                                \
   } else if (fmt_[1] == '%') {  /* unable to determine format */      \
     fprintf(stderr, "cannot determine format for %s\n", #tp);         \
-    CFG_PRINT_FILE_LINE_()                                            \
     CFG_FATAL_ACTION_; /* fatal: programmer's mistake */              \
   } else if (sizeof(var) != sizeof(tp)) {                             \
     fprintf(stderr, "var. %s is not of type %s\n", #var, #tp);        \
-    CFG_PRINT_FILE_LINE_()                                            \
     CFG_FATAL_ACTION_; /* fatal: programmer's mistake */              \
-  } else if (0 != cfgget(cfg, &(var), name, fmt_)) {                  \
-    CFG_ERRMSG_(var, name, tp, def, desc, mismsg, misact);            \
+  } else if (0 != cfgget(cfg, &(var), key, fmt_)) {                   \
+    CFG_ERRMSG_(var, key, tp, def, desc, mismsg, misact);             \
   }  }
 
 /* conditionally (t0) get var from configuration file, 
@@ -97,35 +95,42 @@ int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
 #define CFG_TESTERR_(t, erract)                                       \
   if ( !CFG_TEST_(t) )  {                                             \
     fprintf(stderr, "failed cond: %s\n", #t);                         \
-    CFG_PRINT_FILE_LINE_()                                            \
+    CFG_PRINT_FILE_LINE_();                                           \
     erract;                                                           \
   }
 
 /* initialize a static array arr with def
- * def can be a number, or an expression using the index ia_  */
-#define CFG_INITARR_(arr, cnt, def) \
+ * `def' can be a number, or an expression using the index ia_  
+ * `assign' can be empty for simple array initialization, but it can 
+ * also be a function call/statement that initializes the whole array */
+#define CFG_INITARR_(arr, cnt, def, assign)                                 \
+   if (#assign[0] == '\0') {                                                \
     size_t ia_;                                                             \
-    for (ia_ = 0; ia_ < (cnt); ia_++) arr[ia_] = (def);
+    for (ia_ = 0; ia_ < (cnt); ia_++) arr[ia_] = (def);                     \
+   } else {                                                                 \
+     assign;                                                                \
+   }
+
 
 /* allocate array, and initialize it with function def
  * tp should be a pointer type, like int *, or double * */
-#define CFG_DARR_(arr, tp, def, cnt, desc, errmsg, erract)                  \
-  if (sizeof(arr[0]) != sizeof(*(tp)arr)) {                               \
+#define CFG_DARR_(arr, tp, def, cnt, assign, desc, errmsg, erract)          \
+  if (sizeof(arr[0]) != sizeof(*(tp)arr)) {                                 \
     fprintf(stderr, "dynamic array %s is not of type %s\n", #arr, #tp);     \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
   } else if ((arr = calloc( (cnt), sizeof(arr[0]) )) == NULL) {             \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, errmsg, erract);                  \
   } else {                                                                  \
-    CFG_INITARR_(arr, cnt, def)                                             \
+    CFG_INITARR_(arr, cnt, def, assign)                                     \
   }
 
 /* initialize a static array */
-#define CFG_SARR_(arr, tp, def, cnt, desc)                                  \
+#define CFG_SARR_(arr, tp, def, cnt, assign, desc)                          \
   if (sizeof(arr[0]) != sizeof(tp)) {                                       \
     fprintf(stderr, "static array %s is not of type %s\n", #arr, #tp);      \
     CFG_ERRMSG_(arr, #arr, tp, def, desc, "type error", CFG_FATAL_ACTION_); \
   } else {                                                                  \
-    CFG_INITARR_(arr, cnt, def)                                             \
+    CFG_INITARR_(arr, cnt, def, assign)                                     \
   }
 
 
