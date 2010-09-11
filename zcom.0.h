@@ -83,8 +83,8 @@
 #endif
 
 #ifndef ZCOM_PICK
-  #ifndef ZCOM_ERROR
-  #define ZCOM_ERROR
+  #ifndef ZCOM_DIE
+  #define ZCOM_DIE
   #endif
   #ifndef ZCOM_SS
   #define ZCOM_SS
@@ -125,6 +125,9 @@
   #ifndef ZCOM_ENDN
   #define ZCOM_ENDN
   #endif
+  #ifndef ZCOM_XM
+  #define ZCOM_XM
+  #endif
 #endif
 
 /* build dependencies */
@@ -133,8 +136,19 @@
   #define ZCOM_SS  /* needs file name support */
 #endif
 
+#ifdef ZCOM_XM
+  #define ZCOM_SS
+  #define ZCOM_CFG
+  #define ZCOM_DIE
+#endif
+
+#ifdef ZCOM_CFG
+  #define ZCOM_DIE
+  #define ZCOM_SS
+#endif
+
 #ifdef ZCOM_SS
-  #define ZCOM_ERROR
+  #define ZCOM_DIE
 #endif
 
 #ifdef ZCOM_DIHCALC
@@ -194,43 +208,12 @@
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
  * in order to avoid multiple inclusion a single ZCOM_ABC__ won't do,
  * because different module-set may be selected */
-#ifdef  ZCOM_ERROR
-#ifndef ZCOM_ERROR__
-#define ZCOM_ERROR__
+#ifdef  ZCOM_DIE
+#ifndef ZCOM_DIE__
+#define ZCOM_DIE__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-
-/* print an error message and die */
-#ifdef ZCHAVEVAM
-#define fatal(fmt, ...)  fatal_(__FILE__, __LINE__, fmt, ## __VA_ARGS__)
-ZCSTRCLS void fatal_(const char *file, int lineno, const char *fmt, ...)
-#else
-ZCSTRCLS void fatal(const char *fmt, ...)
-#endif
-{
-  va_list args;
-
-  fprintf(stderr, "Fatal ");
-  if (file != NULL)
-    fprintf(stderr, "%s ", file);
-  if (lineno > 0)
-    fprintf(stderr, "%d ", lineno);
-  fprintf(stderr, "| ");
-
-  va_start(args, fmt);
-  vfprintf(stderr, fmt, args);
-  if (fmt[strlen(fmt) - 1] != '\n')
-    fprintf(stderr, "\n"); /* add a new line if needed */
-  va_end(args);
-
-  exit(1);
-}
-
-#endif /* ZCOM_ERROR__ */
-#endif /* ZCOM_ERROR */
+#endif /* ZCOM_DIE__ */
+#endif /* ZCOM_DIE */
 
 
 #ifdef  ZCOM_SS
@@ -728,4 +711,10 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
 #endif /* ZCOM_BIO__ */
 #endif /* ZCOM_BIO */
 
+#ifdef  ZCOM_XM
+#ifndef ZCOM_XM__
+#define ZCOM_XM__
+
+#endif /* ZCOM_XM__ */
+#endif /* ZCOM_XM */
 

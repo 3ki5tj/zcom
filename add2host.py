@@ -200,6 +200,7 @@ def integrate(srclist):
   
     # 3. read the header
     header = open(fn_source_h, 'r').readlines()
+    header = rmdbg.rmdbg(header, verbose=verbose)
     header = strip_def(header)
     header = add_storage_class(header, strcls)
   

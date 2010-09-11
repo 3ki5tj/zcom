@@ -1,3 +1,5 @@
+#include "die.h"
+
 #ifndef SS__
 #define SS__
 
@@ -12,22 +14,6 @@
 #define SSHASHSIZ   (1 << SSHASHBITS)
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
-
-#ifdef ZCOM_ERROR
-#define sserror_ fatal
-#else
-/* print an error message and quit */
-static void sserror_(char *fmt, ...)
-{
-  va_list args;
-
-  va_start(args, fmt);
-  fprintf(stderr, "fatal error: ");
-  fprintf(stderr, fmt, args);
-  va_end(args);
-  exit(1);
-}
-#endif
 
 struct ssheader{
   size_t size;
@@ -97,8 +83,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   struct ssheader *h = NULL, *hp;
   size_t size;
 
-  if (php == NULL)
-    sserror_("ssresize_: NULL pointer to resize");
+  die_if(php == NULL, "ssresize_: NULL pointer to resize");
 
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp = *php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
@@ -109,10 +94,8 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
        * hp->next will be freed by realloc */
       if (hp != NULL)
         sslistremove_(hp, 0);
-      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
-        sserror_("ssresize_: no memory for %u\n", size);
-        return NULL;
-      }
+      die_if((h = realloc(h, sizeof(*h)+size)) == NULL,
+        "ssresize_: no memory for %u\n", size);
       if (hp == NULL) /* clear the first byte if we start from nothing */
         *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
       *php = hp = sslistadd_(h);
@@ -129,7 +112,7 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
   else if (opt == SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
   else
-    sserror_("unknown manage option");
+    die_if(1, "unknown manage option %d", opt);
 }
 
 /* delete a string, shrink memory, etc ... */
