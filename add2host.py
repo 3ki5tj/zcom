@@ -234,6 +234,33 @@ def integrate(srclist):
     print "no need to update", fn_host
   os.remove(fn_host_tmp)
 
+def get_defmodules(root):
+  '''
+  obtain a list of C modules under `root'
+  '''
+  # list all sub directories under defroot
+  # skip modules starting with an underscore or a dot
+  # also skip the test folder
+  defmodules = []
+  for d in os.listdir(root):
+    # skip regular files
+    if not os.path.isdir(d): continue
+    # skip folders start with special characters
+    if d[0:1] in ('.', '_'): continue
+    # skip test folder
+    if d == "test": continue
+    # see if a default C module exists
+    file_h = os.path.join(d, d+'.h')
+    if not os.path.exists(file_h): 
+      print "skip", d, "no", file_h
+      continue
+    file_c = os.path.join(d, d+'.c')
+    if not os.path.exists(file_c): 
+      print "skip", d, "no", file_c
+      continue
+    defmodules += [d]
+  return defmodules
+
 
 def usage():
   """
@@ -266,18 +293,8 @@ def handle_params():
     print str(err) # will print something like "option -a not recognized"
     usage()
   
-  defroot = "."
+  defmodules = get_defmodules(".")
   
-  # list all sub directories under defroot
-  # skip modules starting with an underscore or a dot
-  # also skip the test folder
-  defmodules = []
-  for d in os.listdir(defroot):
-    if (os.path.isdir(d) and 
-        not d[0:1] in ('.', '_') and 
-        d != "test"):
-      defmodules += [d]
-
   # for each directory, guess a module name 'modnm'
   # add the pair to deflist
   deflist = []
