@@ -37,8 +37,7 @@ class CDecl:
     '''
     ns = 0
     while self.pos < self.nraw:
-      self.gettoken()
-      if self.ttype != "*": break
+      if self.gettoken() != "*": break
       ns += 1
     self.dirdcl()
     self.types += ["pointer to"] * ns
@@ -48,7 +47,15 @@ class CDecl:
     direct declaration
     '''
     if self.ttype == '(': # ( dcl )
-      self.dcl()
+      self.dcl() # in simplest case, dcl() reads a word, e.g. "abc",
+                 # then calls dirdcl() again, which copies the word 
+                 # to self.name, see below, and reads another token
+                 # in the while 1 loop, in which ")" should be read
+                 # and returns to dcl(). dcl() prints the number of
+                 # stars and returns to here, so the last token
+                 # should still be ")" after two levels of recursion
+                 # the recursion is necessary because, dcl() really
+                 # does nothing but count the number of stars
       if self.ttype != ')':
         print "missing ), s: %s, pos %d" % (self.raw, self.pos)
         raise Exception
@@ -57,12 +64,22 @@ class CDecl:
     else:
       print "expected name or ( at pos: %d, s: %s" % (self.pos, self.raw)
     while 1:
-      self.gettoken()
-      if self.ttype == "()":
+      ttype = self.gettoken()
+      if ttype == "(":
+        self.ptlist()
+        if self.ttype != ')':
+          print "missing ) after parameter type list"
         self.types += ["function returning"]
-      elif self.ttype == "[]":
+      elif ttype == "[]":
         self.types += ["array " + self.token + " of"]
-      else: break
+      else: 
+        break 
+
+  def ptlist(self):
+    self.gettoken()
+    #if self.ttype != ')':
+    #  print "cannot handle complex function"
+    #  raise Exception
 
   def gettoken(self):
     '''
@@ -76,23 +93,20 @@ class CDecl:
 
     if len(s) == 0:
       self.ttype = self.token = None
-      return
-    m = re.match(r"([a-zA-Z_]\w*).*", s)
+      return self.ttype
+    m = re.match(r"([a-zA-Z_]\w*).*", s) # a variable
     if m:
       self.ttype, self.token = "word", s[:m.end(1)]
       self.pos += m.end(1)
-      return
-    m = re.match(r"(\[)(.*?)(\]).*", s)
+      return self.ttype
+    m = re.match(r"(\[)(.*?)(\]).*", s)  # [...]
     if m:
       self.ttype, self.token = "[]", s[m.start(2):m.end(2)]
       self.pos += m.end(3)
-      return
-    if s.startswith("()"):
-      self.ttype = self.token = "()"
-      self.pos += 2;
-      return
+      return self.ttype
     self.ttype = self.token = s[0]
     self.pos += 1
+    return self.ttype
 
 def main():
   print CDecl(sys.argv[1])
