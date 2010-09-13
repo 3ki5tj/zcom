@@ -6,119 +6,16 @@ from copy import copy
 cmt0 = "/*"
 cmt1 = "*/"
 
-class Decl:
-  '''
-  C declaration, adapted from K & R
-  '''
-  def __init__(self, s):
-    if type(s) != type(""): raise Exception
-    self.raw = s.strip()
-    self.nraw = len(self.raw)
-    self.types = []
-    self.dcl_wrapper()
-
-  def __str__(self): 
-    return ' '.join(self.types)
-
-  def dcl_wrapper(self):
-    '''
-    get the data type, then call dcl
-    '''
-    self.pos = 0
-    self.token = self.ttype = None
-    self.gettoken()
-    if self.ttype != "abc":
-      print "complex type is yet supported, [%s]" % self.raw
-      print self.ttype, self.token, self.pos
-      raise Exception
-    self.datatype = self.token
-    self.dcl()
-    self.types += [self.datatype]
-
-  def gettoken(self):
-    '''
-    get a token starting from the current pos
-    '''
-    s = self.raw[self.pos:]
-    # skip leading space
-    m = re.match(r"(\s*).*", s)
-    if not m: raise Exception
-    self.pos += m.end(1)
-    s = self.raw[self.pos:]
-
-    if len(s) == 0: 
-      #print "gettok: string exhausted"
-      self.ttype = self.token = None
-      return 
-    m = re.match(r"([a-zA-Z_]\w*).*", s)
-    if m: 
-      self.ttype, self.token = "abc", s[:m.end(1)]
-      self.pos += m.end(1)
-      return
-    m = re.match(r"(\[)(.*?)(\]).*", s)
-    if m: 
-      self.ttype, self.token = "[]", s[m.start(2):m.end(2)]
-      self.pos += m.end(3)
-      return
-    if s.startswith("()"):
-      self.ttype = self.token = "()"
-      self.pos += 2;
-      return
-    self.ttype = self.token = s[0]
-    #print self.pos, self.raw[self.pos]
-    self.pos += 1
-    #print self.pos, self.raw[self.pos]
-
-  def dcl(self):
-    '''
-    declaration
-    '''
-    ns = 0
-    while self.pos < self.nraw:
-      #print "while:", self.raw, "pos:", self.pos
-      self.gettoken()
-      #print "while:", self.raw, "pos:", self.pos
-      #print "while:  current:", self.raw[self.pos], "ttype:", self.ttype, "pos:", self.pos
-      if self.ttype != "*": break
-      ns += 1
-    #print "dcl:    current:", self.raw[self.pos], "ttype:", self.ttype, "pos:", self.pos
-    self.dirdcl()
-    self.types += ["pointer"] * ns
-
-  def dirdcl(self):
-    '''
-    direct declaration
-    '''
-    if self.ttype == '(': # ( dcl )
-      #print "dirdcl: current:", self.raw[self.pos], "ttype:", self.ttype, "pos:", self.pos
-      self.dcl()
-      if self.ttype != ')':
-        print "missing ), s: %s, pos %d" % (self.raw, self.pos)
-        raise Exception
-    elif self.ttype == "abc":
-      self.name = self.token
-    else:
-      print "expected name or ( at pos: %d, s: %s" % (self.pos, self.raw)
-    #print "dirdc2: current:", self.raw[self.pos], "ttype:", self.ttype, "pos:", self.pos
-    while 1:
-      self.gettoken()
-      #print "dirtok: ttype:", self.ttype, "pos:", self.pos
-      if self.ttype == "()":
-        self.types += ["function"]
-      elif self.ttype == "[]":
-        self.types += ["array" + self.token]
-      else: break
-
 
 class P:
-  ''' 
+  '''
   simple position in the code (line, column)
   unfortunately, the most vulnerable class
   '''
-  def __init__(self, row = -1, col = -1):
+  def __init__(self, row = 0, col = 0):
     self.row = row
     self.col = col
-    self.check()
+    self.check() # see if input are integers
   def __str__(self):
     self.check()
     return "line: %d, col %d" % (self.row + 1, self.col + 1)
@@ -129,81 +26,159 @@ class P:
     a.check()
     if type(a) != type(b):
       print "trying to compare %s with %s" % (type(a), type(b))
-      raise Exception 
+      raise Exception
     b.check()
     return (a.row - b.row) * 10000 + a.col - b.col
   def check(self):
     if type(self.row) != int:
       print "row %s is not a number" % (self.row)
-      raise Exception  
+      raise Exception
     if type(self.col) != int:
       print "col %s is not a number" % (self.col)
-      raise Exception  
+      raise Exception
+  def getline(p, src):
+    ''' get a line starting from the current position '''
+    return src[p.row][p.col:] if p.row < len(src) else None
   def nextline(self):
     self.check()
     self.row += 1
     self.col = 0
 
+  def skipspace(p, src):
+    '''
+    skip spaces (including multiple blank lines) 
+    '''
+    p.check()
+    while 1:
+      s = p.getline(src)
+      if s == None:
+        self.ttype = self.token = None
+        break
 
+      # skip leading space
+      m = re.match(r"(\s*).*", s)
+      if not m: raise Exception
+      p.col += m.end(1)
+      s = p.getline(src)
+      if len(s) != 0: break # found a token
+
+      # this line is exhausted
+      p.nextline()
+      continue
+    return s
+
+  def gettoken(p, src):
+    '''
+    aggressively get a token starting from the current `p'
+    `p' is updated to the end of the current token
+    return the token only
+    '''
+    s = p.skipspace(src)
+    
+    # try to get a word
+    if s != None:
+      m = re.match(r"([a-zA-Z_]\w*).*", s)
+      if m:
+        p.col += m.end(1)
+        p.ttype, p.token = "word", s[:m.end(1)]
+      else:
+        p.col += 1
+        p.ttype = p.token = s[0]
+    return p.token, p.ttype
+
+  def ungettoken(p, src):
+    '''
+    try to unget a token, it will not unget space
+    '''
+    p.check()
+    tok = self.token
+    if not tok:
+      print "cannot unget None"
+      raise Exception
+    p.col -= len(tok)
+    if (p.col < 0 or
+        not p.getline(src).startswith(tok)):
+      raise Exception
+    p.token = p.ttype  = None
+
+  def peek(p, src):
+    '''
+    peek several tokens
+    '''
+    p.check()
+    q = copy(p) # create a backup
+    return q.gettoken(src)
+
+class Decl:
+  '''
+  C declaration, adapted from K & R
+  '''
+  def __init__(self, src, p):
+    self.empty = 1
+    self.parse(src, p)
+
+  def parse(self, src, p):
+    pass
+
+  def isempty(self): return self.empty
 
 class Comment:
   '''
-  a C comment block 
+  a C comment block
   '''
-  def __init__(self, src, pos):
-    if type(pos) == int: pos = P(pos, 0)
-    self.span(src, pos)     # .begin, .end
+  def __init__(self, src, p):
+    self.empty = 1
+    if 0 != self.span(src, p):       # .begin, .end
+      return
     self.extract_text(src)  # .text
     self.get_commands()     # .cmds
 
-  def span(self, src, pos):
-    ''' 
+  def span(self, src, p):
+    '''
     find the beginning and end of a comment,
     starting from pos
     '''
-    self.begin = copy(pos)
-    self.end = copy(self.begin)
-    line = src[self.begin.row]
-    j = line.find(cmt0, self.begin.col)
-    if j < 0:
-      print "missing comment from %s" % (self.begin)
-      self.checkbe()
-      return -1
-    else:
-      self.begin.col = j
-    now = P(self.begin.row, j + len(cmt0)) # create a new position
+    s = p.skipspace(src)
+    if s == None: return -1
 
-    # search the end of comment
-    n = len(src)
-    while now.row < n:
-      j = src[now.row].find(cmt1, now.col)
-      if j >= 0:
-        self.end = P(now.row, j + 2)
+    if s.startswith(cmt0):
+      self.begin = copy(p)
+    else:
+      print "missing comment beginning mark %s" % p
+      return -1
+
+    p.col += len(cmt0) # skip `/*'
+
+    # aggressively search the end of comment
+    while 1:
+      s = p.skipspace(src)
+      if s.startswith(cmt1):
+        p.col += len(cmt1)
+        self.end = copy(p)
+        #print "comment found from %s to %s" % (self.begin, self.end)
         break
-      now.nextline() # not the next line
+      p.gettoken(src) # get token by token
     else:
       print "Warning: cannot find the end of comment from %s, now = %s" % (
           self.begin, now)
       raise Exception
-      #return -1
     self.checkbe()
     return 0
 
   def extract_text(self, src):
-    ''' 
+    '''
     extract text within the comment
     '''
     self.checkbe()
     p = P(self.begin.row, self.begin.col + len(cmt0))
-    #print "creating P at %s, self.begin: %s, self.end: %s" % ( p, self.begin, self.end)
-    #raw_input()
     s = ""
     while p.row < self.end.row:
-      s += src[p.row][p.col:]
+      s += p.getline(src)
       p.nextline()
     if p.col < self.end.col:
       s += src[p.row][p.col : self.end.col - len(cmt1)]
     self.text = s
+    print "comment text is [%s] from %s to %s" % (self.text, self.begin, self.end)
 
   def checkbe(self):
     self.begin.check()
@@ -241,51 +216,52 @@ class Comment:
       self.cmds["desc"] = [s, 0] # description is not persistent
       #print "the remain string is [%s]" % self.cmds["desc"]
 
+  def isempty(self): return self.empty
   def __str__(self): return self.text
   def __repr__(self): return __str__(self)
 
 
 class Item:
-  ''' a variable defined in a struct '''
+  '''
+  item:
+    preprocessor
+    declaration
+    declaration comment
+    comment
+  '''
 
-  def __init__(self, src, pos):
+  def __init__(self, src, p):
     '''
     initialize the structure from a piece of code
     '''
-    if type(pos) == int: pos = P(pos, 0)
-    self.parse(src, pos)
+    self.empty = 1
+    self.begin = copy(p)
+    self.parse(src, p)
 
-  def parse(self, src, pos):
-    self.begin = copy(pos)
-    self.end = P()
-    line = src[pos.row]
-    pivot = line.find(";", pos.col) # search end of a statement
-    assert pivot >= 0
-    self.decl_end = P(pos.row, pivot)
-    self.cmt_begin = P(pos.row, pivot+1)
+  def parse(self, src, p):
+    '''
+    parse an item aggressively
+    '''
+    token,ttype = p.peek(src)
+
+    if token == "}": return -1
+   
+    # try to get a declaration
+    decl = Decl(src, p)
+    self.decl = decl if not decl.isempty() else None
     
-    # everything before ';' is a declaration
-    self.decl = line[pos.col:pivot].strip()
-    self.find_type()
-    #print "decl:", decl, "\nrest:", line[pivot+1:]
-    #raw_input()
+    # try to get a comment
+    comment = Comment(src, p)
+    self.comment = comment if not comment.isempty() else None
 
-    # search the associated comment
-    #print "start searching comment with from: %s cmt_begin: %s" % (
-    #    src[self.cmt_begin.row][self.cmt_begin.col:], self.cmt_begin)
-    cmt = Comment(src, self.cmt_begin)
-    self.end = copy(cmt.end)
-    self.cmds = cmt.cmds  # copy ?
-    #raw_input("associated comment over: " + str(self.cmds))
-
-    self.get_generic_type()
-
+    #self.get_generic_type()
+    
   def find_type(self):
     '''
     parse the declaration string, to obtain the name and type
     '''
     s = self.decl
-    
+   
     chmap = {} # use dictionary
 
     # check the validity of the declaration
@@ -294,7 +270,7 @@ class Item:
       if c in unwanted:
         print "bad declaration [%s], has character [%s]" % (s, c)
         raise Exception
-      else: 
+      else:
         chmap[c] = (1 if not chmap.has_key(c) else (chmap[c]+1))
 
     d = Decl(s)
@@ -323,16 +299,18 @@ class Item:
         else:
           self.typeg = ("dynamic array", towhat)
       elif 'obj' in self.cmds:
-        self.typeg = ("object", towhat) 
+        self.typeg = ("object", towhat)
       else:
         self.typeg = ("pointer", towhat)
 
+  def isempty(self):
+    return self.empty
 
 class Object:
   '''
   a struct defined as
   typedef struct {
-  } abc_t
+  } abc_t;
   '''
   def __init__(self, src, pos = None):
     ''' initialize myself from a bunch of src '''
@@ -342,94 +320,113 @@ class Object:
       pos = P(pos, 0)
     self.begin = copy(pos)
     self.items = []
+    self.empty = 1
     self.parse(src, pos)
 
-  def has_definition(self, line):
-    ''' check if line i has a definition of Object '''
-    return line.strip().startswith("typedef struct")
-
-  def parse(self, src, pos):
-    ''' parse src starting from 'pos' '''
-    n = len(src)
-    #print 'src:', src, '\nn:', n, '\npos:', pos
-    #raw_input()
-
-    # search the beginning {
-    for i in range(pos.row, n):
-      line = src[i]
-      j = line.find("{") 
-      if j >= 0:
-        p = P(i, j+1)
-        break
-    else:
-      print ("cannot find the structure beginner from line", 
-          self.begin.row + 1)
-      exit(1)
+  def parse(self, src, p):
+    ''' parse src starting from 'p' '''
    
-    #print 'starting block from', p
-    #raw_input()
+    # print "start searching object from %s" % p
+    if not self.find_beginning(src, p):
+      return
 
-    # parse the content with { ... } 
-    # until } is encountered
-    while p.row < n:
-      line_orig = src[p.row]
-      line = line_orig[p.col:]
+    while 1: # parse the content within { ... },
+      # aggressively search for an item, and update p
+      item = Item(src, p)
+      if item.isempty(): break
 
-      # search the block-ending mark
-      if line.strip().startswith("}"):
-        pattern = r'(}\s*)(\w+)\s*;'
-        m = re.search(pattern, line)
-        if m == None:
-          print "no structure end:", line
-          exit(1)
-        self.name = line[m.start(2) : m.end(2)]
-        self.end = P(p.row, p.col + m.end(0))
-        return
-      elif line.strip() == "": # current line is exhausted or empty 
+      raw_input( "new item: %s, type: %s, cmds: %s" % (
+        item.name, item.typeg, item.cmds) )
+      self.items += [item]
+   
+    # parse }
+    self.find_ending(src, p, 0)
+
+  def find_beginning(self, src, p, aggr = 1):
+    '''
+    search the block-beginning marker {
+    aggressive search: repeat until found
+    position 'p' is move to the end of file
+      if nothing is found
+    limited to single-line case
+    '''
+    while 1:
+      line = p.getline(src)
+      if line == None: break
+
+      pattern = r"\s*typedef\s+struct\s*\w*\s*\{"
+      m = re.search(pattern, line)
+      if m: # a match is found
+        p.col += m.end(0)
+        print "object-beginning is found in %s, %s" % (p, src[p.row])
+        return 1
+      if aggr:
         p.nextline()
-      elif line.strip().startswith(cmt0): # a stand-alone comment
-        cmt = Comment(src, p)
-        if len(cmt.cmds) > 1: # we will always have `desc'
-          print "comment has %d commands: %s" % (len(cmt.cmds), cmt.cmds)
-          self.items += [cmt]
-        p = copy(cmt.end)
-      elif line_orig.find(";", p.col): # search for item definition
-        item = Item(src, p)
-        print "new item: %s, type: %s, cmds: %s" % (
-            item.name, item.typeg, item.cmds)
-        #raw_input()
-        self.items += [item]
-        p = copy(item.end) # move to the end of item
       else:
-        raw_input("suspetious line %s, continue?" % line)
+        break
+    return 0  # not found
+  
+  def find_ending(self, src, p, aggr = 0):
+    '''
+    search the block-ending mark
+    passive search: since we assume aggressive search has been
+    performed for items, we only search the current line
+    position 'p' is unchanged, if nothing is found
+    '''
+    while 1:
+      line = p.getline(src)
+      pattern = r'(\}\s*)(\w+)\s*;'
+      m = re.search(pattern, line)
+      if m:
+        p.col += m.end(0)
+        self.name = line[m.start(2) : m.end(2)]
+        self.end = copy(p)
+        self.empty = 0
+        print "object-ending is found in %s, %s" % (p, src[p.row])
+        return 1
+      if aggr:
         p.nextline()
+      else:
+        break
+    print "no object-ending is found, p at", p
+    return 0  # not found
+
+  def isempty(self):
+    return self.empty
 
 
-def complete_lines(src):
-  ''' process the input src '''
-  n    = len(src)
-  dest = []
-  objs = []
+class Parser:
+  '''
+  handle objects in a file
+  '''
+  def __init__(self, src):
+    self.parse_lines(src)
 
-  # first pass: get objects
-  p = P(0, 0)
-  obj = Object("") # get a handle 
-  while p.row < n:
-    if obj.has_definition(src[p.row][p.col:]):
-      obj  = Object(src, p.row)
-      raw_input ("found a new object '%s' with %d items, from %s to %s\n" 
-          % (obj.name, len(obj.items), obj.begin, obj.end))
+  def parse_lines(self, src):
+    '''
+    process the input template 
+    '''
+    objs = []
+    p = P()
+
+    # search for objects
+    while 1:
+      obj = Object(src, p) # try to get an object
+      if obj.isempty(): break
+
+      print "found a new object '%s' with %d items, from %s to %s\n" % (
+          obj.name, len(obj.items), obj.begin, obj.end)
       objs += [obj]
-      p = copy(obj.end) # go to the end of object definition
-    else:
-      p.nextline()
+    print "I got %d objects" % (len(objs))
 
-  # second pass: do stuff
-  for obj in objs: pass
+  def output(self):
+    '''
+    return the completed C source code
+    '''
+    return ""
+   
 
-  return dest
-
-def complete(file, template = ""):
+def handle(file, template = ""):
   ''' generate a C file according to a template '''
   # guess the template name if it's empty
   if template == "":
@@ -438,13 +435,13 @@ def complete(file, template = ""):
 
   # read in the template
   src = open(template, 'r').readlines()
+  # construct a parser
+  psr = Parser(src)
   # write the processed file
-  open(file, 'w').writelines(complete_lines(src))
+  open(file, 'w').writelines(psr.output())
 
 def main():
-  complete("test.c")
-  #print Decl(sys.argv[1])
-  
+  handle("test.c")
 
 if __name__ == "__main__":
   main()
