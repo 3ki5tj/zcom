@@ -8,12 +8,14 @@ TODO:
   * multiple-line support with regular expression
   * preprocessor
   * interpretor
+  * C++ comment
+  * skip struct in comment or string
 '''
 
 
 cmt0 = "/*"
 cmt1 = "*/"
-
+lncmt = "//"
 
 class P:
   '''
@@ -54,7 +56,8 @@ class P:
 
   def skipspace(p, src):
     '''
-    skip spaces (including multiple blank lines) 
+    skip spaces (including multiple blank lines)
+    return the line
     '''
     p.check()
     while 1:
@@ -148,7 +151,9 @@ class Decl:
 
     self.param_level = 0
     self.types = []
+    # find the type, e.g. int, void, ...
     if 0 != self.dclspec(src, p): return -1
+    # find the declarator, e.g. *a, (*a)(), ...
     if 0 != self.dcl(src, p): return -1
     self.types += [self.datatype]
 
@@ -180,7 +185,10 @@ class Decl:
       nwords += 1
       if not token in ("auto", "register", "static", "extern"
           "const", "volitale"):
-        self.datatype = token
+        if self.param_level == 0:
+          self.datatype = token
+          #print "datatype is [%s], pos %s" % (token, p)
+          #raw_input()
         break
     return 0
 
@@ -254,8 +262,8 @@ class Decl:
 
   def pdecl(self, src, p):
     ''' parameter declarator '''
-    self.dclspec(src, p)
     self.param_level += 1
+    self.dclspec(src, p)
     self.dcl(src, p)
     self.param_level -= 1
 
@@ -273,13 +281,12 @@ class Decl:
 
 class Comment:
   '''
-  a C comment block
+  C block-comment or one-line comment
   '''
   def __init__(self, src, p):
     self.empty = 1
-    if 0 != self.span(src, p):       # .begin, .end
+    if 0 != self.span(src, p):       # .begin, .end, and .raw
       return
-    self.extract_text(src)  # .text
     self.get_commands()     # .cmds with .cmds['desc'] being the description
     self.empty = 0
 
@@ -288,43 +295,48 @@ class Comment:
     find the beginning and end of a comment,
     starting from pos
     '''
-    s = p.skipspace(src)
+    s = p.skipspace(src) # note, its skips multiple blank lines
     if s == None: return -1
 
-    if s.startswith(cmt0):
+    if s.startswith(cmt0) or s.startswith(lncmt):
       self.begin = copy(p)
     else:
       print "missing comment beginning mark %s" % p
       return -1
 
-    p.col += len(cmt0) # skip `/*'
+    p.col += 2 # skip `/*' or `//'
 
-    # aggressively search the end of comment
-    while 1:
-      s = p.skipspace(src)
-      if s.startswith(cmt1):
-        p.col += len(cmt1)
-        self.end = copy(p)
-        #print "comment found from %s to %s" % (self.begin, self.end)
-        break
-      p.gettoken(src) # get token by token
-    else:
-      print "Warning: cannot find the end of comment from %s, now = %s" % (
-          self.begin, now)
-      raise Exception
-    self.checkbe()
+    if s.startswith(lncmt): # line comment
+      self.raw = s[2:].strip()
+      p.nextline()
+      self.end = copy(p)
+    else: # block comment
+      # aggressively search the end of comment
+      while 1:
+        s = p.skipspace(src)
+        if s.startswith(cmt1):
+          p.col += len(cmt1)
+          self.end = copy(p)
+          #print "comment found from %s to %s" % (self.begin, self.end)
+          break
+        p.gettoken(src) # get token by token
+      else:
+        print "Warning: cannot find the end of comment from %s, now = %s" % (
+            self.begin, now)
+        raise Exception
+      self.raw = self.extract_text(src)
     return 0
 
   def extract_text(self, src):
     '''
-    extract text within the comment
+    extract text within block comment
     '''
     self.checkbe()
     s = self.begin.gettext(src, self.end).strip()
     if s.startswith(cmt0) and s.endswith(cmt1):
       s = s[len(cmt0) : len(s) - len(cmt1)]
-    self.raw = s
-    #print "comment text is [%s] from %s to %s" % (self.raw, self.begin, self.end)
+    #print "comment text is [%s] from %s to %s" % (s, self.begin, self.end)
+    return s
 
   def checkbe(self):
     self.begin.check()
@@ -545,28 +557,49 @@ class Object:
   def isempty(self):
     return self.empty
 
-  def get_decl(self):
+  def output_decl(self):
     '''
-    return a string for declaration
+    return a string for formatted declaration
     '''
     s = "typedef struct {\n"
+    block = [] # block list
     for item in self.items:
-      didsth = 0
-      # handle declaration
+      decl0 = decl1 = cmt = ""
+      # 1. handle declaration
       if item.decl:
-        s += self.get_indent(s) + item.decl.raw
-        didsth = 1
-      # handle comment
+        decl0 = item.decl.datatype
+        raw   = item.decl.raw
+        decl1 = raw[len(decl0) : ].strip()
+        #raw_input ("%s %s" % (decl0, decl1))
+      # 2. handle comment
       comment = item.comment
       if (comment and comment.cmds.has_key("desc")
           and len(comment.cmds["desc"][0]) > 0):
-        s += self.get_indent(s) + "/* " + comment.cmds["desc"][0] + " */"
-        didsth = 1
-      # put a new line
-      if didsth: s += "\n"
-    s += "} " + self.name + ";"
+        cmt = "/* " + comment.cmds["desc"][0] + " */"
+      #print "%s %s %s, block size: %d" % (decl0, decl1, cmt, len(block))
+      # 3. output the content
+      if len(decl0) > 0:  # put it to a code block
+        block += [(decl0, decl1, cmt)] # just buffer it
+      else:
+        s = self.get_decl_dump(block, s)
+        block = [] # empty the block
+        # also print this line
+        if len(cmt) > 0: 
+          s += self.get_indent(s) + cmt + "\n"
+    s = self.get_decl_dump(block, s)
+    block = []
+    s +=  "} " + self.name + ";"
     return s
-
+  def get_decl_dump(self, block, s):
+    if len(block) == 0: return s
+    # align and format all items in the bufferred block
+    # and append the result to string s
+    wid0 = max(len(item[0]) for item in block)
+    wid1 = max(len(item[1]) for item in block)
+    for item in block:
+      line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1], item[2])
+      s += self.get_indent(s) + line
+    return s
   def get_indent(self, s):
     return "  " if s.endswith("\n") else ""
 
@@ -606,7 +639,7 @@ class Parser:
     nobjs = len(objs)
     for i in range(nobjs):
       obj  = objs[i]
-      s += obj.get_decl()
+      s += obj.output_decl()
       if i == nobjs - 1:
         pnext = P(len(src), 0)
       else:

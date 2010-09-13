@@ -91,6 +91,7 @@ class CDecl:
         break 
 
   def ptlist(self):
+    ''' parameter type list '''
     while 1:
       self.pdecl()
       if self.gettoken() != ',':
@@ -98,6 +99,7 @@ class CDecl:
         break
 
   def pdecl(self):
+    ''' parameter declarator '''
     self.dclspec()
     self.param_level += 1
     self.dcl()
