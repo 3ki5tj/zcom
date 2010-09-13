@@ -38,8 +38,7 @@ class CDecl:
         if allow_empty and nwords == 0:
           self.ungettok()
           return
-        print "expected data type: [%s] at %s, token is [%s]" % (
-            self.s, self.pos, self.token)
+        print "expected data type, %s" % (self.dbg())
         raise Exception
       nwords += 1
       if not self.token in ("auto", "register", "static", "extern"

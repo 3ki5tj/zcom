@@ -86,12 +86,12 @@ class P:
         p.ttype = p.token = s[0]
     return p.token, p.ttype
 
-  def ungettoken(p, src):
+  def ungettok(p, src):
     '''
     try to unget a token, it will not unget space
     '''
     p.check()
-    tok = self.token
+    tok = p.token
     if not tok:
       print "cannot unget None"
       raise Exception
@@ -101,9 +101,9 @@ class P:
       raise Exception
     p.token = p.ttype  = None
 
-  def peek(p, src):
+  def peektok(p, src):
     '''
-    peek several tokens
+    peek at the next token
     '''
     p.check()
     q = copy(p) # create a backup
@@ -118,7 +118,130 @@ class Decl:
     self.parse(src, p)
 
   def parse(self, src, p):
-    pass
+    # pre-filter out the case where the first token is not a word
+    token, type = p.peektok(src)
+    if type != "word": return -1
+
+    self.param_level = 0
+    self.types = []
+    if 0 != self.dclspec(src, p): return -1
+    if 0 != self.dcl(src, p): return -1
+    self.types += [self.datatype]
+
+    # handle the last semicolon
+    token, ttype = p.gettoken(src)
+    if token != ";":
+      print "missing ; %s" % self.dbg(src, p)
+      return -1
+    
+    #print "complete a decl {%s}" % self
+    self.empty = 0
+    return 0
+
+  def dclspec(self, src, p, allow_empty = 0):
+    # storage classifiers: auto, register, static, extern, typedef
+    # type qualifier: const, volatile
+    nwords = 0
+    while 1:
+      token, ttype = p.gettoken(src)
+      if ttype != "word":
+        if allow_empty and nwords == 0:
+          p.ungettok(src)
+          break
+        print "expected data type, %s" % (self.dbg(src, p))
+        raise Exception
+        return 1
+      nwords += 1
+      if not token in ("auto", "register", "static", "extern"
+          "const", "volitale"):
+        self.datatype = token
+        break
+    return 0
+
+  def dcl(self, src, p):
+    '''
+    declarator
+    wrapper: counter the leading # of stars, and lead to dirdcl()
+    '''
+    ns = 0
+    while 1:
+      token, type = p.gettoken(src)
+      if token != "*":
+        p.ungettok(src)
+        break
+      ns += 1
+    if self.dirdcl(src, p) != 0: return -1
+    if self.param_level == 0: self.types += ["pointer"] * ns
+    return 0
+
+  def dirdcl(self, src, p):
+    '''
+    direct declarator
+    '''
+    token, ttype = p.gettoken(src)
+    if ttype == '(': # ( dcl )
+      self.dcl(src, p) 
+      if p.gettoken(src) != (')', ')'):
+        print "missing ) %s" % (self.dbg(src, p))
+        raise Exception
+    elif ttype == "word":
+      self.name = token
+    elif self.param_level > 0:
+      p.ungettok(src)
+    else:
+      print "expected name or (, %s" % (self.dbg(src, p))
+      raise Exception
+    while 1:
+      token, ttype = p.gettoken(src)
+      if ttype == "(":
+        self.ptlist(src, p)
+        token, type = p.gettoken(src)
+        if token != ')':
+          print "missing ) after parameter list, token: [%s], %s" % (token, self.dbg(src, p))
+          raise Exception
+        if self.param_level == 0: self.types += ["function"]
+      elif ttype == "[": 
+        # array dimension can only span a one line
+        pattern = r"(.*)\]"
+        s = p.getline(src)
+        m = re.match(pattern, s)
+        if m:
+          token = s[m.start(1) : m.end(1)]
+          if self.param_level == 0: self.types += ["array" + token]
+          p.col += m.end(0)
+        else:
+          print "missing ], %s" % (self.dbg(src, p))
+          raise Exception
+      else:
+        p.ungettok(src)
+        break     
+    return 0
+
+  def ptlist(self, src, p):
+    ''' parameter type list '''
+    while 1:
+      self.pdecl(src, p)
+      token, ttype = p.gettoken(src)
+      if token != ',':
+        p.ungettok(src)
+        break
+
+  def pdecl(self, src, p):
+    ''' parameter declarator '''
+    self.dclspec(src, p)
+    self.param_level += 1
+    self.dcl(src, p)
+    self.param_level -= 1
+
+  def __str__(self):
+    return ' '.join(self.types) + ' ' + self.name
+
+  def __repr__(self):
+    return self.types
+
+  def dbg(self, src, p):
+    ''' return the debug message '''
+    return "line: [%s], pos: %s" % (p.getline(src).rstrip(), p)
 
   def isempty(self): return self.empty
 
@@ -132,6 +255,7 @@ class Comment:
       return
     self.extract_text(src)  # .text
     self.get_commands()     # .cmds
+    self.empty = 0
 
   def span(self, src, p):
     '''
@@ -178,7 +302,7 @@ class Comment:
     if p.col < self.end.col:
       s += src[p.row][p.col : self.end.col - len(cmt1)]
     self.text = s
-    print "comment text is [%s] from %s to %s" % (self.text, self.begin, self.end)
+    #print "comment text is [%s] from %s to %s" % (self.text, self.begin, self.end)
 
   def checkbe(self):
     self.begin.check()
@@ -242,10 +366,10 @@ class Item:
     '''
     parse an item aggressively
     '''
-    token,ttype = p.peek(src)
+    token,ttype = p.peektok(src)
 
     if token == "}": return -1
-   
+  
     # try to get a declaration
     decl = Decl(src, p)
     self.decl = decl if not decl.isempty() else None
@@ -253,7 +377,10 @@ class Item:
     # try to get a comment
     comment = Comment(src, p)
     self.comment = comment if not comment.isempty() else None
-
+    
+    if self.comment or self.decl:
+      #print "successfully got one item, at %s" % p
+      self.empty = 0
     #self.get_generic_type()
     
   def find_type(self):
@@ -318,7 +445,6 @@ class Object:
 
     if type(pos) == int:  # integer input
       pos = P(pos, 0)
-    self.begin = copy(pos)
     self.items = []
     self.empty = 1
     self.parse(src, pos)
@@ -335,8 +461,7 @@ class Object:
       item = Item(src, p)
       if item.isempty(): break
 
-      raw_input( "new item: %s, type: %s, cmds: %s" % (
-        item.name, item.typeg, item.cmds) )
+      #print "new item: %s" % (item)
       self.items += [item]
    
     # parse }
@@ -354,9 +479,10 @@ class Object:
       line = p.getline(src)
       if line == None: break
 
-      pattern = r"\s*typedef\s+struct\s*\w*\s*\{"
+      pattern = r"\s*(typedef)\s+struct\s*\w*\s*\{"
       m = re.search(pattern, line)
       if m: # a match is found
+        self.begin = P(p.row, p.col + m.start(1))
         p.col += m.end(0)
         print "object-beginning is found in %s, %s" % (p, src[p.row])
         return 1
@@ -375,10 +501,13 @@ class Object:
     '''
     while 1:
       line = p.getline(src)
-      pattern = r'(\}\s*)(\w+)\s*;'
-      m = re.search(pattern, line)
+      if line.strip() == "": # blank line 
+        p.nextline()
+        continue
+      pattern = r'\s*(\}\s*)(\w+)(\s*;).*'
+      m = re.match(pattern, line)
       if m:
-        p.col += m.end(0)
+        p.col += m.end(3)
         self.name = line[m.start(2) : m.end(2)]
         self.end = copy(p)
         self.empty = 0
