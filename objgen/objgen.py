@@ -8,7 +8,6 @@ TODO:
   * multiple-line support with regular expression
   * preprocessor
   * interpretor
-  * C++ comment
   * skip struct in comment or string
 '''
 
@@ -344,24 +343,30 @@ class Comment:
 
   def get_commands(self):
     '''
-    parse text to commands, save results to .cmds
+    parse raw text in comment to commands, save results to .cmds
     '''
     self.cmds = {}
     s = self.raw
     pos = 0
     while 1:
       # note: $$ or \$ means a literal $
-      # : or = means set the current
-      # := or :: means set the parser's property
-      pattern = r"[^\$\\](\$)(\w+)\s*([\:\=]{1,2})\s*(.*?)(\;)"
+      # command line:
+      #   cmd op args;
+      # op can be one of ":", "=", ":=", "::" or "" (nothing)
+      #   : or = means set the current variable only
+      #   := or :: means also set the parser's current state
+      pattern = r"[^\$\\]*(\$)(\w+)\s*(\:|\=|\:\=|\:\:|)\s*(.*?)\;"
       m = re.search(pattern, s, re.MULTILINE | re.DOTALL)
       if m == None: break
       # a command is found
+      # group 2 is the cmd
+      # group 3 is the operator
+      # group 4 is the argument
       cmd = s[m.start(2) : m.end(2)]
-      persist = m.end(3) - m.start(3) - 1 # the operator
+      persist = 1 if m.end(3) - m.start(3) == 2 else 0 # the operator
       param = s[m.start(4) : m.end(4)]
       self.cmds[cmd] = [param, persist] # add to dictionary
-      s = s[:m.start(1)] + s[m.end(5):]; # remove the command
+      s = s[:m.start(1)] + s[m.end(0):]; # remove the command from comment
       #print "a pattern is found [%s]: [%s], rest: %s" % (
       #    cmd, param, s)
       #raw_input()
@@ -415,6 +420,7 @@ class Item:
     if self.comment or self.decl:
       #print "successfully got one item, at %s" % p
       self.empty = 0
+    
     #self.get_generic_type()
     
   def find_type(self):
@@ -554,8 +560,7 @@ class Object:
     print "no object-ending is found, p at", p
     return 0  # not found
 
-  def isempty(self):
-    return self.empty
+  def isempty(self): return self.empty
 
   def output_decl(self):
     '''
