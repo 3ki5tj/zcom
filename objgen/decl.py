@@ -23,11 +23,12 @@ class CDecl:
     '''
     self.pos = 0
     self.token = self.ttype = None
-    self.declspec()
+    self.param_level = 0
+    self.dclspec()
     self.dcl()
     self.types += [self.datatype]
 
-  def declspec(self, allow_empty = 0):
+  def dclspec(self, allow_empty = 0):
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
     nwords = 0
@@ -49,6 +50,7 @@ class CDecl:
   def dcl(self):
     '''
     declarator
+    wrapper: counter the leading # of stars, and lead to dirdcl()
     '''
     ns = 0
     while self.pos < self.nraw:
@@ -57,7 +59,7 @@ class CDecl:
         break
       ns += 1
     self.dirdcl()
-    self.types += ["pointer to"] * ns
+    if self.param_level == 0: self.types += ["pointer to"] * ns
 
   def dirdcl(self):
     '''
@@ -71,17 +73,20 @@ class CDecl:
         raise Exception
     elif self.ttype == "word":
       self.name = self.token
+    elif self.param_level > 0:
+      self.ungettok()
     else:
       print "expected name or (, %s" % (self.dbg())
+      raise Exception
     while 1:
       ttype = self.gettoken()
       if ttype == "(":
         self.ptlist()
         if self.gettoken() != ')':
           print "missing ) after parameter type list, %s" % (self.dbg())
-        self.types += ["function returning"]
+        if self.param_level == 0: self.types += ["function returning"]
       elif ttype == "[]":
-        self.types += ["array " + self.token + " of"]
+        if self.param_level == 0: self.types += ["array " + self.token + " of"]
       else:
         self.ungettok()
         break 
@@ -94,7 +99,10 @@ class CDecl:
         break
 
   def pdecl(self):
-    self.declspec(allow_empty = 1)
+    self.dclspec()
+    self.param_level += 1
+    self.dcl()
+    self.param_level -= 1
     #if self.ttype != ')':
     #  print "cannot handle complex function"
     #  raise Exception
@@ -130,7 +138,7 @@ class CDecl:
     if self.ttype == None: return
     n = len(self.token)
     if n > self.pos:
-      print "unable to unget get %s at pos %d" % (self.token, self.pos)
+      print "unable to unget %s" % (self.dbg())
     self.pos -= n
 
   def dbg(self):
@@ -139,10 +147,14 @@ class CDecl:
 
 
 def test(s):
-  print "s = %-36s desc = %s" % (s+',', CDecl(s))
+  d = CDecl(s)
+  print "s = %-36s desc = %s, name = %s" % (s+',', d, d.name)
 
 def main():
   #test(sys.argv[1])
+  if len(sys.argv) > 1:
+    test(sys.argv[1])
+    return
   test("char **argv")
   test("int (*daytab)[13]")
   test("int *daytab[13]")
