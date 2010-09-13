@@ -2,6 +2,14 @@
 import os, sys, re, filecmp
 from copy import copy
 
+'''
+intend to be a code generator
+TODO:
+  * multiple-line support with regular expression
+  * preprocessor
+  * interpretor
+'''
+
 
 cmt0 = "/*"
 cmt1 = "*/"
@@ -54,14 +62,12 @@ class P:
       if s == None:
         self.ttype = self.token = None
         break
-
       # skip leading space
       m = re.match(r"(\s*).*", s)
       if not m: raise Exception
       p.col += m.end(1)
       s = p.getline(src)
       if len(s) != 0: break # found a token
-
       # this line is exhausted
       p.nextline()
       continue
