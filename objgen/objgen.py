@@ -109,6 +109,21 @@ class P:
     q = copy(p) # create a backup
     return q.gettoken(src)
 
+  def gettext(self, src, q):
+    '''
+    get entire string from p to q
+    '''
+    p = copy(self) # so self is intact
+    if q <= P(0,0):
+      q = P(len(src), 0) # end of string
+    s = ""
+    while p.row < q.row:
+      s += p.getline(src)
+      p.nextline()
+    if p.row == q.row and p.col < q.col:
+      s += src[p.row][p.col: q.col]
+    return s
+
 class Decl:
   '''
   C declaration, adapted from K & R
@@ -118,6 +133,9 @@ class Decl:
     self.parse(src, p)
 
   def parse(self, src, p):
+    p.skipspace(src)
+    self.begin = copy(p)
+
     # pre-filter out the case where the first token is not a word
     token, type = p.peektok(src)
     if type != "word": return -1
@@ -134,8 +152,10 @@ class Decl:
       print "missing ; %s" % self.dbg(src, p)
       return -1
     
-    #print "complete a decl {%s}" % self
+    self.end = copy(p)
+    self.raw = self.begin.gettext(src, self.end)
     self.empty = 0
+    #print "complete a decl {%s} from %s to %s\n{%s}" % (self, self.begin, self.end, self.raw)
     return 0
 
   def dclspec(self, src, p, allow_empty = 0):
@@ -214,7 +234,7 @@ class Decl:
           raise Exception
       else:
         p.ungettok(src)
-        break     
+        break
     return 0
 
   def ptlist(self, src, p):
@@ -254,7 +274,7 @@ class Comment:
     if 0 != self.span(src, p):       # .begin, .end
       return
     self.extract_text(src)  # .text
-    self.get_commands()     # .cmds
+    self.get_commands()     # .cmds with .cmds['desc'] being the description
     self.empty = 0
 
   def span(self, src, p):
@@ -294,15 +314,11 @@ class Comment:
     extract text within the comment
     '''
     self.checkbe()
-    p = P(self.begin.row, self.begin.col + len(cmt0))
-    s = ""
-    while p.row < self.end.row:
-      s += p.getline(src)
-      p.nextline()
-    if p.col < self.end.col:
-      s += src[p.row][p.col : self.end.col - len(cmt1)]
-    self.text = s
-    #print "comment text is [%s] from %s to %s" % (self.text, self.begin, self.end)
+    s = self.begin.gettext(src, self.end).strip()
+    if s.startswith(cmt0) and s.endswith(cmt1):
+      s = s[len(cmt0) : len(s) - len(cmt1)]
+    self.raw = s
+    #print "comment text is [%s] from %s to %s" % (self.raw, self.begin, self.end)
 
   def checkbe(self):
     self.begin.check()
@@ -313,7 +329,7 @@ class Comment:
     parse text to commands, save results to .cmds
     '''
     self.cmds = {}
-    s = self.text
+    s = self.raw
     pos = 0
     while 1:
       # note: $$ or \$ means a literal $
@@ -341,7 +357,7 @@ class Comment:
       #print "the remain string is [%s]" % self.cmds["desc"]
 
   def isempty(self): return self.empty
-  def __str__(self): return self.text
+  def __str__(self): return self.raw
   def __repr__(self): return __str__(self)
 
 
@@ -484,7 +500,7 @@ class Object:
       if m: # a match is found
         self.begin = P(p.row, p.col + m.start(1))
         p.col += m.end(0)
-        print "object-beginning is found in %s, %s" % (p, src[p.row])
+        #print "object-beginning is found in %s, %s" % (p, src[p.row])
         return 1
       if aggr:
         p.nextline()
@@ -511,7 +527,7 @@ class Object:
         self.name = line[m.start(2) : m.end(2)]
         self.end = copy(p)
         self.empty = 0
-        print "object-ending is found in %s, %s" % (p, src[p.row])
+        #print "object-ending is found in %s, %s" % (p, src[p.row])
         return 1
       if aggr:
         p.nextline()
@@ -523,24 +539,49 @@ class Object:
   def isempty(self):
     return self.empty
 
+  def get_decl(self):
+    '''
+    return a string for declaration
+    '''
+    s = "typedef struct {\n"
+    for item in self.items:
+      didsth = 0
+      # handle declaration
+      if item.decl:
+        s += self.get_indent(s) + item.decl.raw
+        didsth = 1
+      # handle comment
+      comment = item.comment
+      if (comment and comment.cmds.has_key("desc")
+          and len(comment.cmds["desc"][0]) > 0):
+        s += self.get_indent(s) + "/* " + comment.cmds["desc"][0] + " */"
+        didsth = 1
+      # put a new line
+      if didsth: s += "\n"
+    s += "} " + self.name + ";"
+    return s
+
+  def get_indent(self, s):
+    return "  " if s.endswith("\n") else ""
 
 class Parser:
   '''
   handle objects in a file
   '''
   def __init__(self, src):
-    self.parse_lines(src)
+    self.src = src
+    self.parse_lines()
 
-  def parse_lines(self, src):
+  def parse_lines(self):
     '''
     process the input template 
     '''
-    objs = []
+    objs = self.objs = []
     p = P()
 
     # search for objects
     while 1:
-      obj = Object(src, p) # try to get an object
+      obj = Object(self.src, p) # try to get an object
       if obj.isempty(): break
 
       print "found a new object '%s' with %d items, from %s to %s\n" % (
@@ -552,7 +593,21 @@ class Parser:
     '''
     return the completed C source code
     '''
-    return ""
+    objs = self.objs
+    src = self.src
+    p0 = P(0,0)
+    s = p0.gettext(src, objs[0].begin)
+    nobjs = len(objs)
+    for i in range(nobjs):
+      obj  = objs[i]
+      s += obj.get_decl()
+      if i == nobjs - 1:
+        pnext = P(len(src), 0)
+      else:
+        pnext = objs[i+1].begin
+      s += obj.end.gettext(src, pnext)
+
+    return s
    
 
 def handle(file, template = ""):
@@ -567,7 +622,7 @@ def handle(file, template = ""):
   # construct a parser
   psr = Parser(src)
   # write the processed file
-  open(file, 'w').writelines(psr.output())
+  open(file, 'w').write(psr.output())
 
 def main():
   handle("test.c")
