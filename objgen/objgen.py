@@ -417,6 +417,15 @@ class Comment:
     self.cmds = {}
     s = self.raw
     pos = 0
+    
+    ''' 
+    for multiple-line comments
+    remove the leading`* ' for subsequent lines
+    '''
+    sa = [a.strip() for a in s.splitlines()]
+    if len(sa) > 1: # sa[:1] is the first line
+      sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ] 
+    s = ' '.join(sa)
     while 1:
       # note: $$ or \$ means a literal $
       # command line:
@@ -442,12 +451,9 @@ class Comment:
 
     # merge the remaining string to description
     if not self.cmds.has_key("desc"):
-      s = re.sub(r"[\$\\]\$", "$", s)
+      s = re.sub(r"[\$\\]\$", "$", s) # literal $
       sa = [a.strip() for a in s.splitlines()] # split to lines
-      # remove `* ' for subsequent lines
-      if len(sa) > 1:
-        sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ] 
-      s = ' '.join(sa).strip().rstrip(";,.")
+      s = ' '.join(sa).strip()
       self.cmds["desc"] = [s, 0] # description is not persistent
       #print "the remain string is [%s]" % self.cmds["desc"]
 
@@ -489,7 +495,7 @@ class Item:
       #raw_input()
       self.empty = 0
       self.pp = pp
-      self.dl = self.comment = None
+      self.dl = self.cmt = None
     else:
       self.pp = None
 
@@ -499,10 +505,10 @@ class Item:
       self.dl = None if dl.isempty() else dl
       
       # try to get a comment
-      comment = Comment(src, p)
-      self.comment = comment if not comment.isempty() else None
+      cmt = Comment(src, p)
+      self.cmt = cmt if not cmt.isempty() else None
     
-    if self.pp or self.comment or self.dl:
+    if self.pp or self.cmt or self.dl:
       #print "successfully got one item, at %s" % p
       self.end = copy(p)
       self.empty = 0
@@ -511,37 +517,36 @@ class Item:
       raise Exception
     
     self.expand_multiple_declarators()
-    #self.get_generic_type()
 
   def __str__(self):
     return "pp: %5s, dl: %5s, cmt: %5s, raw = [%s]" % (
-        self.pp != None, self.dl != None, self.comment != None, 
+        self.pp != None, self.dl != None, self.cmt != None, 
         self.begin.gettext(self.src, self.end).strip() )
     
   def get_generic_type(self):
     '''
     get a generic type, and type name
     '''
-    types = self.types
+    types = self.decl.types
+    cmds = self.cmt.cmds if self.cmt else []
     nlevels = len(types)
     if nlevels == 1:
-      self.typeg = ("simple", types[0])
+      return types[0]
     elif types[0].startswith("array"):
-      self.typeg = ("static array", ' '.join(types[1:]))
       self.arrcnt = types[0][5:]
+      return "static array"
     elif types[0] == "pointer":
-      towhat = ' '.join(types[1:])
+      #towhat = ' '.join(types[1:])
       if nlevels == 2 and types[1] == "function":
-        self.typeg = ("function", ' '.join(types[2:]))
-      elif 'arr' in self.cmds:
-        if 'obj' in self.cmds and nlevels == 2:
-          self.typeg = ("object array", towhat)
-        else:
-          self.typeg = ("dynamic array", towhat)
-      elif 'obj' in self.cmds:
-        self.typeg = ("object", towhat)
+        return "function pointer"
+      elif nlevels == 2 and types[1] == "char":
+        return "string"
+      elif 'arr' in cmds:
+        return "dynamic array"
+      elif 'obj' in cmds:
+        return "object"
       else:
-        self.typeg = ("pointer", towhat)
+        return "pointer"
 
   def expand_multiple_declarators(self):
     '''
@@ -554,19 +559,23 @@ class Item:
     Object should use items in the list instead of this item itself
     '''
     if self.dl == None:
+      self.decl = None
       self.itlist = [self]
       return
     dclist = self.dl.dclist
     n = len(dclist)
     if n <= 0:
+      self.decl = None
       self.itlist = [self]
       return
 
     self.itlist = []
     for i in range(n):
       decl = dclist[i]
+      decl.types += [self.dl.datatype]
       it = copy(self)  # make a shallow copy of myself
       it.decl = decl
+      it.gtype = it.get_generic_type()
       self.itlist += [it]
     
   def isempty(self):
@@ -605,6 +614,8 @@ class Object:
    
     # parse }
     self.find_ending(src, p, 0)
+
+    self.determine_prefix();
 
   def find_beginning(self, src, p, aggr = 1):
     '''
@@ -661,7 +672,7 @@ class Object:
 
   def isempty(self): return self.empty
 
-  def output_decl(self):
+  def write_decl(self):
     '''
     return a string for formatted declaration
     '''
@@ -670,7 +681,7 @@ class Object:
     block = [] # block list
     for i in range(len(self.items)):
       item = self.items[i]
-      decl0 = decl1 = cmt = ""
+      decl0 = decl1 = scmt = ""
       # 1. handle pp
       if item.pp:
         self.dump_block(block, cw)
@@ -683,19 +694,19 @@ class Object:
         decl1 = item.decl.raw
         #raw_input ("%s %s" % (decl0, decl1))
       # 3. handle comment
-      comment = item.comment
-      if (comment and comment.cmds.has_key("desc")
-          and len(comment.cmds["desc"][0]) > 0):
-        cmt = "/* " + comment.cmds["desc"][0] + " */"
+      cmt = item.cmt
+      if (cmt and cmt.cmds.has_key("desc")
+          and len(cmt.cmds["desc"][0]) > 0):
+        scmt = "/* " + cmt.cmds["desc"][0] + " */"
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
-        block += [(decl0, decl1, cmt)] # just buffer it
+        block += [(decl0, decl1, scmt)] # just buffer it
       else:
         self.dump_block(block, cw)
         block = [] # empty the block
         # also print this line
-        if len(cmt) > 0: 
-          cw.addln(cmt)
+        if len(scmt) > 0: 
+          cw.addln(scmt)
     self.dump_block(block, cw)
     block = []
     cw.add("} " + self.name + ";")
@@ -710,7 +721,55 @@ class Object:
       line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1]+';', item[2])
       cw.add(line)
 
+  def determine_prefix(self):
+    name = self.name
+    if name.endswith("_t"): name = name[:-2]
+    # guess a short nickname
+    if len(name) > 3: name = name[:2].lower()
+    self.nickname = name
+    self.prefix = self.nickname + "_"
+
+  def write_programs(self):
+    s = ""
+    s += self.write_prog_close()
+    return s
+
+  def write_prog_close(self):
+    ow = CodeWriter()
+    funcname = "%sclose" % self.prefix
+    ow.addln("/* %s: close a pointer to %s */", funcname, self.name)
+    ow.addln("#define %s(%s) { %s_(%s); free(%s); %s = NULL; }",
+      funcname, self.nickname, funcname, self.nickname, self.nickname, self.nickname)
+    ow.addln("void %s_(%s *%s)", funcname, self.name, self.nickname)
+    ow.addln("{")
+    
+    # free strings 
+    s_len = lambda it: len(it.decl.name) if (it.decl and it.gtype == "string") else 0
+    s_width = max(s_len(it) for it in self.items)
+    for it in self.items:
+      if it.decl and it.gtype == "string":
+        ow.addln("if (%s->%-*s != NULL) ssdelete(%s->%s);",
+                 self.nickname, s_width, it.decl.name,
+                 self.nickname, it.decl.name)
+
+    # free pointers
+    p_len = lambda it: len(it.decl.name) if (it.decl and it.gtype == "dynamic array") else 0
+    p_width = max(p_len(it) for it in self.items)
+    for it in self.items:
+      if it.decl and it.gtype == "dynamic array":
+        ow.addln("if (%s->%-*s != NULL) free(%s->%s);", 
+                 self.nickname, p_width, it.decl.name,
+                 self.nickname, it.decl.name)
+
+    ow.addln("memset(%s, 0, sizeof(*%s));", self.nickname, self.nickname)
+    ow.addln("}")
+    ow.addln("")
+    return ow.gets()
+
 class CodeWriter:
+  '''
+  output code in an indented fashion
+  '''
   sindent = "  "
   def __init__(self, nindents = 0):
     self.nindents = nindents
@@ -720,16 +779,16 @@ class CodeWriter:
   def dec(self): 
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
-  def add(self, t):
-    t = t.lstrip()
-    if t.startswith("}"): self.dec()
+  def add(self, t, *args):
+    t = t % args
+    if t.lstrip().startswith("}"): self.dec()
     if self.s.endswith("\n") and not t.startswith("#"):
       self.s += self.sindent * self.nindents
     self.s += t
     if t.rstrip().endswith("{"): self.inc()
 
-  def addln(self, t):
-    self.add(t.rstrip() + '\n')
+  def addln(self, t, *args):
+    self.add( (t.strip() % args) + '\n' )
 
   def gets(self): return self.s
     
@@ -760,6 +819,14 @@ class Parser:
     print "I got %d objects" % (len(objs))
 
   def output(self):
+    s = self.change_objs_decl()
+    
+    # append programs
+    for obj in self.objs:
+      s += obj.write_programs()
+    return s
+
+  def change_objs_decl(self):
     '''
     return the completed C source code
     '''
@@ -771,11 +838,8 @@ class Parser:
     nobjs = len(objs)
     for i in range(nobjs):
       obj  = objs[i]
-      s += obj.output_decl()
-      if i == nobjs - 1:
-        pnext = P(len(src), 0)
-      else:
-        pnext = objs[i+1].begin
+      s += obj.write_decl()
+      pnext = objs[i+1].begin if i < nobjs - 1 else P(len(src), 0)
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
    
