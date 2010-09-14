@@ -7,7 +7,6 @@ intend to be a code generator
 TODO:
   * multiple-line support with regular expression
   * preprocessor
-  * interpretor
   * skip struct in comment or string
 '''
 
@@ -722,12 +721,16 @@ class Object:
       cw.add(line)
 
   def determine_prefix(self):
+    '''
+    determine the nickname, variable name for a pointer to the object
+    and the prefix, the name attached to functions of the object
+    '''
     name = self.name
     if name.endswith("_t"): name = name[:-2]
-    # guess a short nickname
-    if len(name) > 3: name = name[:2].lower()
+    if name.endswith("data") and len(name) > 4: # abcdata --> abc
+      name = name[:-4]
+    self.prefix   = name + "_"
     self.nickname = name
-    self.prefix = self.nickname + "_"
 
   def write_programs(self):
     s = ""
