@@ -207,7 +207,7 @@ class Declarator:
           break
         print "expected data type from %s, type=%s, %s" % (p0, type, self.dbg(src, p))
         raise Exception
-        return 1
+        return None
       # guess if the token is a type specifier
       if (token not in alltypes and
           token[:2]  not in ("t_", "T_") and
@@ -215,10 +215,8 @@ class Declarator:
         p.ungettok(src)
         break
       type += token + " "
-    if self.param_level == 0: # not a function parameter
-      self.datatype = type.rstrip()
-      #print "datatype is [%s], pos %s" % (self.datatype, p)
-    return 0
+      #print "datatype is [%s], pos %s" % (self.type, p)
+    return type[:-1]
 
   def dcl(self, src, p):
     '''
@@ -323,7 +321,8 @@ class DeclaratorList(Declarator):
 
     # find the type, e.g. int, void, ...
     self.param_level = 0 # dclspec needs it
-    if 0 != self.dclspec(src, p): return -1
+    self.datatype = self.dclspec(src, p)
+    if self.datatype == None: return -1
 
     #print "start to find variables from %s" % (p)
     while 1: # repeatedly get variables
