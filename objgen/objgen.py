@@ -172,9 +172,9 @@ class Object:
     # parse }
     self.find_ending(src, p, 0)
 
-    self.merge_comments()
-    self.get_cmds_gtype()
-    self.determine_prefix();
+    self.merge_comments() # merging multiple-line C++ comments
+    self.get_cmds_gtype() # should be done after merging comments
+    self.determine_prefix()  #
 
   def find_beginning(self, src, p, aggr = 1):
     '''
@@ -245,7 +245,25 @@ class Object:
     self.nickname = name
 
   def merge_comments(self):
-    pass
+    ''' merge multiple comments '''
+    i = 1
+    items = self.items
+    while i < len(items):
+      it = items[i]
+      itp = items[i-1]
+      if (it.cmt and not it.decl 
+          and i > 0 and itp.cmt  # stand-alone comment allowing another
+          and it.cmt.begin.col == itp.cmt.begin.col): # starting at the same column
+        #print "merging commands from item %d and item %d" % (i-1, i)
+        #print "'%s'\n+\n'%s'" % (itp.cmt.raw, it.cmt.raw)
+        #raw_input()
+        itp.cmt.raw += it.cmt.raw
+        items = items[:i] + items[i+1: ] # create a new list
+        continue
+      i += 1
+    self.items = items
+    #print "%d %d" % (len(items), len(self.items))
+    #raw_input()
 
   def get_cmds_gtype(self):
     ''' get cmds and determine generic type ''' 
@@ -254,6 +272,9 @@ class Object:
         it.cmds = Commands(it.cmt.raw)
       else:
         it.cmds = None
+    
+    # gtype uses information from commands
+    for it in self.items:
       if it.decl:
         it.gtype = it.get_generic_type()
       
