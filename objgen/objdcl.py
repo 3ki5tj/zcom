@@ -6,7 +6,7 @@ from copy import copy
 C declarator list
 '''
 
-class Declarator:
+class CDeclarator:
   '''
   a single C declarator, adapted from K & R
   '''
@@ -153,10 +153,10 @@ class Declarator:
     return "line: [%s], pos: %s" % (p.getline(src).rstrip(), p)
   def isempty(self): return 0 if self.cnt else 1
 
-class DeclaratorList(Declarator): 
+class CDeclaratorList(CDeclarator): 
   '''
   C declarations of multiple variables
-  we inherit `dclspec()' and `datatype' from Declarator
+  we inherit `dclspec()' and `datatype' from CDeclarator
   '''
   def __init__(self, src, p):
     self.dclist = []
@@ -177,11 +177,11 @@ class DeclaratorList(Declarator):
 
     #print "start to find variables from %s" % (p)
     while 1: # repeatedly get variables
-      # we find declarators (variables) through Declarator's
+      # we find declarators (variables) through CDeclarator's
       # can s
-      d = Declarator(src, p)
+      d = CDeclarator(src, p)
       if d.isempty(): return -1
-      d.datatype = self.datatype # add datatype for individual Declarator
+      d.datatype = self.datatype # add datatype for individual CDeclarator
       self.dclist += [d]
       
       # handle the last semicolon
