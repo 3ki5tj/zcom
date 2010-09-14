@@ -11,11 +11,11 @@ class CDecl:
     if type(s) != type(""): raise Exception
     self.s = s.strip()
     self.nraw = len(self.s)
-    self.types = []
+    self.types = ""
     self.dcl_wrapper()
 
   def __str__(self):
-    return ' '.join(self.types)
+    return self.types
 
   def dcl_wrapper(self):
     '''
@@ -26,7 +26,7 @@ class CDecl:
     self.param_level = 0
     self.datatype = self.dclspec()
     self.dcl()
-    self.types += [self.datatype]
+    self.types += self.datatype
 
   def dclspec(self, allow_empty = 0):
     # storage classifiers: auto, register, static, extern, typedef
@@ -48,7 +48,7 @@ class CDecl:
         self.ungettok()
         break
       type += self.token + " "
-    return type
+    return type[:-1]
 
   def dcl(self):
     '''
@@ -62,7 +62,7 @@ class CDecl:
         break
       ns += 1
     self.dirdcl()
-    if self.param_level == 0: self.types += ["pointer to"] * ns
+    self.types += "pointer to " * ns
 
   def dirdcl(self):
     '''
@@ -76,7 +76,7 @@ class CDecl:
         raise Exception
     elif self.ttype == "word":
       self.name = self.token
-    elif self.param_level > 0:
+    elif self.param_level > 0: # allow missing name
       self.ungettok()
     else:
       print "expected name or (, %s" % (self.dbg())
@@ -84,12 +84,13 @@ class CDecl:
     while 1:
       ttype = self.gettoken()
       if ttype == "(":
+        self.types += "function of ("
         self.ptlist()
         if self.gettoken() != ')':
           print "missing ) after parameter type list, %s" % (self.dbg())
-        if self.param_level == 0: self.types += ["function returning"]
+        self.types += ") returning "
       elif ttype == "[]":
-        if self.param_level == 0: self.types += ["array " + self.token + " of"]
+        self.types += "array " + self.token + " of "
       else:
         self.ungettok()
         break 
@@ -101,16 +102,15 @@ class CDecl:
       if self.gettoken() != ',':
         self.ungettok()
         break
+      self.types += ", "
 
   def pdecl(self):
     ''' parameter declarator '''
     self.param_level += 1
-    self.dclspec(allow_empty = 1)
+    type = self.dclspec(allow_empty = 1)
     self.dcl()
+    self.types += type
     self.param_level -= 1
-    #if self.ttype != ')':
-    #  print "cannot handle complex function"
-    #  raise Exception
 
   def gettoken(self):
     '''
@@ -167,7 +167,8 @@ def main():
   test("void (*comp)()")
   test("char (*(*x())[])()")
   test("char (*(*x[3])())[5]")
- 
+  test("char (*(*x(double, int *, char *s, char (*)(float)))[5])()")
+
 if __name__ == "__main__":
   main()
 
