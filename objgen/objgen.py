@@ -151,7 +151,7 @@ class Preprocessor:
     if not s.startswith("#"): return -1
     self.raw = s[1:].strip()
     self.empty = 0
-    p.nextline()
+    p.col += len(s)
 
   def isempty(self): return self.empty
 
@@ -472,6 +472,7 @@ class Item:
     self.empty = 1
     self.begin = copy(p)
     if src == None: return
+    self.src = src
     self.parse(src, p)
 
   def parse(self, src, p):
@@ -483,16 +484,23 @@ class Item:
  
     # try to see it's a preprocessor
     pp = Preprocessor(src, p)
-    self.pp = pp if not pp.isempty() else None
+    if not pp.isempty():
+      #print "pos %s, preprocessor %s" % (p, pp.raw)
+      #raw_input()
+      self.empty = 0
+      self.pp = pp
+      self.dl = self.comment = None
+    else:
+      self.pp = None
 
-    # try to get a declaration
-    self.decl = None
-    dl = DeclaratorList(src, p)
-    self.dl = None if dl.isempty() else dl
-    
-    # try to get a comment
-    comment = Comment(src, p)
-    self.comment = comment if not comment.isempty() else None
+      # try to get a declaration
+      self.decl = None
+      dl = DeclaratorList(src, p)
+      self.dl = None if dl.isempty() else dl
+      
+      # try to get a comment
+      comment = Comment(src, p)
+      self.comment = comment if not comment.isempty() else None
     
     if self.pp or self.comment or self.dl:
       #print "successfully got one item, at %s" % p
@@ -504,6 +512,11 @@ class Item:
     
     self.expand_multiple_declarators()
     #self.get_generic_type()
+
+  def __str__(self):
+    return "pp: %5s, dl: %5s, cmt: %5s, raw = [%s]" % (
+        self.pp != None, self.dl != None, self.comment != None, 
+        self.begin.gettext(self.src, self.end).strip() )
     
   def get_generic_type(self):
     '''
@@ -587,7 +600,7 @@ class Object:
       item = Item(src, p)
       if item.isempty(): break
 
-      print "new item at line %3d has %d declarators" % (p.row, len(item.itlist))
+      #print "line %3d has %d item(s): %s" % (p.row + 1, len(item.itlist), item)
       self.items += item.itlist
    
     # parse }
@@ -652,13 +665,17 @@ class Object:
     '''
     return a string for formatted declaration
     '''
-    s = "typedef struct {\n"
+    cw = CodeWriter()
+    cw.addln("typedef struct {")
     block = [] # block list
-    for item in self.items:
+    for i in range(len(self.items)):
+      item = self.items[i]
       decl0 = decl1 = cmt = ""
       # 1. handle pp
       if item.pp:
-        s += "#" + item.pp.raw + "\n"
+        self.dump_block(block, cw)
+        block = [] # empty the block
+        cw.addln("#" + item.pp.raw)
         continue
       # 2. handle declaration
       if item.decl:
@@ -674,27 +691,48 @@ class Object:
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1, cmt)] # just buffer it
       else:
-        s = self.get_decl_dump(block, s)
+        self.dump_block(block, cw)
         block = [] # empty the block
         # also print this line
         if len(cmt) > 0: 
-          s += self.get_indent(s) + cmt + "\n"
-    s = self.get_decl_dump(block, s)
+          cw.addln(cmt)
+    self.dump_block(block, cw)
     block = []
-    s +=  "} " + self.name + ";"
-    return s
-  def get_decl_dump(self, block, s):
-    if len(block) == 0: return s
+    cw.add("} " + self.name + ";")
+    return cw.gets()
+  def dump_block(self, block, cw):
+    if len(block) == 0: return
     # align and format all items in the bufferred block
     # and append the result to string s
     wid0 = max(len(item[0]) for item in block)
     wid1 = max(len(item[1]) for item in block) + 1 # for ;
     for item in block:
       line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1]+';', item[2])
-      s += self.get_indent(s) + line
-    return s
-  def get_indent(self, s):
-    return "  " if s.endswith("\n") else ""
+      cw.add(line)
+
+class CodeWriter:
+  sindent = "  "
+  def __init__(self, nindents = 0):
+    self.nindents = nindents
+    self.s = ""
+
+  def inc(self): self.nindents += 1
+  def dec(self): 
+    self.nindents = self.nindents-1 if self.nindents > 0 else 0
+
+  def add(self, t):
+    t = t.lstrip()
+    if t.startswith("}"): self.dec()
+    if self.s.endswith("\n") and not t.startswith("#"):
+      self.s += self.sindent * self.nindents
+    self.s += t
+    if t.rstrip().endswith("{"): self.inc()
+
+  def addln(self, t):
+    self.add(t.rstrip() + '\n')
+
+  def gets(self): return self.s
+    
 
 class Parser:
   '''
