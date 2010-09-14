@@ -26,7 +26,31 @@ class CCodeWriter:
   def addln(self, t, *args):
     self.add( (t.strip() % args) + '\n' )
 
-  def gets(self): return self.s
+  def remove_empty_pp(self):
+    ''' remove empty preprocessor blocks 
+    #if XXX
+    #else
+    #endif
+    '''
+    lines = self.s.splitlines()
+    i = 1
+    while i < len(lines):
+      if lines[i].startswith("#endif") and i > 0:
+        lnprev = lines[i-1]
+        if (lnprev.startswith("#else") or 
+            lnprev.startswith("#elif")):
+          # remove an empty #else/#elif branch
+          lines = lines[:i-1] + lines[i:]
+          continue
+        elif lnprev.startswith("#if"):
+          lines = lines[:i-1] + lines[i+1:]
+          continue
+      i += 1
+    self.s = '\n'.join(lines)
+
+  def gets(self):
+    self.remove_empty_pp()
+    return self.s
     
 
 
