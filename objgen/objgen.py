@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import os, sys, re, filecmp
 from copy    import copy
-from objatom import *
+from objpos  import P 
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
+from objccw  import CCodeWriter
 
 '''
 intend to be a code generator
@@ -226,7 +227,34 @@ class Object:
 
   def isempty(self): return self.empty
 
-  def write_decl(self):
+  def determine_prefix(self):
+    '''
+    determine the nickname, variable name for a pointer to the object
+    and the prefix, the name attached to functions of the object
+    '''
+    name = self.name
+    if name.endswith("_t"): name = name[:-2]
+    if name.endswith("data") and len(name) > 4: # abcdata --> abc
+      name = name[:-4]
+    name = name.lower()
+    self.prefix   = name + "_"
+    self.nickname = name
+
+  def gen_code(self):
+    funclist = []
+    funclist += [self.gen_func_close()]
+
+    # assemble everything to header and source
+    header = self.gen_decl()
+    source = ""
+    for f in funclist:
+      header += f[0]
+      source += "\n" + f[1] 
+    header = header[:-1] # strip the final '\n'
+    self.header = header
+    self.source = source
+
+  def gen_decl(self):
     '''
     return a string for formatted declaration
     '''
@@ -263,7 +291,7 @@ class Object:
           cw.addln(scmt)
     self.dump_block(block, cw)
     block = []
-    cw.add("} " + self.name + ";")
+    cw.addln("} " + self.name + ";")
     return cw.gets()
   def dump_block(self, block, cw):
     if len(block) == 0: return
@@ -275,54 +303,46 @@ class Object:
       line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1]+';', item[2])
       cw.add(line)
 
-  def determine_prefix(self):
-    '''
-    determine the nickname, variable name for a pointer to the object
-    and the prefix, the name attached to functions of the object
-    '''
-    name = self.name
-    if name.endswith("_t"): name = name[:-2]
-    if name.endswith("data") and len(name) > 4: # abcdata --> abc
-      name = name[:-4]
-    self.prefix   = name + "_"
-    self.nickname = name
-
-  def write_programs(self):
-    s = ""
-    s += self.write_prog_close()
-    return s
-
-  def write_prog_close(self):
+  def gen_func_close(self):
     ow = CodeWriter()
-    funcname = "%sclose" % self.prefix
-    ow.addln("/* %s: close a pointer to %s */", funcname, self.name)
-    ow.addln("#define %s(%s) { %s_(%s); free(%s); %s = NULL; }",
-      funcname, self.nickname, funcname, self.nickname, self.nickname, self.nickname)
-    ow.addln("void %s_(%s *%s)", funcname, self.name, self.nickname)
+    owh = CodeWriter()
+    macroname = "%sclose" % self.prefix
+    funcname = macroname + "_"
+    owh.addln("#define %s(%s) { %s(%s); free(%s); %s = NULL; }",
+      macroname, self.nickname, funcname, self.nickname, self.nickname, self.nickname)
+    funcdesc = "/* %s: close a pointer to %s */" % (funcname, self.name)
+    #owh.addln(funcdesc)
+    ow.addln(funcdesc)
+    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.nickname)
+    owh.addln(fdecl + ";") # prototype
+    ow.addln(fdecl)
     ow.addln("{")
-    
-    # free strings 
-    s_len = lambda it: len(it.decl.name) if (it.decl and it.gtype == "string") else 0
-    s_width = max(s_len(it) for it in self.items)
-    for it in self.items:
-      if it.decl and it.gtype == "string":
-        ow.addln("if (%s->%-*s != NULL) ssdelete(%s->%s);",
-                 self.nickname, s_width, it.decl.name,
-                 self.nickname, it.decl.name)
 
-    # free pointers
-    p_len = lambda it: len(it.decl.name) if (it.decl and it.gtype == "dynamic array") else 0
-    p_width = max(p_len(it) for it in self.items)
+    # compute the longest variable
+    calc_len = lambda it: len(it.decl.name) if (it.decl and 
+        it.gtype in ("string", "dynamic array") ) else 0
+    maxwid = max(calc_len(it) for it in self.items)
     for it in self.items:
-      if it.decl and it.gtype == "dynamic array":
-        ow.addln("if (%s->%-*s != NULL) free(%s->%s);", 
-                 self.nickname, p_width, it.decl.name,
-                 self.nickname, it.decl.name)
+      if it.pre:
+        ow.addln("#" + it.pre.raw)
+        continue
+      if not it.decl: continue
+
+      funcfree = None
+      if it.gtype == "string": 
+        funcfree = "ssdelete"
+      elif it.gtype == "dynamic array":
+        funcfree = "free"
+      if not funcfree: continue
+      
+      ow.addln("if (%s->%-*s != NULL) %s(%s->%s);",
+               self.nickname, maxwid, it.decl.name,
+               funcfree, self.nickname, it.decl.name)
 
     ow.addln("memset(%s, 0, sizeof(*%s));", self.nickname, self.nickname)
     ow.addln("}")
     ow.addln("")
-    return ow.gets()
+    return owh.gets(), ow.gets()
 
 class Parser:
   '''
@@ -350,16 +370,20 @@ class Parser:
     print "I got %d objects" % (len(objs))
 
   def output(self):
+    for obj in self.objs:
+      obj.gen_code()
+
+    # add header
     s = self.change_objs_decl()
     
-    # append programs
+    # append functions
     for obj in self.objs:
-      s += obj.write_programs()
+      s += obj.source
     return s
 
   def change_objs_decl(self):
     '''
-    return the completed C source code
+    imbed header to the corresponding places in the template
     '''
     objs = self.objs
     if objs == []: return ""
@@ -369,7 +393,7 @@ class Parser:
     nobjs = len(objs)
     for i in range(nobjs):
       obj  = objs[i]
-      s += obj.write_decl()
+      s += obj.header
       pnext = objs[i+1].begin if i < nobjs - 1 else P(len(src), 0)
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
