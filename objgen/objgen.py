@@ -6,7 +6,7 @@ from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
 from objccw  import CCodeWriter
-
+from objcmd  import Commands
 '''
 intend to be a code generator
 TODO:
@@ -70,7 +70,7 @@ class Item:
     else:
       print "bad line: at %s, s = [%s]" % (p, s.strip())
       raise Exception
-    
+   
     self.expand_multiple_declarators()
 
   def __str__(self):
@@ -81,9 +81,10 @@ class Item:
   def get_generic_type(self):
     '''
     get a generic type, and type name
+    also need commands
     '''
     types = self.decl.types
-    cmds = self.cmt.cmds if self.cmt else []
+    cmds = self.cmds if self.cmds else []
     nlevels = len(types)
     if nlevels == 1:
       return types[0]
@@ -130,7 +131,7 @@ class Item:
       decl.types += [self.dl.datatype]
       it = copy(self)  # make a shallow copy of myself
       it.decl = decl
-      it.gtype = it.get_generic_type()
+      #it.gtype = it.get_generic_type()
       self.itlist += [it]
     
   def isempty(self):
@@ -171,6 +172,8 @@ class Object:
     # parse }
     self.find_ending(src, p, 0)
 
+    self.merge_comments()
+    self.get_cmds_gtype()
     self.determine_prefix();
 
   def find_beginning(self, src, p, aggr = 1):
@@ -241,6 +244,19 @@ class Object:
     self.prefix   = name + "_"
     self.nickname = name
 
+  def merge_comments(self):
+    pass
+
+  def get_cmds_gtype(self):
+    ''' get cmds and determine generic type ''' 
+    for it in self.items:
+      if it.cmt:
+        it.cmds = Commands(it.cmt.raw)
+      else:
+        it.cmds = None
+      if it.decl:
+        it.gtype = it.get_generic_type()
+      
   def gen_code(self):
     funclist = []
     funclist += [self.gen_func_close()]
@@ -277,10 +293,10 @@ class Object:
         decl1 = item.decl.raw
         #raw_input ("%s %s" % (decl0, decl1))
       # 3. handle comment
-      cmt = item.cmt
-      if (cmt and cmt.cmds.has_key("desc")
-          and len(cmt.cmds["desc"][0]) > 0):
-        scmt = "/* " + cmt.cmds["desc"][0] + " */"
+      cmds = item.cmds
+      if (cmds and "desc" in cmds
+          and len(cmds["desc"][0]) > 0):
+        scmt = "/* " + cmds["desc"][0] + " */"
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1, scmt)] # just buffer it
