@@ -3,4 +3,4 @@
 *.bak
 *.pyc
 *.clean.*
-
+zcom.h
