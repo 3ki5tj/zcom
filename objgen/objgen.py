@@ -48,7 +48,11 @@ class P:
   def getline(p, src):
     ''' get a line starting from the current position '''
     return src[p.row][p.col:] if p.row < len(src) else None
-  def nextline(self):
+  def nextline(self, src = None):
+    '''
+    go to the next line
+    we don't really need src, just make it look like other methods
+    '''
     self.check()
     self.row += 1
     self.col = 0
@@ -132,63 +136,88 @@ class P:
       s += src[p.row][p.col: q.col]
     return s
 
-class Decl:
+class Preprocessor:
   '''
-  C declaration, adapted from K & R
+  preprocessor, taken literally, not understood
   '''
   def __init__(self, src, p):
     self.empty = 1
     self.parse(src, p)
 
   def parse(self, src, p):
-    p.skipspace(src)
+    s = p.skipspace(src)
     self.begin = copy(p)
 
-    # pre-filter out the case where the first token is not a word
-    token, type = p.peektok(src)
-    if type != "word": return -1
+    if not s.startswith("#"): return -1
+    self.raw = s[1:].strip()
+    self.empty = 0
+    p.nextline()
 
-    self.param_level = 0
+  def isempty(self): return self.empty
+
+class Declarator:
+  '''
+  a single C declarator, adapted from K & R
+  '''
+  def __init__(self, src, p):
+    self.cnt = 0
+    self.parse(src, p)
+
+  def parse(self, src, p):
+    s = p.skipspace(src)
+    self.begin = copy(p)
+
+    self.param_level = 0 # not inside a function parameter list
     self.types = []
-    # find the type, e.g. int, void, ...
-    if 0 != self.dclspec(src, p): return -1
+    
     # find the declarator, e.g. *a, (*a)(), ...
-    if 0 != self.dcl(src, p): return -1
-    self.types += [self.datatype]
-
-    # handle the last semicolon
-    token, ttype = p.gettoken(src)
-    if token != ";":
-      print "missing ; %s" % self.dbg(src, p)
+    if 0 != self.dcl(src, p): 
       return -1
+    self.cnt = 1
     
     self.end = copy(p)
     self.raw = self.begin.gettext(src, self.end)
-    self.empty = 0
     #print "complete a decl {%s} from %s to %s\n{%s}" % (self, self.begin, self.end, self.raw)
     return 0
 
   def dclspec(self, src, p, allow_empty = 0):
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
-    nwords = 0
+    p0 = copy(p)
+    alltypes = ("auto", "register", "static", "extern"
+          "const", "volitale", 
+          "void", "char", "short", "int", "long", 
+          "float", "double", "signed", "unsigned", 
+          "FILE", "size_t", "ssize_t", "fpos_t",
+          "div_t", "ldiv_t", "clock_t", "time_t", "tm",
+          "va_list", "jmp_buf", "__jmp_buf_tag",
+          "lconv", "fenv_t", "fexcept_t"
+          "wchar_t", "wint_t", "wctrans_t", "wctype_t",
+          "errno_t", "sig_atomic_t", 
+          "int8_t", "uint8_t", "int16_t", "uint16_t",
+          "int32_t", "uint32_t", "int64_t", "uint64_t",
+          "bool", "_Bool", "complex",
+          "real")
+    type = ""
     while 1:
       token, ttype = p.gettoken(src)
       if ttype != "word":
-        if allow_empty and nwords == 0:
+        if allow_empty or len(type) > 0:
           p.ungettok(src)
           break
-        print "expected data type, %s" % (self.dbg(src, p))
+        print "expected data type from %s, type=%s, %s" % (p0, type, self.dbg(src, p))
         raise Exception
         return 1
-      nwords += 1
-      if not token in ("auto", "register", "static", "extern"
-          "const", "volitale"):
-        if self.param_level == 0:
-          self.datatype = token
-          #print "datatype is [%s], pos %s" % (token, p)
-          #raw_input()
+      # guess if the token is a type specifier
+      if (token not in alltypes and
+          token[:2]  not in ("t_", "T_") and
+          token[-2:] not in ("_t", "_T")):
+        p.ungettok(src)
         break
+      type += token + " "
+    if self.param_level == 0: # not a function parameter
+      self.datatype = type.rstrip()
+      #print "datatype is [%s], pos %s" % (self.datatype, p)
     return 0
 
   def dcl(self, src, p):
@@ -268,15 +297,56 @@ class Decl:
 
   def __str__(self):
     return ' '.join(self.types) + ' ' + self.name
-
   def __repr__(self):
     return self.types
-
   def dbg(self, src, p):
     ''' return the debug message '''
     return "line: [%s], pos: %s" % (p.getline(src).rstrip(), p)
+  def isempty(self): return 0 if self.cnt else 1
 
-  def isempty(self): return self.empty
+class DeclaratorList(Declarator): 
+  '''
+  C declarations of multiple variables
+  we inherit `dclspec()' and `datatype' from Declarator
+  '''
+  def __init__(self, src, p):
+    self.dclist = []
+    if 0 != self.parse(src, p): self.cnt = 0
+
+  def parse(self, src, p):
+    p.skipspace(src)
+    self.begin = copy(p)
+
+    # pre-filter out the case where the first token is not a word
+    token, type = p.peektok(src)
+    if type != "word": return -1
+
+    # find the type, e.g. int, void, ...
+    self.param_level = 0 # dclspec needs it
+    if 0 != self.dclspec(src, p): return -1
+
+    #print "start to find variables from %s" % (p)
+    while 1: # repeatedly get variables
+      # we find declarators (variables) through Declarator's
+      # can s
+      d = Declarator(src, p)
+      if d.isempty(): return -1
+      d.datatype = self.datatype # add datatype for individual Declarator
+      self.dclist += [d]
+      
+      # handle the last semicolon
+      token, ttype = p.gettoken(src)
+      if token == ";": 
+        self.end = copy(p)
+        break
+      if token != ",":
+        print "missing ; or , token [%s] %s" % (token, self.dbg(src, p))
+        raise Exception
+        return -1
+    
+    self.raw = self.begin.gettext(src, self.end)
+
+  def isempty(self): return 0 if len(self.dclist) > 0 else 1
 
 class Comment:
   '''
@@ -300,7 +370,7 @@ class Comment:
     if s.startswith(cmt0) or s.startswith(lncmt):
       self.begin = copy(p)
     else:
-      print "missing comment beginning mark %s" % p
+      #print "missing comment beginning mark %s" % p
       return -1
 
     p.col += 2 # skip `/*' or `//'
@@ -375,6 +445,9 @@ class Comment:
     if not self.cmds.has_key("desc"):
       s = re.sub(r"[\$\\]\$", "$", s)
       sa = [a.strip() for a in s.splitlines()] # split to lines
+      # remove `* ' for subsequent lines
+      if len(sa) > 1:
+        sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ] 
       s = ' '.join(sa).strip().rstrip(";,.")
       self.cmds["desc"] = [s, 0] # description is not persistent
       #print "the remain string is [%s]" % self.cmds["desc"]
@@ -399,52 +472,40 @@ class Item:
     '''
     self.empty = 1
     self.begin = copy(p)
+    if src == None: return
     self.parse(src, p)
 
   def parse(self, src, p):
     '''
     parse an item aggressively
     '''
-    token,ttype = p.peektok(src)
+    s = p.skipspace(src)
+    if s[0] == "}": return -1
+ 
+    # try to see it's a preprocessor
+    pp = Preprocessor(src, p)
+    self.pp = pp if not pp.isempty() else None
 
-    if token == "}": return -1
-  
     # try to get a declaration
-    decl = Decl(src, p)
-    self.decl = decl if not decl.isempty() else None
+    self.decl = None
+    dl = DeclaratorList(src, p)
+    self.dl = None if dl.isempty() else dl
     
     # try to get a comment
     comment = Comment(src, p)
     self.comment = comment if not comment.isempty() else None
     
-    if self.comment or self.decl:
+    if self.pp or self.comment or self.dl:
       #print "successfully got one item, at %s" % p
+      self.end = copy(p)
       self.empty = 0
+    else:
+      print "bad line: at %s, s = [%s]" % (p, s.strip())
+      raise Exception
     
+    self.expand_multiple_declarators()
     #self.get_generic_type()
     
-  def find_type(self):
-    '''
-    parse the declaration string, to obtain the name and type
-    '''
-    s = self.decl
-   
-    chmap = {} # use dictionary
-
-    # check the validity of the declaration
-    unwanted = "~`!@#$%^&-+={}|\\:;'\"<>,.?/"
-    for c in s:
-      if c in unwanted:
-        print "bad declaration [%s], has character [%s]" % (s, c)
-        raise Exception
-      else:
-        chmap[c] = (1 if not chmap.has_key(c) else (chmap[c]+1))
-
-    d = Decl(s)
-    self.types = d.types
-    self.name = d.name
-    #print "type stack:", self.types
-
   def get_generic_type(self):
     '''
     get a generic type, and type name
@@ -470,6 +531,32 @@ class Item:
       else:
         self.typeg = ("pointer", towhat)
 
+  def expand_multiple_declarators(self):
+    '''
+    create a list of items, each with only one declarator
+    since an item may contain a list of declarators (variable names), e.g.
+      int a, b, c;
+    it is inconvenient to us
+    here we create a bunch of items, each of which is devoted for a single
+    declarator, such as a, b, and c, the list is saved to item_list,
+    Object should use items in the list instead of this item itself
+    '''
+    if self.dl == None:
+      self.itlist = [self]
+      return
+    dclist = self.dl.dclist
+    n = len(dclist)
+    if n <= 0:
+      self.itlist = [self]
+      return
+
+    self.itlist = []
+    for i in range(n):
+      decl = dclist[i]
+      it = copy(self)  # make a shallow copy of myself
+      it.decl = decl
+      self.itlist += [it]
+    
   def isempty(self):
     return self.empty
 
@@ -501,8 +588,8 @@ class Object:
       item = Item(src, p)
       if item.isempty(): break
 
-      #print "new item: %s" % (item)
-      self.items += [item]
+      print "new item at line %3d has %d declarators" % (p.row, len(item.itlist))
+      self.items += item.itlist
    
     # parse }
     self.find_ending(src, p, 0)
@@ -570,19 +657,21 @@ class Object:
     block = [] # block list
     for item in self.items:
       decl0 = decl1 = cmt = ""
-      # 1. handle declaration
+      # 1. handle pp
+      if item.pp:
+        s += "#" + item.pp.raw + "\n"
+        continue
+      # 2. handle declaration
       if item.decl:
         decl0 = item.decl.datatype
-        raw   = item.decl.raw
-        decl1 = raw[len(decl0) : ].strip()
+        decl1 = item.decl.raw
         #raw_input ("%s %s" % (decl0, decl1))
-      # 2. handle comment
+      # 3. handle comment
       comment = item.comment
       if (comment and comment.cmds.has_key("desc")
           and len(comment.cmds["desc"][0]) > 0):
         cmt = "/* " + comment.cmds["desc"][0] + " */"
-      #print "%s %s %s, block size: %d" % (decl0, decl1, cmt, len(block))
-      # 3. output the content
+      # 4. output the content
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1, cmt)] # just buffer it
       else:
@@ -600,9 +689,9 @@ class Object:
     # align and format all items in the bufferred block
     # and append the result to string s
     wid0 = max(len(item[0]) for item in block)
-    wid1 = max(len(item[1]) for item in block)
+    wid1 = max(len(item[1]) for item in block) + 1 # for ;
     for item in block:
-      line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1], item[2])
+      line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1]+';', item[2])
       s += self.get_indent(s) + line
     return s
   def get_indent(self, s):
@@ -638,9 +727,10 @@ class Parser:
     return the completed C source code
     '''
     objs = self.objs
+    if objs == []: return ""
     src = self.src
     p0 = P(0,0)
-    s = p0.gettext(src, objs[0].begin)
+    s = p0.gettext(src, objs[0].begin) # to the beginning of the first object
     nobjs = len(objs)
     for i in range(nobjs):
       obj  = objs[i]
@@ -649,8 +739,7 @@ class Parser:
         pnext = P(len(src), 0)
       else:
         pnext = objs[i+1].begin
-      s += obj.end.gettext(src, pnext)
-
+      s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
    
 
@@ -669,7 +758,7 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  handle("test.c")
+  handle("test2.c")
 
 if __name__ == "__main__":
   main()
