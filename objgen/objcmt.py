@@ -4,6 +4,9 @@ from copy import copy
 
 '''
 C comment
+
+TODO:
+  * comment fusion
 '''
 
 cmt0 = "/*"
@@ -90,24 +93,38 @@ class CComment:
       sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ] 
     s = ' '.join(sa)
     while 1:
-      # note: $$ or \$ means a literal $
-      # command line:
-      #   cmd op args;
-      # op can be one of ":", "=", ":=", "::" or "" (nothing)
-      #   : or = means set the current variable only
-      #   := or :: means also set the parser's current state
+      '''
+      command line:
+        $cmd op args;
+      op can be one of ":", "=", ":=", "::" or "" (nothing)
+        : or = means set the current variable only
+        := or :: means also set the parser's current state
+      
+      note: $$ or \$ means a literal $
+      '''
       pattern = r"[^\$\\]*(\$)(\w+)\s*(\:|\=|\:\=|\:\:|)\s*(.*?)\;"
       m = re.search(pattern, s, re.MULTILINE | re.DOTALL)
-      if m == None: break
-      # a command is found
-      # group 2 is the cmd
-      # group 3 is the operator
-      # group 4 is the argument
-      cmd = s[m.start(2) : m.end(2)]
-      persist = 1 if m.end(3) - m.start(3) == 2 else 0 # the operator
-      param = s[m.start(4) : m.end(4)]
-      self.cmds[cmd] = [param, persist] # add to dictionary
-      s = s[:m.start(1)] + s[m.end(0):]; # remove the command from comment
+      if m == None:
+        if s.find("$") < 0: break
+        # print "look for a lazy command, $cmd with no ; s = [%s]" % s
+        pattern = r"[^\$\\]*(\$)(\w+)"
+        m = re.search(pattern, s)
+        if m == None: break
+        # print "found a lazy command, $cmd with no ; s = %s" % s
+        cmd = s[m.start(2) : m.end(2)]
+        persist = 0
+        args = ""
+      else:
+        '''
+        group 2 is the cmd
+        group 3 is the operator
+        group 4 is the argument
+        '''
+        cmd = s[m.start(2) : m.end(2)]
+        persist = 1 if m.end(3) - m.start(3) == 2 else 0 # the operator
+        args = s[m.start(4) : m.end(4)]
+      self.cmds[cmd] = [args, persist] # add to dictionary
+      s = s[:m.start(1)] + s[m.end(0):] # remove the command from comment
       #print "a pattern is found [%s]: [%s], rest: %s" % (
       #    cmd, param, s)
       #raw_input()

@@ -96,7 +96,7 @@ class Item:
         return "function pointer"
       elif nlevels == 2 and types[1] == "char":
         return "string"
-      elif 'arr' in cmds:
+      elif 'cnt' in cmds:
         return "dynamic array"
       elif 'obj' in cmds:
         return "object"
@@ -140,6 +140,7 @@ class Object:
   '''
   a struct defined as
   typedef struct {
+    ...
   } abc_t;
   '''
   def __init__(self, src, pos = None):
@@ -258,7 +259,7 @@ class Object:
     '''
     return a string for formatted declaration
     '''
-    cw = CodeWriter()
+    cw = CCodeWriter()
     cw.addln("typedef struct {")
     block = [] # block list
     for i in range(len(self.items)):
@@ -304,8 +305,8 @@ class Object:
       cw.add(line)
 
   def gen_func_close(self):
-    ow = CodeWriter()
-    owh = CodeWriter()
+    ow = CCodeWriter()
+    owh = CCodeWriter()
     macroname = "%sclose" % self.prefix
     funcname = macroname + "_"
     owh.addln("#define %s(%s) { %s(%s); free(%s); %s = NULL; }",
