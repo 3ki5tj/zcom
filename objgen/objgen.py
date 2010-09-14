@@ -4,34 +4,16 @@ from copy    import copy
 from objatom import *
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
+from objpre  import CPreprocessor
 
 '''
 intend to be a code generator
 TODO:
-  * multiple-line support with regular expression
+  * multiple-line support, e.g., typedef\nstruct
   * preprocessor
   * skip struct in comment or string
 '''
 
-
-class Preprocessor:
-  '''
-  preprocessor, taken literally, not understood
-  '''
-  def __init__(self, src, p):
-    self.empty = 1
-    self.parse(src, p)
-
-  def parse(self, src, p):
-    s = p.skipspace(src)
-    self.begin = copy(p)
-
-    if not s.startswith("#"): return -1
-    self.raw = s[1:].strip()
-    self.empty = 0
-    p.col += len(s)
-
-  def isempty(self): return self.empty
 
 
 class Item:
@@ -61,15 +43,15 @@ class Item:
     if s[0] == "}": return -1
  
     # try to see it's a preprocessor
-    pp = Preprocessor(src, p)
-    if not pp.isempty():
-      #print "pos %s, preprocessor %s" % (p, pp.raw)
+    pre = CPreprocessor(src, p)
+    if not pre.isempty():
+      #print "pos %s, preprocessor %s" % (p, pre.raw)
       #raw_input()
       self.empty = 0
-      self.pp = pp
+      self.pre = pre
       self.dl = self.cmt = None
     else:
-      self.pp = None
+      self.pre = None
 
       # try to get a declaration
       self.decl = None
@@ -80,7 +62,7 @@ class Item:
       cmt = CComment(src, p)
       self.cmt = cmt if not cmt.isempty() else None
     
-    if self.pp or self.cmt or self.dl:
+    if self.pre or self.cmt or self.dl:
       #print "successfully got one item, at %s" % p
       self.end = copy(p)
       self.empty = 0
@@ -91,8 +73,8 @@ class Item:
     self.expand_multiple_declarators()
 
   def __str__(self):
-    return "pp: %5s, dl: %5s, cmt: %5s, raw = [%s]" % (
-        self.pp != None, self.dl != None, self.cmt != None, 
+    return "pre: %5s, dl: %5s, cmt: %5s, raw = [%s]" % (
+        self.pre != None, self.dl != None, self.cmt != None, 
         self.begin.gettext(self.src, self.end).strip() )
     
   def get_generic_type(self):
@@ -254,11 +236,11 @@ class Object:
     for i in range(len(self.items)):
       item = self.items[i]
       decl0 = decl1 = scmt = ""
-      # 1. handle pp
-      if item.pp:
+      # 1. handle pre
+      if item.pre:
         self.dump_block(block, cw)
         block = [] # empty the block
-        cw.addln("#" + item.pp.raw)
+        cw.addln("#" + item.pre.raw)
         continue
       # 2. handle declaration
       if item.decl:
