@@ -24,27 +24,31 @@ class CDecl:
     self.pos = 0
     self.token = self.ttype = None
     self.param_level = 0
-    self.dclspec()
+    self.datatype = self.dclspec()
     self.dcl()
     self.types += [self.datatype]
 
   def dclspec(self, allow_empty = 0):
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
-    nwords = 0
+    # we do not support structure yet
+    alltypes = ("auto", "register", "static", "extern", "typedef",
+      "const", "volatile", 
+      "void", "char", "short", "int", "long", "float", "double", "signed", "unsigned")
+    type = ""
     while 1:
       self.gettoken()
       if self.ttype != "word":
-        if allow_empty and nwords == 0:
+        if allow_empty or len(type) > 0:
           self.ungettok()
-          return
+          break
         print "expected data type, %s" % (self.dbg())
         raise Exception
-      nwords += 1
-      if not self.token in ("auto", "register", "static", "extern"
-          "const", "volitale"):
-        self.datatype = self.token
+      if self.token not in alltypes: 
+        self.ungettok()
         break
+      type += self.token + " "
+    return type
 
   def dcl(self):
     '''
@@ -100,8 +104,8 @@ class CDecl:
 
   def pdecl(self):
     ''' parameter declarator '''
-    self.dclspec()
     self.param_level += 1
+    self.dclspec(allow_empty = 1)
     self.dcl()
     self.param_level -= 1
     #if self.ttype != ')':

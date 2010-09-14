@@ -184,8 +184,8 @@ class Declarator:
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
     p0 = copy(p)
-    alltypes = ("auto", "register", "static", "extern"
-          "const", "volitale", 
+    alltypes = ("auto", "register", "static", "extern",
+          "const", "volatile", 
           "void", "char", "short", "int", "long", 
           "float", "double", "signed", "unsigned", 
           "FILE", "size_t", "ssize_t", "fpos_t",
@@ -291,7 +291,7 @@ class Declarator:
   def pdecl(self, src, p):
     ''' parameter declarator '''
     self.param_level += 1
-    self.dclspec(src, p)
+    self.dclspec(src, p, allow_empty = 1)
     self.dcl(src, p)
     self.param_level -= 1
 
