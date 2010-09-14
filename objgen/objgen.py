@@ -104,6 +104,13 @@ class Item:
       else:
         return "pointer"
 
+  def add_item_to_list(self, dcl): 
+    ''' add an item with decl being dcl '''
+    it = copy(self) # make a shallow copy of myself
+    it.decl = dcl
+    it.dl = None   # destory the list
+    self.itlist += [it]
+
   def expand_multiple_declarators(self):
     '''
     create a list of items, each with only one declarator
@@ -114,25 +121,16 @@ class Item:
     declarator, such as a, b, and c, the list is saved to item_list,
     Object should use items in the list instead of this item itself
     '''
+    self.itlist = []
     if self.dl == None:
-      self.decl = None
-      self.itlist = [self]
+      self.add_item_to_list(None)
       return
     dclist = self.dl.dclist
     n = len(dclist)
-    if n <= 0:
-      self.decl = None
-      self.itlist = [self]
-      return
-
-    self.itlist = []
     for i in range(n):
       decl = dclist[i]
       decl.types += [self.dl.datatype]
-      it = copy(self)  # make a shallow copy of myself
-      it.decl = decl
-      #it.gtype = it.get_generic_type()
-      self.itlist += [it]
+      self.add_item_to_list(decl)
     
   def isempty(self):
     return self.empty
@@ -167,12 +165,13 @@ class Object:
       if item.isempty(): break
 
       #print "line %3d has %d item(s): %s" % (p.row + 1, len(item.itlist), item)
-      self.items += item.itlist
-   
+      self.items += [item]  # do not expand multiple declarators, 
+                            # since we need to merge comments first
     # parse }
     self.find_ending(src, p, 0)
 
     self.merge_comments() # merging multiple-line C++ comments
+    self.expand_multidecl_items() # must be done after merging comments
     self.get_cmds_gtype() # should be done after merging comments
     self.determine_prefix()  #
 
@@ -245,13 +244,17 @@ class Object:
     self.nickname = name
 
   def merge_comments(self):
-    ''' merge multiple comments '''
+    ''' 
+    merge multiple comments 
+    since we merge comments before expand multiple declarators,
+    we should test it.dl instead of it.decl
+    '''
     i = 1
     items = self.items
     while i < len(items):
       it = items[i]
       itp = items[i-1]
-      if (it.cmt and not it.decl 
+      if (it.cmt and not it.dl  # note, test dl instead of decl
           and i > 0 and itp.cmt  # stand-alone comment allowing another
           and it.cmt.begin.col == itp.cmt.begin.col): # starting at the same column
         #print "merging commands from item %d and item %d" % (i-1, i)
@@ -264,6 +267,12 @@ class Object:
     self.items = items
     #print "%d %d" % (len(items), len(self.items))
     #raw_input()
+
+  def expand_multidecl_items(self):
+    nitems = []
+    for it in self.items:
+      nitems += it.itlist
+    self.items = nitems
 
   def get_cmds_gtype(self):
     ''' get cmds and determine generic type ''' 
@@ -294,7 +303,7 @@ class Object:
 
   def gen_decl(self):
     '''
-    return a string for formatted declaration
+    write code for object declaration
     '''
     cw = CCodeWriter()
     cw.addln("typedef struct {")
