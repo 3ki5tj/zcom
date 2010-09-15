@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-import os, sys, re 
-from copy import copy
-
 '''
 C comment
 
 TODO:
   * comment fusion
 '''
+
+import os, sys, re 
+from copy import copy
 
 cmt0 = "/*"
 cmt1 = "*/"
