@@ -174,9 +174,10 @@ class Object:
                             # since we need to merge comments first
     # parse }
     self.find_ending(src, p, 0)
-    if self.cmds and "skipme" in self.cmds:
+    if self.cmds and ("skipme" in self.cmds
+        or "skip" in self.cmds):
       self.empty = -1
-      #return -1
+      return -1
 
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
