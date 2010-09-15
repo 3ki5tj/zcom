@@ -102,11 +102,11 @@ class Item:
       if nlevels == 2 and types[offset+1] == "function":
         return "function pointer"
       elif nlevels == 2 and types[offset+1] == "char":
-        return "string"
+        return "char *"
       elif 'cnt' in cmds:
         return "dynamic array"
       elif 'obj' in cmds:
-        return "object"
+        return "pointer to object"
       else:
         return "pointer"
 
@@ -127,8 +127,11 @@ class Item:
       defval = "0.0f"
     elif gtype in ("double"):
       defval = "0.0"
-    elif gtype in ("pointer", "function pointer", "string"):
+    elif gtype in ("pointer", "function pointer", "char *", 
+        "pointer to object"):
       defval = "NULL"
+    else: 
+      defval = "(%s) 0" % self.decl.datatype
     if defval != None: 
       #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
       #raw_input()

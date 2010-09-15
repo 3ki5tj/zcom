@@ -2,6 +2,7 @@
 '''
 intend to be a code generator
 TODO:
+  * symbol @ substitution
   * multiple-line support, e.g., typedef\nstruct
   * preprocessor
   * skip struct in comment or string
@@ -211,12 +212,16 @@ class Object:
   
   def fill_default(self):
     for it in self.items:
-      if it.decl:
-        it.fill_default()
+      if not it.decl: continue
+      it.fill_default()
+      # to be improved
+      if "key" not in it.cmds:
+        it.cmds["key"] = it.decl.name
 
   def gen_code(self):
     funclist = []
     funclist += [self.gen_func_initdef()]
+    funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_close()]
 
     # assemble everything to header and source
@@ -299,7 +304,7 @@ class Object:
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name) if (it.decl and 
-        it.gtype in ("string", "dynamic array") ) else 0
+        it.gtype in ("char *", "dynamic array") ) else 0
     maxwid = max(calc_len(it) for it in self.items)
     for it in self.items:
       if it.pre:
@@ -308,7 +313,7 @@ class Object:
       if not it.decl: continue
 
       funcfree = None
-      if it.gtype == "string": 
+      if it.gtype == "char *": 
         funcfree = "ssdelete"
       elif it.gtype == "dynamic array":
         funcfree = "free"
@@ -327,7 +332,7 @@ class Object:
     ow = CCodeWriter()
     owh = CCodeWriter()
     funcname = "%sinitdef" % self.fprefix
-    funcdesc = "/* %s: close a pointer to %s */" % (funcname, self.name)
+    funcdesc = "/* %s: initialize members of %s to default values */" % (funcname, self.name)
     #owh.addln(funcdesc)
     ow.addln(funcdesc)
     fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
@@ -341,13 +346,82 @@ class Object:
         continue
       if not it.decl: continue
 
-      if "def" in it.cmds:
+      desc = it.cmds["desc"] if "desc" in it.cmds else ""
+      if not it.gtype.endswith("array"):
         ow.addln("%s->%s = %s;", self.ptrname, it.decl.name, it.cmds["def"])
-
+      elif it.gtype == "dynamic array":
+        type = it.get_generic_type(offset = 1)
+        ow.addln('XM_DARR_(%s->%s, %s, %s, %s, , "%s", "error", exit(1));', 
+          self.ptrname, it.decl.name, 
+          type, it.cmds["def"], it.cmds["cnt"], desc)
+      elif it.gtype == "static array":
+        type = it.get_generic_type(offset = 1)
+        ow.addln('XM_SARR_(%s->%s, %s, %s, %s, , "%s");', 
+          self.ptrname, it.decl.name, 
+          type, it.cmds["def"], it.cmds["cnt"], desc)
     ow.addln("}")
     ow.addln("")
     return owh.gets(), ow.gets()
 
+  def gen_func_cfgread(self):
+    ow = CCodeWriter()
+    owh = CCodeWriter()
+    funcname = "%scfgread" % self.fprefix
+    funcdesc = "/* %s: initialize %s by reading members from a configuration file */" % (
+        funcname, self.name)
+    #owh.addln(funcdesc)
+    ow.addln(funcdesc)
+    fdecl = "void %s(%s *%s, cfgdata_t *cfg)" % (
+        funcname, self.name, self.ptrname)
+    owh.addln(fdecl + ";") # prototype
+    ow.addln(fdecl)
+    ow.addln("{")
+
+    for it in self.items:
+      if it.pre:
+        ow.addln("#" + it.pre.raw)
+        continue
+      if not it.decl: continue
+
+      if it.gtype == "pointer to object":
+        # TODO: call the appropriate initialize
+        '''
+        obj = search_the_object_name (it.decl.datatype)
+        '''
+        obj_ptrname = it.decl.datatype[:-2]
+        ow.addln("%s->%s = %sinit(%s);", self.ptrname, it.decl.name, 
+          obj_ptrname, self.ptrname)
+        continue
+
+      if "def" not in it.cmds:
+        print "missing default value for %s, %s" % (it, it.gtype)
+        raw_input()
+        continue
+      if "key" not in it.cmds:
+        print "missing key for %s, %s" % (it, it.gtype)
+        raw_input()
+        continue
+      desc = it.cmds["desc"] if "desc" in it.cmds else ""
+      if not it.gtype.endswith("array"):
+        type = it.gtype if ("pointer" not in it.gtype) else "void *"
+        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s, 1, 1, , "%s", "missing", );', 
+          self.ptrname, it.decl.name, 
+          it.cmds["key"], type, it.cmds["def"], 
+          desc)
+      elif it.gtype == "dynamic array":
+        type = it.get_generic_type(offset = 1)
+        ow.addln('XM_DARR_(%s->%s, %s, %s, %s, , "%s", "error", exit(1));', 
+          self.ptrname, it.decl.name, 
+          type, it.cmds["def"], it.cmds["cnt"], desc)
+      elif it.gtype == "static array":
+        type = it.get_generic_type(offset = 1)
+        ow.addln('XM_SARR_(%s->%s, %s, %s, %s, , "%s");', 
+          self.ptrname, it.decl.name, 
+          type, it.cmds["def"], it.cmds["cnt"], desc)
+
+    ow.addln("}")
+    ow.addln("")
+    return owh.gets(), ow.gets()
 
 class Parser:
   '''
