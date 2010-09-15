@@ -80,10 +80,10 @@ class Commands:
       #raw_input()
 
     # merge the remaining string to description
-    if not self.cmds.has_key("desc"):
+    if not "desc" in self.cmds:
       s = re.sub(r"[\$\\]\$", "$", s) # literal $
       sa = [a.strip() for a in s.splitlines()] # split to lines
       s = ' '.join(sa).strip()
-      self.cmds["desc"] = s 
+      if len(s): self.cmds["desc"] = s 
       #print "the remain string is [%s]" % self.cmds["desc"]
 

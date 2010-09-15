@@ -162,7 +162,7 @@ class Object:
    
     # print "start searching object from %s" % p
     if not self.find_beginning(src, p):
-      return
+      return -1
 
     while 1: # parse the content within { ... },
       # aggressively search for an item, and update p
@@ -174,12 +174,16 @@ class Object:
                             # since we need to merge comments first
     # parse }
     self.find_ending(src, p, 0)
+    if self.cmds and "skipme" in self.cmds:
+      self.empty = -1
+      #return -1
 
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
     self.get_cmds() # should be done after merging comments
     self.get_gtype() # should be after get_cmds
     self.determine_prefix()  #
+    return 0
 
   def find_beginning(self, src, p, aggr = 1):
     '''
@@ -457,7 +461,8 @@ class Parser:
     # search for objects
     while 1:
       obj = Object(self.src, p) # try to get an object
-      if obj.isempty(): break
+      if obj.empty == 1: break
+      if obj.empty == -1: continue  # skip
 
       print "found a new object '%s' with %d items, from %s to %s\n" % (
           obj.name, len(obj.items), obj.begin, obj.end)

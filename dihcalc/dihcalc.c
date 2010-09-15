@@ -1,8 +1,6 @@
 #ifndef DIHCALC_C__
 #define DIHCALC_C__
 
-#include <stdio.h>
-#include <math.h>
 #include "dihcalc.h"
 
 /* Calculates the dihedral angle, its gradient and the divegence

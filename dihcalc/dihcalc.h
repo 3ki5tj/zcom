@@ -1,6 +1,26 @@
 #ifndef DIHCALC_H__
 #define DIHCALC_H__
 
+#ifdef HAVE_REAL
+  #ifndef ZCHAVEREAL
+  #define ZCHAVEREAL HAVE_REAL
+  #endif
+#endif
+
+/* Usage: if you already typedef'ed real, then define ZCHAVEREAL
+   before including this file to avoid a conflict.
+   Otherwise define ZCREAL as float or double */
+#ifndef ZCHAVEREAL
+  #define ZCHAVEREAL 1
+  #ifndef ZCREAL
+    #define ZCREAL double
+  #endif
+  typedef ZCREAL real;
+#endif
+
+#include <stdio.h>
+#include <math.h>
+
 /* structure for dihedral calculation */
 typedef struct {
   real phi; /* cis is zero, clockwise positive */
