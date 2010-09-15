@@ -76,7 +76,8 @@ class P:
       s = p.getline(src)
       if len(s) != 0: break # found a token
       i += 1
-      if maxnl > 0 and i > maxnl: break
+      if maxnl > 0 and i >= maxnl:
+        break
       # this line is exhausted
       p.nextline()
       continue

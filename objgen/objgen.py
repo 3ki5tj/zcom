@@ -216,6 +216,7 @@ class Object:
     if cmt.isempty(): 
       self.cmds = None
       return
+    print "found a comment %s after object %s" % (cmt.raw, self.name)
     self.cmt = cmt
     if cmt: self.end = copy(p)
     self.cmds = Commands(cmt.raw)
