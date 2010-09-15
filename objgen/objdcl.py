@@ -49,6 +49,13 @@ class CDeclarator:
           "int32_t", "uint32_t", "int64_t", "uint64_t",
           "bool", "_Bool", "complex",
           "real")
+    # MPI function types are yet added
+    alltypes += ("MPI_Comm", 
+          "MPI_Datatype", "MPI_Group", "MPI_Win",
+          "MPI_File", "MPI_Op", "MPI_Topo_type",
+          "MPI_Errhandler", "MPI_Request", "MPI_Info",
+          "MPI_Aint", "MPI_Fint", "MPI_Offset", 
+          "MPI_Status")
     type = ""
     while 1:
       token, ttype = p.gettoken(src)
