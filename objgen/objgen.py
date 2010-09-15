@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os, sys, re, filecmp
-from copy    import copy
+from copy    import * 
 from objpos  import P 
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
@@ -74,8 +74,9 @@ class Item:
     self.expand_multiple_declarators()
 
   def __str__(self):
-    return "pre: %5s, dl: %5s, cmt: %5s, raw = [%s]" % (
-        self.pre != None, self.dl != None, self.cmt != None, 
+    return "pre: %5s, dl: %5s, decl: %5s, cmt: %5s, raw = [%s]" % (
+        self.pre != None, self.dl != None, 
+        self.decl != None, self.cmt != None, 
         self.begin.gettext(self.src, self.end).strip() )
     
   def get_generic_type(self):
@@ -84,7 +85,11 @@ class Item:
     also need commands
     '''
     types = self.decl.types
-    cmds = self.cmds if self.cmds else []
+    try:
+      cmds = self.cmds if self.cmds else {}
+    except AttributeError:
+      print "missing commmands! %s" % self
+      raw_input()
     nlevels = len(types)
     if nlevels == 1:
       return types[0]
@@ -172,7 +177,8 @@ class Object:
 
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
-    self.get_cmds_gtype() # should be done after merging comments
+    self.get_cmds() # should be done after merging comments
+    self.get_gtype() # should be after get_cmds
     self.determine_prefix()  #
 
   def find_beginning(self, src, p, aggr = 1):
@@ -242,16 +248,17 @@ class Object:
 
   def determine_prefix(self):
     '''
-    determine the nickname, variable name for a pointer to the object
-    and the prefix, the name attached to functions of the object
+    determine ptrname, variable name for a pointer to the object
+    and fprefix, the name attached to functions of the object
     '''
+    cmds = self.cmds
     name = self.name
     if name.endswith("_t"): name = name[:-2]
     if name.endswith("data") and len(name) > 4: # abcdata --> abc
       name = name[:-4]
     name = name.lower()
-    self.prefix   = name + "_"
-    self.nickname = name
+    self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
+    self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
 
   def merge_comments(self):
     ''' 
@@ -285,15 +292,43 @@ class Object:
       nitems += it.itlist
     self.items = nitems
 
-  def get_cmds_gtype(self):
-    ''' get cmds and determine generic type ''' 
+  def get_cmds(self):
+    ''' 
+    get cmds 
+    persist commands apply to this item and all items afterwards
+    '''
+    p_cmds = {} # persistent commands
     for it in self.items:
-      if it.cmt:
-        it.cmds = Commands(it.cmt.raw)
-      else:
-        it.cmds = None
+      if not it.cmt:
+        it.cmds = copy(p_cmds)
+        continue
+      cmds = Commands(it.cmt.raw)
+      # update global persistent commands
+      for key in cmds.persist:
+        persist = cmds.persist[key]
+        if persist > 0:
+          p_cmds[key] = cmds[key]
+          # print "add global command [%s:%s] for %s" % (key, cmds[key], it)
+          # raw_input()
+        elif persist < 0 and key in p_cmds:
+          del p_cmds[key]
+          # print "remove global command [%s:%s] for %s" % (key, cmds[key], it)
+          # raw_input()
+          
+      # merge with global persistent commands
+      for key in p_cmds:
+        if key not in cmds:
+          cmds.cmds[key] = p_cmds[key]
+          # print "inherit [%s:%s] for %s" % (key, cmds[key], it)
+          # raw_input()
+      it.cmds = cmds
+
     
-    # gtype uses information from commands
+  def get_gtype(self):
+    ''' 
+    get generic type
+    gtype uses information from commands 
+    '''
     for it in self.items:
       if it.decl:
         it.gtype = it.get_generic_type()
@@ -305,7 +340,7 @@ class Object:
     # assemble everything to header and source
     header = self.gen_decl().rstrip()
     if self.cmds and "desc" in self.cmds:
-      header += " /* " + self.cmds["desc"][0] + " */"
+      header += " /* " + self.cmds["desc"] + " */"
     header += "\n"
     source = ""
     for f in funclist:
@@ -338,8 +373,8 @@ class Object:
       # 3. handle comment
       cmds = item.cmds
       if (cmds and "desc" in cmds
-          and len(cmds["desc"][0]) > 0):
-        scmt = "/* " + cmds["desc"][0] + " */"
+          and len(cmds["desc"]) > 0):
+        scmt = "/* " + cmds["desc"] + " */"
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1, scmt)] # just buffer it
@@ -366,14 +401,14 @@ class Object:
   def gen_func_close(self):
     ow = CCodeWriter()
     owh = CCodeWriter()
-    macroname = "%sclose" % self.prefix
+    macroname = "%sclose" % self.fprefix
     funcname = macroname + "_"
     owh.addln("#define %s(%s) { %s(%s); free(%s); %s = NULL; }",
-      macroname, self.nickname, funcname, self.nickname, self.nickname, self.nickname)
+      macroname, self.ptrname, funcname, self.ptrname, self.ptrname, self.ptrname)
     funcdesc = "/* %s: close a pointer to %s */" % (funcname, self.name)
     #owh.addln(funcdesc)
     ow.addln(funcdesc)
-    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.nickname)
+    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
     owh.addln(fdecl + ";") # prototype
     ow.addln(fdecl)
     ow.addln("{")
@@ -396,10 +431,10 @@ class Object:
       if not funcfree: continue
       
       ow.addln("if (%s->%-*s != NULL) %s(%s->%s);",
-               self.nickname, maxwid, it.decl.name,
-               funcfree, self.nickname, it.decl.name)
+               self.ptrname, maxwid, it.decl.name,
+               funcfree, self.ptrname, it.decl.name)
 
-    ow.addln("memset(%s, 0, sizeof(*%s));", self.nickname, self.nickname)
+    ow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
     ow.addln("}")
     ow.addln("")
     return owh.gets(), ow.gets()
