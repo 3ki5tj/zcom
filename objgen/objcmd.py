@@ -15,6 +15,8 @@ class Commands:
   # make the object looks like a dictionary
   def __getitem__(self, key):
     return self.cmds[key]
+  def __setitem__(self, key, value):
+    self.cmds[key] = value
   def __contains__(self, item):
     return self.cmds.has_key(item)
 

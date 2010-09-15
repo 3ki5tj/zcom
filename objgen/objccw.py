@@ -18,7 +18,7 @@ class CCodeWriter:
   def add(self, t, *args):
     t = t % args
     if t.lstrip().startswith("}"): self.dec()
-    if self.s.endswith("\n") and not t.startswith("#"):
+    if self.s.endswith("\n") and not t.lstrip().startswith("#"):
       self.s += self.sindent * self.nindents
     self.s += t
     if t.rstrip().endswith("{"): self.inc()
@@ -46,7 +46,7 @@ class CCodeWriter:
           lines = lines[:i-1] + lines[i+1:]
           continue
       i += 1
-    self.s = '\n'.join(lines)
+    self.s = '\n'.join(lines) + '\n'
 
   def gets(self):
     self.remove_empty_pp()

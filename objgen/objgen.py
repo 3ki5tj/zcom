@@ -58,8 +58,9 @@ class Object:
 
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
-    self.get_cmds() # should be done after merging comments
-    self.get_gtype() # should be after get_cmds
+    self.get_cmds() # must be after merging comments
+    self.get_gtype() # generic type, needs cmds, must be after get_cmds
+    self.fill_default() # assign default values for simple variable
     self.determine_prefix()  #
     return 0
 
@@ -203,29 +204,32 @@ class Object:
           # raw_input()
       it.cmds = cmds
 
-    
   def get_gtype(self):
-    ''' 
-    get generic type
-    gtype uses information from commands 
-    '''
+    ''' get generic type, it uses information from commands '''
+    for it in self.items:
+      if it.decl: it.gtype = it.get_generic_type()
+  
+  def fill_default(self):
     for it in self.items:
       if it.decl:
-        it.gtype = it.get_generic_type()
-      
+        it.fill_default()
+
   def gen_code(self):
     funclist = []
+    funclist += [self.gen_func_initdef()]
     funclist += [self.gen_func_close()]
 
     # assemble everything to header and source
     header = self.gen_decl().rstrip()
     if self.cmds and "desc" in self.cmds:
       header += " /* " + self.cmds["desc"] + " */"
-    header += "\n"
+    header += "\n\n"
     source = ""
-    for f in funclist:
+    for f in funclist: # add functions
       header += f[0]
       source += "\n" + f[1] 
+      #print "header %s" % header,
+      #raw_input()
     self.header = header
     self.source = source
 
@@ -318,6 +322,32 @@ class Object:
     ow.addln("}")
     ow.addln("")
     return owh.gets(), ow.gets()
+
+  def gen_func_initdef(self):
+    ow = CCodeWriter()
+    owh = CCodeWriter()
+    funcname = "%sinitdef" % self.fprefix
+    funcdesc = "/* %s: close a pointer to %s */" % (funcname, self.name)
+    #owh.addln(funcdesc)
+    ow.addln(funcdesc)
+    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
+    owh.addln(fdecl + ";") # prototype
+    ow.addln(fdecl)
+    ow.addln("{")
+
+    for it in self.items:
+      if it.pre:
+        ow.addln("#" + it.pre.raw)
+        continue
+      if not it.decl: continue
+
+      if "def" in it.cmds:
+        ow.addln("%s->%s = %s;", self.ptrname, it.decl.name, it.cmds["def"])
+
+    ow.addln("}")
+    ow.addln("")
+    return owh.gets(), ow.gets()
+
 
 class Parser:
   '''

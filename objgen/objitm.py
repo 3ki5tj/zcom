@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 import os, sys, re 
-from copy import copy
+from copy    import * 
+from objpos  import P 
+from objdcl  import CDeclaratorList
+from objcmt  import CComment
+from objpre  import CPreprocessor
+from objccw  import CCodeWriter
+from objcmd  import Commands
 
 class Item:
   '''
@@ -64,10 +70,11 @@ class Item:
         self.decl != None, self.cmt != None, 
         self.begin.gettext(self.src, self.end).strip() )
     
-  def get_generic_type(self):
+  def get_generic_type(self, offset = 0):
     '''
     get a generic type, and type name
-    also need commands
+    it need commands
+    `offset' is the starting offset from the bottom
     '''
     types = self.decl.types
     try:
@@ -75,17 +82,26 @@ class Item:
     except AttributeError:
       print "missing commmands! %s" % self
       raw_input()
-    nlevels = len(types)
+
+    n = len(types)
+    if offset >= n: return None
+
+    nlevels = n - offset
     if nlevels == 1:
-      return types[0]
-    elif types[0].startswith("array"):
-      self.arrcnt = types[0][5:]
+      return types[offset]
+    elif types[offset].startswith("array"):
+      ''' add a command for array count '''
+      arrcnt = types[offset][5:]
+      if offset == 0:
+        self.cmds["cnt"] = arrcnt # override cnt
+        #print "static array cnt has been set to %s for %s" % (arrcnt, self)
+        #raw_input()
       return "static array"
-    elif types[0] == "pointer":
+    elif types[offset] == "pointer":
       #towhat = ' '.join(types[1:])
-      if nlevels == 2 and types[1] == "function":
+      if nlevels == 2 and types[offset+1] == "function":
         return "function pointer"
-      elif nlevels == 2 and types[1] == "char":
+      elif nlevels == 2 and types[offset+1] == "char":
         return "string"
       elif 'cnt' in cmds:
         return "dynamic array"
@@ -93,6 +109,30 @@ class Item:
         return "object"
       else:
         return "pointer"
+
+  def fill_default(self):
+    ''' set 'def' value '''
+    if not self.decl or "def" in self.cmds: return
+    defval = None
+    gtype = self.gtype
+    # for arrays, 'def' means the default value of its elements
+    if len(self.decl.types) == 2 and gtype in (
+        "static array", "dynamic array"):
+      gtype = self.get_generic_type(offset = 1)
+    
+    if gtype in ("int", "unsigned", "unsigned int", 
+        "long", "unsigned long"):
+      defval = "0"
+    elif gtype in ("float", "real"):
+      defval = "0.0f"
+    elif gtype in ("double"):
+      defval = "0.0"
+    elif gtype in ("pointer", "function pointer", "string"):
+      defval = "NULL"
+    if defval != None: 
+      #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
+      #raw_input()
+      self.cmds["def"] = defval
 
   def add_item_to_list(self, dcl): 
     ''' add an item with decl being dcl '''
