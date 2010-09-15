@@ -69,7 +69,11 @@ class CDeclarator:
       # guess if the token is a type specifier
       if (token not in alltypes and
           token[:2]  not in ("t_", "T_") and
-          token[-2:] not in ("_t", "_T")):
+          token[:3]  not in ("_t_", "_T_") and
+          token[:4]  not in ("__t_", "__T_") and
+          token[-2:] not in ("_t", "_T") and 
+          token[-3:] not in ("_t_", "_T_") and 
+          token[-4:] not in ("_t__", "_T__") ):
         p.ungettok(src)
         break
       type += token + " "

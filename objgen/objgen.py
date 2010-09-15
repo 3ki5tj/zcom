@@ -216,7 +216,7 @@ class Object:
     if cmt.isempty(): 
       self.cmds = None
       return
-    print "found a comment %s after object %s" % (cmt.raw, self.name)
+    # print "found a comment %s after object %s" % (cmt.raw, self.name)
     self.cmt = cmt
     if cmt: self.end = copy(p)
     self.cmds = Commands(cmt.raw)
@@ -260,9 +260,6 @@ class Object:
     cmds = self.cmds
     name = self.name
     if name.endswith("_t"): name = name[:-2]
-    if name.endswith("data") and len(name) > 4: # abcdata --> abc
-      name = name[:-4]
-    name = name.lower()
     self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
 
