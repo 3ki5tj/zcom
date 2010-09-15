@@ -60,7 +60,7 @@ class Item:
       self.dl = None if dl.isempty() else dl
       
       # try to get a comment
-      cmt = CComment(src, p)
+      cmt = CComment(src, p, 2)
       self.cmt = cmt if not cmt.isempty() else None
     
     if self.pre or self.cmt or self.dl:
@@ -200,6 +200,15 @@ class Object:
         break
     return 0  # not found
   
+  def search_ending_comment(self, src, p):
+    cmt = CComment(src, p, 2) # search a nearby comment
+    if cmt.isempty(): 
+      self.cmds = None
+      return
+    self.cmt = cmt
+    if cmt: self.end = copy(p)
+    self.cmds = Commands(cmt.raw)
+
   def find_ending(self, src, p, aggr = 0):
     '''
     search the block-ending mark
@@ -220,6 +229,7 @@ class Object:
         self.end = copy(p)
         self.empty = 0
         #print "object-ending is found in %s, %s" % (p, src[p.row])
+        self.search_ending_comment(src, p)
         return 1
       if aggr:
         p.nextline()
@@ -257,10 +267,11 @@ class Object:
       if (it.cmt and not it.dl  # note, test dl instead of decl
           and i > 0 and itp.cmt  # stand-alone comment allowing another
           and it.cmt.begin.col == itp.cmt.begin.col): # starting at the same column
-        #print "merging commands from item %d and item %d" % (i-1, i)
+        #print "merging commands from item %d (%s) and item %d (%s)" % (
+        #    i-1, itp.cmt.begin, i, it.cmt.begin)
         #print "'%s'\n+\n'%s'" % (itp.cmt.raw, it.cmt.raw)
         #raw_input()
-        itp.cmt.raw += it.cmt.raw
+        itp.cmt.raw += ' ' + it.cmt.raw
         items = items[:i] + items[i+1: ] # create a new list
         continue
       i += 1
@@ -292,12 +303,14 @@ class Object:
     funclist += [self.gen_func_close()]
 
     # assemble everything to header and source
-    header = self.gen_decl()
+    header = self.gen_decl().rstrip()
+    if self.cmds and "desc" in self.cmds:
+      header += " /* " + self.cmds["desc"][0] + " */"
+    header += "\n"
     source = ""
     for f in funclist:
       header += f[0]
       source += "\n" + f[1] 
-    header = header[:-1] # strip the final '\n'
     self.header = header
     self.source = source
 

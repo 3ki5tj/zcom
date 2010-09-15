@@ -28,7 +28,7 @@ class CCodeWriter:
 
   def remove_empty_pp(self):
     ''' remove empty preprocessor blocks 
-    #if XXX
+    #if
     #else
     #endif
     '''

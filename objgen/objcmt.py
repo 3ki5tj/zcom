@@ -17,18 +17,18 @@ class CComment:
   '''
   C block-comment or one-line comment
   '''
-  def __init__(self, src, p):
+  def __init__(self, src, p, maxnl = 0):
     self.empty = 1
-    if 0 != self.span(src, p):       # .begin, .end, and .raw
+    if 0 != self.span(src, p, maxnl):    # .begin, .end, and .raw
       return
     self.empty = 0
 
-  def span(self, src, p):
+  def span(self, src, p, maxnl = 0):
     '''
     find the beginning and end of a comment,
     starting from pos
     '''
-    s = p.skipspace(src) # note, its skips multiple blank lines
+    s = p.skipspace(src, maxnl) # note, its skips blank lines if maxnl = 0
     if s == None: return -1
 
     if s.startswith(cmt0) or s.startswith(lncmt):
@@ -41,7 +41,7 @@ class CComment:
 
     if s.startswith(lncmt): # line comment
       self.raw = s[2:].strip()
-      p.nextline()
+      p.endofline(src)
       self.end = copy(p)
     else: # block comment
       # aggressively search the end of comment
