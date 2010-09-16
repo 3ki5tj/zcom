@@ -51,6 +51,11 @@ Commands of an item:
               initialize it
   * $objarr:  object array
 
+In arguments of the command, `@' has special meanings
+  * @@:       this item
+  * @var:     ptrname->var
+  * @_func:   fprefix_func
+  * @:        ptrname
 
 TODO:
   * multiple-line support, e.g., typedef\nstruct
