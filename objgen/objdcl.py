@@ -128,7 +128,7 @@ class CDeclarator:
         s = p.getline(src)
         m = re.match(pattern, s)
         if m:
-          token = s[m.start(1) : m.end(1)]
+          token = m.group(1)
           if self.param_level == 0: self.types += ["array" + token]
           p.col += m.end(0)
         else:

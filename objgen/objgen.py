@@ -1,8 +1,55 @@
 #!/usr/bin/env python
 '''
-intend to be a code generator
+a code generator for serializing objects
+
+It uses a template, locates "typedef struct" code
+and try to generate io functions, 
+e.g., read parameters from configuration file
+
+Commands syntax
+  $cmd = args;
+or
+  $cmd[;]  (lazy command)
+  + cmd contains characters, numbers, and _ or -
+  + the operator = can be replaced by :, it can also be := for
+    persistent commands
+  + currently args cannot contain ; even within a string
+    it should be replaced by \\;
+  + $# ... ; means a comment commands
+  + if the terminal ; is missing, args extend to the end of line
+
+Commands of an object:
+  * $skip, $skipme: skip this object, do not generate anything
+  * $fprefix:       function prefix for the object
+  * $ptrname:       a common variable used as pointers to the object
+
+Commands of an item:
+  * $def:     default value for a variable, 
+              if the variable is a dynamic/static array, this is
+              value for array members
+
+  * $cnt:     if not 0, declare a pointer variable as a dynamic array,
+              ineffective for non-pointer variables
+
+  * $io:      declare I/O type, can be a combination of cbt,
+              for configuration, binary and text respectively
+
+  * $key:               key to get from configuration file
+  * $key_prefix:        prefix to be added when it is deduced from 
+                        variable name, usually as a persistent command
+  * $key_prefix_minus:  prefix of the variable name to be removed 
+                        before applying $key_prefix
+
+  * $test:      a condition to be tested for validity *after* reading
+                a variable from configuration file
+  * $pre_test:  a condition to be tested *before* reading a varible
+                from configuration file
+
+  * $obj:     a member object, a function needs to called to properly initialize it
+  * $objarr:  object array
+
+
 TODO:
-  * symbol @ substitution
   * multiple-line support, e.g., typedef\nstruct
   * preprocessor
   * skip struct in comment or string
@@ -23,7 +70,7 @@ class Object:
   a struct defined as
   typedef struct {
     ...
-  } abc_t;
+  } abc_t; /* cmds */
   '''
   def __init__(self, src, pos = None):
     ''' initialize myself from a bunch of src '''
@@ -59,10 +106,11 @@ class Object:
 
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
-    self.get_cmds() # must be after merging comments
-    self.get_gtype() # generic type, needs cmds, must be after get_cmds
-    self.fill_default() # assign default values for simple variable
-    self.determine_prefix()  #
+    self.fill_cmds()   # get cmds from comment, must be after merging comments
+    self.get_gtype()   # generic type, needs cmds, must be after get_cmds
+    self.get_prefix()  # default ptrname and fprefix
+    self.sub_ptrname() # substitute @ by ptrname
+    self.enrich_cmds() # assign default values
     return 0
 
   def find_beginning(self, src, p, aggr = 1):
@@ -116,7 +164,7 @@ class Object:
       m = re.match(pattern, line)
       if m:
         p.col += m.end(3)
-        self.name = line[m.start(2) : m.end(2)]
+        self.name = m.group(2)
         self.end = copy(p)
         self.empty = 0
         #print "object-ending is found in %s, %s" % (p, src[p.row])
@@ -128,19 +176,10 @@ class Object:
         break
     print "no object-ending is found, p at", p
     return 0  # not found
-
+  
+  def __str__(self): return self.name
+  def __repr__(self): return self.name
   def isempty(self): return self.empty
-
-  def determine_prefix(self):
-    '''
-    determine ptrname, variable name for a pointer to the object
-    and fprefix, the name attached to functions of the object
-    '''
-    cmds = self.cmds
-    name = self.name
-    if name.endswith("_t"): name = name[:-2]
-    self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
-    self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
 
   def merge_comments(self):
     ''' 
@@ -174,16 +213,22 @@ class Object:
       nitems += it.itlist
     self.items = nitems
 
-  def get_cmds(self):
+  def fill_cmds(self):
     ''' 
-    get cmds 
+    obtain cmds from comments
     persist commands apply to this item and all items afterwards
+    after this function it.cmds will not be None (at least 
+    it is an empty set {})
     '''
     p_cmds = {} # persistent commands
     for it in self.items:
       if not it.cmt:
         it.cmds = copy(p_cmds)
         continue
+      #if "cnt" in p_cmds:
+      #  print "cnt is persistent when analysing %s in %s" % (it, self)
+      #  raw_input()
+
       cmds = Commands(it.cmt.raw)
       # update global persistent commands
       for key in cmds.persist:
@@ -208,19 +253,38 @@ class Object:
   def get_gtype(self):
     ''' get generic type, it uses information from commands '''
     for it in self.items:
-      if it.decl: it.gtype = it.get_generic_type()
+      if it.decl: 
+        it.gtype = it.get_generic_type()
   
-  def fill_default(self):
-    for it in self.items:
-      if not it.decl: continue
-      it.fill_default()
-      # to be improved
-      if "key" not in it.cmds:
-        it.cmds["key"] = it.decl.name
+  def get_prefix(self):
+    '''
+    determine ptrname, variable name for a pointer to the object
+    and fprefix, the name attached to functions of the object
+    '''
+    cmds = self.cmds
+    name = self.name
+    if name.endswith("_t"): name = name[:-2]
+    self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
+    self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
 
+  def sub_ptrname(self):
+    '''
+    substitute @ by $ptrname
+    '''
+    for it in self.items:
+      if not it.cmds: continue
+      it.sub_ptrname(self.ptrname)
+    
+  def enrich_cmds(self):
+    ''' refine and enrich commands '''
+    for it in self.items:
+      it.fill_def()  # make sure we have default values
+      it.fill_key()  # fill in default keys
+      it.test_cnt()
+      it.fill_io()
+  
   def gen_code(self):
     funclist = []
-    funclist += [self.gen_func_initdef()]
     funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_close()]
 
@@ -233,8 +297,6 @@ class Object:
     for f in funclist: # add functions
       header += f[0]
       source += "\n" + f[1] 
-      #print "header %s" % header,
-      #raw_input()
     self.header = header
     self.source = source
 
@@ -328,41 +390,6 @@ class Object:
     ow.addln("")
     return owh.gets(), ow.gets()
 
-  def gen_func_initdef(self):
-    ow = CCodeWriter()
-    owh = CCodeWriter()
-    funcname = "%sinitdef" % self.fprefix
-    funcdesc = "/* %s: initialize members of %s to default values */" % (funcname, self.name)
-    #owh.addln(funcdesc)
-    ow.addln(funcdesc)
-    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
-    owh.addln(fdecl + ";") # prototype
-    ow.addln(fdecl)
-    ow.addln("{")
-
-    for it in self.items:
-      if it.pre:
-        ow.addln("#" + it.pre.raw)
-        continue
-      if not it.decl: continue
-
-      desc = it.cmds["desc"] if "desc" in it.cmds else ""
-      if not it.gtype.endswith("array"):
-        ow.addln("%s->%s = %s;", self.ptrname, it.decl.name, it.cmds["def"])
-      elif it.gtype == "dynamic array":
-        type = it.get_generic_type(offset = 1)
-        ow.addln('XM_DARR_(%s->%s, %s, %s, %s, , "%s", "error", exit(1));', 
-          self.ptrname, it.decl.name, 
-          type, it.cmds["def"], it.cmds["cnt"], desc)
-      elif it.gtype == "static array":
-        type = it.get_generic_type(offset = 1)
-        ow.addln('XM_SARR_(%s->%s, %s, %s, %s, , "%s");', 
-          self.ptrname, it.decl.name, 
-          type, it.cmds["def"], it.cmds["cnt"], desc)
-    ow.addln("}")
-    ow.addln("")
-    return owh.gets(), ow.gets()
-
   def gen_func_cfgread(self):
     ow = CCodeWriter()
     owh = CCodeWriter()
@@ -381,7 +408,7 @@ class Object:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
-      if not it.decl: continue
+      if not it.decl or not it.cmds["io_cfg"]: continue
 
       if it.gtype == "pointer to object":
         # TODO: call the appropriate initialize
@@ -402,14 +429,18 @@ class Object:
         raw_input()
         continue
       desc = it.cmds["desc"] if "desc" in it.cmds else ""
-      if not it.gtype.endswith("array"):
+      if not it.gtype in ("static array", "dynamic array"):
         type = it.gtype if ("pointer" not in it.gtype) else "void *"
         ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s, 1, 1, , "%s", "missing", );', 
           self.ptrname, it.decl.name, 
           it.cmds["key"], type, it.cmds["def"], 
           desc)
       elif it.gtype == "dynamic array":
-        type = it.get_generic_type(offset = 1)
+        try:
+          type = it.get_generic_type(offset = 1) + " *"
+        except:
+          print "name: %s" % it.name(); raw_input()
+
         ow.addln('XM_DARR_(%s->%s, %s, %s, %s, , "%s", "error", exit(1));', 
           self.ptrname, it.decl.name, 
           type, it.cmds["def"], it.cmds["cnt"], desc)
@@ -422,6 +453,7 @@ class Object:
     ow.addln("}")
     ow.addln("")
     return owh.gets(), ow.gets()
+
 
 class Parser:
   '''

@@ -127,12 +127,12 @@ class CDecl:
       return self.ttype
     m = re.match(r"([a-zA-Z_]\w*).*", s) # a variable
     if m:
-      self.ttype, self.token = "word", s[:m.end(1)]
+      self.ttype, self.token = "word", m.group(1)
       self.pos += m.end(1)
       return self.ttype
     m = re.match(r"(\[)(.*?)(\]).*", s)  # [...]
     if m:
-      self.ttype, self.token = "[]", s[m.start(2):m.end(2)]
+      self.ttype, self.token = "[]", m.group(2)
       self.pos += m.end(3)
       return self.ttype
     self.ttype = self.token = s[0]

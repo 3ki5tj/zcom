@@ -8,6 +8,9 @@ from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 
+simple_types = ("int", "unsigned int", "unsigned", 
+  "long", "unsigned long", "real", "double", "float")
+
 class Item:
   '''
   item:
@@ -69,7 +72,16 @@ class Item:
         self.pre != None, self.dl != None, 
         self.decl != None, self.cmt != None, 
         self.begin.gettext(self.src, self.end).strip() )
-    
+
+  def name(self):
+    if self.decl: 
+      return "item: %s" % self.decl.name
+    elif self.pre:
+      return "prep: %s" % self.pre.raw
+    else:
+      return "(aux)"
+
+
   def get_generic_type(self, offset = 0):
     '''
     get a generic type, and type name
@@ -99,18 +111,26 @@ class Item:
       return "static array"
     elif types[offset] == "pointer":
       #towhat = ' '.join(types[1:])
-      if nlevels == 2 and types[offset+1] == "function":
+      if types[offset+1] == "function":
         return "function pointer"
       elif nlevels == 2 and types[offset+1] == "char":
         return "char *"
-      elif 'cnt' in cmds:
+      elif "cnt" in cmds and cmds["cnt"].strip() != "0":
         return "dynamic array"
-      elif 'obj' in cmds:
-        return "pointer to object"
+      elif "obj" in cmds:
+        return "object pointer"
+      elif "objarr" in cmds:
+        return "object array"
       else:
+        if (offset == 0 and "cnt" not in cmds 
+          and nlevels == 2 
+          and types[offset+1] in simple_types):
+          print "Warning: `%s' is considered as a pointer" % self.decl.name,
+          print "  set $cnt if it is actually an array"
         return "pointer"
 
-  def fill_default(self):
+
+  def fill_def(self):
     ''' set 'def' value '''
     if not self.decl or "def" in self.cmds: return
     defval = None
@@ -167,4 +187,65 @@ class Item:
     
   def isempty(self):
     return self.empty
+
+  def sub_ptrname(it, ptrname):
+    ''' change `@' by ptrname-> in command arguments '''
+    # print "cmds:%s." % (it.cmds); raw_input()
+    for key in it.cmds:
+      val = it.cmds[key]
+      pattern = r"([^\@\\]*)\@(\w+)" # exclude @@, \@, $@
+      it.cmds[key] = re.sub(pattern, r"\1"+ptrname+r"->\2", val)
+    # print "cmds:%s." % (it.cmds); raw_input()
+
+  def fill_key(it):
+    ''' 
+    add default key for configuration file reading
+    unless "key" is specified, it is calculated as
+    1. it.decl.name is the first guess
+    2. if it starts with key_prefix_minus, remove it
+    3. add key_prefix
+    '''
+    # skip if it is not a declaration
+    if not it.decl or "key" in it.cmds: return
+    cfgkey = it.decl.name
+    try:
+      pm = it.cmds["key_prefix_minus"]
+      if cfgkey.startswith(pm):
+        cfgkey = cfgkey[len(pm):]
+    except KeyError: pass
+
+    try:
+      pfx = it.cmds["key_prefix"]
+      cfgkey = pfx + cfgkey
+    except KeyError: pass
+    it.cmds["key"] = cfgkey
+
+  def test_cnt(it):
+    ''' test if cnt is empty '''
+    if not it.decl or not it.gtype.endswith("array"): return
+    if "cnt" not in it.cmds:
+      print "item %s: array requires a count" % it.decl.name
+      raise Exception
+    cnt = it.cmds["cnt"].strip()
+    if len(cnt) == 0:
+      print "item %s: $cnt command cannot be empty! comment: [%s]" % (it.decl.name, it.cmt)
+      raise Exception
+
+  def fill_io(it):
+    ''' expand the io string '''
+    if not it.decl: return
+    # default I/O mode, bt for array, cbt for others
+    if it.gtype in ("static array", "dynamic array"):
+      iodef = "bt"
+    elif  it.gtype in simple_types:
+      iodef = "cbt"
+    else:
+      iodef = ""
+    # assume iodef if necessary
+    io = it.cmds["io"] if "io" in it.cmds else iodef
+    # create itemized io
+    it.cmds["io_cfg"] = 1 if "c" in io else 0
+    it.cmds["io_bin"] = 1 if "b" in io else 0
+    it.cmds["io_txt"] = 1 if "t" in io else 0
+
 
