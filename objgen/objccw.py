@@ -15,16 +15,18 @@ class CCodeWriter:
   def dec(self): 
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
-  def add(self, t, *args):
-    t = t % args
+  def add_(self, t):
     if t.lstrip().startswith("}"): self.dec()
     if self.s.endswith("\n") and not t.lstrip().startswith("#"):
       self.s += self.sindent * self.nindents
     self.s += t
     if t.rstrip().endswith("{"): self.inc()
 
+  def add(self, t, *args):
+    self.add_( t % args)
+
   def addln(self, t, *args):
-    self.add( (t.rstrip() % args) + '\n' )
+    self.add_( (t.rstrip() % args) + '\n' )
 
   def remove_empty_pp(self):
     ''' remove empty preprocessor blocks 

@@ -13,15 +13,6 @@ helper_macros = r'''
 #define FALSE 0
 #endif
 
-/* return a format string from a type
- * undetermined format goto "%%"  */
-#define XM_TP2FMT_(tp) \
-    (strcmp(#tp, "int")       == 0 ? "%d"  : \
-     strcmp(#tp, "unsigned")  == 0 ? "%u"  : \
-     strcmp(#tp, "float")     == 0 ? "%f"  : \
-     strcmp(#tp, "double")    == 0 ? "%lf" : \
-     strcmp(#tp, "char *")    == 0 ? "%s"  : \
-     strcmp(#tp, "null")      == 0 ? ""    : "%%")
 
 #define XM_PRINT_FILE_LINE_() \
     fprintf(stderr, "file: %s, line: %d\n", __FILE__, __LINE__)
@@ -45,18 +36,15 @@ helper_macros = r'''
  * is called if the entry is not found in the configuration file   
  * the whole process is skipped if null is passed to tp 
  * */
-#define XM_CFGGET_(cfg, var, key, tp, def, desc, mismsg, misact) {    \
-  char *fmt_ = XM_TP2FMT_(tp);                                        \
-  if (fmt_[0] == '\0') {                                              \
-    /* do nothing */ ;                                                \
-  } else if (fmt_[1] == '%') {  /* unable to determine format */      \
-    fprintf(stderr, "cannot determine format for %s\n", #tp);         \
-    XM_FATAL_ACTION_; /* fatal: programmer's mistake */               \
-  } else if (sizeof(var) != sizeof(tp)) {                             \
-    fprintf(stderr, "var. %s is not of type %s\n", #var, #tp);        \
-    XM_FATAL_ACTION_; /* fatal: programmer's mistake */               \
-  } else if (0 != cfgget(cfg, &(var), key, fmt_)) {                   \
-    XM_ERRMSG_(var, key, tp, def, desc, mismsg, misact);              \
+#define XM_CFGGET_(cfg, var, key, tp, fmt, def, desc, mismsg, misact) { \
+  if (fmt_[1] == '%') {  /* unable to determine format */               \
+    fprintf(stderr, "invalid format for var %s, tp %s\n", #var, #tp);   \
+    XM_FATAL_ACTION_; /* fatal: programmer's mistake */                 \
+  } else if (sizeof(var) != sizeof(tp)) {                               \
+    fprintf(stderr, "var. %s is not of type %s\n", #var, #tp);          \
+    XM_FATAL_ACTION_; /* fatal: programmer's mistake */                 \
+  } else if (0 != cfgget(cfg, &(var), key, fmt_)) {                     \
+    XM_ERRMSG_(var, key, tp, def, desc, mismsg, misact);                \
   }  }
 
 /* conditionally (t0) get var from configuration file, 
@@ -67,10 +55,10 @@ helper_macros = r'''
  * the design is based on the concern that if anything fails
  * an uninitialized variable can be dangerous
  * */
-#define XM_CFGGETC_(cfg, var, key, tp, def, t0, t1, eval, desc, mismsg, misact) \
+#define XM_CFGGETC_(cfg, var, key, tp, fmt, def, t0, t1, eval, desc, mismsg, misact) \
   var = def;                                                                    \
   if (XM_TEST_(t0)) {                                                           \
-    XM_CFGGET_(cfg, var, key, tp, def, desc, mismsg, misact)                    \
+    XM_CFGGET_(cfg, var, key, tp, fmt, def, desc, mismsg, misact)                    \
     XM_TESTERR_(t1, misact)                                                     \
     eval;                                                                       \
   }

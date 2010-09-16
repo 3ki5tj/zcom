@@ -331,6 +331,7 @@ class Object:
       # 2. handle declaration
       if item.decl:
         decl0 = item.decl.datatype
+        if decl0 == "dummy_t": continue
         decl1 = item.decl.raw
         #raw_input ("%s %s" % (decl0, decl1))
       # 3. handle comment
@@ -441,14 +442,7 @@ class Object:
         raw_input()
         continue
       desc = it.cmds["desc"] if "desc" in it.cmds else ""
-      if not it.gtype in ("static array", "dynamic array"):
-        type = it.gtype if ("pointer" not in it.gtype) else "void *"
-        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s,',
-          self.ptrname, it.decl.name, 
-          it.cmds["key"], type, it.cmds["def"]);
-        ow.addln('            %s, %s, , "%s", "missing", );', 
-          it.cmds["test"], it.cmds["valid"], desc)
-      elif it.gtype == "dynamic array":
+      if it.gtype == "dynamic array":
         try:
           type = it.get_generic_type(offset = 1) + " *"
         except:
@@ -462,6 +456,15 @@ class Object:
         ow.addln('XM_SARR_(%s->%s, %s, %s, %s, , "%s");', 
           self.ptrname, it.decl.name, 
           type, it.cmds["def"], it.cmds["cnt"], desc)
+      else:
+        type = it.gtype if ("pointer" not in it.gtype) else "void *"
+        fmt = it.type2fmt(type)
+        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, "%s", %s,',
+          self.ptrname, it.decl.name, it.cmds["key"], 
+          type, fmt, it.cmds["def"]);
+        ow.addln('            %s, %s, , "%s", "missing", );', 
+          it.cmds["test"], it.cmds["valid"], desc)
+
 
     ow.addln("}")
     ow.addln("")

@@ -129,6 +129,26 @@ class Item:
           print "  set $cnt if it is actually an array"
         return "pointer"
 
+  def type2fmt(self, tp):
+    fmt = ""
+    if   tp == "int":      
+      fmt = "%d"
+    elif tp == "long":
+      fmt = "%ld"
+    elif tp == "unsigned": 
+      fmt = "%u"
+    elif tp == "unsigned long": 
+      fmt = "%ul"
+    elif tp == "float":
+      fmt = "%f"
+    elif tp == "double":
+      fmt = "%lf"
+    elif tp == "char *":
+      fmt = "%s"
+    else:
+      print "no format string for type [%s]" % tp
+      raise Exception
+    return fmt
 
   def fill_def(self):
     ''' set 'def' value '''
