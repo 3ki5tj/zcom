@@ -125,21 +125,12 @@
   #ifndef ZCOM_ENDN
   #define ZCOM_ENDN
   #endif
-  #ifndef ZCOM_XM
-  #define ZCOM_XM
-  #endif
 #endif
 
 /* build dependencies */
 #if (defined(ZCOM_RNG)  || defined(ZCOM_TRACE) || defined(ZCOM_CFG) || \
      defined(ZCOM_HIST) || defined(ZCOM_LOG)   || defined(ZCOM_ZT) )
   #define ZCOM_SS  /* needs file name support */
-#endif
-
-#ifdef ZCOM_XM
-  #define ZCOM_SS
-  #define ZCOM_CFG
-  #define ZCOM_DIE
 #endif
 
 #ifdef ZCOM_CFG
@@ -710,11 +701,4 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
 
 #endif /* ZCOM_BIO__ */
 #endif /* ZCOM_BIO */
-
-#ifdef  ZCOM_XM
-#ifndef ZCOM_XM__
-#define ZCOM_XM__
-
-#endif /* ZCOM_XM__ */
-#endif /* ZCOM_XM */
 

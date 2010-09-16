@@ -248,4 +248,10 @@ class Item:
     it.cmds["io_bin"] = 1 if "b" in io else 0
     it.cmds["io_txt"] = 1 if "t" in io else 0
 
+  def fill_test(it):
+    ''' fill test conditions '''
+    if not "test" in it.cmds:
+      it.cmds["test"] = "TRUE"
+    if not "pre_test" in it.cmds:
+      it.cmds["pre_test"] = "TRUE"
 

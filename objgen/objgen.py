@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+r'''
 a code generator for serializing objects
 
 It uses a template, locates "typedef struct" code
@@ -64,6 +64,7 @@ from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
+from objxm   import helper_macros
 
 class Object:
   '''
@@ -282,6 +283,7 @@ class Object:
       it.fill_key()  # fill in default keys
       it.test_cnt()
       it.fill_io()
+      it.fill_test()
   
   def gen_code(self):
     funclist = []
@@ -431,9 +433,10 @@ class Object:
       desc = it.cmds["desc"] if "desc" in it.cmds else ""
       if not it.gtype in ("static array", "dynamic array"):
         type = it.gtype if ("pointer" not in it.gtype) else "void *"
-        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s, 1, 1, , "%s", "missing", );', 
+        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s, %s, %s, , "%s", "missing", );', 
           self.ptrname, it.decl.name, 
           it.cmds["key"], type, it.cmds["def"], 
+          it.cmds["pre_test"], it.cmds["test"],
           desc)
       elif it.gtype == "dynamic array":
         try:
@@ -488,6 +491,7 @@ class Parser:
     # add header
     s = self.change_objs_decl()
     
+    s += helper_macros
     # append functions
     for obj in self.objs:
       s += obj.source
