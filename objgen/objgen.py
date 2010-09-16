@@ -33,19 +33,22 @@ Commands of an item:
 
   * $io:      declare I/O type, can be a combination of cbt,
               for configuration, binary and text respectively
+              it can also be `none' or `all'
 
   * $key:               key to get from configuration file
   * $key_prefix:        prefix to be added when it is deduced from 
                         variable name, usually as a persistent command
   * $key_prefix_minus:  prefix of the variable name to be removed 
                         before applying $key_prefix
+  * key_must:           a critial key that must present in configuration file
 
-  * $test:      a condition to be tested for validity *after* reading
-                a variable from configuration file
-  * $pre_test:  a condition to be tested *before* reading a varible
+  * $test:      a condition to be tested *before* reading a varible
                 from configuration file
+  * $valid:     a condition to be tested for validity *after* reading
+                a variable from configuration file
 
-  * $obj:     a member object, a function needs to called to properly initialize it
+  * $obj:     a member object, a function needs to called to properly 
+              initialize it
   * $objarr:  object array
 
 
@@ -195,6 +198,8 @@ class Object:
       itp = items[i-1]
       if (it.cmt and not it.dl  # note, test dl instead of decl
           and i > 0 and itp.cmt  # stand-alone comment allowing another
+          and itp.cmt.type == "line"
+          and it.cmt.type == "line"
           and it.cmt.begin.col == itp.cmt.begin.col): # starting at the same column
         #print "merging commands from item %d (%s) and item %d (%s)" % (
         #    i-1, itp.cmt.begin, i, it.cmt.begin)
@@ -433,11 +438,11 @@ class Object:
       desc = it.cmds["desc"] if "desc" in it.cmds else ""
       if not it.gtype in ("static array", "dynamic array"):
         type = it.gtype if ("pointer" not in it.gtype) else "void *"
-        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s, %s, %s, , "%s", "missing", );', 
+        ow.addln('XM_CFGGETC_(cfg, %s->%s, "%s", %s, %s,',
           self.ptrname, it.decl.name, 
-          it.cmds["key"], type, it.cmds["def"], 
-          it.cmds["pre_test"], it.cmds["test"],
-          desc)
+          it.cmds["key"], type, it.cmds["def"]);
+        ow.addln('            %s, %s, , "%s", "missing", );', 
+          it.cmds["test"], it.cmds["valid"], desc)
       elif it.gtype == "dynamic array":
         try:
           type = it.get_generic_type(offset = 1) + " *"
@@ -530,7 +535,10 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  handle("test2.c")
+  #file = "test2.c"
+  file = "mb.c"
+  if len(sys.argv) > 1: file = sys.argv[1]
+  handle(file)
 
 if __name__ == "__main__":
   main()

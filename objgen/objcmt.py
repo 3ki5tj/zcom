@@ -32,6 +32,7 @@ class CComment:
     if s == None: return -1
 
     if s.startswith(cmt0) or s.startswith(lncmt):
+      self.type = "block" if s.startswith(cmt0) else "line"
       self.begin = copy(p)
     else:
       #print "missing comment beginning mark %s" % p

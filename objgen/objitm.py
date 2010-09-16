@@ -243,6 +243,12 @@ class Item:
       iodef = ""
     # assume iodef if necessary
     io = it.cmds["io"] if "io" in it.cmds else iodef
+    io = io.strip()
+
+    # a human shortcut
+    if io in ("no", "none"): io = ""
+    elif io in ("all", "everything"): io = "cbt"
+
     # create itemized io
     it.cmds["io_cfg"] = 1 if "c" in io else 0
     it.cmds["io_bin"] = 1 if "b" in io else 0
@@ -252,6 +258,6 @@ class Item:
     ''' fill test conditions '''
     if not "test" in it.cmds:
       it.cmds["test"] = "TRUE"
-    if not "pre_test" in it.cmds:
-      it.cmds["pre_test"] = "TRUE"
+    if not "valid" in it.cmds:
+      it.cmds["valid"] = "TRUE"
 

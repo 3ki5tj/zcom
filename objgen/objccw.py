@@ -24,7 +24,7 @@ class CCodeWriter:
     if t.rstrip().endswith("{"): self.inc()
 
   def addln(self, t, *args):
-    self.add( (t.strip() % args) + '\n' )
+    self.add( (t.rstrip() % args) + '\n' )
 
   def remove_empty_pp(self):
     ''' remove empty preprocessor blocks 

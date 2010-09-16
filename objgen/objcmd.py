@@ -56,7 +56,7 @@ class Commands:
                  all following items
                  if args is empty, the command is removed
       '''
-      pattern = r"[^\$\\]*(\$)([\w\-]+)\s*([+-:]?=|:?:)\s*(.*?)((?<!\\)\;|$)"
+      pattern = r"[^\$\\]*(\$)([\w\-]+)\s*([\+\-\:]?=|:?:)\s*(.*?)((?<!\\)\;|$)"
       m = re.search(pattern, s, re.MULTILINE | re.DOTALL)
       if m:
         '''
@@ -100,11 +100,11 @@ class Commands:
       #    cmd, param, s)
       #raw_input()
 
-      # join multiple line description
-      if not "desc" in self.cmds: 
-        sa = [a.strip() for a in s.splitlines()] # split to lines
-        s = ' '.join(sa).strip()
-        if len(s): self.cmds["desc"] = s 
+    # join multiple line description
+    if not "desc" in self.cmds: 
+      sa = [a.strip() for a in s.splitlines()] # split to lines
+      s = ' '.join(sa).strip()
+      if len(s): self.cmds["desc"] = s 
 
   def subst_symbols(self, s, do_at = 0):
     ''' 
