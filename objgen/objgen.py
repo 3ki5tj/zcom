@@ -113,7 +113,7 @@ class Object:
     self.fill_cmds()   # get cmds from comment, must be after merging comments
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
     self.get_prefix()  # default ptrname and fprefix
-    self.sub_ptrname() # substitute @ by ptrname
+    self.sub_prefix()  # substitute @ by ptrname or fprefix
     self.enrich_cmds() # assign default values
     return 0
 
@@ -273,13 +273,13 @@ class Object:
     self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
 
-  def sub_ptrname(self):
+  def sub_prefix(self):
     '''
     substitute @ by $ptrname
     '''
     for it in self.items:
       if not it.cmds: continue
-      it.sub_ptrname(self.ptrname)
+      it.sub_prefix(self.ptrname, self.fprefix)
     
   def enrich_cmds(self):
     ''' refine and enrich commands '''

@@ -188,13 +188,30 @@ class Item:
   def isempty(self):
     return self.empty
 
-  def sub_ptrname(it, ptrname):
+  def sub_prefix(it, ptrname, fprefix):
     ''' change `@' by ptrname-> in command arguments '''
     # print "cmds:%s." % (it.cmds); raw_input()
     for key in it.cmds:
       val = it.cmds[key]
-      pattern = r"([^\@\\]*)\@(\w+)" # exclude @@, \@, $@
-      it.cmds[key] = re.sub(pattern, r"\1"+ptrname+r"->\2", val)
+      # @_ means this is a function 
+      pattern = r"(?<![\@\\])\@\_(?=\w)"
+      val = re.sub(pattern, fprefix, val)
+
+      # @@ means this variable 
+      pattern = r"(?<![\@\\])\@\@(?!\w)"
+      if re.search(pattern, val):
+        val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
+
+      # @var
+      pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
+      val = re.sub(pattern, ptrname + "->", val)
+      
+      # for a single @, means the object itself
+      pattern = r"(?<![\@\\])\@(?!\w)"
+      if re.search(pattern, val):
+        val = re.sub(pattern, ptrname, val)
+
+      it.cmds[key] = val
     # print "cmds:%s." % (it.cmds); raw_input()
 
   def fill_key(it):
