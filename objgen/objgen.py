@@ -42,14 +42,24 @@ Commands of an item:
                         before applying $key_prefix
   * key_must:           a critial key that must present in configuration file
 
-  * $test:      a condition to be tested *before* reading a varible
-                from configuration file
-  * $valid:     a condition to be tested for validity *after* reading
-                a variable from configuration file
+  * $test:        a condition to be tested *before* reading a varible
+                  from configuration file, but after assigning the 
+                  given by $def; this is the default order because it
+                  ensures a variable is assigned at a reasonable value
+  * $test_first:  if this is set, we do not assign the default value $def 
+                  unless $test is true, useful for dummy variables
+  * $valid:       a condition to be tested for validity *after* reading
+                  a variable from configuration file
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it
   * $objarr:  object array
+
+  * $flag:    name of a flag, something like ABC_FLAG
+  * $val:     bit value of $flag
+
+  * $usr:     the variable should be passed as a parameter, 
+              not read from the configuration file
 
 In arguments of the command, `@' has special meanings
   * @@:       this item
@@ -305,6 +315,8 @@ class Object:
       header += " /* " + self.cmds["desc"] + " */"
     header += "\n\n"
     source = ""
+
+    header += self.gen_flags_def()
     for f in funclist: # add functions
       header += f[0]
       source += "\n" + f[1] 
@@ -315,6 +327,8 @@ class Object:
     '''
     write code for object declaration
     '''
+    tab    = 4
+    offset = 2
     cw = CCodeWriter()
     cw.addln("typedef struct {")
     block = [] # block list
@@ -340,26 +354,58 @@ class Object:
         scmt = "/* " + cmds["desc"] + " */"
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
-        block += [(decl0, decl1, scmt)] # just buffer it
+        block += [(decl0, decl1+';', scmt)] # just buffer it
       else:
-        self.dump_block(block, cw)
+        self.dump_block(block, cw, tab, offset)
         block = [] # empty the block
         # also print this line
         if len(scmt) > 0: 
           cw.addln(scmt)
-    self.dump_block(block, cw)
+    self.dump_block(block, cw, tab, offset)
     block = []
     cw.addln("} " + self.name + ";")
+    
     return cw.gets()
-  def dump_block(self, block, cw):
+
+  def dump_block(self, block, cw, tab = 4, offset = 2):
     if len(block) == 0: return
+    nfields = len(block[0])
+    wid = [8] * nfields
+    #print "block of %s\n%s" % (len(block), block)
+    #raw_input()
+
     # align and format all items in the bufferred block
     # and append the result to string s
-    wid0 = max(len(item[0]) for item in block)
-    wid1 = max(len(item[1]) for item in block) + 1 # for ;
+    for j in range(nfields):
+      w = max(len(item[j]) for item in block) + 1 # +1 for the following blank
+      wid[j] = ((w + offset + tab - 1) // tab)*tab - offset
+
     for item in block:
-      line = "%-*s %-*s %s\n" % (wid0, item[0], wid1, item[1]+';', item[2])
-      cw.add(line)
+      s = ""
+      for j in range(nfields-1):
+        s += "%-*s" % (wid[j], item[j])
+      s += item[nfields - 1] + "\n"
+      cw.addln(s)
+
+  def gen_flags_def(self):
+    tab = 4
+    offset = 2
+    cw = CCodeWriter()
+    block = []
+    for it in self.items:
+      if "flag" in it.cmds:
+        flag = it.cmds["flag"]
+        if "val" not in it.cmds:
+          print "missing value for flag [%s]" % it.cmds["flag"]
+          raise Exception
+        bval = it.cmds["val"]
+        # print flag, bval; raw_input()
+        block += [("#define", flag, bval)]
+      else:
+        self.dump_block(block, cw, tab, offset)
+        block = []
+    self.dump_block(block, cw, tab, offset)
+    return cw.gets()
 
   def gen_func_close(self):
     ow = CCodeWriter()
@@ -404,10 +450,8 @@ class Object:
 
   def gen_func_cfgread(self):
     funcname = "%scfgread" % self.fprefix
-    funcdesc = "initialize %s by reading members from a configuration file" % (
-        self.name)
-    fdecl = "void %s(%s *%s, cfgdata_t *cfg)" % (
-        funcname, self.name, self.ptrname)
+    funcdesc = "initialize %s by reading members from a configuration file" % (self.name)
+    fdecl = "void %s(%s *%s, cfgdata_t *cfg)" % (funcname, self.name, self.ptrname)
     ow = CCodeWriter()
     ow.start_function(funcname, fdecl, funcdesc)
 
@@ -419,51 +463,66 @@ class Object:
       if (not it.cmds["io_cfg"] and
           it.gtype not in ("static array", "dynamic array")):
         continue
-
+      
       varname = self.ptrname + "->" + it.decl.name
       if it.gtype == "pointer to object":
-        # TODO: call the appropriate initialize
+        # TODO: call the appropriate initializer
         '''
         obj = search_the_object_name (it.decl.datatype)
         '''
         obj_ptrname = it.decl.datatype[:-2]
-        ow.addln("%s->%s = %sinit(%s);", self.ptrname, it.decl.name, 
+        ow.addln("%s = %sinit(%s);", varname, 
           obj_ptrname, self.ptrname)
         continue
 
-      if "def" not in it.cmds:
-        print "missing default value for %s, %s" % (it, it.gtype)
-        raw_input()
+      if "usr" in it.cmds: # usr variables
+        ow.assign(varname, "usr_%s" % it.decl.name)
         continue
-      if "key" not in it.cmds:
-        print "missing key for %s, %s" % (it, it.gtype)
-        raw_input()
-        continue
-      desc = it.cmds["desc"] if "desc" in it.cmds else ""
-      
-      if it.gtype == "dynamic array":
-        try:
-          type = it.get_generic_type(offset = 1) 
-        except:
-          print "name: %s" % it.name(); raw_input()
 
+      defl    = it.cmds["def"]
+      key     = it.cmds["key"]
+      test    = it.cmds["test"]
+      tfirst  = "test_first" in it.cmds
+      valid   = it.cmds["valid"]
+      must    = "key_must" in it.cmds
+      desc    = it.cmds["desc"] if "desc" in it.cmds else ""
+     
+      if it.gtype == "dynamic array":
+        type = it.get_generic_type(offset = 1) 
         ow.init_dynamic_array(varname, type,
-            it.cmds["def"], it.cmds["cnt"], desc)
+            defl, it.cmds["cnt"], desc)
       elif it.gtype == "static array":
         type = it.get_generic_type(offset = 1)
         # print "%s: static array of %s" % (it.name(), type)
         ow.init_static_array(varname, type, 
-            it.cmds["def"], it.cmds["cnt"], desc)
-      else:
-        type = it.gtype if ("pointer" not in it.gtype) else "void *"
+            defl, it.cmds["cnt"], desc)
+      elif "flag" in it.cmds:
+        type = self.var2type("flags")
+        assert (type == "unsigned")
         fmt = it.type2fmt(type)
-        ow.cfgget_var(varname, it.cmds["key"], type, fmt, 
-          it.cmds["def"], "key_must" in it.cmds,
-          it.cmds["test"], it.cmds["valid"], desc)
+        flag = it.cmds["flag"]
+        ow.cfgget_flag(varname, key, flag, type, fmt,
+            defl, test, tfirst, desc)
+      else:
+        type = it.gtype if it.gtype != "dummy_t" else self.var2type(it.decl.name)
+        fmt = it.type2fmt(type)
+        ow.cfgget_var(varname, key, type, fmt, 
+          defl, must, test, tfirst, valid, desc)
 
     ow.finish_function()
     return ow.prototype, ow.function
-
+  
+  def var2type(self, var):
+    ''' look for type of variable `var' 
+        used to determine type of dummy variables
+    '''
+    for it in self.items:
+      if (it.decl and it.gtype != "dummy_t"
+          and it.decl.name == var):
+        return it.gtype
+    else:
+      print "cannot determine the type of [%s]" % var
+      raise Exception
 
 class Parser:
   '''
@@ -498,7 +557,6 @@ class Parser:
     # add header
     s = self.change_objs_decl()
     
-    s += helper_macros
     # append functions
     for obj in self.objs:
       s += obj.source

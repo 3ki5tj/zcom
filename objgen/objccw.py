@@ -60,7 +60,7 @@ class CCodeWriter:
     return self.s
  
   def print_file_line(self):
-    self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%s\n", __FILE__, __LINE__);')
+    self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
   def start_function(self, name, funcdef, desc):
     self.function = ""
@@ -84,6 +84,27 @@ class CCodeWriter:
     
     self.funcname = name
     self.used_array_index = 0
+  
+  def simple_if(self, tag, cond, msgs):
+    self.addln("%s_if (%s,", tag, cond)
+    n = len(msgs)
+    lead = self.sindent
+    for i in range(n-1):
+      self.addln(lead + '"%s"', msgs[i])
+    self.addln(lead + '"%s");', msgs[n-1])
+
+  def die_if(self, cond, *msgs):
+    self.simple_if("die", cond, msgs)
+
+  def msg_if(self, cond, *msgs):
+    self.simple_if("msg", cond, msgs)
+    ''' without using msg_if
+    self.addln("if (%s) {", cond)
+    n = len(msgs)
+    for i in range(n):
+      self.addln(r'fprintf(stderr, "%s");', msgs[i])
+    self.addln("}")
+    '''
 
   def init_static_array(self, var, type, default, cnt, desc):
     ''' write code for initializing a static array '''
@@ -98,53 +119,74 @@ class CCodeWriter:
     cntptn = r"(.*)\s*\+\s*([0-9]+)$"
     m = re.match(cntptn, cnt)
     if m:
-      #print "before: cnt = %s" % cnt
       cnta = "(%s + %s)" % (m.group(1).strip(), str(int(m.group(2))+1))
-      #print "after:  cnt = %s" % cnt
-      #raw_input()
     else:
       cnta = "(%s + 1)" % cnt.strip()
-      
-    self.addln("if ((%s = calloc(%s, sizeof(%s))) == NULL) {", var, cnta, type)
-    self.addln(r'fprintf(stderr, "no memory! var: %s, type: %s\n");', var, type)
-    self.print_file_line();
-    self.addln("exit(1)")
-    self.addln("}")
+    
+    cond = "(%s = calloc(%s, sizeof(%s))) == NULL" % (var, cnta, type)
+    msg = r"no memory! var: %s, type: %s\n" % (var, type)
+    self.die_if(cond, msg)
     self.init_static_array(var, type, default, cnt, desc)
 
-  def cfgget_var(self, var, key, type, fmt, default, must, test, valid, desc):
-    has_test = 0 if test in ("TRUE", "YES", "1", 1) else 1
+  def assign(self, var, value, type):
+    if type == "char *":
+      self.addln('%s = ssdup("%s");', var, value)
+    else:
+      self.addln("%s = %s;", var, value)
+
+  def cfgget_var(self, var, key, type, fmt, default, 
+      must, test, test_first, valid, desc, addnl = 1):
+    has_test  = 0 if test  in ("TRUE", "YES", "1", 1) else 1
     has_valid = 0 if valid in ("TRUE", "YES", "1", 1) else 1
     
-    self.addln("%s = %s;", var, default)
+    if not test_first:
+      self.assign(var, default, type)
+
     if has_test:
       self.addln("if (%s) {", test)
 
-    self.addln(r'if (0 != cfgget(cfg, &%s, "%s", "%s")) {', var, key, fmt)
+    if test_first:
+      self.assign(var, default, type)
+
+    cond = r'0 != cfgget(cfg, &%s, "%s", "%s")' % (var, key, fmt)
     if must:
-      self.addln(r'fprintf(stderr, "missing var: %s, key: "%s", fmt: %%%s\n");', 
-          var, key, fmt)
-      self.print_file_line()
-      self.addln(r'exit(1)')
+      # do not die if cfg is NULL, because this is the 'lazy' mode
+      cond = 'cfg != NULL && ' + cond 
+      self.die_if(cond, 
+        r"missing var: %s, key: [%s], fmt: %s\n" % (var, key, fmt))
     else:
-      self.addln(r'fprintf(stderr, "assuming default value  %s = %s\n");', 
-          var, default)
-    self.addln("}")
+      # for optional variables, we print the message immediately
+      cond = "cfg == NULL || " + cond
+      self.msg_if(cond, 
+        r'assuming default value\n',
+        r'var: %s, key: [%s], def: %s\n' % (var, key, default) )
         
     if has_valid:
-      self.addln("if (!(%s)) {", valid)
-      self.addln(r'fprintf(stderr, "%s failed validation:\n"', var); 
-      self.addln(r'                "\t%s\n");', valid); 
-      self.print_file_line();
-      self.addln("exit(1);")
-      self.addln("}")
+      self.die_if("!(%s)" % valid, r"failed validation: %s\n" % valid)
     if has_test:
       self.addln("}")
+    if addnl:  self.addln("")
 
+  def cfgget_flag(self, var, key, flag, type, fmt, default, 
+      test, test_first, desc):
+    # get flag to a temporary variable i
+    if default not in ("1", "0"):
+      print "flag default can only be 0 or 1, var = %s" % var
+      raise Exception
+    ival = "i"
+    self.cfgget_var(ival, key, type, fmt, default, 
+        "FALSE", # flag is usually optional
+        test, test_first, "i == 0 || i == 1", desc, 0)
+    self.addln("if (i) {")
+    self.addln("%s |= %s;", var, flag)
+    self.addln("} else {")
+    self.addln("%s &= ~%s;", var, flag)
+    self.addln("}")
+    self.addln("")
 
   def finish_function(self):
     if self.used_array_index:
-      self.vars.addln("int i;")
+      self.vars.addln("unsigned i;")
     if self.vars.s != "":
       self.vars.addln("");
 

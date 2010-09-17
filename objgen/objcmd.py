@@ -81,7 +81,7 @@ class Commands:
         if m: 
           # print "found a lazy command, $cmd with no ; s = %s" % s
           cmd = m.group(2)
-          args = ""
+          args = "on"  # it means turn on a switch
         else:
           # search for comment command
           pattern = r"[^\$\\]*(\$#)(.*?)([^\\]\;|$)"
@@ -105,6 +105,13 @@ class Commands:
       sa = [a.strip() for a in s.splitlines()] # split to lines
       s = ' '.join(sa).strip()
       if len(s): self.cmds["desc"] = s 
+
+  def on(self, cmd):
+    if (cmd not in self.cmds
+        or self.cmds[cmd] not in 
+        ("on", "ON", "yes", "YES", "y", "Y", "TRUE", "true")):
+      return 0
+    else: return 1
 
   def subst_symbols(self, s, do_at = 0):
     ''' 

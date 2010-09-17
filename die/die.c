@@ -3,13 +3,7 @@
 
 #include "die.h"
 
-#ifndef ZCHAVEVAM
-#define err_fsrc_  NULL
-#define err_lnum_  0
-#define err_why_   NULL
-#endif
-
-/* print an error message and die */
+/* print a fatal message */
 static void va_perr_(const char *file, int line, const char *why,
     const char *fmt, va_list args)
 {
@@ -26,40 +20,46 @@ static void va_perr_(const char *file, int line, const char *why,
     fprintf(stderr, "why:   %s\n", why);
 }
 
-/* die if cond is true */
-#ifdef ZCHAVEVAM
-void die_if_(const char *err_fsrc_, int err_lnum_, const char *err_why_, 
-    int cond, const char *fmt, ...)
-#else
-void die_if(int cond, const char *fmt, ...)
-#endif
-{
-  va_list args;
+#define va_pmsg_(f, l, why, fmt, args)  vfprintf(stderr, fmt, args)
 
-  if (cond) {
-    va_start(args, fmt);
-    va_perr_(err_fsrc_, err_lnum_, err_why_, fmt, args);
-    va_end(args);
-    exit(1);
+#define PERRMSG__(f, l, why, p, die)  \
+    va_list args;                     \
+    if (cond) {                       \
+      va_start(args, fmt);            \
+      p(f, l, why, fmt, args);        \
+      va_end(args);                   \
+      if (die) exit(1);               \
+    }
+
+/* print an message and die if cond is true */
+#ifdef ZCHAVEVAM
+void die_if_(const char *fsrc, int lnum, const char *why, 
+    int die, int cond, const char *fmt, ...) 
+{
+  if (die) {
+    PERRMSG__(fsrc, lnum, why, va_perr_, 1);
+  } else {
+    PERRMSG__(fsrc, lnum, why, va_pmsg_, 0);
   }
 }
-
-#ifndef ZCHAVEVAM
-#ifdef DIE_LEGACY
+#else
+void die_if(int cond, const char *fmt, ...)
+{
+  PERRMSG__(NULL, 0, NULL, va_perr_, 1);
+}
+void msg_if(int cond, const char *fmt, ...)
+{
+  PERRMSG__(NULL, 0, NULL, va_pmsg_, 0);
+}
 void fatal(const char *fmt, ...)
 {
-  va_list args;
-
-  va_start(args, fmt);
-  va_perr_(err_fsrc_, err_lnum_, NULL, fmt, args);
-  va_end(args);
-  exit(1);
+  int cond = 1;
+  PERRMSG__(NULL, 0, NULL, va_perr_, 1);
 }
 #endif
-#undef  err_fsrc_
-#undef  err_lnum_
-#endif
 
+#undef va_pmsg_
+#undef PERRMSG__
 
-#endif
+#endif 
 

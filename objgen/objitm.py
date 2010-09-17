@@ -9,7 +9,9 @@ from objccw  import CCodeWriter
 from objcmd  import Commands
 
 simple_types = ("int", "unsigned int", "unsigned", 
-  "long", "unsigned long", "real", "double", "float")
+  "long", "unsigned long", "real", "double", "float", 
+  "char *",
+  "dummy_t")
 
 class Item:
   '''
@@ -114,6 +116,7 @@ class Item:
       if types[offset+1] == "function":
         return "function pointer"
       elif nlevels == 2 and types[offset+1] == "char":
+        #print "a string is encountered %s" % self.decl.name; raw_input
         return "char *"
       elif "cnt" in cmds and cmds["cnt"].strip() != "0":
         return "dynamic array"
@@ -297,4 +300,10 @@ class Item:
       it.cmds["test"] = "TRUE"
     if not "valid" in it.cmds:
       it.cmds["valid"] = "TRUE"
+
+    # turn on $test_first for dummy variables
+    if ("test_first" not in it.cmds
+        and it.decl 
+        and it.gtype == "dummy_t"):
+      it.cmds["test_first"] = "on"
 

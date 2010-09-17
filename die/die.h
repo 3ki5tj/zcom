@@ -9,16 +9,17 @@
 #include <string.h>
 
 #ifdef ZCHAVEVAM
-#define fatal(fmt, ...)         die_if(1, fmt, ## __VA_ARGS__)
-#define die_if(cond, fmt, ...)  die_if_(__FILE__, __LINE__, #cond, \
-                                        cond, fmt, ## __VA_ARGS__)
+#define fatal(fmt, ...)  die_if(1, fmt, ## __VA_ARGS__)
+#define die_if(cond, fmt, ...)  \
+  die_if_(__FILE__, __LINE__, #cond, 1, cond, fmt, ## __VA_ARGS__)
+#define msg_if(cond, fmt, ...)  \
+  die_if_(__FILE__, __LINE__, #cond, 0, cond, fmt, ## __VA_ARGS__)
 void die_if_(const char *file, int line, const char *why, 
-             int cond, const char *fmt, ...);
+             int die, int cond, const char *fmt, ...);
 #else
-#ifdef DIE_LEGACY
-void fatal(const char *fmt, ...);
-#endif
 void die_if(int cond, const char *fmt, ...);
+void msg_if(int cond, const char *fmt, ...);
+void fatal(const char *fmt, ...);
 #endif /* ZCHAVEVAM */
 
 #endif
