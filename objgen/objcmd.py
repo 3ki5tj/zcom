@@ -104,9 +104,14 @@ class Commands:
     if not "desc" in self.cmds: 
       sa = [a.strip() for a in s.splitlines()] # split to lines
       s = ' '.join(sa).strip()
-      if len(s): self.cmds["desc"] = s 
+      self.cmds["desc"] = s 
 
   def on(self, cmd):
+    ''' 
+    check if a lazy command is turned on 
+    $cmd;      means turn it on
+    $cmd:off;  to turn it off
+    '''
     if (cmd not in self.cmds
         or self.cmds[cmd] not in 
         ("on", "ON", "yes", "YES", "y", "Y", "TRUE", "true")):

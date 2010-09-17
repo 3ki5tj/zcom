@@ -56,7 +56,7 @@ Commands of an item:
   * $objarr:  object array
 
   * $flag:    name of a flag, something like ABC_FLAG
-  * $val:     bit value of $flag
+  * $val:     bit value of $flag (this syntax to be improved)
 
   * $usr:     the variable should be passed as a parameter, 
               not read from the configuration file
@@ -244,6 +244,7 @@ class Object:
     for it in self.items:
       if not it.cmt:
         it.cmds = copy(p_cmds)
+        it.cmds["desc"] = ""  # add an empty description
         continue
       #if "cnt" in p_cmds:
       #  print "cnt is persistent when analysing %s in %s" % (it, self)
@@ -349,8 +350,7 @@ class Object:
         #raw_input ("%s %s" % (decl0, decl1))
       # 3. handle comment
       cmds = item.cmds
-      if (cmds and "desc" in cmds
-          and len(cmds["desc"]) > 0):
+      if (cmds and len(cmds["desc"]) > 0):
         scmt = "/* " + cmds["desc"] + " */"
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
@@ -459,7 +459,13 @@ class Object:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
-      if not it.decl: continue
+      desc = it.cmds["desc"] 
+      if not it.decl: # stand-alone comment
+        if it.cmds["test"] not in ("1", 1, "TRUE"):
+          ow.die_if( "!( %s )" % it.cmds["test"] , desc)
+        if "call" in it.cmds:
+          ow.addln(it.cmds["call"])
+        continue
       if (not it.cmds["io_cfg"] and
           it.gtype not in ("static array", "dynamic array")):
         continue
@@ -482,10 +488,9 @@ class Object:
       defl    = it.cmds["def"]
       key     = it.cmds["key"]
       test    = it.cmds["test"]
-      tfirst  = "test_first" in it.cmds
+      tfirst  = it.cmds.on("test_first")
       valid   = it.cmds["valid"]
-      must    = "key_must" in it.cmds
-      desc    = it.cmds["desc"] if "desc" in it.cmds else ""
+      must    = it.cmds.on("key_must")
      
       if it.gtype == "dynamic array":
         type = it.get_generic_type(offset = 1) 

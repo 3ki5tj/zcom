@@ -295,11 +295,17 @@ class Item:
     it.cmds["io_txt"] = 1 if "t" in io else 0
 
   def fill_test(it):
-    ''' fill test conditions '''
+    ''' 
+    fill test conditions 
+    note: we assign commands even if there's no declaration
+    becomes a stand-alone comment can contain assignment
+    or other commands
+    '''
     if not "test" in it.cmds:
-      it.cmds["test"] = "TRUE"
+      it.cmds["test"] = 1
+
     if not "valid" in it.cmds:
-      it.cmds["valid"] = "TRUE"
+      it.cmds["valid"] = 1
 
     # turn on $test_first for dummy variables
     if ("test_first" not in it.cmds
