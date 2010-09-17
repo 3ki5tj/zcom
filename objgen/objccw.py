@@ -78,10 +78,6 @@ class CCodeWriter:
 
     self.body = CCodeWriter(self.nindents + 1)  # body writer
     
-    tail = self.tail = CCodeWriter(self.nindents)
-    tail.addln("}")
-    tail.addln("")
-    
     self.funcname = name
     self.used_array_index = 0
   
@@ -184,7 +180,7 @@ class CCodeWriter:
     self.addln("}")
     self.addln("")
 
-  def finish_function(self):
+  def finish_function(self, sret = ""):
     if self.used_array_index:
       self.vars.addln("unsigned i;")
     if self.vars.s != "":
@@ -193,6 +189,12 @@ class CCodeWriter:
     s  = self.decl.gets()
     s += self.vars.gets()
     s += self.body.gets()
+    
+    tail = self.tail = CCodeWriter(self.nindents + 1)
+    if len(sret): tail.addln(sret);
+    tail.addln("}")
+    tail.addln("")
+    
     s += self.tail.gets()
     self.function = s
     self.funcname = None  # no longer inside the function

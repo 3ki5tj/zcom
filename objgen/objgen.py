@@ -240,10 +240,10 @@ class Object:
     after this function it.cmds will not be None (at least 
     it is an empty set {})
     '''
-    p_cmds = {} # persistent commands
+    p_cmds = Commands("") # persistent commands
     for it in self.items:
       if not it.cmt:
-        it.cmds = copy(p_cmds)
+        it.cmds = deepcopy(p_cmds)
         it.cmds["desc"] = ""  # add an empty description
         continue
       #if "cnt" in p_cmds:
@@ -312,7 +312,7 @@ class Object:
 
     # assemble everything to header and source
     header = self.gen_decl().rstrip()
-    if self.cmds and "desc" in self.cmds:
+    if len(self.cmds["desc"]):
       header += " /* " + self.cmds["desc"] + " */"
     header += "\n\n"
     source = ""
@@ -448,10 +448,23 @@ class Object:
     ow.addln("")
     return owh.gets(), ow.gets()
 
+  def get_usr_vars(self):
+    param_list = ""
+    for it in self.items:
+      if it.decl and "usr" in it.cmds:
+        decl0 = it.decl.datatype
+        decl1 = it.decl.raw
+        name = it.decl.name
+        usr_name = "usr_%s" % name
+        decl1 = re.sub(name, usr_name, decl1)
+        param_list += ", %s %s" % (decl0, decl1)
+    return param_list
+        
   def gen_func_cfgread(self):
     funcname = "%scfgread" % self.fprefix
     funcdesc = "initialize %s by reading members from a configuration file" % (self.name)
-    fdecl = "void %s(%s *%s, cfgdata_t *cfg)" % (funcname, self.name, self.ptrname)
+    fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
+        funcname, self.name, self.ptrname, self.get_usr_vars())
     ow = CCodeWriter()
     ow.start_function(funcname, fdecl, funcdesc)
 
@@ -459,15 +472,13 @@ class Object:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
+
       desc = it.cmds["desc"] 
       if not it.decl: # stand-alone comment
         if it.cmds["test"] not in ("1", 1, "TRUE"):
           ow.die_if( "!( %s )" % it.cmds["test"] , desc)
         if "call" in it.cmds:
-          ow.addln(it.cmds["call"])
-        continue
-      if (not it.cmds["io_cfg"] and
-          it.gtype not in ("static array", "dynamic array")):
+          ow.addln(it.cmds["call"] + ";")
         continue
       
       varname = self.ptrname + "->" + it.decl.name
@@ -482,7 +493,7 @@ class Object:
         continue
 
       if "usr" in it.cmds: # usr variables
-        ow.assign(varname, "usr_%s" % it.decl.name)
+        ow.assign(varname, "usr_%s" % it.decl.name, it.gtype)
         continue
 
       defl    = it.cmds["def"]
@@ -492,6 +503,14 @@ class Object:
       valid   = it.cmds["valid"]
       must    = it.cmds.on("key_must")
      
+      if (not it.cmds["io_cfg"] and
+          it.gtype not in ("static array", "dynamic array")):
+        if it.decl.name.startswith("gauss"):
+          raw_input("XXX")
+        # assign default value
+        if len(defl): ow.assign(varname, defl, it.gtype);
+        continue
+      
       if it.gtype == "dynamic array":
         type = it.get_generic_type(offset = 1) 
         ow.init_dynamic_array(varname, type,
@@ -514,7 +533,7 @@ class Object:
         ow.cfgget_var(varname, key, type, fmt, 
           defl, must, test, tfirst, valid, desc)
 
-    ow.finish_function()
+    ow.finish_function("return 0;")
     return ow.prototype, ow.function
   
   def var2type(self, var):

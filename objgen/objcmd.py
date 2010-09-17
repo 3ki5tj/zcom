@@ -36,6 +36,7 @@ class Commands:
     the process
     '''
     s = self.raw
+    if len(s) == 0: return
     pos = 0
    
     ''' 
@@ -123,6 +124,7 @@ class Commands:
     $$ or \$  =>  $ 
     \;        =>  ;
     '''
+    if len(s) == 0: return ""
     # merge the remaining string to description
     s = re.sub(r"[\$\\]\$", "$", s) # literal $
     s = re.sub(r"\\;", ";", s) # literal ;
