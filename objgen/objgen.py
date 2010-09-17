@@ -9,7 +9,7 @@ e.g., read parameters from configuration file
 Commands syntax
   $cmd = args;
 or
-  $cmd[;]  (lazy command)
+  $cmd[;]  (lazy command for switchs)
   + cmd contains characters, numbers, and _ or -
   + the operator = can be replaced by :, it can also be := for
     persistent commands
@@ -74,7 +74,7 @@ TODO:
 '''
 
 import os, sys, re, filecmp
-from copy    import * 
+from copy    import copy, deepcopy 
 from objpos  import P 
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
@@ -82,6 +82,24 @@ from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
+
+class Fold:
+  ''' a sub-object embedded inside an object '''
+  def __init__(self, obj, name):
+    # generate a name
+    self.name = obj.name
+    if len(name): self.name += "-%s" % name
+
+    # generate a function prefix
+    if len(name) and not name.endswith("_"):
+      name += "_"
+    self.fprefix = obj.fprefix + name
+    self.items = []
+  def additem(self, item):
+    self.items += [item]
+  def __len__(self):
+    return len(self.items)
+
 
 class Object:
   '''
@@ -126,7 +144,8 @@ class Object:
     self.expand_multidecl_items() # must be done after merging comments
     self.fill_cmds()   # get cmds from comment, must be after merging comments
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
-    self.get_prefix()  # default ptrname and fprefix
+    self.get_prefix()  # determine fprefix and ptrname
+    self.init_folds()  # initialize different folds, get prefices
     self.sub_prefix()  # substitute @ by ptrname or fprefix
     self.enrich_cmds() # assign default values
     return 0
@@ -235,15 +254,16 @@ class Object:
 
   def fill_cmds(self):
     ''' 
-    obtain cmds from comments
-    persist commands apply to this item and all items afterwards
+    obtain cmds from comments and apply persistent commands
+    persistent commands apply to this item and all items afterwards
     after this function it.cmds will not be None (at least 
     it is an empty set {})
     '''
     p_cmds = Commands("") # persistent commands
+    p_cmds["fold"] = ""   # apply an empty fold
     for it in self.items:
       if not it.cmt:
-        it.cmds = deepcopy(p_cmds)
+        it.cmds = copy(p_cmds)
         it.cmds["desc"] = ""  # add an empty description
         continue
       #if "cnt" in p_cmds:
@@ -277,6 +297,21 @@ class Object:
       if it.decl: 
         it.gtype = it.get_generic_type()
   
+  def init_folds(self):
+    ''' 
+    initialize folds 
+    '''
+    self.folds = {}
+    for it in self.items:
+      f = it.cmds["fold"]
+      if f not in self.folds:
+        self.folds[f] = Fold(self, f)
+      self.folds[f].additem(it)
+    print "%s has %d folds" % (self.name, len(self.folds))
+    for f in self.folds:
+      print "fold %-8s has %3d items" % (f, len(self.folds[f]))
+    
+
   def get_prefix(self):
     '''
     determine ptrname, variable name for a pointer to the object
@@ -285,9 +320,9 @@ class Object:
     cmds = self.cmds
     name = self.name
     if name.endswith("_t"): name = name[:-2]
-    self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
-
+    self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
+    
   def sub_prefix(self):
     '''
     substitute @ by $ptrname
@@ -309,6 +344,11 @@ class Object:
     funclist = []
     funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_close()]
+    funclist += [self.gen_func_write_bin("")]
+    # fold-specific functions
+    for f in self.folds:
+      if f == "": continue
+      funclist += [self.gen_func_write_bin(f)]
 
     # assemble everything to header and source
     header = self.gen_decl().rstrip()
@@ -459,8 +499,26 @@ class Object:
         decl1 = re.sub(name, usr_name, decl1)
         param_list += ", %s %s" % (decl0, decl1)
     return param_list
-        
+  
+  def gen_func_write_bin(self, f):
+    ''' write a function that writes data to configuration file '''
+    fold = self.folds[f]
+    funcname = "%swrite_bin" % fold.fprefix
+    funcdesc = "write binary data of %s" % f
+    fdecl = "int %s(%s *%s, const char *fname)" % (
+        funcname, self.name, self.ptrname)
+    ow = CCodeWriter()
+    ow.start_function(funcname, fdecl, funcdesc)
+    for it in fold.items:
+      if not it.decl: continue
+      if not it.cmds["io_bin"]: continue
+      if it.decl.datatype == "dummy_t": continue
+      ow.addln("/* %s */", it.decl.name)
+    ow.finish_function("return 0;")
+    return ow.prototype, ow.function
+
   def gen_func_cfgread(self):
+    ''' write a function that reads configuration file '''
     funcname = "%scfgread" % self.fprefix
     funcdesc = "initialize %s by reading members from a configuration file" % (self.name)
     fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
@@ -505,8 +563,6 @@ class Object:
      
       if (not it.cmds["io_cfg"] and
           it.gtype not in ("static array", "dynamic array")):
-        if it.decl.name.startswith("gauss"):
-          raw_input("XXX")
         # assign default value
         if len(defl): ow.assign(varname, defl, it.gtype);
         continue
