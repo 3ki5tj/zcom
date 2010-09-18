@@ -132,13 +132,14 @@ class CCodeWriter:
 
   def cfgget_var(self, var, key, type, fmt, default, 
       must, test, test_first, valid, desc, addnl = 1):
-    has_test  = 0 if test  in ("TRUE", "YES", "1", 1) else 1
-    has_valid = 0 if valid in ("TRUE", "YES", "1", 1) else 1
+    # if test is missing, it defaults to 1 
+    needtest  = (test  and test  not in ("TRUE", "1", 1))
+    needvalid = (valid and valid not in ("TRUE", "1", 1))
     
     if not test_first:
       self.assign(var, default, type)
 
-    if has_test:
+    if needtest:
       self.addln("if (%s) {", test)
 
     if test_first:
@@ -149,17 +150,17 @@ class CCodeWriter:
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
-        r"missing var: %s, key: [%s], fmt: %s\n" % (var, key, fmt))
+        r"missing var: %s, key: %s, fmt: %s\n" % (var, key, fmt))
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
         r'assuming default value\n',
-        r'var: %s, key: [%s], def: %s\n' % (var, key, default) )
+        r'var: %s, key: %s, def: %s\n' % (var, key, default) )
         
-    if has_valid:
+    if needvalid:
       self.die_if("!(%s)" % valid, r"failed validation: %s\n" % valid)
-    if has_test:
+    if needtest:
       self.addln("}")
     if addnl:  self.addln("")
 
@@ -167,7 +168,7 @@ class CCodeWriter:
       test, test_first, desc):
     # get flag to a temporary variable i
     if default not in ("1", "0"):
-      print "flag default can only be 0 or 1, var = %s" % var
+      print "flag default can only be 0 or 1, var = %s, default = %s, key = %s" % (var, default, key)
       raise Exception
     ival = "i"
     self.cfgget_var(ival, key, type, fmt, default, 

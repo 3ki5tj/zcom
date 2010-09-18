@@ -216,6 +216,7 @@ class Item:
     # print "cmds:%s." % (it.cmds); raw_input()
     for key in it.cmds:
       val = it.cmds[key]
+      if type(val) != str: continue
       # @_ means this is a function 
       pattern = r"(?<![\@\\])\@\_(?=\w)"
       val = re.sub(pattern, fprefix, val)
@@ -242,22 +243,18 @@ class Item:
     add default key for configuration file reading
     unless "key" is specified, it is calculated as
     1. it.decl.name is the first guess
-    2. if it starts with key_prefix_minus, remove it
+    2. if it starts with key_unprefix, remove it
     3. add key_prefix
     '''
     # skip if it is not a declaration
     if not it.decl or "key" in it.cmds: return
     cfgkey = it.decl.name
-    try:
-      pm = it.cmds["key_prefix_minus"]
-      if cfgkey.startswith(pm):
-        cfgkey = cfgkey[len(pm):]
-    except KeyError: pass
+    pm = it.cmds["key_unprefix"]
+    if pm and cfgkey.startswith(pm):
+      cfgkey = cfgkey[len(pm):]
 
-    try:
-      pfx = it.cmds["key_prefix"]
-      cfgkey = pfx + cfgkey
-    except KeyError: pass
+    pfx = it.cmds["key_prefix"]
+    if pfx:  cfgkey = pfx + cfgkey
     it.cmds["key"] = cfgkey
 
   def test_cnt(it):
@@ -301,15 +298,45 @@ class Item:
     becomes a stand-alone comment can contain assignment
     or other commands
     '''
-    if not "test" in it.cmds:
-      it.cmds["test"] = 1
-
-    if not "valid" in it.cmds:
-      it.cmds["valid"] = 1
-
     # turn on $test_first for dummy variables
     if ("test_first" not in it.cmds
         and it.decl 
         and it.gtype == "dummy_t"):
-      it.cmds["test_first"] = "on"
+      it.cmds["test_first"] = 1
+
+  def prepare_flag(it):
+    ''' 
+    parse the original field into FLAG and flagval 
+    attach prefix
+    '''
+    if "flag" not in it.cmds:
+      return
+
+    # split into two parts
+    flag = it.cmds["flag"].strip()
+    pt = flag.split()
+    if len(pt) < 2:
+      print "flag is invalid! flag %s" % flag
+      raise Exception
+    flag = pt[0].strip()
+    it.cmds["flag_val"] = pt[1].strip()
+
+    # attach flag_prefix
+    if "flag_prefix" in it.cmds:
+      prefix = it.cmds["flag_prefix"]
+      if not flag.startswith(prefix):
+        flag = prefix + flag
+    it.cmds["flag"] = flag
+
+    # assign the default flag_var
+    if "flag_var" not in it.cmds:
+      it.cmds["flag_var"] = "@flags"
+    #print "%s %s" % (it.cmds["flag"], it.cmds["flag_val"])
+    #raw_input()
+    
+  def get_flag(it):
+    if "flag" not in it.cmds: return None
+    return it.cmds["flag"]
+
+
 

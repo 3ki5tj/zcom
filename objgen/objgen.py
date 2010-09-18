@@ -9,7 +9,7 @@ e.g., read parameters from configuration file
 Commands syntax
   $cmd = args;
 or
-  $cmd[;]  (lazy command for switchs)
+  $cmd[;]  (lazy command for switches)
   + cmd contains characters, numbers, and _ or -
   + the operator = can be replaced by :, it can also be := for
     persistent commands
@@ -35,17 +35,18 @@ Commands of an item:
               for configuration, binary and text respectively
               it can also be `none' or `all'
 
-  * $key:               key to get from configuration file
-  * $key_prefix:        prefix to be added when it is deduced from 
-                        variable name, usually as a persistent command
-  * $key_prefix_minus:  prefix of the variable name to be removed 
-                        before applying $key_prefix
-  * key_must:           a critial key that must present in configuration file
+  * $key:           key to get from configuration file
+  * $key_prefix:    prefix to be added when it is deduced from 
+                    variable name, usually as a persistent command
+  * $key_unprefix:  if variable name starts with $key_unprefix, that part 
+                    is first removed before applying $key_prefix
+  * key_must:       a critial key that must present in configuration file
 
   * $test:        a condition to be tested *before* reading a varible
                   from configuration file, but after assigning the 
                   given by $def; this is the default order because it
                   ensures a variable is assigned at a reasonable value
+                  
   * $test_first:  if this is set, we do not assign the default value $def 
                   unless $test is true, useful for dummy variables
   * $valid:       a condition to be tested for validity *after* reading
@@ -55,11 +56,16 @@ Commands of an item:
               initialize it
   * $objarr:  object array
 
-  * $flag:    name of a flag, something like ABC_FLAG
-  * $val:     bit value of $flag (this syntax to be improved)
+  * $flag:    two fields, name of flag and its value, something like 
+              $flag: ABC_FLAG  0x000010;
 
   * $usr:     the variable should be passed as a parameter, 
               not read from the configuration file
+
+In a stand-alone comment
+
+  * $test:    means a condition to be tested and program exits it is fails
+  * $call:    means a direct translation of the argument to code
 
 In arguments of the command, `@' has special meanings
   * @@:       this item
@@ -146,8 +152,7 @@ class Object:
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
     self.get_prefix()  # determine fprefix and ptrname
     self.init_folds()  # initialize different folds, get prefices
-    self.sub_prefix()  # substitute @ by ptrname or fprefix
-    self.enrich_cmds() # assign default values
+    self.enrich_cmds() # assign default values, etc.
     return 0
 
   def find_beginning(self, src, p, aggr = 1):
@@ -323,14 +328,6 @@ class Object:
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
     self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
     
-  def sub_prefix(self):
-    '''
-    substitute @ by $ptrname
-    '''
-    for it in self.items:
-      if not it.cmds: continue
-      it.sub_prefix(self.ptrname, self.fprefix)
-    
   def enrich_cmds(self):
     ''' refine and enrich commands '''
     for it in self.items:
@@ -339,6 +336,8 @@ class Object:
       it.test_cnt()
       it.fill_io()
       it.fill_test()
+      it.prepare_flag()
+      it.sub_prefix(self.ptrname, self.fprefix) # @ to $ptrname
   
   def gen_code(self):
     funclist = []
@@ -382,16 +381,30 @@ class Object:
         block = [] # empty the block
         cw.addln("#" + item.pre.raw)
         continue
+
       # 2. handle declaration
       if item.decl:
         decl0 = item.decl.datatype
         if decl0 == "dummy_t": continue
         decl1 = item.decl.raw
+      else:
+        # skip a comment if it contains instructions
+        test = item.cmds["test"]
+        if test and test not in ("1", "TRUE", 1):
+          print "escaping due to cmds %s" % test
+          continue
+        if item.cmds["call"]: continue
+        if item.cmds["flag"]: continue # skip flags
         #raw_input ("%s %s" % (decl0, decl1))
+
       # 3. handle comment
-      cmds = item.cmds
-      if (cmds and len(cmds["desc"]) > 0):
-        scmt = "/* " + cmds["desc"] + " */"
+      desc = item.cmds["desc"]
+      if len(desc) > 0:
+        scmt = "/* " + desc + " */"
+      
+      print "decl: %s, cmds: %s" % (item.decl, item.cmds)
+      raw_input()
+
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1+';', scmt)] # just buffer it
@@ -411,8 +424,8 @@ class Object:
     if len(block) == 0: return
     nfields = len(block[0])
     wid = [8] * nfields
-    #print "block of %s\n%s" % (len(block), block)
-    #raw_input()
+    print "block of %s\n%s" % (len(block), block)
+    raw_input()
 
     # align and format all items in the bufferred block
     # and append the result to string s
@@ -435,10 +448,10 @@ class Object:
     for it in self.items:
       if "flag" in it.cmds:
         flag = it.cmds["flag"]
-        if "val" not in it.cmds:
+        if "flag_val" not in it.cmds:
           print "missing value for flag [%s]" % it.cmds["flag"]
           raise Exception
-        bval = it.cmds["val"]
+        bval = it.cmds["flag_val"]
         # print flag, bval; raw_input()
         block += [("#define", flag, bval)]
       else:
@@ -517,29 +530,47 @@ class Object:
     ow.finish_function("return 0;")
     return ow.prototype, ow.function
 
-  def gen_func_cfgread(self):
+  def gen_func_cfgread(obj):
     ''' write a function that reads configuration file '''
-    funcname = "%scfgread" % self.fprefix
-    funcdesc = "initialize %s by reading members from a configuration file" % (self.name)
+    funcname = "%scfgread" % obj.fprefix
+    funcdesc = "initialize %s by reading members from a configuration file" % (obj.name)
     fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
-        funcname, self.name, self.ptrname, self.get_usr_vars())
+        funcname, obj.name, obj.ptrname, obj.get_usr_vars())
     ow = CCodeWriter()
     ow.start_function(funcname, fdecl, funcdesc)
 
-    for it in self.items:
+    for it in obj.items:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
 
-      desc = it.cmds["desc"] 
+      defl    = it.cmds["def"]
+      key     = it.cmds["key"]
+      test    = it.cmds["test"]
+      tfirst  = it.cmds["test_first"]
+      valid   = it.cmds["valid"]
+      must    = it.cmds["key_must"]
+      desc    = it.cmds["desc"]
+
       if not it.decl: # stand-alone comment
-        if it.cmds["test"] not in ("1", 1, "TRUE"):
-          ow.die_if( "!( %s )" % it.cmds["test"] , desc)
-        if "call" in it.cmds:
-          ow.addln(it.cmds["call"] + ";")
+        if ("flag" in it.cmds
+            and "key" in it.cmds): # an input flag
+          flag = it.get_flag()
+          varname = it.cmds["flag_var"]
+          type = obj.var2type(varname)
+          assert (type == "unsigned")
+          fmt = it.type2fmt(type)
+          ow.cfgget_flag(varname, key, flag, type, fmt,
+              defl, test, tfirst, desc)
+
+        call = it.cmds["call"]
+        if test and test not in (1, "1", "TRUE"):
+          ow.die_if( "!( %s )" % test, desc)
+        if call:
+          ow.addln(call + ";")
         continue
       
-      varname = self.ptrname + "->" + it.decl.name
+      varname = obj.ptrname + "->" + it.decl.name
       if it.gtype == "pointer to object":
         # TODO: call the appropriate initializer
         '''
@@ -547,19 +578,13 @@ class Object:
         '''
         obj_ptrname = it.decl.datatype[:-2]
         ow.addln("%s = %sinit(%s);", varname, 
-          obj_ptrname, self.ptrname)
+          obj_ptrname, obj.ptrname)
         continue
 
       if "usr" in it.cmds: # usr variables
         ow.assign(varname, "usr_%s" % it.decl.name, it.gtype)
         continue
 
-      defl    = it.cmds["def"]
-      key     = it.cmds["key"]
-      test    = it.cmds["test"]
-      tfirst  = it.cmds.on("test_first")
-      valid   = it.cmds["valid"]
-      must    = it.cmds.on("key_must")
      
       if (not it.cmds["io_cfg"] and
           it.gtype not in ("static array", "dynamic array")):
@@ -576,15 +601,8 @@ class Object:
         # print "%s: static array of %s" % (it.name(), type)
         ow.init_static_array(varname, type, 
             defl, it.cmds["cnt"], desc)
-      elif "flag" in it.cmds:
-        type = self.var2type("flags")
-        assert (type == "unsigned")
-        fmt = it.type2fmt(type)
-        flag = it.cmds["flag"]
-        ow.cfgget_flag(varname, key, flag, type, fmt,
-            defl, test, tfirst, desc)
       else:
-        type = it.gtype if it.gtype != "dummy_t" else self.var2type(it.decl.name)
+        type = it.gtype if it.gtype != "dummy_t" else obj.var2type(it.decl.name)
         fmt = it.type2fmt(type)
         ow.cfgget_var(varname, key, type, fmt, 
           defl, must, test, tfirst, valid, desc)
@@ -592,11 +610,16 @@ class Object:
     ow.finish_function("return 0;")
     return ow.prototype, ow.function
   
-  def var2type(self, var):
+  def var2type(obj, var):
     ''' look for type of variable `var' 
         used to determine type of dummy variables
     '''
-    for it in self.items:
+    pfx = obj.ptrname + "->"
+    if var.startswith("@"):
+      var = var[1:]
+    elif var.startswith(pfx):
+      var = var[len(pfx):]
+    for it in obj.items:
       if (it.decl and it.gtype != "dummy_t"
           and it.decl.name == var):
         return it.gtype

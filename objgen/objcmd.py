@@ -5,6 +5,10 @@ from copy import copy
 class Commands:
   '''
   commands imbed in the comments
+  after initialization:
+    cmd = Commands()
+  you can always use cmd["anykey"], even if "anykey" is not present,
+  the behavior differs from python dict, which raises a KeyError
   '''
   def __init__(self, s):
     # do symbol substitution first
@@ -15,7 +19,7 @@ class Commands:
 
   # make the object looks like a dictionary
   def __getitem__(self, key):
-    return self.cmds[key]
+    return self.cmds[key] if key in self.cmds else None
   def __setitem__(self, key, value):
     self.cmds[key] = value
   def __iter__(self):
@@ -71,7 +75,7 @@ class Commands:
           if args.strip() != "$0":
             #print "set an persistent command, raw=[%s] args=[%s]" % (s, args); raw_input()
             self.persist[cmd] = 1
-          else:  # $cmd := $0; to unset a persistent command
+          else:  # $cmd := $0; means removing a command from the persistent list
             #print "turning off an persistent command, raw=[%s]" % s; raw_input()
             self.persist[cmd] = -1
       else:
@@ -82,7 +86,7 @@ class Commands:
         if m: 
           # print "found a lazy command, $cmd with no ; s = %s" % s
           cmd = m.group(2)
-          args = "on"  # it means turn on a switch
+          args = 1  # means turn on the switch
         else:
           # search for comment command
           pattern = r"[^\$\\]*(\$#)(.*?)([^\\]\;|$)"
@@ -106,18 +110,6 @@ class Commands:
       sa = [a.strip() for a in s.splitlines()] # split to lines
       s = ' '.join(sa).strip()
       self.cmds["desc"] = s 
-
-  def on(self, cmd):
-    ''' 
-    check if a lazy command is turned on 
-    $cmd;      means turn it on
-    $cmd:off;  to turn it off
-    '''
-    if (cmd not in self.cmds
-        or self.cmds[cmd] not in 
-        ("on", "ON", "yes", "YES", "y", "Y", "TRUE", "true")):
-      return 0
-    else: return 1
 
   def subst_symbols(self, s, do_at = 0):
     ''' 
