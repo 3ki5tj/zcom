@@ -63,6 +63,7 @@ class CCodeWriter:
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
   def start_function(self, name, funcdef, desc):
+    ''' start four code-writers:  decl, vars, hdr, body '''
     self.function = ""
 
     decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
@@ -80,7 +81,7 @@ class CCodeWriter:
     
     self.funcname = name
     self.used_array_index = 0
-  
+ 
   def simple_if(self, tag, cond, msgs):
     self.addln("%s_if (%s,", tag, cond)
     n = len(msgs)
@@ -131,16 +132,16 @@ class CCodeWriter:
       self.addln("%s = %s;", var, value)
 
   def cfgget_var(self, var, key, type, fmt, default, 
-      must, test, test_first, valid, desc, addnl = 1):
-    # if test is missing, it defaults to 1 
-    needtest  = (test  and test  not in ("TRUE", "1", 1))
-    needvalid = (valid and valid not in ("TRUE", "1", 1))
+      must, prereq, test_first, valid, desc, addnl = 1):
+    # if prereq is missing, it defaults to 1 
+    needtest  = (prereq and prereq not in ("TRUE", "1", 1))
+    needvalid = (valid  and valid  not in ("TRUE", "1", 1))
     
     if not test_first:
       self.assign(var, default, type)
 
     if needtest:
-      self.addln("if (%s) {", test)
+      self.addln("if (%s) {", prereq)
 
     if test_first:
       self.assign(var, default, type)
@@ -165,7 +166,7 @@ class CCodeWriter:
     if addnl:  self.addln("")
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
-      test, test_first, desc):
+      prereq, test_first, desc):
     # get flag to a temporary variable i
     if default not in ("1", "0"):
       print "flag default can only be 0 or 1, var = %s, default = %s, key = %s" % (var, default, key)
@@ -173,7 +174,7 @@ class CCodeWriter:
     ival = "i"
     self.cfgget_var(ival, key, type, fmt, default, 
         "FALSE", # flag is usually optional
-        test, test_first, "i == 0 || i == 1", desc, 0)
+        prereq, test_first, "i == 0 || i == 1", desc, 0)
     self.addln("if (i) {")
     self.addln("%s |= %s;", var, flag)
     self.addln("} else {")
@@ -200,3 +201,4 @@ class CCodeWriter:
     self.function = s
     self.funcname = None  # no longer inside the function
     self.used_array_index = 0
+    self.decl = self.vars = self.body = self.hdr = self.tail = None

@@ -50,7 +50,7 @@ class Item:
     else:
       self.pre = None
 
-      # try to get a declaration
+      # print "try to get a declaration from %s" % p; raw_input()
       self.decl = None
       dl = CDeclaratorList(src, p)
       self.dl = None if dl.isempty() else dl

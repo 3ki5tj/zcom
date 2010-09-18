@@ -5,6 +5,7 @@ from copy import copy
 class Commands:
   '''
   commands imbed in the comments
+  s doesn't include /* */ or //
   after initialization:
     cmd = Commands()
   you can always use cmd["anykey"], even if "anykey" is not present,
@@ -22,6 +23,9 @@ class Commands:
     return self.cmds[key] if key in self.cmds else None
   def __setitem__(self, key, value):
     self.cmds[key] = value
+  def __delitem__(self, key):
+    if key == None: return
+    del self.cmds[key]
   def __iter__(self):
     return self.cmds.__iter__()
   def __contains__(self, key):
@@ -32,6 +36,9 @@ class Commands:
     return str(self.cmds)
   def __repr__(self):
     return repr(self.cmds)
+
+  def subdash(self, s):
+    return re.sub(r"\-", "_", s)  # map - to _
 
   def parse_commands(self):
     '''
@@ -61,6 +68,7 @@ class Commands:
                  all following items
                  if args is empty, the command is removed
       '''
+      goodcmd = 1
       pattern = r"[^\$\\]*(\$)([\w\-]+)\s*([\+\-\:]?=|:?:)\s*(.*?)((?<!\\)\;|$)"
       m = re.search(pattern, s, re.MULTILINE | re.DOTALL)
       if m:
@@ -69,15 +77,16 @@ class Commands:
         group 3 is the operator
         group 4 is the argument
         '''
-        cmd  = m.group(2)
+        cmd  = self.subdash(m.group(2))
         args = m.group(4)
         if m.group(3) in (":=", "::"):
-          if args.strip() != "$0":
-            #print "set an persistent command, raw=[%s] args=[%s]" % (s, args); raw_input()
-            self.persist[cmd] = 1
-          else:  # $cmd := $0; means removing a command from the persistent list
+          if args.strip() == "$0": # means removing a command from the persistent list
             #print "turning off an persistent command, raw=[%s]" % s; raw_input()
             self.persist[cmd] = -1
+            goodcmd = 0
+          else:  
+            #print "set an persistent command, raw=[%s] args=[%s]" % (s, args); raw_input()
+            self.persist[cmd] = 1
       else:
         if s.find("$") < 0: break
         # print "look for a lazy command, $cmd with no ; s = [%s]" % s
@@ -85,7 +94,7 @@ class Commands:
         m = re.search(pattern, s)
         if m: 
           # print "found a lazy command, $cmd with no ; s = %s" % s
-          cmd = m.group(2)
+          cmd = self.subdash(m.group(2))
           args = 1  # means turn on the switch
         else:
           # search for comment command
@@ -94,21 +103,22 @@ class Commands:
           if m == None: 
             print "possibly an unknown command [%s]" % s
             break
-          cmd = "#"
-          args = m.group(2)
+          goodcmd = 0
           #print "a comment is found [%s]" % m.group(0)
-     
-      cmd = re.sub(r"\-", "_", cmd)  # map - to _
-      self.cmds[cmd] = args # add to dictionary
+
+      if goodcmd:
+        self.cmds[cmd] = args # add to dictionary
       s = s[:m.start(1)] + s[m.end(0):] # remove the command from comment
       #print "a pattern is found [%s]: [%s], rest: %s" % (
       #    cmd, param, s)
       #raw_input()
 
-    # join multiple line description
+    # if desc is not explicitly specified
+    # we join all the remaining non-command contents
+    # left in the comment
     if not "desc" in self.cmds: 
       sa = [a.strip() for a in s.splitlines()] # split to lines
-      s = ' '.join(sa).strip()
+      s = ' '.join(sa).strip().rstrip(",;.")
       self.cmds["desc"] = s 
 
   def subst_symbols(self, s, do_at = 0):

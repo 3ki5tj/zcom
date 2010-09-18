@@ -31,14 +31,35 @@ class CDeclarator:
     #print "complete a decl {%s} from %s to %s\n{%s}" % (self, self.begin, self.end, self.raw)
     return 0
 
-  def dclspec(self, src, p, allow_empty = 0):
+  def lookliketype(self, token):
+    ''' if a token looks like a type '''
+    return (
+      token[:2]  in ("t_", "T_")      or
+      token[:3]  in ("_t_", "_T_")    or
+      token[:4]  in ("__t_", "__T_")  or
+      token[-2:] in ("_t", "_T")      or
+      token[-3:] in ("_t_", "_T_")    or
+      token[-4:] in ("_t__", "_T__") )
+
+  def dclspec(self, src, p, allow_novar = 0):
+    '''
+    get a declaration specifier such as:
+      static const unsigned long int
+    `allow_novar' allows the specifier to be followed by nothing
+    '''
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
     p0 = copy(p)
-    alltypes = ("auto", "register", "static", "extern",
+    
+    # specifiers they can appear multiple times
+    # `long' belongs to here, since we have long long
+    specs = ("auto", "register", "static", "extern",
           "const", "volatile", 
-          "void", "char", "short", "int", "long", 
-          "float", "double", "signed", "unsigned", 
+          "long", "signed", "unsigned", "short")
+    # type specifiers that can appear at most once 
+    # they are usually the last in the declaration
+    types = ("void", "char", "int",
+          "float", "double",
           "FILE", "size_t", "ssize_t", "fpos_t",
           "div_t", "ldiv_t", "clock_t", "time_t", "tm",
           "va_list", "jmp_buf", "__jmp_buf_tag",
@@ -50,34 +71,40 @@ class CDeclarator:
           "bool", "_Bool", "complex",
           "real")
     # MPI function types are yet added
-    alltypes += ("MPI_Comm", 
-          "MPI_Datatype", "MPI_Group", "MPI_Win",
+    types += ("MPI_Comm", "MPI_Datatype", "MPI_Group", "MPI_Win",
           "MPI_File", "MPI_Op", "MPI_Topo_type",
           "MPI_Errhandler", "MPI_Request", "MPI_Info",
           "MPI_Aint", "MPI_Fint", "MPI_Offset", 
           "MPI_Status")
+    alltypes = specs + types
+
     type = ""
     while 1:
       token, ttype = p.gettoken(src)
       if ttype != "word":
-        if allow_empty or len(type) > 0:
+        if allow_novar or len(type) > 0:
           p.ungettok(src)
           break
         print "expected data type from %s, type=%s, %s" % (p0, type, self.dbg(src, p))
         raise Exception
         return None
-      # guess if the token is a type specifier
+      
+      ''' guess if the token is a type specifier
+      since we do not parse the whole file, typedef's and #define's
+      cannot be treated exactly, the method below is approximate '''
       if (token not in alltypes and
-          token[:2]  not in ("t_", "T_") and
-          token[:3]  not in ("_t_", "_T_") and
-          token[:4]  not in ("__t_", "__T_") and
-          token[-2:] not in ("_t", "_T") and 
-          token[-3:] not in ("_t_", "_T_") and 
-          token[-4:] not in ("_t__", "_T__") ):
+          not self.lookliketype(token)):  # not ends with _t etc.
+        p.ungettok(src)
+        break
+      elif (not allow_novar and # next token is punctuation!
+          p.peektok(src)[0] in (None, ";", ",") ):  
         p.ungettok(src)
         break
       type += token + " "
-      #print "datatype is [%s], pos %s" % (self.type, p)
+      ''' most likely type is done '''
+      if token in types:  break
+    #print "datatype is [%s], pos %s" % (type, p)
+    #raw_input()
     return type[:-1]
 
   def dcl(self, src, p):
@@ -151,7 +178,7 @@ class CDeclarator:
   def pdecl(self, src, p):
     ''' parameter declarator '''
     self.param_level += 1
-    self.dclspec(src, p, allow_empty = 1)
+    self.dclspec(src, p, allow_novar = 1)
     self.dcl(src, p)
     self.param_level -= 1
 

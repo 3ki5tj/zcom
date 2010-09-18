@@ -67,7 +67,7 @@ class P:
     while 1:
       s = p.getline(src)
       if s == None: # end of file
-        self.ttype = self.token = None
+        p.ttype = p.token = None
         break
       # skip leading space
       m = re.match(r"(\s*).*", s)

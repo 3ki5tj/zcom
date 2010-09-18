@@ -42,13 +42,13 @@ Commands of an item:
                     is first removed before applying $key_prefix
   * key_must:       a critial key that must present in configuration file
 
-  * $test:        a condition to be tested *before* reading a varible
+  * $prereq:      a condition to be tested *before* reading a varible
                   from configuration file, but after assigning the 
                   given by $def; this is the default order because it
                   ensures a variable is assigned at a reasonable value
                   
   * $test_first:  if this is set, we do not assign the default value $def 
-                  unless $test is true, useful for dummy variables
+                  unless $prereq is true, useful for dummy variables
   * $valid:       a condition to be tested for validity *after* reading
                   a variable from configuration file
 
@@ -64,7 +64,8 @@ Commands of an item:
 
 In a stand-alone comment
 
-  * $test:    means a condition to be tested and program exits it is fails
+  * $assert:  asserts a condition and aborts the program if 
+              the condition fails
   * $call:    means a direct translation of the argument to code
 
 In arguments of the command, `@' has special meanings
@@ -183,7 +184,7 @@ class Object:
   def search_ending_comment(self, src, p):
     cmt = CComment(src, p, 2) # search a nearby comment
     if cmt.isempty(): 
-      self.cmds = None
+      self.cmds = Commands("")
       return
     # print "found a comment %s after object %s" % (cmt.raw, self.name)
     self.cmt = cmt
@@ -284,9 +285,9 @@ class Object:
           # print "add global command [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
         elif persist < 0 and key in p_cmds:
-          del p_cmds[key]
           # print "remove global command [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
+          del p_cmds[key]
           
       # merge with global persistent commands
       for key in p_cmds:
@@ -343,15 +344,15 @@ class Object:
     funclist = []
     funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_close()]
-    funclist += [self.gen_func_write_bin("")]
     # fold-specific functions
     for f in self.folds:
       if f == "": continue
-      funclist += [self.gen_func_write_bin(f)]
+      pass
 
     # assemble everything to header and source
     header = self.gen_decl().rstrip()
-    if len(self.cmds["desc"]):
+    desc = self.cmds["desc"]
+    if desc and len(desc):
       header += " /* " + self.cmds["desc"] + " */"
     header += "\n\n"
     source = ""
@@ -389,12 +390,9 @@ class Object:
         decl1 = item.decl.raw
       else:
         # skip a comment if it contains instructions
-        test = item.cmds["test"]
-        if test and test not in ("1", "TRUE", 1):
-          print "escaping due to cmds %s" % test
-          continue
-        if item.cmds["call"]: continue
-        if item.cmds["flag"]: continue # skip flags
+        if item.cmds["assert"]: continue
+        if item.cmds["call"]:   continue
+        if item.cmds["flag"]:   continue # skip flags
         #raw_input ("%s %s" % (decl0, decl1))
 
       # 3. handle comment
@@ -402,8 +400,8 @@ class Object:
       if len(desc) > 0:
         scmt = "/* " + desc + " */"
       
-      print "decl: %s, cmds: %s" % (item.decl, item.cmds)
-      raw_input()
+      #print "decl: %s, cmds: %s" % (item.decl, item.cmds)
+      #raw_input()
 
       # 4. output the content
       if len(decl0) > 0:  # put it to a code block
@@ -424,8 +422,8 @@ class Object:
     if len(block) == 0: return
     nfields = len(block[0])
     wid = [8] * nfields
-    print "block of %s\n%s" % (len(block), block)
-    raw_input()
+    #print "block of %s\n%s" % (len(block), block)
+    #raw_input()
 
     # align and format all items in the bufferred block
     # and append the result to string s
@@ -513,23 +511,6 @@ class Object:
         param_list += ", %s %s" % (decl0, decl1)
     return param_list
   
-  def gen_func_write_bin(self, f):
-    ''' write a function that writes data to configuration file '''
-    fold = self.folds[f]
-    funcname = "%swrite_bin" % fold.fprefix
-    funcdesc = "write binary data of %s" % f
-    fdecl = "int %s(%s *%s, const char *fname)" % (
-        funcname, self.name, self.ptrname)
-    ow = CCodeWriter()
-    ow.start_function(funcname, fdecl, funcdesc)
-    for it in fold.items:
-      if not it.decl: continue
-      if not it.cmds["io_bin"]: continue
-      if it.decl.datatype == "dummy_t": continue
-      ow.addln("/* %s */", it.decl.name)
-    ow.finish_function("return 0;")
-    return ow.prototype, ow.function
-
   def gen_func_cfgread(obj):
     ''' write a function that reads configuration file '''
     funcname = "%scfgread" % obj.fprefix
@@ -546,13 +527,16 @@ class Object:
 
       defl    = it.cmds["def"]
       key     = it.cmds["key"]
-      test    = it.cmds["test"]
+      prereq  = it.cmds["prereq"]
       tfirst  = it.cmds["test_first"]
       valid   = it.cmds["valid"]
       must    = it.cmds["key_must"]
       desc    = it.cmds["desc"]
 
       if not it.decl: # stand-alone comment
+        # add comment content
+        if len(desc): ow.addln("/* %s */", desc)
+  
         if ("flag" in it.cmds
             and "key" in it.cmds): # an input flag
           flag = it.get_flag()
@@ -561,13 +545,14 @@ class Object:
           assert (type == "unsigned")
           fmt = it.type2fmt(type)
           ow.cfgget_flag(varname, key, flag, type, fmt,
-              defl, test, tfirst, desc)
-
-        call = it.cmds["call"]
-        if test and test not in (1, "1", "TRUE"):
-          ow.die_if( "!( %s )" % test, desc)
-        if call:
-          ow.addln(call + ";")
+              defl, prereq, tfirst, desc)
+        else:
+          assr = it.cmds["assert"]
+          if assr:
+            ow.die_if( "!( %s )" % assr, desc)
+          call = it.cmds["call"]
+          if call:
+            ow.addln(call + ";")
         continue
       
       varname = obj.ptrname + "->" + it.decl.name
@@ -585,13 +570,15 @@ class Object:
         ow.assign(varname, "usr_%s" % it.decl.name, it.gtype)
         continue
 
-     
       if (not it.cmds["io_cfg"] and
           it.gtype not in ("static array", "dynamic array")):
         # assign default value
         if len(defl): ow.assign(varname, defl, it.gtype);
         continue
       
+      # add a remark before we start
+      if len(desc): ow.addln("/* %s */", desc)
+ 
       if it.gtype == "dynamic array":
         type = it.get_generic_type(offset = 1) 
         ow.init_dynamic_array(varname, type,
@@ -605,7 +592,7 @@ class Object:
         type = it.gtype if it.gtype != "dummy_t" else obj.var2type(it.decl.name)
         fmt = it.type2fmt(type)
         ow.cfgget_var(varname, key, type, fmt, 
-          defl, must, test, tfirst, valid, desc)
+          defl, must, prereq, tfirst, valid, desc)
 
     ow.finish_function("return 0;")
     return ow.prototype, ow.function
@@ -626,6 +613,7 @@ class Object:
     else:
       print "cannot determine the type of [%s]" % var
       raise Exception
+  
 
 class Parser:
   '''
@@ -698,10 +686,10 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  #file = "test2.c"
-  file = "mb.c"
-  if len(sys.argv) > 1: file = sys.argv[1]
-  handle(file)
+  files = ("at.c", "mb.c")
+  if len(sys.argv) > 1: files = (sys.argv[1])
+  for file in files:
+    handle(file)
 
 if __name__ == "__main__":
   main()
