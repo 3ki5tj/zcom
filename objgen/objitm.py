@@ -27,10 +27,17 @@ class Item:
     initialize the structure from a piece of code
     '''
     self.empty = 1
-    self.begin = copy(p)
     if src == None: return
     self.src = src
+    self.begin = copy(p)
     self.parse(src, p)
+
+  def __deepcopy__(s, memo):
+    c = Item(None, None)
+    memo[id(s)] = c
+    for n, v in s.__dict__.iteritems():
+      setattr(c, n, deepcopy(v, memo))
+    return c
 
   def parse(self, src, p):
     '''
@@ -183,7 +190,7 @@ class Item:
 
   def add_item_to_list(self, dcl): 
     ''' add an item with decl being dcl '''
-    it = copy(self) # make a shallow copy of myself
+    it = deepcopy(self) # make a copy
     it.decl = dcl
     it.dl = None   # destory the list
     self.itlist += [it]

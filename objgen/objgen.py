@@ -274,7 +274,7 @@ class Object:
     p_cmds["fold"] = ""   # apply an empty fold
     for it in self.items:
       if not it.cmt:
-        it.cmds = copy(p_cmds)
+        it.cmds = deepcopy(p_cmds)
         it.cmds["desc"] = ""  # add an empty description
         continue
       #if "cnt" in p_cmds:
@@ -319,7 +319,7 @@ class Object:
     # search over items
     for it in obj.items:
       if (not it.isdummy and it.decl.name == var):
-        return copy(it.decl)
+        return deepcopy(it.decl)
     else:
       print "cannot determine the type of [%s]" % var
       raise Exception

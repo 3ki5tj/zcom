@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os, sys, re 
-from copy import copy
+from copy import copy, deepcopy
 
 '''
 C declarator list
@@ -15,15 +15,11 @@ class CDeclarator:
     if src != None:
       self.parse(src, p)
   
-  def __copy__(s):
+  def __deepcopy__(s, memo):
     c = CDeclarator(None, None)
-    c.empty = s.empty
-    c.begin = copy(s.begin)
-    c.end   = copy(s.end)
-    c.types = copy(s.types)
-    c.raw   = copy(s.raw)
-    c.name  = s.name
-    c.param_level = s.param_level
+    memo[id(s)] = c
+    for n, v in s.__dict__.iteritems():
+      setattr(c, n, deepcopy(v, memo))
     return c
 
   def parse(self, src, p):
@@ -214,16 +210,11 @@ class CDeclaratorList(CDeclarator):
     if src != None:
       self.parse(src, p)
   
-  def __copy__(s):
+  def __deepcopy__(s, memo):
     c = CDeclaratorList(None, None)
-    c.dclist = []
-    for dc in s.dclist:
-      c.dclist += [copy(dc)]
-    c.param_level = s.param_level
-    c.datatype = s.datatype
-    c.begin = copy(s.begin)
-    c.end = copy(s.end)
-    c.raw = s.raw
+    memo[id(s)] = c
+    for n, v in s.__dict__.iteritems():
+      setattr(c, n, deepcopy(v, memo))
     return c
 
   def parse(self, src, p):

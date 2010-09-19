@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os, sys, re 
-from copy import copy
+from copy import copy, deepcopy
 
 class Commands:
   '''
@@ -37,9 +37,16 @@ class Commands:
   def __repr__(self):
     return repr(self.cmds)
   def __copy__(self): # awkward!
-    c = Commands(self.raw)
-    c.cmds = copy(self.cmds)
-    c.persist = copy(self.persist)
+    c = Commands("")
+    c.raw = s.raw
+    c.cmds = deepcopy(self.cmds)
+    c.persist = deepcopy(self.persist)
+    return c
+  def __deepcopy__(s, memo):
+    c = Commands("")
+    memo[id(s)] = c
+    for n, v in s.__dict__.iteritems():
+      setattr(c, n, deepcopy(v, memo))
     return c
 
   def subdash(self, s):
