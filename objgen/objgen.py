@@ -499,8 +499,10 @@ class Object:
           print "missing value for flag [%s]" % it.cmds["flag"]
           raise Exception
         bval = it.cmds["flag_val"]
-        # print flag, bval; raw_input()
-        block += [("#define", flag, bval)]
+        cmt = it.cmds["desc"]
+        cmt = "/* %s */" % cmt if cmt else ""
+        # print flag, bval, cmt; raw_input()
+        block += [("#define", flag, bval, cmt)]
       else:
         self.dump_block(block, cw, tab, offset)
         block = []
