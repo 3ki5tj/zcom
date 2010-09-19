@@ -514,9 +514,8 @@ class Object:
     funcname = macroname + "_"
     owh.addln("#define %s(%s) { %s(%s); free(%s); %s = NULL; }",
       macroname, self.ptrname, funcname, self.ptrname, self.ptrname, self.ptrname)
-    funcdesc = "/* %s: close a pointer to %s */" % (funcname, self.name)
-    #owh.addln(funcdesc)
-    ow.addln(funcdesc)
+    funcdesc = "%s: close a pointer to %s" % (funcname, self.name)
+    ow.add_comment(funcdesc)
     fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
     owh.addln(fdecl + ";") # prototype
     ow.addln(fdecl)
@@ -584,24 +583,17 @@ class Object:
       desc    = it.cmds["desc"]
 
       if not it.decl: # stand-alone comment
-        # add comment content
-        if len(desc): ow.addln("/* %s */", desc)
-  
-        if ("flag" in it.cmds and "key" in it.cmds): # an input flag
-          raise Exception
-        elif "altvar" in it.cmds:  # alternative input for a command
-          raise Exception
-        else:
-          ow.insist(it.cmds["assert"], desc)
-          call = it.cmds["call"]
-          if call: ow.addln(call + ";")
-          continue
+        ow.add_comment(desc)
+        ow.insist(it.cmds["assert"], desc)
+        call = it.cmds["call"]
+        if call: ow.addln(call + ";")
+        continue
       
       varnm = it.decl.name
       varname = obj.ptrname + "->" + varnm
 
       # add a remark before we start
-      if len(desc): ow.addln("/* %s */", desc)
+      ow.add_comment(desc)
 
       if it.gtype == "pointer to object":
         # TODO: call the appropriate initializer

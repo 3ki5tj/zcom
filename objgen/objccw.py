@@ -62,26 +62,10 @@ class CCodeWriter:
   def print_file_line(self):
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
-  def begin_function(self, name, funcdef, desc):
-    ''' start four code-writers:  decl, vars, hdr, body '''
-    self.function = ""
+  def add_comment(self, desc):
+    if desc and len(desc):
+      self.addln("/* %s */", desc)
 
-    decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
-    decl.addln("/* %s: %s */", name, desc)
-    decl.addln(funcdef)
-    decl.addln("{")
-    
-    self.vars = CCodeWriter(self.nindents + 1)
-
-    hdr = self.hdr = CCodeWriter(0)  # prototype writer
-    hdr.addln(funcdef + ";")
-    self.prototype = hdr.gets()
-
-    self.body = CCodeWriter(self.nindents + 1)  # body writer
-    
-    self.funcname = name
-    self.used_array_index = 0
- 
   def notalways(self, cond):
     ''' test if a condition is missing or always true '''
     return (cond and cond not in ("TRUE", "1", 1))
@@ -199,6 +183,26 @@ class CCodeWriter:
     self.end_if(prereq)
     self.addln("")
 
+  def begin_function(self, name, funcdef, desc):
+    ''' start four code-writers:  decl, vars, hdr, body '''
+    self.function = ""
+
+    decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
+    decl.add_comment("%s: %s" % (name, desc))
+    decl.addln(funcdef)
+    decl.addln("{")
+    
+    self.vars = CCodeWriter(self.nindents + 1)
+
+    hdr = self.hdr = CCodeWriter(0)  # prototype writer
+    hdr.addln(funcdef + ";")
+    self.prototype = hdr.gets()
+
+    self.body = CCodeWriter(self.nindents + 1)  # body writer
+    
+    self.funcname = name
+    self.used_array_index = 0
+ 
   def end_function(self, sret = ""):
     if self.used_array_index:
       self.vars.addln("unsigned i;")
