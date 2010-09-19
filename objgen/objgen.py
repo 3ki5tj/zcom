@@ -583,8 +583,7 @@ class Object:
     # read configuration 
     s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
     ow.begin_if (s)
-    ow.addln(r'fprintf(stderr, "failed to open %s\n");', objtp);
-    ow.addln("return NULL;")
+    ow.err_ret(r"failed to open %s\n" % objtp, "NULL");
     ow.end_if (s)
     ow.end_function("return %s;" % objptr)
     return ow.prototype, ow.function
@@ -625,15 +624,18 @@ class Object:
       # add a remark before we start
       ow.add_comment(desc)
 
-      if it.gtype == "pointer to object":
+      if it.gtype == "object pointer":
         # TODO: call the appropriate initializer
         '''
         obj = search_the_object_name (it.decl.datatype)
         '''
-        obj_ptrname = it.decl.datatype[:-2]
-        ow.addln("%s = %sinit(%s);", varname, 
-          obj_ptrname, obj.ptrname)
-      
+        fpfx = it.get_obj_fprefix()
+        s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
+          fpfx, it.get_init_args())
+        ow.begin_if(s)
+        ow.err_ret(r"failed to initialize %s\n" % varname, "-1")
+        ow.end_if(s)
+
       elif "flag" in it.cmds and "key" in it.cmds: # input flag
         flag = it.get_flag()
         fmt = it.type2fmt(it.gtype)

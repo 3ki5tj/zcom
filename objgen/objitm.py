@@ -340,5 +340,30 @@ class Item:
     if "flag" not in it.cmds: return None
     return it.cmds["flag"]
 
+  def get_obj_fprefix(it):
+    ''' get prefix of an object '''
+    if not it.cmds["obj"]:
+      print "item is not an object %s" % item
+      raise Exception
+    pfx = it.cmds["obj_fprefix"]
+    if pfx == None: # make a guess
+      tp = it.decl.datatype
+      if tp.endswith("_t"): tp = tp[:-2]
+      pfx = tp + "_"
+    return pfx
+
+  def get_init_args(it):
+    ''' get additional arguments to be passed to an object initializer '''
+    if not it.cmds["obj"]:
+      print "item is not an object %s" % item
+      raise Exception
+    args = it.cmds["init_args"]
+    if not args: return ""
+    arr = args.strip().split(",")
+    arr = [""] + [s.strip() for s in arr]
+    args = ", ".join(arr)
+    # print args; raw_input()
+    return args
+
 
 

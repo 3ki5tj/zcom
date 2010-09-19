@@ -62,6 +62,15 @@ class CCodeWriter:
   def print_file_line(self):
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
+  def err_msg(self, msg, *args):
+    msg = r'fprintf(stderr, "error: %s\n");' % (msg % args)
+    self.addln(msg)
+    self.print_file_line()
+
+  def err_ret(self, msg, ret):
+    self.err_msg(msg)
+    self.addln("return %s;", ret)
+
   def add_comment(self, text):
     ''' format text and put them in comment '''
     if not text or len(text) == 0: return
