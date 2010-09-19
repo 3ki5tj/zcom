@@ -183,19 +183,20 @@ class CCodeWriter:
     self.end_if(prereq)
     self.addln("")
 
-  def begin_function(self, name, funcdef, desc):
+  def begin_function(self, name, fdecl, desc, macro = ""):
     ''' start four code-writers:  decl, vars, hdr, body '''
     self.function = ""
 
     decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
     decl.add_comment("%s: %s" % (name, desc))
-    decl.addln(funcdef)
+    decl.addln(fdecl)
     decl.addln("{")
     
     self.vars = CCodeWriter(self.nindents + 1)
 
     hdr = self.hdr = CCodeWriter(0)  # prototype writer
-    hdr.addln(funcdef + ";")
+    if len(macro): hdr.addln(macro)
+    hdr.addln(fdecl + ";")
     self.prototype = hdr.gets()
 
     self.body = CCodeWriter(self.nindents + 1)  # body writer

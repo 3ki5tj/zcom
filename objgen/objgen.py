@@ -509,17 +509,12 @@ class Object:
 
   def gen_func_close(self):
     ow = CCodeWriter()
-    owh = CCodeWriter()
     macroname = "%sclose" % self.fprefix
     funcname = macroname + "_"
-    owh.addln("#define %s(%s) { %s(%s); free(%s); %s = NULL; }",
+    macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
       macroname, self.ptrname, funcname, self.ptrname, self.ptrname, self.ptrname)
-    funcdesc = "%s: close a pointer to %s" % (funcname, self.name)
-    ow.add_comment(funcdesc)
     fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
-    owh.addln(fdecl + ";") # prototype
-    ow.addln(fdecl)
-    ow.addln("{")
+    ow.begin_function(funcname, fdecl, "close a pointer to %s" % self.name, macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name) if (it.decl and 
@@ -544,9 +539,8 @@ class Object:
                funcfree, self.ptrname, it.decl.name)
 
     ow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
-    ow.addln("}")
-    ow.addln("")
-    return owh.gets(), ow.gets()
+    ow.end_function("")
+    return ow.prototype, ow.function
 
   def get_usr_vars(self):
     param_list = ""
