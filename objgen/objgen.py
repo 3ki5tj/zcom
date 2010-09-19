@@ -392,6 +392,7 @@ class Object:
   def gen_code(self):
     funclist = []
     funclist += [self.gen_func_cfgread()]
+    funclist += [self.gen_func_cfgopen()]
     funclist += [self.gen_func_close()]
     # fold-specific functions
     for f in self.folds:
@@ -512,11 +513,11 @@ class Object:
   def gen_func_close(self):
     ow = CCodeWriter()
     macroname = "%sclose" % self.fprefix
-    funcname = macroname + "_"
+    fname = macroname + "_"
     macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
-      macroname, self.ptrname, funcname, self.ptrname, self.ptrname, self.ptrname)
-    fdecl = "void %s(%s *%s)" % (funcname, self.name, self.ptrname)
-    ow.begin_function(funcname, fdecl, "close a pointer to %s" % self.name, macro)
+      macroname, self.ptrname, fname, self.ptrname, self.ptrname, self.ptrname)
+    fdecl = "void %s(%s *%s)" % (fname, self.name, self.ptrname)
+    ow.begin_function(fname, fdecl, "close a pointer to %s" % self.name, macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name) if (it.decl and 
@@ -546,6 +547,7 @@ class Object:
 
   def get_usr_vars(self):
     param_list = ""
+    var_list = ""
     for it in self.items:
       if it.decl and "usr" in it.cmds:
         decl0 = it.decl.datatype
@@ -554,16 +556,48 @@ class Object:
         usr_name = "usr_%s" % name
         decl1 = re.sub(name, usr_name, decl1)
         param_list += ", %s %s" % (decl0, decl1)
-    return param_list
-  
+        var_list += ", %s" % decl1
+    return param_list, var_list
+
+  def gen_func_cfgopen(obj):
+    ''' 
+    write a function that returns an new object 
+    initialized from configuration file
+    '''
+    objtp  = obj.name
+    objptr = obj.ptrname
+    fopen  = "%scfgopen" % obj.fprefix
+    fread  = "%scfgread" % obj.fprefix
+    fdesc  = "return an initialized %s, wrapper of %s" % (objtp, fread)
+    usrvars = obj.get_usr_vars()
+    fdecl = "%s *%s(cfgdata_t *cfg%s)" % (obj.name, fopen, usrvars[0])
+    ow = CCodeWriter()
+    ow.begin_function(fopen, fdecl, fdesc)
+    ow.vars.addln("%s %s;" % (objtp, objptr))
+
+    # allocate memory
+    s = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
+    ow.die_if (s, "no memory for %s" % obj.name);
+    ow.addln("");
+    
+    # read configuration 
+    s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
+    ow.begin_if (s)
+    ow.addln(r'fprintf(stderr, "failed to open %s\n");', objtp);
+    ow.addln("return NULL;")
+    ow.end_if (s)
+    ow.end_function("return %s;" % objptr)
+    return ow.prototype, ow.function
+ 
   def gen_func_cfgread(obj):
     ''' write a function that reads configuration file '''
-    funcname = "%scfgread" % obj.fprefix
-    funcdesc = "initialize %s by reading members from a configuration file" % (obj.name)
+    fname = "%scfgread" % obj.fprefix
+    fdesc = '''initialize %s by reading members from configuration file `cfg'
+               if `cfg' is NULL, default values are assigned ''' % obj.name
     fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
-        funcname, obj.name, obj.ptrname, obj.get_usr_vars())
+        fname, obj.name, obj.ptrname, obj.get_usr_vars()[0])
     ow = CCodeWriter()
-    ow.begin_function(funcname, fdecl, funcdesc)
+    ow.begin_function(fname, fdecl, fdesc)
 
     for it in obj.items:
       if it.pre:

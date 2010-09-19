@@ -62,9 +62,16 @@ class CCodeWriter:
   def print_file_line(self):
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
-  def add_comment(self, desc):
-    if desc and len(desc):
-      self.addln("/* %s */", desc)
+  def add_comment(self, text):
+    ''' format text and put them in comment '''
+    if not text or len(text) == 0: return
+    arr = text.splitlines()
+    n = len(arr)
+    for i in range(n):
+      s = "/* " if i == 0 else " * "
+      s += arr[i].strip()
+      if i == n - 1: s += " */"
+      self.addln(s)
 
   def notalways(self, cond):
     ''' test if a condition is missing or always true '''
