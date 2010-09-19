@@ -11,8 +11,20 @@ class CDeclarator:
   a single C declarator, adapted from K & R
   '''
   def __init__(self, src, p):
-    self.cnt = 0
-    self.parse(src, p)
+    self.empty = 1
+    if src != None:
+      self.parse(src, p)
+  
+  def __copy__(s):
+    c = CDeclarator(None, None)
+    c.empty = s.empty
+    c.begin = copy(s.begin)
+    c.end   = copy(s.end)
+    c.types = copy(s.types)
+    c.raw   = copy(s.raw)
+    c.name  = s.name
+    c.param_level = s.param_level
+    return c
 
   def parse(self, src, p):
     s = p.skipspace(src)
@@ -24,7 +36,7 @@ class CDeclarator:
     # find the declarator, e.g. *a, (*a)(), ...
     if 0 != self.dcl(src, p): 
       return -1
-    self.cnt = 1
+    self.empty = 0
     
     self.end = copy(p)
     self.raw = self.begin.gettext(src, self.end)
@@ -189,7 +201,8 @@ class CDeclarator:
   def dbg(self, src, p):
     ''' return the debug message '''
     return "line: [%s], pos: %s" % (p.getline(src).rstrip(), p)
-  def isempty(self): return 0 if self.cnt else 1
+  def isempty(self): return self.empty
+
 
 class CDeclaratorList(CDeclarator): 
   '''
@@ -198,7 +211,20 @@ class CDeclaratorList(CDeclarator):
   '''
   def __init__(self, src, p):
     self.dclist = []
-    if 0 != self.parse(src, p): self.cnt = 0
+    if src != None:
+      self.parse(src, p)
+  
+  def __copy__(s):
+    c = CDeclaratorList(None, None)
+    c.dclist = []
+    for dc in s.dclist:
+      c.dclist += [copy(dc)]
+    c.param_level = s.param_level
+    c.datatype = s.datatype
+    c.begin = copy(s.begin)
+    c.end = copy(s.end)
+    c.raw = s.raw
+    return c
 
   def parse(self, src, p):
     p.skipspace(src)

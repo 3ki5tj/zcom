@@ -382,9 +382,16 @@ class Object:
     if name.endswith("_t"): name = name[:-2]
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
     self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
-    
+  
+  def var2item(self, nm):  # for debug use
+    for it in self.items:
+      if it.decl and it.decl.name == nm: 
+        return it
+    else: return None
+
   def enrich_cmds(self):
     ''' refine and enrich commands '''
+    state = 0
     for it in self.items:
       it.fill_def()  # make sure we have default values
       it.fill_key()  # fill in default keys
@@ -645,14 +652,12 @@ class Object:
             defl, prereq, desc)
       
       elif it.gtype == "dynamic array":
-        gtype = it.get_gtype(offset = 1) 
-        ow.init_dynamic_array(varname, gtype,
+        ow.init_dynamic_array(varname, it.get_gtype(offset = 1),
             defl, it.cmds["cnt"], desc)
       
       elif it.gtype == "static array":
-        gtype = it.get_gtype(offset = 1)
         # print "%s: static array of %s" % (varnm, it.gtype)
-        ow.init_static_array(varname, gtype, 
+        ow.init_static_array(varname, it.get_gtype(offset = 1), 
             defl, it.cmds["cnt"], desc)
       
       else: # regular variable
@@ -671,7 +676,6 @@ class Object:
     ow.end_function("return %s;" % objptr)
 
     return ow.prototype, ow.function
- 
 
 class Parser:
   '''
@@ -744,7 +748,8 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  files = ("at.c", "mb.c")
+  # files = ["spb.c", "at.c", "mb.c"]
+  files = ["spb.c"]
   if len(sys.argv) > 1: files = (sys.argv[1])
   for file in files:
     handle(file)

@@ -36,6 +36,11 @@ class Commands:
     return str(self.cmds)
   def __repr__(self):
     return repr(self.cmds)
+  def __copy__(self): # awkward!
+    c = Commands(self.raw)
+    c.cmds = copy(self.cmds)
+    c.persist = copy(self.persist)
+    return c
 
   def subdash(self, s):
     return re.sub(r"\-", "_", s)  # map - to _

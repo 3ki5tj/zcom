@@ -283,7 +283,7 @@ class Item:
     else:
       iodef = ""
     # assume iodef if necessary
-    io = it.cmds["io"] if "io" in it.cmds else iodef
+    io = it.cmds["io"] if it.cmds["io"] else iodef
     io = io.strip()
 
     # a human shortcut

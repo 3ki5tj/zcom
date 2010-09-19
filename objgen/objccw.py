@@ -144,7 +144,7 @@ class CCodeWriter:
     self.init_static_array(var, type, default, cnt, desc)
 
   def assign(self, var, value, type):
-    if type == "char *":
+    if type == "char *" and value != "NULL":
       self.addln('%s = ssdup("%s");', var, value)
     else:
       self.addln("%s = %s;", var, value)
