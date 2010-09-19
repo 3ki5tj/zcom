@@ -17,6 +17,7 @@ class CCodeWriter:
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
   def addraw(self, t):
+    ''' we write to self.body, if we are in a function '''
     who = self.body if self.funcname else self
     if t.lstrip().startswith("}"): who.dec()
     if (who.s == "" or who.s.endswith("\n")) and not t.lstrip().startswith("#"):
@@ -25,13 +26,10 @@ class CCodeWriter:
     if t.rstrip().endswith("{"): who.inc()
 
   def add(self, t, *args):
-    who = self.body if self.funcname else self
-    who.addraw( t % args)
+    self.addraw( t % args)
 
   def addln(self, t, *args):
-    ''' we write to self.body, if we are in a function '''
-    who = self.body if self.funcname else self
-    who.addraw( (t.rstrip() % args) + '\n' )
+    self.addraw( (t.rstrip() % args) + '\n' )
 
   def remove_empty_pp(self):
     ''' remove empty preprocessor blocks 
@@ -62,13 +60,17 @@ class CCodeWriter:
   def print_file_line(self):
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
-  def err_msg(self, msg, *args):
-    msg = r'fprintf(stderr, "error: %s\n");' % (msg % args)
-    self.addln(msg)
+  def errmsg(self, msg, args = ""):
+    ''' print an error message with FILE/LINE 
+    NOTE: args are arguments for fprintf, not formatting args for msg '''
+    if len(args):
+      args = ", " + args.lstrip(" ,")
+    msg = r'fprintf(stderr, "error: %s\n"%s);' % (msg, args)
+    self.addraw(msg + '\n')
     self.print_file_line()
 
-  def err_ret(self, msg, ret):
-    self.err_msg(msg)
+  def err_ret(self, ret, msg, args = ""):
+    self.errmsg(msg, args)
     self.addln("return %s;", ret)
 
   def add_comment(self, text):
@@ -89,6 +91,9 @@ class CCodeWriter:
   def begin_if(self, cond):
     if self.notalways(cond):
       self.addln("if (%s) {" % cond)
+
+  def begin_else_if(self, cond):
+    self.addln("} else if (%s) {" % cond)
 
   def begin_else(self):
     self.addln("} else {")

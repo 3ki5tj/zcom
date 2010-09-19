@@ -20,8 +20,12 @@ or
 
 Commands of an object:
   * $skip, $skipme: skip this object, do not generate anything
+
   * $fprefix:       function prefix for the object
   * $ptrname:       a common variable used as pointers to the object
+  
+  * $cfgopen:       opens configuration file in its initializer,
+                    instead of accepting an existing handle
 
 Commands of an item:
   * $def:     default value for a variable, 
@@ -391,7 +395,6 @@ class Object:
   
   def gen_code(self):
     funclist = []
-    funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_cfgopen()]
     funclist += [self.gen_func_close()]
     # fold-specific functions
@@ -563,41 +566,42 @@ class Object:
     ''' 
     write a function that returns an new object 
     initialized from configuration file
+    Note: it loads configuration parameters only, 
+          it does not load previous data 
     '''
-    objtp  = obj.name
-    objptr = obj.ptrname
-    fopen  = "%scfgopen" % obj.fprefix
-    fread  = "%scfgread" % obj.fprefix
-    fdesc  = "return an initialized %s, wrapper of %s" % (objtp, fread)
+    cfgopen = (obj.cmds["cfgopen"] != None)
+    objtp   = obj.name
+    objptr  = obj.ptrname
+    fopen   = "%scfgopen"  % obj.fprefix
+    # fload   = "%sloaddata" % obj.fprefix
+    fdesc   = '''return an initialized %s
+              if possible, initial values are taken from config. file `cfg',
+              otherwise default values are assigned ''' % objtp
+    
+    cfgdecl = "cfgdata_T *cfg"
     usrvars = obj.get_usr_vars()
-    fdecl = "%s *%s(cfgdata_t *cfg%s)" % (obj.name, fopen, usrvars[0])
+    fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
+            "const char *fname" if cfgopen else cfgdecl, 
+            usrvars[0])
     ow = CCodeWriter()
     ow.begin_function(fopen, fdecl, fdesc)
-    ow.vars.addln("%s %s;" % (objtp, objptr))
+    ow.vars.addln("%s *%s;" % (objtp, objptr))
+
+    # open a configuration file
+    if cfgopen:
+      ow.vars.addln("cfgdata_t *cfg;")
+      scfg = "(cfg = cfgopen(fname)) == NULL"
+      ow.begin_if(scfg)
+      ow.errmsg(r"%s: cannot open config. file %%s.\n" % objtp,
+          "fname");
+      ow.addln("return NULL;")
+      ow.end_if(scfg)
 
     # allocate memory
-    s = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
-    ow.die_if (s, "no memory for %s" % obj.name);
-    ow.addln("");
+    sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
+    ow.die_if(sobj, "no memory for %s" % obj.name);
     
-    # read configuration 
-    s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
-    ow.begin_if (s)
-    ow.err_ret(r"failed to open %s\n" % objtp, "NULL");
-    ow.end_if (s)
-    ow.end_function("return %s;" % objptr)
-    return ow.prototype, ow.function
- 
-  def gen_func_cfgread(obj):
-    ''' write a function that reads configuration file '''
-    fname = "%scfgread" % obj.fprefix
-    fdesc = '''initialize %s by reading members from configuration file `cfg'
-               if `cfg' is NULL, default values are assigned ''' % obj.name
-    fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
-        fname, obj.name, obj.ptrname, obj.get_usr_vars()[0])
-    ow = CCodeWriter()
-    ow.begin_function(fname, fdecl, fdesc)
-
+    # read configuration file
     for it in obj.items:
       if it.pre:
         ow.addln("#" + it.pre.raw)
@@ -625,16 +629,10 @@ class Object:
       ow.add_comment(desc)
 
       if it.gtype == "object pointer":
-        # TODO: call the appropriate initializer
-        '''
-        obj = search_the_object_name (it.decl.datatype)
-        '''
         fpfx = it.get_obj_fprefix()
         s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
           fpfx, it.get_init_args())
-        ow.begin_if(s)
-        ow.err_ret(r"failed to initialize %s\n" % varname, "-1")
-        ow.end_if(s)
+        ow.die_if(s, r"failed to initialize %s\n" % varname)
 
       elif "flag" in it.cmds and "key" in it.cmds: # input flag
         flag = it.get_flag()
@@ -663,10 +661,13 @@ class Object:
           fmt = it.type2fmt(it.gtype)
           ow.cfgget_var(varname, key, it.gtype, fmt, 
             defl, must, prereq, tfirst, valid, desc)
+    
+    if cfgopen:
+      ow.addln("cfgclose(cfg);")
+    ow.end_function("return %s;" % objptr)
 
-    ow.end_function("return 0;")
     return ow.prototype, ow.function
-  
+ 
 
 class Parser:
   '''
