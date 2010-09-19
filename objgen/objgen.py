@@ -538,8 +538,12 @@ class Object:
         funcfree = "ssdelete"
       elif it.gtype == "dynamic array":
         funcfree = "free"
-      else: continue
-      
+      elif it.gtype == "object pointer": 
+        fpfx = it.get_obj_fprefix()
+        funcfree = "%sclose" % (fpfx)
+      else:
+        continue
+  
       ow.addln("if (%s->%-*s != NULL) %s(%s->%s);",
                self.ptrname, maxwid, it.decl.name,
                funcfree, self.ptrname, it.decl.name)
@@ -578,7 +582,7 @@ class Object:
               if possible, initial values are taken from config. file `cfg',
               otherwise default values are assigned ''' % objtp
     
-    cfgdecl = "cfgdata_T *cfg"
+    cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usr_vars()
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
             "const char *fname" if cfgopen else cfgdecl, 
