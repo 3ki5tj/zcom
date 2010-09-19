@@ -84,7 +84,7 @@ class Item:
       return "(aux)"
 
 
-  def get_generic_type(self, offset = 0):
+  def get_gtype(self, offset = 0):
     '''
     get a generic type, and type name
     it need commands
@@ -100,6 +100,7 @@ class Item:
     n = len(types)
     if offset >= n: return None
 
+    # print "trying to obtain gtype with %s, %s" % (offset, types); raw_input()
     nlevels = n - offset
     if nlevels == 1:
       return types[offset]
@@ -149,7 +150,7 @@ class Item:
     elif tp == "char *":
       fmt = "%s"
     else:
-      print "no format string for type [%s]" % tp
+      print "no format string for type [%s] item: %s" % (tp, self)
       raise Exception
     return fmt
 
@@ -161,7 +162,7 @@ class Item:
     # for arrays, 'def' means the default value of its elements
     if len(self.decl.types) == 2 and gtype in (
         "static array", "dynamic array"):
-      gtype = self.get_generic_type(offset = 1)
+      gtype = self.get_gtype(offset = 1)
     
     if gtype in ("int", "unsigned", "unsigned int", 
         "long", "unsigned long"):
@@ -224,6 +225,9 @@ class Item:
       # @@ means this variable 
       pattern = r"(?<![\@\\])\@\@(?!\w)"
       if re.search(pattern, val):
+        if not it.decl:
+          print "use @@ for %s without decl." % it
+          raise_exception
         val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
 
       # @var
@@ -299,9 +303,7 @@ class Item:
     or other commands
     '''
     # turn on $test_first for dummy variables
-    if ("test_first" not in it.cmds
-        and it.decl 
-        and it.gtype == "dummy_t"):
+    if ("test_first" not in it.cmds and it.isdummy):
       it.cmds["test_first"] = 1
 
   def prepare_flag(it):

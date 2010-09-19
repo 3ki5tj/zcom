@@ -150,6 +150,7 @@ class Object:
     self.merge_comments() # merging multiple-line C++ comments
     self.expand_multidecl_items() # must be done after merging comments
     self.fill_cmds()   # get cmds from comment, must be after merging comments
+    self.add_dummies() # add dummy declarations for flags and alts
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
     self.get_prefix()  # determine fprefix and ptrname
     self.init_folds()  # initialize different folds, get prefices
@@ -296,12 +297,61 @@ class Object:
           # print "inherit [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
       it.cmds = cmds
+ 
+  def getdeclfrom(obj, var):
+    ''' 
+    for dummy variable, e.g., flag or alternative input,
+    copy declaration of var to me 
+    '''
+    if var == None:
+      print "variable name is None"
+      raise Exception
+    # print "calling substitution for [%s]" % var; raw_input
+    
+    # we first strip away the prefix, if any
+    if var.startswith("@"): # in case substitution
+      var = var[1:]
+
+    # search over items
+    for it in obj.items:
+      if (not it.isdummy and it.decl.name == var):
+        return copy(it.decl)
+    else:
+      print "cannot determine the type of [%s]" % var
+      raise Exception
+    
+  def add_dummies(self):
+    ''' 
+    add a declaration field for dummy variables, 
+    such as flags, and alternative input
+    '''
+    # first flag all variable with declaration as non-dummy
+    for it in self.items: 
+      it.isdummy = (not it.decl)
+
+    # now address dummy variables
+    for it in self.items:
+      if not it.isdummy: continue
+      
+      # determine the reference variable
+      if "flag" in it.cmds: 
+        it.prepare_flag()
+        varref = it.cmds["flag_var"]
+      elif "altvar" in it.cmds:
+        varref = it.cmds["altvar"]
+      else: continue
+
+      # now copy the declaration of the reference
+      it.decl = self.getdeclfrom(varref)
+      it.isdummy = 1
+      # print ("copied decl from %s for %s\n" % (varref, it))
+      # raw_input()
 
   def get_gtype(self):
     ''' get generic type, it uses information from commands '''
     for it in self.items:
       if it.decl: 
-        it.gtype = it.get_generic_type()
+        it.gtype = it.get_gtype()
   
   def init_folds(self):
     ''' 
@@ -337,7 +387,6 @@ class Object:
       it.test_cnt()
       it.fill_io()
       it.fill_test()
-      it.prepare_flag()
       it.sub_prefix(self.ptrname, self.fprefix) # @ to $ptrname
   
   def gen_code(self):
@@ -386,7 +435,7 @@ class Object:
       # 2. handle declaration
       if item.decl:
         decl0 = item.decl.datatype
-        if decl0 == "dummy_t": continue
+        if item.isdummy: continue
         decl1 = item.decl.raw
       else:
         # skip a comment if it contains instructions
@@ -481,14 +530,15 @@ class Object:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
-      if not it.decl: continue
+      if not it.decl or it.isdummy: continue
 
-      funcfree = None
+      # print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
+      # raw_input()
       if it.gtype == "char *": 
         funcfree = "ssdelete"
       elif it.gtype == "dynamic array":
         funcfree = "free"
-      if not funcfree: continue
+      else: continue
       
       ow.addln("if (%s->%-*s != NULL) %s(%s->%s);",
                self.ptrname, maxwid, it.decl.name,
@@ -518,7 +568,7 @@ class Object:
     fdecl = "int %s(%s *%s, cfgdata_t *cfg%s)" % (
         funcname, obj.name, obj.ptrname, obj.get_usr_vars())
     ow = CCodeWriter()
-    ow.start_function(funcname, fdecl, funcdesc)
+    ow.begin_function(funcname, fdecl, funcdesc)
 
     for it in obj.items:
       if it.pre:
@@ -537,25 +587,22 @@ class Object:
         # add comment content
         if len(desc): ow.addln("/* %s */", desc)
   
-        if ("flag" in it.cmds
-            and "key" in it.cmds): # an input flag
-          flag = it.get_flag()
-          varname = it.cmds["flag_var"]
-          type = obj.var2type(varname)
-          assert (type == "unsigned")
-          fmt = it.type2fmt(type)
-          ow.cfgget_flag(varname, key, flag, type, fmt,
-              defl, prereq, tfirst, desc)
+        if ("flag" in it.cmds and "key" in it.cmds): # an input flag
+          raise Exception
+        elif "altvar" in it.cmds:  # alternative input for a command
+          raise Exception
         else:
-          assr = it.cmds["assert"]
-          if assr:
-            ow.die_if( "!( %s )" % assr, desc)
+          ow.insist(it.cmds["assert"], desc)
           call = it.cmds["call"]
-          if call:
-            ow.addln(call + ";")
-        continue
+          if call: ow.addln(call + ";")
+          continue
       
-      varname = obj.ptrname + "->" + it.decl.name
+      varnm = it.decl.name
+      varname = obj.ptrname + "->" + varnm
+
+      # add a remark before we start
+      if len(desc): ow.addln("/* %s */", desc)
+
       if it.gtype == "pointer to object":
         # TODO: call the appropriate initializer
         '''
@@ -564,55 +611,37 @@ class Object:
         obj_ptrname = it.decl.datatype[:-2]
         ow.addln("%s = %sinit(%s);", varname, 
           obj_ptrname, obj.ptrname)
-        continue
-
-      if "usr" in it.cmds: # usr variables
-        ow.assign(varname, "usr_%s" % it.decl.name, it.gtype)
-        continue
-
-      if (not it.cmds["io_cfg"] and
-          it.gtype not in ("static array", "dynamic array")):
-        # assign default value
-        if len(defl): ow.assign(varname, defl, it.gtype);
-        continue
       
-      # add a remark before we start
-      if len(desc): ow.addln("/* %s */", desc)
- 
-      if it.gtype == "dynamic array":
-        type = it.get_generic_type(offset = 1) 
-        ow.init_dynamic_array(varname, type,
+      elif "flag" in it.cmds and "key" in it.cmds: # input flag
+        flag = it.get_flag()
+        fmt = it.type2fmt(it.gtype)
+        ow.cfgget_flag(varname, key, flag, it.gtype, fmt,
+            defl, prereq, desc)
+      
+      elif it.gtype == "dynamic array":
+        gtype = it.get_gtype(offset = 1) 
+        ow.init_dynamic_array(varname, gtype,
             defl, it.cmds["cnt"], desc)
+      
       elif it.gtype == "static array":
-        type = it.get_generic_type(offset = 1)
-        # print "%s: static array of %s" % (it.name(), type)
-        ow.init_static_array(varname, type, 
+        gtype = it.get_gtype(offset = 1)
+        # print "%s: static array of %s" % (varnm, it.gtype)
+        ow.init_static_array(varname, gtype, 
             defl, it.cmds["cnt"], desc)
-      else:
-        type = it.gtype if it.gtype != "dummy_t" else obj.var2type(it.decl.name)
-        fmt = it.type2fmt(type)
-        ow.cfgget_var(varname, key, type, fmt, 
-          defl, must, prereq, tfirst, valid, desc)
+      
+      else: # regular variable
+        if "usr" in it.cmds: # usr variables
+          ow.assign(varname, "usr_%s" % varnm, it.gtype)
+        elif not it.cmds["io_cfg"]: # assign default value
+          if len(defl): 
+            ow.assign(varname, defl, it.gtype);
+        else:
+          fmt = it.type2fmt(it.gtype)
+          ow.cfgget_var(varname, key, it.gtype, fmt, 
+            defl, must, prereq, tfirst, valid, desc)
 
-    ow.finish_function("return 0;")
+    ow.end_function("return 0;")
     return ow.prototype, ow.function
-  
-  def var2type(obj, var):
-    ''' look for type of variable `var' 
-        used to determine type of dummy variables
-    '''
-    pfx = obj.ptrname + "->"
-    if var.startswith("@"):
-      var = var[1:]
-    elif var.startswith(pfx):
-      var = var[len(pfx):]
-    for it in obj.items:
-      if (it.decl and it.gtype != "dummy_t"
-          and it.decl.name == var):
-        return it.gtype
-    else:
-      print "cannot determine the type of [%s]" % var
-      raise Exception
   
 
 class Parser:

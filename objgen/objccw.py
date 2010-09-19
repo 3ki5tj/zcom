@@ -62,7 +62,7 @@ class CCodeWriter:
   def print_file_line(self):
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
-  def start_function(self, name, funcdef, desc):
+  def begin_function(self, name, funcdef, desc):
     ''' start four code-writers:  decl, vars, hdr, body '''
     self.function = ""
 
@@ -82,6 +82,21 @@ class CCodeWriter:
     self.funcname = name
     self.used_array_index = 0
  
+  def notalways(self, cond):
+    ''' test if a condition is missing or always true '''
+    return (cond and cond not in ("TRUE", "1", 1))
+
+  def begin_if(self, cond):
+    if self.notalways(cond):
+      self.addln("if (%s) {" % cond)
+
+  def begin_else(self):
+    self.addln("} else {")
+
+  def end_if(self, cond):
+    if self.notalways(cond):
+      self.addln("}")
+
   def simple_if(self, tag, cond, msgs):
     self.addln("%s_if (%s,", tag, cond)
     n = len(msgs)
@@ -90,18 +105,16 @@ class CCodeWriter:
       self.addln(lead + '"%s"', msgs[i])
     self.addln(lead + '"%s");', msgs[n-1])
 
+  def msg_if(self, cond, *msgs):
+    self.simple_if("msg", cond, msgs)
+
   def die_if(self, cond, *msgs):
     self.simple_if("die", cond, msgs)
 
-  def msg_if(self, cond, *msgs):
-    self.simple_if("msg", cond, msgs)
-    ''' without using msg_if
-    self.addln("if (%s) {", cond)
-    n = len(msgs)
-    for i in range(n):
-      self.addln(r'fprintf(stderr, "%s");', msgs[i])
-    self.addln("}")
-    '''
+  def insist(self, cond, *msgs):
+    ''' die if cond is *not* true '''
+    if self.notalways(cond):
+      self.simple_if("die", " !(%s)" % cond, msgs)
 
   def init_static_array(self, var, type, default, cnt, desc):
     ''' write code for initializing a static array '''
@@ -131,21 +144,9 @@ class CCodeWriter:
     else:
       self.addln("%s = %s;", var, value)
 
-  def cfgget_var(self, var, key, type, fmt, default, 
-      must, prereq, test_first, valid, desc, addnl = 1):
-    # if prereq is missing, it defaults to 1 
-    needtest  = (prereq and prereq not in ("TRUE", "1", 1))
-    needvalid = (valid  and valid  not in ("TRUE", "1", 1))
-    
-    if not test_first:
-      self.assign(var, default, type)
-
-    if needtest:
-      self.addln("if (%s) {", prereq)
-
-    if test_first:
-      self.assign(var, default, type)
-
+  def cfgget_var_low(self, var, key, type, fmt, default, 
+      must, valid, desc):
+    ''' get a variable and make a validation '''
     cond = r'0 != cfgget(cfg, &%s, "%s", "%s")' % (var, key, fmt)
     if must:
       # do not die if cfg is NULL, because this is the 'lazy' mode
@@ -158,31 +159,47 @@ class CCodeWriter:
       self.msg_if(cond, 
         r'assuming default value\n',
         r'var: %s, key: %s, def: %s\n' % (var, key, default) )
-        
-    if needvalid:
-      self.die_if("!(%s)" % valid, r"failed validation: %s\n" % valid)
-    if needtest:
-      self.addln("}")
-    if addnl:  self.addln("")
+    self.insist(valid, r"failed validation: %s\n" % valid)
 
-  def cfgget_flag(self, var, key, flag, type, fmt, default, 
-      prereq, test_first, desc):
-    # get flag to a temporary variable i
-    if default not in ("1", "0"):
-      print "flag default can only be 0 or 1, var = %s, default = %s, key = %s" % (var, default, key)
-      raise Exception
-    ival = "i"
-    self.cfgget_var(ival, key, type, fmt, default, 
-        "FALSE", # flag is usually optional
-        prereq, test_first, "i == 0 || i == 1", desc, 0)
-    self.addln("if (i) {")
-    self.addln("%s |= %s;", var, flag)
-    self.addln("} else {")
-    self.addln("%s &= ~%s;", var, flag)
-    self.addln("}")
+  def cfgget_var(self, var, key, type, fmt, default,
+      must, prereq, tfirst, valid, desc):
+    # if prereq is missing, it defaults to 1 
+    if not tfirst: self.assign(var, default, type)
+    self.begin_if(prereq)    
+    if tfirst: self.assign(var, default, type)
+    
+    self.cfgget_var_low(var, key, type, fmt, default,
+        must, valid, desc)
+    
+    self.end_if(prereq)
     self.addln("")
 
-  def finish_function(self, sret = ""):
+  def cfgget_flag(self, var, key, flag, type, fmt, default, 
+      prereq, desc):
+    ''' 
+    assign a flag to var if prereq is true
+    '''
+    # get flag to a temporary variable i
+    if (default not in ("1", "0") or 
+        type not in ("unsigned", "unsigned int", "unsigned long")):
+      print "flag %s (key %s) with bad default %s or type %s" % (var, key, default, type)
+      raise Exception
+    
+    self.begin_if(prereq)
+    ivar = "i"
+    self.assign(ivar, default, type)
+    self.cfgget_var_low(ivar, key, type, fmt, default, 
+        "FALSE", # flag is usually optional
+        "%s == 0 || %s == 1" % (ivar, ivar), desc)
+    self.begin_if(ivar)
+    self.addln("%s |= %s;", var, flag)
+    self.begin_else()
+    self.addln("%s &= ~%s;", var, flag)
+    self.end_if(ivar)
+    self.end_if(prereq)
+    self.addln("")
+
+  def end_function(self, sret = ""):
     if self.used_array_index:
       self.vars.addln("unsigned i;")
     if self.vars.s != "":
