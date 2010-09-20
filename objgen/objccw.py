@@ -17,19 +17,24 @@ class CCodeWriter:
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
   def addraw(self, t):
-    ''' we write to self.body, if we are in a function '''
+    ''' write a plain string `t' without format conversion '''
+    # we write to self.body, if we are in a function
     who = self.body if self.funcname else self
+
     if t.lstrip().startswith("}"): who.dec()
     if (who.s == "" or who.s.endswith("\n")) and not t.lstrip().startswith("#"):
       who.s += who.sindent * who.nindents
     who.s += t
     if t.rstrip().endswith("{"): who.inc()
 
+  def addlnraw(self, t):
+    self.addraw(t + '\n')
+
   def add(self, t, *args):
     self.addraw( t % args)
 
   def addln(self, t, *args):
-    self.addraw( (t.rstrip() % args) + '\n' )
+    self.addraw( (t % args) + '\n' )
 
   def remove_empty_pp(self):
     ''' remove empty preprocessor blocks 
@@ -37,6 +42,7 @@ class CCodeWriter:
     #else
     #endif
     '''
+    endl = '\n' if self.s.endswith('\n') else ''
     lines = self.s.splitlines()
     i = 1
     while i < len(lines):
@@ -51,7 +57,7 @@ class CCodeWriter:
           lines = lines[:i-1] + lines[i+1:]
           continue
       i += 1
-    self.s = '\n'.join(lines) + '\n'
+    self.s = '\n'.join(lines) + endl
 
   def gets(self):
     self.remove_empty_pp()
@@ -89,11 +95,15 @@ class CCodeWriter:
     return (cond and cond not in ("TRUE", "1", 1))
 
   def begin_if(self, cond):
+    '''
+    start an if block
+    note: it starts only if cond is not always true
+    '''
     if self.notalways(cond):
-      self.addln("if (%s) {" % cond)
+      self.addln("if (%s) {", cond)
 
   def begin_else_if(self, cond):
-    self.addln("} else if (%s) {" % cond)
+    self.addln("} else if (%s) {", cond)
 
   def begin_else(self):
     self.addln("} else {")
@@ -102,56 +112,88 @@ class CCodeWriter:
     if self.notalways(cond):
       self.addln("}")
 
-  def simple_if(self, tag, cond, msgs):
+  def simple_if(self, tag, cond, msg, args):
+    ''' 
+    `args' are parameters to be passed to 
+    printf-like functions: msg_if and die_if
+    '''
     self.addln("%s_if (%s,", tag, cond)
+
+    # break msg into multiple line messages
+    msgs = msg.splitlines()
     n = len(msgs)
     lead = self.sindent
     for i in range(n-1):
-      self.addln(lead + '"%s"', msgs[i])
-    self.addln(lead + '"%s");', msgs[n-1])
+      self.addln('%s"%s"', lead, msgs[i])
+    s = '%s"%s"' % (lead, msgs[n-1])
 
-  def msg_if(self, cond, *msgs):
-    self.simple_if("msg", cond, msgs)
+    # build an argument list
+    if args:
+      s += ",\n"
+      self.addraw(s)  # stop the last message line
+      al = [s.strip() for s in args.split(",")]
+      s = lead + ', '.join(al)
+    s += ");\n"
+    self.addraw(s)
 
-  def die_if(self, cond, *msgs):
-    self.simple_if("die", cond, msgs)
+  def msg_if(self, cond, msg, args = None):
+    self.simple_if("msg", cond, msg, args)
 
-  def insist(self, cond, *msgs):
+  def die_if(self, cond, msg, args = None):
+    self.simple_if("die", cond, msg, args)
+
+  def insist(self, cond, msg, args = None):
     ''' die if cond is *not* true '''
     if self.notalways(cond):
-      self.simple_if("die", " !(%s)" % cond, msgs)
+      self.simple_if("die", " !(%s)" % cond, msg, args)
 
-  def init_static_array(self, var, type, default, cnt, desc):
+  def init_sarr(self, var, type, default, cnt, desc):
     ''' write code for initializing a static array '''
-    if self.funcname != "":
-      self.used_array_index = 1
-    self.addln("for (i = 0; i < %s; i++)" % cnt)
-    self.addln(self.sindent + "%s[i] = %s;" % (var, default))
+    self.declare_var("int i") # declare index i
+    self.addln("for (i = 0; i < %s; i++)", cnt)
+    self.addln(self.sindent + "%s[i] = %s;", var, default)
     self.addln("")
 
-  def init_dynamic_array(self, var, type, default, cnt, desc):
-    ''' write code for initializing a dynamic array '''
+  def alloc_darr(self, var, type, cnt):
+    self.checktp('*'+var, type)
+
+    # modify the size to allow some margin
     cntptn = r"(.*)\s*\+\s*([0-9]+)$"
     m = re.match(cntptn, cnt)
     if m:
       cnta = "(%s + %s)" % (m.group(1).strip(), str(int(m.group(2))+1))
     else:
       cnta = "(%s + 1)" % cnt.strip()
-    
+
+    # allocate array
     cond = "(%s = calloc(%s, sizeof(%s))) == NULL" % (var, cnta, type)
     msg = r"no memory! var: %s, type: %s\n" % (var, type)
     self.die_if(cond, msg)
-    self.init_static_array(var, type, default, cnt, desc)
+
+  def init_darr(self, var, type, default, cnt, desc):
+    ''' write code for initializing a dynamic array '''
+    self.alloc_darr(var, type, cnt)
+    self.init_sarr(var, type, default, cnt, desc)
 
   def assign(self, var, value, type):
+    ''' assignment (for simple types) '''
     if type == "char *" and value != "NULL":
       self.addln('%s = ssdup("%s");', var, value)
     else:
       self.addln("%s = %s;", var, value)
 
+  def checktp(self, var, type):
+    # add type checking 
+    csiz = "sizeof(%s) == sizeof(%s)" % (var, type)
+    msgz = r"wrong size: %s is not %s" % (var, type)
+    self.insist(csiz, msgz)
+
   def cfgget_var_low(self, var, key, type, fmt, default, 
       must, valid, desc):
     ''' get a variable and make a validation '''
+
+    self.checktp(var, type)
+
     cond = r'0 != cfgget(cfg, &%s, "%s", "%s")' % (var, key, fmt)
     if must:
       # do not die if cfg is NULL, because this is the 'lazy' mode
@@ -162,8 +204,8 @@ class CCodeWriter:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
-        r'assuming default value\n',
-        r'var: %s, key: %s, def: %s\n' % (var, key, default) )
+        (r'assuming default value\n' + '\n' +
+         r'var: %s, key: %s, def: %s\n') % (var, key, default) )
     self.insist(valid, r"failed validation: %s\n" % valid)
 
   def cfgget_var(self, var, key, type, fmt, default,
@@ -177,6 +219,52 @@ class CCodeWriter:
         must, valid, desc)
     
     self.end_if(prereq)
+    self.addln("")
+
+  def str_to_arr(self, sbuf, var, type, fmt, cnt, 
+      valid, cmpl, desc):
+    ''' parse a string to array item '''
+    ps = "ps"
+
+    sbufgood = "%s != NULL" % sbuf
+    self.begin_if(sbufgood)
+    # declare local variables
+    self.addln("char *%s = %s;", ps, sbuf)
+    self.addln("int nps = 0;\n") 
+    # self.declare_var("char *%s" % ps, ps)
+    # self.declare_var("int nps")
+    
+    self.addln("for (i = 0; i < %s; i++) {" % cnt)
+    s = r'1 != sscanf(ps, "%s%%n", %s+i, &nps)' % (fmt, var)
+    if cmpl:  # allow incomplete
+      self.die_if(s, "incomplete array %s at i = %%s" % var, "i")
+    else:
+      self.begin_if(s)
+      self.addln("break;")
+      self.end_if(s)
+    if valid:
+      self.insist(valid, 
+        r"%s: validation %s failed at i = %%s\n" % (var, valid),
+        "i")
+    self.addln("ps += nps;")
+    self.addln("}")
+    self.end_if(sbufgood)
+
+  def cfgget_sarr(self, var, key, type, fmt, default, cnt, 
+      must, valid, cmpl, desc):
+    # make initial assignment first 
+    self.init_sarr(var, type, default, cnt, desc)
+
+    # read a string from configuration file
+    sbuf = "sbuf" # declare a string buffer
+    self.declare_var("char *%s" % sbuf, sbuf)
+
+    self.addln("%s = NULL;", sbuf)
+    self.cfgget_var_low(sbuf, key, type, "%s", default,
+        must, 1, desc)
+
+    # parse the string to get individual items
+    self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, desc)
     self.addln("")
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
@@ -205,29 +293,41 @@ class CCodeWriter:
     self.addln("")
 
   def begin_function(self, name, fdecl, desc, macro = ""):
-    ''' start four code-writers:  decl, vars, hdr, body '''
-    self.function = ""
+    ''' 
+    start a function
+    construct four code-writers:  decl, vars, hdr, body 
+    set `funcname' to the function name, indicating
+      we are in a function
+    start an empty variable declaration list, `vls'
+    '''
+    if not name:
+      print "need a function name"
+      raise Exception
 
+    # declare the function
     decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
     decl.add_comment("%s: %s" % (name, desc))
     decl.addln(fdecl)
     decl.addln("{")
     
+    # create a variable list `vls'
     self.vars = CCodeWriter(self.nindents + 1)
+    self.vls = {}
 
+    # prototype
     hdr = self.hdr = CCodeWriter(0)  # prototype writer
-    if len(macro): hdr.addln(macro)
+    if len(macro): hdr.addln(macro)  # extra macro
     hdr.addln(fdecl + ";")
     self.prototype = hdr.gets()
 
+    # body writer
     self.body = CCodeWriter(self.nindents + 1)  # body writer
     
     self.funcname = name
-    self.used_array_index = 0
+    self.function = ""  # the content of the function
  
   def end_function(self, sret = ""):
-    if self.used_array_index:
-      self.vars.addln("unsigned i;")
+    # write variable list
     if self.vars.s != "":
       self.vars.addln("");
 
@@ -243,5 +343,37 @@ class CCodeWriter:
     s += self.tail.gets()
     self.function = s
     self.funcname = None  # no longer inside the function
-    self.used_array_index = 0
+    self.vls = None  # kill variable list
     self.decl = self.vars = self.body = self.hdr = self.tail = None
+
+  def declare_var(self, dcl, var = None):
+    ''' 
+    declare a variable within a function
+    `var': variable name
+    `dcl': declarator
+    e.g. in 
+      double *arr;
+    `var' is arr; `double *arr' is the declarator
+    '''
+    if self.funcname == "":
+      print "need to be in a function to declare var. %s of type %s" % (var, tp)
+      raise Exception
+
+    dcl = dcl.rstrip(";")
+    if var == None: # make a cheap guess of variable
+      arr = dcl.split()
+      var = arr[len(arr) - 1].strip("*()")
+      if var == "" or var[0].isdigit() or not re.match("\w+$", var):
+        print "cannot determine the var [%s]" % var
+        raise Exception
+
+    if var in self.vls:
+      newdcl = self.vls[var]
+      if dcl != newdcl:  # reject if the new type is different from the existing one
+        print "var. %s is already declared as %s, diff. from %s" % (var, dcl, newdcl)
+        raise Exception
+    else:
+      self.vls[var] = dcl
+      self.vars.addln(dcl + ";")
+
+

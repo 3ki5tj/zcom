@@ -181,6 +181,8 @@ class Item:
     elif gtype in ("pointer", "function pointer", "char *", 
         "pointer to object"):
       defval = "NULL"
+    elif gtype == "MPI_Comm":
+      defval = "MPI_COMM_NULL"
     else: 
       defval = "(%s) 0" % self.decl.datatype
     if defval != None: 

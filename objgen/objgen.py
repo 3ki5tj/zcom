@@ -402,6 +402,7 @@ class Object:
   
   def gen_code(self):
     funclist = []
+    funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_cfgopen()]
     funclist += [self.gen_func_close()]
     # fold-specific functions
@@ -495,8 +496,8 @@ class Object:
       s = ""
       for j in range(nfields-1):
         s += "%-*s" % (wid[j], item[j])
-      s += item[nfields - 1] + "\n"
-      cw.addln(s)
+      s += item[nfields - 1] 
+      cw.addln(s.rstrip())
 
   def gen_flags_def(self):
     tab = 4
@@ -573,6 +574,103 @@ class Object:
         var_list += ", %s" % decl1
     return param_list, var_list
 
+  def gen_func_cfgread(obj):
+    ''' 
+    write a function that initialize an object from configuration file
+    Note: it loads configuration parameters only, 
+          it does not load previous data 
+    '''
+    objtp   = obj.name
+    objptr  = obj.ptrname
+    fread   = "%scfgread"  % obj.fprefix
+    fdesc   = '''initialize members of %s from configuration 
+    file `cfg', or if unavailable, from default values ''' % objtp
+    
+    cfgdecl = "cfgdata_t *cfg"
+    usrvars = obj.get_usr_vars()
+    fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
+    ow = CCodeWriter()
+    ow.begin_function(fread, fdecl, fdesc)
+
+    # read configuration file
+    for it in obj.items:
+      if it.pre:
+        ow.addln("#" + it.pre.raw)
+        continue
+
+      defl    = it.cmds["def"]
+      key     = it.cmds["key"]
+      prereq  = it.cmds["prereq"]
+      tfirst  = it.cmds["test_first"]
+      valid   = it.cmds["valid"]
+      must    = it.cmds["key_must"]
+      desc    = it.cmds["desc"]
+      cnt     = it.cmds["cnt"]
+
+      if not it.decl: # stand-alone comment
+        ow.add_comment(desc)
+        ow.insist(it.cmds["assert"], desc)
+        call = it.cmds["call"]
+        if call: ow.addln(call + ";")
+        continue
+      
+      varnm = it.decl.name
+      varname = obj.ptrname + "->" + varnm
+
+      # add a remark before we start
+      ow.add_comment(desc)
+
+      if "flag" in it.cmds and "key" in it.cmds: # input flag
+        flag = it.get_flag()
+        fmt = it.type2fmt(it.gtype)
+        ow.cfgget_flag(varname, key, flag, it.gtype, fmt,
+            defl, prereq, desc)
+      
+      elif it.gtype == "object pointer":
+        fpfx = it.get_obj_fprefix()
+        s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
+          fpfx, it.get_init_args())
+        ow.die_if(s, r"failed to initialize %s\n" % varname)
+
+      elif it.gtype == "object array":
+        etp = it.get_gtype(offset = 1)
+        ow.alloc_darr(varname, etp, cnt)
+        ow.declare_var("int i;")
+        ow.addln("for (i = 0; i < %s; i++) {" % cnt)
+        s = "(%s = %scfgread(cfg%s)) == NULL" % (varname, 
+          fpfx, it.get_init_args())
+        ow.die_if(s, r"failed to initialize %s\n" % varname)
+
+
+      elif it.gtype == "dynamic array":
+        ow.init_darr(varname, it.get_gtype(offset = 1),
+            defl, cnt, desc)
+      
+      elif it.gtype == "static array":
+        # print "%s: static array of %s" % (varnm, it.gtype)
+        etp = it.get_gtype(offset = 1)
+        if not it.cmds["io_cfg"]: 
+          ow.init_sarr(varname, etp, defl, cnt, desc)
+        else:
+          fmt  = it.type2fmt(etp)
+          cmpl = it.cmds["complete"]
+          ow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
+              must, valid, cmpl, desc)
+
+      else: # regular variable
+        if "usr" in it.cmds: # usr variables
+          ow.assign(varname, "usr_%s" % varnm, it.gtype)
+        elif not it.cmds["io_cfg"]: # assign default value
+          if len(defl): 
+            ow.assign(varname, defl, it.gtype);
+        else:
+          fmt = it.type2fmt(it.gtype)
+          ow.cfgget_var(varname, key, it.gtype, fmt, 
+            defl, must, prereq, tfirst, valid, desc)
+    
+    ow.end_function("return 0;")
+    return ow.prototype, ow.function
+
   def gen_func_cfgopen(obj):
     ''' 
     write a function that returns an new object 
@@ -584,10 +682,10 @@ class Object:
     objtp   = obj.name
     objptr  = obj.ptrname
     fopen   = "%scfgopen"  % obj.fprefix
-    # fload   = "%sloaddata" % obj.fprefix
-    fdesc   = '''return an initialized %s
-              if possible, initial values are taken from config. file `cfg',
-              otherwise default values are assigned ''' % objtp
+    fread   = "%scfgread"  % obj.fprefix
+    fdesc   = '''return a pointer of an initialized %s
+              if possible, initial values are taken from configuration
+              file `cfg', otherwise default values are assumed ''' % objtp
     
     cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usr_vars()
@@ -611,65 +709,14 @@ class Object:
     # allocate memory
     sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
     ow.die_if(sobj, "no memory for %s" % obj.name);
-    
-    # read configuration file
-    for it in obj.items:
-      if it.pre:
-        ow.addln("#" + it.pre.raw)
-        continue
-
-      defl    = it.cmds["def"]
-      key     = it.cmds["key"]
-      prereq  = it.cmds["prereq"]
-      tfirst  = it.cmds["test_first"]
-      valid   = it.cmds["valid"]
-      must    = it.cmds["key_must"]
-      desc    = it.cmds["desc"]
-
-      if not it.decl: # stand-alone comment
-        ow.add_comment(desc)
-        ow.insist(it.cmds["assert"], desc)
-        call = it.cmds["call"]
-        if call: ow.addln(call + ";")
-        continue
-      
-      varnm = it.decl.name
-      varname = obj.ptrname + "->" + varnm
-
-      # add a remark before we start
-      ow.add_comment(desc)
-
-      if it.gtype == "object pointer":
-        fpfx = it.get_obj_fprefix()
-        s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
-          fpfx, it.get_init_args())
-        ow.die_if(s, r"failed to initialize %s\n" % varname)
-
-      elif "flag" in it.cmds and "key" in it.cmds: # input flag
-        flag = it.get_flag()
-        fmt = it.type2fmt(it.gtype)
-        ow.cfgget_flag(varname, key, flag, it.gtype, fmt,
-            defl, prereq, desc)
-      
-      elif it.gtype == "dynamic array":
-        ow.init_dynamic_array(varname, it.get_gtype(offset = 1),
-            defl, it.cmds["cnt"], desc)
-      
-      elif it.gtype == "static array":
-        # print "%s: static array of %s" % (varnm, it.gtype)
-        ow.init_static_array(varname, it.get_gtype(offset = 1), 
-            defl, it.cmds["cnt"], desc)
-      
-      else: # regular variable
-        if "usr" in it.cmds: # usr variables
-          ow.assign(varname, "usr_%s" % varnm, it.gtype)
-        elif not it.cmds["io_cfg"]: # assign default value
-          if len(defl): 
-            ow.assign(varname, defl, it.gtype);
-        else:
-          fmt = it.type2fmt(it.gtype)
-          ow.cfgget_var(varname, key, it.gtype, fmt, 
-            defl, must, prereq, tfirst, valid, desc)
+   
+    # ow.declare_var("int ret")
+    s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
+    ow.begin_if(s)
+    ow.errmsg("%s: failed to read config." % objtp)
+    ow.addln("free(%s);" % objptr)
+    ow.addln("return NULL;")
+    ow.end_if(s)
     
     if cfgopen:
       ow.addln("cfgclose(cfg);")
@@ -748,9 +795,9 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  # files = ["spb.c", "at.c", "mb.c"]
+  #files = ["spb.c", "at.c", "mb.c"]
   files = ["spb.c"]
-  if len(sys.argv) > 1: files = (sys.argv[1])
+  if len(sys.argv) > 1: files = [sys.argv[1]]
   for file in files:
     handle(file)
 
