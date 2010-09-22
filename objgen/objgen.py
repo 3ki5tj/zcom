@@ -32,8 +32,15 @@ Commands of an item:
               if the variable is a dynamic/static array, this is
               value for array members
 
-  * $cnt:     if not 0, declare a pointer variable as a dynamic array,
+  * $cnt:     declare a pointer variable as a dynamic array,
               ineffective for non-pointer variables
+              for 2d array:
+                $cnt: m, n;
+              allocates m*n elements, but should be understood,
+              when needed, as m x n array
+              if $cnt = 0; no allocation is performed during
+              initialization, a free() is however performed
+              during close() if the pointer is not NULL.
 
   * $io:      declare I/O type, can be a combination of cbt,
               for configuration, binary and text respectively
@@ -42,9 +49,10 @@ Commands of an item:
   * $key:           key to get from configuration file
   * $key_prefix:    prefix to be added when it is deduced from 
                     variable name, usually as a persistent command
+  * $key_args:      printf arguments in constructing key
   * $key_unprefix:  if variable name starts with $key_unprefix, that part 
                     is first removed before applying $key_prefix
-  * key_must:       a critial key that must present in configuration file
+  * $must:       a critial key that must present in configuration file
 
   * $prereq:      a condition to be tested *before* reading a varible
                   from configuration file, but after assigning the 
@@ -395,7 +403,7 @@ class Object:
     for it in self.items:
       it.fill_def()  # make sure we have default values
       it.fill_key()  # fill in default keys
-      it.test_cnt()
+      it.fill_dim()  # test array `cnt' and fill `dim'
       it.fill_io()
       it.fill_test()
       it.sub_prefix(self.ptrname, self.fprefix) # @ to $ptrname
@@ -531,8 +539,8 @@ class Object:
     ow.begin_function(fname, fdecl, "close a pointer to %s" % self.name, macro)
 
     # compute the longest variable
-    calc_len = lambda it: len(it.decl.name) if (it.decl and 
-        it.gtype in ("char *", "dynamic array") ) else 0
+    calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
+        it.decl and it.gtype in ("char *", "dynamic array") ) else 0
     maxwid = max(calc_len(it) for it in self.items)
     for it in self.items:
       if it.pre:
@@ -540,21 +548,37 @@ class Object:
         continue
       if not it.decl or it.isdummy: continue
 
+      varnm = it.decl.name;
+      varname = "%s->%s" % (self.ptrname, varnm)
+      
       # print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
       # raw_input()
       if it.gtype == "char *": 
         funcfree = "ssdelete"
       elif it.gtype == "dynamic array":
         funcfree = "free"
-      elif it.gtype == "object pointer": 
+      elif it.gtype == "object pointer":
         fpfx = it.get_obj_fprefix()
-        funcfree = "%sclose" % (fpfx)
+        funcfree = "%sclose" % fpfx
+      elif it.gtype == "object array": 
+        fpfx = it.get_obj_fprefix()
+        funcfree = "%sclose_" % fpfx
+        cnt = it.cmds["cnt"]
+        ow.declare_var("int i")
+
+        cond = "%s != NULL" % varname
+        ow.begin_if(cond)
+        ow.addln("for (i = 0; i < %s; i++) {" % cnt)
+        ow.addln("%s(%s + i);", funcfree, varname) 
+        ow.addln("}");
+        ow.addln("free(%s);", varname);
+        ow.end_if(cond)
+        continue
       else:
         continue
   
-      ow.addln("if (%s->%-*s != NULL) %s(%s->%s);",
-               self.ptrname, maxwid, it.decl.name,
-               funcfree, self.ptrname, it.decl.name)
+      ow.addln("if (%-*s != NULL) %s(%s);",
+               maxwid, varname, funcfree, varname)
 
     ow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
     ow.end_function("")
@@ -603,7 +627,7 @@ class Object:
       prereq  = it.cmds["prereq"]
       tfirst  = it.cmds["test_first"]
       valid   = it.cmds["valid"]
-      must    = it.cmds["key_must"]
+      must    = it.cmds["must"]
       desc    = it.cmds["desc"]
       cnt     = it.cmds["cnt"]
 
@@ -633,14 +657,15 @@ class Object:
         ow.die_if(s, r"failed to initialize %s\n" % varname)
 
       elif it.gtype == "object array":
+        fpfx = it.get_obj_fprefix()
         etp = it.get_gtype(offset = 1)
         ow.alloc_darr(varname, etp, cnt)
         ow.declare_var("int i;")
         ow.addln("for (i = 0; i < %s; i++) {" % cnt)
-        s = "(%s = %scfgread(cfg%s)) == NULL" % (varname, 
-          fpfx, it.get_init_args())
-        ow.die_if(s, r"failed to initialize %s\n" % varname)
-
+        s = "0 != %scfgread(%s+i, cfg%s)" % (
+          fpfx, varname, it.get_init_args())
+        ow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
+        ow.addln("}\n")
 
       elif it.gtype == "dynamic array":
         ow.init_darr(varname, it.get_gtype(offset = 1),

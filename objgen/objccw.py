@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 import os, sys, re
 from copy import copy
+  
+def dm(s):
+  ''' %d --> %%d in a string '''
+  return re.sub(r"\%", "%%", s)
 
 class CCodeWriter:
   '''
   output code in an indented fashion
   '''
+  enabletpcheck = 1
   sindent = "  "
+
   def __init__(self, nindents = 0):
     self.nindents = nindents
     self.s = ""
@@ -172,8 +178,9 @@ class CCodeWriter:
 
   def init_darr(self, var, type, default, cnt, desc):
     ''' write code for initializing a dynamic array '''
-    self.alloc_darr(var, type, cnt)
-    self.init_sarr(var, type, default, cnt, desc)
+    if cnt.strip() != "0":
+      self.alloc_darr(var, type, cnt)
+      self.init_sarr(var, type, default, cnt, desc)
 
   def assign(self, var, value, type):
     ''' assignment (for simple types) '''
@@ -183,10 +190,34 @@ class CCodeWriter:
       self.addln("%s = %s;", var, value)
 
   def checktp(self, var, type):
-    # add type checking 
-    csiz = "sizeof(%s) == sizeof(%s)" % (var, type)
-    msgz = r"wrong size: %s is not %s" % (var, type)
-    self.insist(csiz, msgz)
+    # add type checking
+    if self.enabletpcheck:
+      csiz = "sizeof(%s) == sizeof(%s)" % (var, type)
+      msgz = r"wrong size: %s is not %s" % (var, type)
+      self.insist(csiz, msgz)
+
+
+  def getkeystr(self, key):
+    ''' breaking key '''
+    keyslen = 128
+    # support dynamic key
+    pivot = key.find("#")
+    if pivot >= 0: # special key
+      keystr = "keystr"
+      fmt  = key[:pivot]
+      args = key[pivot+1:]
+      # attentatively check the length of the resulting keystr
+      if len(fmt) + len(args.split(",")) * 20 > keyslen:
+        print "key [%s] seems too long" % key
+        raise Exception
+      self.declare_var("char keystr[%d];" % keyslen, "keystr")
+      self.addraw('sprintf(keystr, "%s", %s);\n' % (fmt, args));
+    else:
+      keystr = '"%s"' % key
+      fmt = key
+      args = ""
+    return keystr, fmt, args
+
 
   def cfgget_var_low(self, var, key, type, fmt, default, 
       must, valid, desc):
@@ -194,18 +225,20 @@ class CCodeWriter:
 
     self.checktp(var, type)
 
-    cond = r'0 != cfgget(cfg, &%s, "%s", "%s")' % (var, key, fmt)
+    keystr, keyfmt, keyargs = self.getkeystr(key)
+
+    cond = r'0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
     if must:
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
-        r"missing var: %s, key: %s, fmt: %s\n" % (var, key, fmt))
+        r"missing var: %s, key: %s, fmt: %s\n" % (var, dm(key), fmt))
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
         (r'assuming default value\n' + '\n' +
-         r'var: %s, key: %s, def: %s\n') % (var, key, default) )
+         r'var: %s, key: %s, def: %s\n') % (var, dm(key), default) )
     self.insist(valid, r"failed validation: %s\n" % valid)
 
   def cfgget_var(self, var, key, type, fmt, default,
@@ -275,7 +308,7 @@ class CCodeWriter:
     # get flag to a temporary variable i
     if (default not in ("1", "0") or 
         type not in ("unsigned", "unsigned int", "unsigned long")):
-      print "flag %s (key %s) with bad default %s or type %s" % (var, key, default, type)
+      print "flag %s (key %s) with bad default %s or type %s" % (var, dm(key), default, type)
       raise Exception
     
     self.begin_if(prereq)

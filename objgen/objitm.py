@@ -98,47 +98,56 @@ class Item:
     `offset' is the starting offset from the bottom
     '''
     types = self.decl.types
-    try:
-      cmds = self.cmds if self.cmds else {}
-    except AttributeError:
-      print "missing commmands! %s" % self
-      raw_input()
+    cmds = self.cmds
 
     n = len(types)
     if offset >= n: return None
 
-    # print "trying to obtain gtype with %s, %s" % (offset, types); raw_input()
     nlevels = n - offset
     if nlevels == 1:
-      return types[offset]
+      ret = types[offset]
     elif types[offset].startswith("array"):
       ''' add a command for array count '''
-      arrcnt = types[offset][5:]
-      if offset == 0:
-        self.cmds["cnt"] = arrcnt # override cnt
-        #print "static array cnt has been set to %s for %s" % (arrcnt, self)
+      dim = []
+      for tp in types[offset:]:
+        if tp.startswith("array"):
+          dim += [ tp[5:] ]
+        else: break
+      dim.reverse()  # reverse the order 
+      if offset == 0: # 
+        self.cmds["dim"] = dim
+        self.cmds["cnt"] = arrcnt = '*'.join(dim) # override cnt
+        #print "static array cnt has been set to %s (%s) for %s" % (arrcnt, dim, self)
         #raw_input()
-      return "static array"
+      ret = "static array"
     elif types[offset] == "pointer":
       #towhat = ' '.join(types[1:])
       if types[offset+1] == "function":
-        return "function pointer"
+        ret = "function pointer"
       elif nlevels == 2 and types[offset+1] == "char":
         #print "a string is encountered %s" % self.decl.name; raw_input
-        return "char *"
-      elif "cnt" in cmds and cmds["cnt"].strip() != "0":
-        return "dynamic array"
-      elif "obj" in cmds:
-        return "object pointer"
+        ret = "char *"
       elif "objarr" in cmds:
-        return "object array"
+        # print "an object array is encountered %s" % self.decl.name; raw_input
+        ret = "object array"
+        assert "cnt" in cmds
+      elif "cnt" in cmds and cmds["cnt"].strip() != "0":
+        ret = "dynamic array"
+      elif "obj" in cmds:
+        ret = "object pointer"
       else:
         if (offset == 0 and "cnt" not in cmds 
           and nlevels == 2 
           and types[offset+1] in simple_types):
           print "Warning: `%s' is considered as a pointer" % self.decl.name,
           print "  set $cnt if it is actually an array"
-        return "pointer"
+        ret = "pointer"
+
+    if self.decl.name == "000":
+      print "gtype [%s] with %s, %s" % (ret, offset, types); 
+      print "commands: %s" % self.cmds
+      raw_input()        
+    return ret
 
   def type2fmt(self, tp):
     fmt = ""
@@ -227,8 +236,8 @@ class Item:
     for key in it.cmds:
       val = it.cmds[key]
       if type(val) != str: continue
-      # @_ means this is a function 
-      pattern = r"(?<![\@\\])\@\_(?=\w)"
+      # @- means this is a function 
+      pattern = r"(?<![\@\\])\@\-(?=\w)"
       val = re.sub(pattern, fprefix, val)
 
       # @@ means this variable 
@@ -243,7 +252,7 @@ class Item:
       pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
       val = re.sub(pattern, ptrname + "->", val)
       
-      # for a single @, means the object itself
+      # for a single hanging @, means ptrname
       pattern = r"(?<![\@\\])\@(?!\w)"
       if re.search(pattern, val):
         val = re.sub(pattern, ptrname, val)
@@ -258,6 +267,7 @@ class Item:
     1. it.decl.name is the first guess
     2. if it starts with key_unprefix, remove it
     3. add key_prefix
+    4. append key_args, after a `#'
     '''
     # skip if it is not a declaration
     if not it.decl or "key" in it.cmds: return
@@ -268,10 +278,18 @@ class Item:
 
     pfx = it.cmds["key_prefix"]
     if pfx:  cfgkey = pfx + cfgkey
+
+    args = it.cmds["key_args"]
+    if args: cfgkey += "#" + args
+    
     it.cmds["key"] = cfgkey
 
-  def test_cnt(it):
-    ''' test if cnt is empty '''
+  def fill_dim(it):
+    ''' 
+    test if cnt is empty 
+    for two dimensional array parse `cnt', which looks like "n1, n2"
+    into dim[2] = ["n1", "n2"]
+    '''
     if not it.decl or not it.gtype.endswith("array"): return
     if "cnt" not in it.cmds:
       print "item %s: array requires a count" % it.decl.name
@@ -280,6 +298,15 @@ class Item:
     if len(cnt) == 0:
       print "item %s: $cnt command cannot be empty! comment: [%s]" % (it.decl.name, it.cmt)
       raise Exception
+    if it.gtype == "static array": # static type
+      return
+    dim = [s.strip() for s in cnt.split(",")] # split into dimensions
+    if len(dim) > 2: #
+      print "item %s: do not support > 2 dimensional array!"
+      raise Exception
+    cnt = '*'.join(dim)
+    it.cmds["cnt"] = cnt
+    it.cmds["dim"] = dim
 
   def fill_io(it):
     ''' expand the io string '''
@@ -351,8 +378,8 @@ class Item:
 
   def get_obj_fprefix(it):
     ''' get prefix of an object '''
-    if not it.cmds["obj"]:
-      print "item is not an object %s" % item
+    if not it.cmds["obj"] and not it.cmds["objarr"]:
+      print "item is not an object %s" % it
       raise Exception
     pfx = it.cmds["obj_fprefix"]
     if pfx == None: # make a guess
@@ -363,8 +390,8 @@ class Item:
 
   def get_init_args(it):
     ''' get additional arguments to be passed to an object initializer '''
-    if not it.cmds["obj"]:
-      print "item is not an object %s" % item
+    if not it.cmds["obj"] and not it.cmds["objarr"]:
+      print "item is not an object %s" % it
       raise Exception
     args = it.cmds["init_args"]
     if not args: return ""
