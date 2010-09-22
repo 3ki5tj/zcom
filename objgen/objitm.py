@@ -131,7 +131,7 @@ class Item:
         # print "an object array is encountered %s" % self.decl.name; raw_input
         ret = "object array"
         assert "cnt" in cmds
-      elif "cnt" in cmds and cmds["cnt"].strip() != "0":
+      elif "cnt" in cmds:
         ret = "dynamic array"
       elif "obj" in cmds:
         ret = "object pointer"
@@ -143,7 +143,7 @@ class Item:
           print "  set $cnt if it is actually an array"
         ret = "pointer"
 
-    if self.decl.name == "000":
+    if self.decl.name == "000":  # debug code
       print "gtype [%s] with %s, %s" % (ret, offset, types); 
       print "commands: %s" % self.cmds
       raw_input()        
@@ -176,9 +176,9 @@ class Item:
     defval = None
     gtype = self.gtype
     # for arrays, 'def' means the default value of its elements
-    if len(self.decl.types) == 2 and gtype in (
-        "static array", "dynamic array"):
+    if gtype in ("static array", "dynamic array"):
       gtype = self.get_gtype(offset = 1)
+      # print "gtype of %s is %s" % (self.decl.name, gtype); raw_input()
     
     if gtype in ("int", "unsigned", "unsigned int", 
         "long", "unsigned long"):
@@ -230,15 +230,20 @@ class Item:
   def isempty(self):
     return self.empty
 
-  def sub_prefix(it, ptrname, fprefix):
+  def sub_prefix(it, ptrname, fprefix, parent):
     ''' change `@' by ptrname-> in command arguments '''
     # print "cmds:%s." % (it.cmds); raw_input()
     for key in it.cmds:
       val = it.cmds[key]
       if type(val) != str: continue
-      # @- means this is a function 
+      
+      # @- means function prefix
       pattern = r"(?<![\@\\])\@\-(?=\w)"
       val = re.sub(pattern, fprefix, val)
+      
+      # @^ means function prefix
+      pattern = r"(?<![\@\\])\@\^(?=\w)"
+      val = re.sub(pattern, "parent", val)
 
       # @@ means this variable 
       pattern = r"(?<![\@\\])\@\@(?!\w)"
@@ -247,6 +252,19 @@ class Item:
           print "use @@ for %s without decl." % it
           raise_exception
         val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
+
+      # @~ means parent's corresponding name 
+      pattern = r"(?<![\@\\])\@\~(?!\w)"
+      if re.search(pattern, val):
+        if not it.decl:
+          print "use @~ for %s without decl." % it
+          raise_exception
+        val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
+
+      # @< means keyname
+      kprefix = it.cmds["key_prefix"]
+      pattern = r"(?<![\@\\])\@\<(?=\w)"
+      val = re.sub(pattern, kprefix, val)
 
       # @var
       pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
@@ -269,19 +287,23 @@ class Item:
     3. add key_prefix
     4. append key_args, after a `#'
     '''
+
     # skip if it is not a declaration
-    if not it.decl or "key" in it.cmds: return
-    cfgkey = it.decl.name
-    pm = it.cmds["key_unprefix"]
-    if pm and cfgkey.startswith(pm):
-      cfgkey = cfgkey[len(pm):]
+    #if not it.decl or "key" in it.cmds: return
+    if not it.decl: return
 
-    pfx = it.cmds["key_prefix"]
-    if pfx:  cfgkey = pfx + cfgkey
-
+    if "key" in it.cmds:
+      cfgkey = it.cmds["key"]
+    else:
+      cfgkey = it.decl.name
+      pm = it.cmds["key_unprefix"]
+      if pm and cfgkey.startswith(pm):
+        cfgkey = cfgkey[len(pm):]
+      pfx = it.cmds["key_prefix"]
+      if pfx:  cfgkey = pfx + cfgkey
+    # append key argument
     args = it.cmds["key_args"]
     if args: cfgkey += "#" + args
-    
     it.cmds["key"] = cfgkey
 
   def fill_dim(it):

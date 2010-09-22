@@ -49,9 +49,10 @@ Commands of an item:
   * $key:           key to get from configuration file
   * $key_prefix:    prefix to be added when it is deduced from 
                     variable name, usually as a persistent command
-  * $key_args:      printf arguments in constructing key
   * $key_unprefix:  if variable name starts with $key_unprefix, that part 
                     is first removed before applying $key_prefix
+  * $key_args:      printf arguments in constructing key
+  
   * $must:       a critial key that must present in configuration file
 
   * $prereq:      a condition to be tested *before* reading a varible
@@ -73,6 +74,7 @@ Commands of an item:
 
   * $usr:     the variable should be passed as a parameter, 
               not read from the configuration file
+              $usr:parent; is special; */
 
 In a stand-alone comment
 
@@ -101,6 +103,7 @@ from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
+
 
 class Fold:
   ''' a sub-object embedded inside an object '''
@@ -164,7 +167,7 @@ class Object:
     self.fill_cmds()   # get cmds from comment, must be after merging comments
     self.add_dummies() # add dummy declarations for flags and alts
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
-    self.get_prefix()  # determine fprefix and ptrname
+    self.get_prefix()  # determine fprefix, ptrname and parent
     self.init_folds()  # initialize different folds, get prefices
     self.enrich_cmds() # assign default values, etc.
     return 0
@@ -384,13 +387,20 @@ class Object:
     '''
     determine ptrname, variable name for a pointer to the object
     and fprefix, the name attached to functions of the object
+    also find variable's name is parent
     '''
     cmds = self.cmds
     name = self.name
     if name.endswith("_t"): name = name[:-2]
     self.ptrname = cmds["ptrname"] if (cmds and "ptrname" in cmds) else name
     self.fprefix = cmds["fprefix"] if (cmds and "fprefix" in cmds) else name + "_"
-  
+    self.parent = "parent"
+    for it in self.items:
+      if it.decl and it.cmds["usr"] == "parent":
+        self.parent = it.decl.name
+
+
+
   def var2item(self, nm):  # for debug use
     for it in self.items:
       if it.decl and it.decl.name == nm: 
@@ -406,9 +416,13 @@ class Object:
       it.fill_dim()  # test array `cnt' and fill `dim'
       it.fill_io()
       it.fill_test()
-      it.sub_prefix(self.ptrname, self.fprefix) # @ to $ptrname
+      it.sub_prefix(self.ptrname, self.fprefix, 
+          self.parent) # @ to $ptrname
   
   def gen_code(self):
+    ''' 
+    generate code for an object to decl, header, source 
+    '''
     funclist = []
     funclist += [self.gen_func_cfgread()]
     funclist += [self.gen_func_cfgopen()]
@@ -418,15 +432,16 @@ class Object:
       if f == "": continue
       pass
 
-    # assemble everything to header and source
-    header = self.gen_decl().rstrip()
+    decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
     if desc and len(desc):
-      header += " /* " + self.cmds["desc"] + " */"
-    header += "\n\n"
-    source = ""
+      decl += " /* " + self.cmds["desc"] + " */"
+    decl += "\n\n"
+    decl += self.gen_flags_def()
+    self.decl = decl;
 
-    header += self.gen_flags_def()
+    source = ""
+    header = ""
     for f in funclist: # add functions
       header += f[0]
       source += "\n" + f[1] 
@@ -451,8 +466,10 @@ class Object:
         block = [] # empty the block
         cw.addln("#" + item.pre.raw)
         continue
-
+      
       # 2. handle declaration
+      if item.cmds["usr"] == "parent":
+        continue
       if item.decl:
         decl0 = item.decl.datatype
         if item.isdummy: continue
@@ -547,12 +564,14 @@ class Object:
         ow.addln("#" + it.pre.raw)
         continue
       if not it.decl or it.isdummy: continue
+      if it.cmds["usr"] == "parent": continue
 
       varnm = it.decl.name;
       varname = "%s->%s" % (self.ptrname, varnm)
       
-      # print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
-      # raw_input()
+      #if varnm == "cache":
+      #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
+      #  raw_input()
       if it.gtype == "char *": 
         funcfree = "ssdelete"
       elif it.gtype == "dynamic array":
@@ -592,10 +611,14 @@ class Object:
         decl0 = it.decl.datatype
         decl1 = it.decl.raw
         name = it.decl.name
-        usr_name = "usr_%s" % name
-        decl1 = re.sub(name, usr_name, decl1)
+        # replace the name by the proper usr_name in the declarator
+        if it.cmds["usr"] != "parent":
+          usr_name = "usr_%s" % name
+          decl1 = re.sub(name, usr_name, decl1) 
+        else:
+          usr_name = name
         param_list += ", %s %s" % (decl0, decl1)
-        var_list += ", %s" % decl1
+        var_list += ", %s" % usr_name
     return param_list, var_list
 
   def gen_func_cfgread(obj):
@@ -620,6 +643,8 @@ class Object:
     for it in obj.items:
       if it.pre:
         ow.addln("#" + it.pre.raw)
+        continue
+      if it.cmds["usr"] == "parent":
         continue
 
       defl    = it.cmds["def"]
@@ -672,8 +697,8 @@ class Object:
             defl, cnt, desc)
       
       elif it.gtype == "static array":
-        # print "%s: static array of %s" % (varnm, it.gtype)
         etp = it.get_gtype(offset = 1)
+        # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
         if not it.cmds["io_cfg"]: 
           ow.init_sarr(varname, etp, defl, cnt, desc)
         else:
@@ -793,13 +818,20 @@ class Parser:
     '''
     objs = self.objs
     if objs == []: return ""
+    # combine all headers
+    allheaders = ""
+    for obj in objs:
+      allheaders += obj.header
+    
     src = self.src
     p0 = P(0,0)
     s = p0.gettext(src, objs[0].begin) # to the beginning of the first object
     nobjs = len(objs)
     for i in range(nobjs):
       obj  = objs[i]
-      s += obj.header
+      s += obj.decl
+      if i == nobjs - 1: # add function headers after the last the object declaration
+        s += allheaders
       pnext = objs[i+1].begin if i < nobjs - 1 else P(len(src), 0)
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s

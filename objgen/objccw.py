@@ -314,7 +314,7 @@ class CCodeWriter:
     self.begin_if(prereq)
     ivar = "i"
     self.assign(ivar, default, type)
-    self.cfgget_var_low(ivar, key, type, fmt, default, 
+    self.cfgget_var_low(ivar, key, "int", fmt, default, 
         "FALSE", # flag is usually optional
         "%s == 0 || %s == 1" % (ivar, ivar), desc)
     self.begin_if(ivar)
