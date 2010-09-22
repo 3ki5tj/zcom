@@ -230,52 +230,60 @@ class Item:
   def isempty(self):
     return self.empty
 
-  def sub_prefix(it, ptrname, fprefix, parent):
+  def subpfx(it, val, ptrname, fprefix, parent):
     ''' change `@' by ptrname-> in command arguments '''
-    # print "cmds:%s." % (it.cmds); raw_input()
-    for key in it.cmds:
-      val = it.cmds[key]
-      if type(val) != str: continue
-      
-      # @- means function prefix
-      pattern = r"(?<![\@\\])\@\-(?=\w)"
-      val = re.sub(pattern, fprefix, val)
-      
-      # @^ means function prefix
-      pattern = r"(?<![\@\\])\@\^(?=\w)"
-      val = re.sub(pattern, "parent", val)
+    # @- means function prefix
+    pattern = r"(?<![\@\\])\@\-(?=\w)"
+    val = re.sub(pattern, fprefix, val)
+    
+    # @^ means function prefix
+    pattern = r"(?<![\@\\])\@\^(?=\w)"
+    val = re.sub(pattern, "parent", val)
 
-      # @@ means this variable 
-      pattern = r"(?<![\@\\])\@\@(?!\w)"
-      if re.search(pattern, val):
-        if not it.decl:
-          print "use @@ for %s without decl." % it
-          raise_exception
-        val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
+    # @@ means this variable 
+    pattern = r"(?<![\@\\])\@\@(?!\w)"
+    if re.search(pattern, val):
+      if not it.decl:
+        print "use @@ for %s without decl." % it
+        raise_exception
+      val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
 
-      # @~ means parent's corresponding name 
-      pattern = r"(?<![\@\\])\@\~(?!\w)"
-      if re.search(pattern, val):
-        if not it.decl:
-          print "use @~ for %s without decl." % it
-          raise_exception
-        val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
+    # @~ means parent's corresponding name 
+    pattern = r"(?<![\@\\])\@\~(?!\w)"
+    if re.search(pattern, val):
+      if not it.decl:
+        print "use @~ for %s without decl." % it
+        raise_exception
+      val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
 
-      # @< means keyname
-      kprefix = it.cmds["key_prefix"]
+    # @< means keyname
+    kprefix = it.cmds["key_prefix"]
+    if kprefix:
       pattern = r"(?<![\@\\])\@\<(?=\w)"
       val = re.sub(pattern, kprefix, val)
 
-      # @var
-      pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
-      val = re.sub(pattern, ptrname + "->", val)
-      
-      # for a single hanging @, means ptrname
-      pattern = r"(?<![\@\\])\@(?!\w)"
-      if re.search(pattern, val):
-        val = re.sub(pattern, ptrname, val)
+    # @var
+    pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
+    val = re.sub(pattern, ptrname + "->", val)
+    
+    # for a single hanging @, means ptrname
+    pattern = r"(?<![\@\\])\@(?!\w)"
+    if re.search(pattern, val):
+      val = re.sub(pattern, ptrname, val)
 
-      it.cmds[key] = val
+    return val
+
+  def sub_prefix(it, ptrname, fprefix, parent):
+    ''' wrapper of subpfx '''
+    # print "cmds:%s." % (it.cmds); raw_input()
+    for key in it.cmds:
+      val = it.cmds[key]
+      if type(val) == str:
+        it.cmds[key] = it.subpfx(val, ptrname, fprefix, parent)
+      elif type(val) == list:
+        for i in range(len(val)):
+          val[i] = it.subpfx(val[i], ptrname, fprefix, parent)
+      else: continue
     # print "cmds:%s." % (it.cmds); raw_input()
 
   def fill_key(it):
@@ -336,7 +344,9 @@ class Item:
     # default I/O mode, bt for array, cbt for others
     if it.gtype in ("static array", "dynamic array"):
       iodef = "bt"
-    elif  it.gtype in simple_types:
+    elif it.gtype == "char *":
+      iodef = "c"
+    elif it.gtype in simple_types:
       iodef = "cbt"
     else:
       iodef = ""

@@ -28,7 +28,9 @@ class CCodeWriter:
     who = self.body if self.funcname else self
 
     if t.lstrip().startswith("}"): who.dec()
-    if (who.s == "" or who.s.endswith("\n")) and not t.lstrip().startswith("#"):
+    if (who.s == "" or who.s.endswith("\n")) and (
+        not t.lstrip().startswith("#") and 
+        not t.strip().endswith(":")):  # label
       who.s += who.sindent * who.nindents
     who.s += t
     if t.rstrip().endswith("{"): who.inc()
@@ -408,5 +410,66 @@ class CCodeWriter:
     else:
       self.vls[var] = dcl
       self.vars.addln(dcl + ";")
+  
+  def wb_var(self, var, type):
+    if type == "int":
+      s = "BIO_WI(%s);" % var
+    elif type == "double":
+      s = "BIO_WD(%s);" % var
+    else:
+      print "don't know how to write type %s for %s" % (type, var)
+      raise Exception;
+    self.addraw(s + "\n")
 
+  def wb_arr1d(self, arr, cnt, type):
+    if type == "int":
+      s = "BIO_WIARR(%s, %s);" % (arr, cnt)
+    elif type == "double":
+      s = "BIO_WDARR(%s, %s);" % (arr, cnt)
+    else:
+      print "don't know how to write type %s for %s" % (type, arr)
+      raise Exception
+    self.addraw(s + "\n")
+
+  def wb_checkbytes(self):
+    ''' write some checking bytes '''
+    self.declare_var("int size");
+    self.addln("size = sizeof(int);")
+    self.wb_var("size", "int")
+    self.addln("size = sizeof(int);")
+    self.wb_var("size", "int")
+
+  def wb_arr2d(self, arr, dim, tp, trim):
+    self.declare_var("int j")
+    self.declare_var("int i")
+    self.declare_var("int size")
+    
+    pb = "pb%s" % tp[:1]
+    self.declare_var("%s *%s" % (tp, pb))
+    if trim:
+      self.declare_var("int imax")
+      self.declare_var("int imin")
+
+    self.addln("for (j = 0; j < %s; j++) {" % dim[0])
+    self.addln("%s = %s + j * %s;" % (pb, arr, dim[1]))
+    self.addln("for (imin = 0, i = %s-1; i >= 0 && %s[i] > 0.0; i--) ;",
+      dim[1], pb)
+    self.addln("imax = i + 1;")
+    self.addln("for (i = 0; i < imax && %s[i] > 0.0; i++) ;",
+      pb)
+    self.addln("imin = i;")
+    self.addln("if ((size = imax - imin) <= 0) continue;")
+    self.wb_var("j",    "int")  # current row index
+    self.wb_var("imin", "int")  # lowest
+    self.wb_var("size", "int")
+    self.wb_arr1d("%s+imin" % pb, "size", tp)
+    self.addln("}")
+
+  def wb_arr(self, arr, dim, tp, trim):
+    ndim = len(dim)
+    if ndim == 2:
+      self.wb_arr2d(arr, dim, tp, trim)
+    elif ndim == 1:
+      self.wb_arr1d(arr, dim[0], tp)
+    else: raise Exception
 

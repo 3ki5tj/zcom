@@ -74,7 +74,8 @@ Commands of an item:
 
   * $usr:     the variable should be passed as a parameter, 
               not read from the configuration file
-              $usr:parent; is special; */
+              $usr:parent; declare the variable represents 
+              a pointer to the parent object
 
 In a stand-alone comment
 
@@ -85,9 +86,17 @@ In a stand-alone comment
 In arguments of the command, `@' has special meanings
   * @@:       this item
   * @var:     ptrname->var
-  * @_func:   fprefix_func
+  * @-func:   fprefixfunc
   * @:        ptrname
-
+  * @^:       parent (parent is the variable name that has $usr:parent;)
+  * @~:       the corresponding member under parent, e.g.,
+                Dad_t  *d; /* $usr:parent; */
+                int    a;  /* $def: @~;  */
+              the first line declares `d' as a pointer to parent variable,
+              which is a parameter of cfgopen(), @^ means d;
+              on the second line, the default value of `a' is set to 
+              the corresponding variable in `d', that is, d->a.
+               
 TODO:
   * multiple-line support, e.g., typedef\nstruct
   * preprocessor
@@ -430,7 +439,7 @@ class Object:
     # fold-specific functions
     for f in self.folds:
       if f == "": continue
-      pass
+      funclist += [self.gen_func_write_bin(f)]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -549,11 +558,11 @@ class Object:
   def gen_func_close(self):
     ow = CCodeWriter()
     macroname = "%sclose" % self.fprefix
-    fname = macroname + "_"
+    funcnm = macroname + "_"
     macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
-      macroname, self.ptrname, fname, self.ptrname, self.ptrname, self.ptrname)
-    fdecl = "void %s(%s *%s)" % (fname, self.name, self.ptrname)
-    ow.begin_function(fname, fdecl, "close a pointer to %s" % self.name, macro)
+      macroname, self.ptrname, funcnm, self.ptrname, self.ptrname, self.ptrname)
+    fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
+    ow.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
@@ -774,6 +783,52 @@ class Object:
 
     return ow.prototype, ow.function
 
+  def gen_func_write_bin(self, f):
+    ''' write a function of writing data in binary form '''
+    ow = CCodeWriter()
+    funcnm = "%swrite_bin" % self.fprefix
+    fdecl = "int %s(%s *%s, const char *fname, int ver)" % (
+        funcnm, self.name, self.ptrname)
+    ow.begin_function(funcnm, fdecl, 
+        "%s: write %s data as binary" % (self.name, f))
+
+    ow.declare_var("FILE *fp")
+    condf = '(fp = fopen(fname, "wb")) == NULL'
+    ow.begin_if(condf)
+    ow.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
+    ow.addln("return 1;")
+    ow.end_if(condf)
+
+    # add checking bytes
+    ow.wb_checkbytes();
+    ow.wb_var("ver", "int")
+
+    for it in self.items:
+      if it.pre:
+        ow.addln("#" + it.pre.raw)
+        continue
+      if not it.decl or it.isdummy: continue
+      if not it.cmds["io_bin"]: continue
+      if it.cmds["fold"] != f: continue
+
+      print "%s" % it.cmds; raw_input()
+
+      varname = "%s->%s" % (self.ptrname, it.decl.name)
+      dim = it.cmds["dim"]
+      if it.gtype == "dynamic array":
+        ow.wb_arr(varname, dim, it.decl.datatype, 1)
+      else:
+        ow.wb_var(varname, it.gtype)
+
+    ow.addln("fclose(fp);")
+    ow.addln("return 0;")
+    ow.addln("ERR:")
+    ow.addln("fclose(fp);")
+    ow.addln("return 1;")
+    ow.end_function("")
+    return ow.prototype, ow.function
+
+
 class Parser:
   '''
   handle objects in a file
@@ -835,7 +890,6 @@ class Parser:
       pnext = objs[i+1].begin if i < nobjs - 1 else P(len(src), 0)
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
-   
 
 def handle(file, template = ""):
   ''' generate a C file according to a template '''
@@ -859,5 +913,9 @@ def main():
     handle(file)
 
 if __name__ == "__main__":
+  try:
+    import psyco
+    psyco.full()
+  except ImportError: pass
   main()
 
