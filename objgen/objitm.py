@@ -127,14 +127,10 @@ class Item:
       elif nlevels == 2 and types[offset+1] == "char":
         #print "a string is encountered %s" % self.decl.name; raw_input
         ret = "char *"
-      elif "objarr" in cmds:
-        # print "an object array is encountered %s" % self.decl.name; raw_input
-        ret = "object array"
-        assert "cnt" in cmds
+      elif "obj" in cmds:
+        ret = "object array" if cmds["cnt"] else "object pointer"
       elif "cnt" in cmds:
         ret = "dynamic array"
-      elif "obj" in cmds:
-        ret = "object pointer"
       else:
         if (offset == 0 and "cnt" not in cmds 
           and nlevels == 2 
@@ -410,7 +406,7 @@ class Item:
 
   def get_obj_fprefix(it):
     ''' get prefix of an object '''
-    if not it.cmds["obj"] and not it.cmds["objarr"]:
+    if not it.cmds["obj"]:
       print "item is not an object %s" % it
       raise Exception
     pfx = it.cmds["obj_fprefix"]
@@ -422,7 +418,7 @@ class Item:
 
   def get_init_args(it):
     ''' get additional arguments to be passed to an object initializer '''
-    if not it.cmds["obj"] and not it.cmds["objarr"]:
+    if not it.cmds["obj"]:
       print "item is not an object %s" % it
       raise Exception
     args = it.cmds["init_args"]

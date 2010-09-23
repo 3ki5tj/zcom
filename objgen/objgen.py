@@ -67,7 +67,6 @@ Commands of an item:
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it
-  * $objarr:  object array
 
   * $flag:    two fields, name of flag and its value, something like 
               $flag: ABC_FLAG  0x000010;
