@@ -271,7 +271,6 @@ class Item:
 
   def sub_prefix(it, ptrname, fprefix, parent):
     ''' wrapper of subpfx '''
-    # print "cmds:%s." % (it.cmds); raw_input()
     for key in it.cmds:
       val = it.cmds[key]
       if type(val) == str:
@@ -280,7 +279,7 @@ class Item:
         for i in range(len(val)):
           val[i] = it.subpfx(val[i], ptrname, fprefix, parent)
       else: continue
-    # print "cmds:%s." % (it.cmds); raw_input()
+
 
   def fill_key(it):
     ''' 

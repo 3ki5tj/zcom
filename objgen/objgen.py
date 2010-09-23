@@ -55,7 +55,7 @@ Commands of an item:
   
   * $must:       a critial key that must present in configuration file
 
-  * $prereq:      a condition to be tested *before* reading a varible
+  * $prereq:      prerequisite to be tested *before* reading a variable
                   from configuration file, but after assigning the 
                   given by $def; this is the default order because it
                   ensures a variable is assigned at a reasonable value
@@ -66,7 +66,8 @@ Commands of an item:
                   a variable from configuration file
 
   * $obj:     a member object, a function needs to called to properly 
-              initialize it
+              initialize it; 
+              for an object array, also set $cnt;
 
   * $flag:    two fields, name of flag and its value, something like 
               $flag: ABC_FLAG  0x000010;
@@ -75,6 +76,11 @@ Commands of an item:
               not read from the configuration file
               $usr:parent; declare the variable represents 
               a pointer to the parent object
+
+  * $fold:            follow by a fold-identifier
+  * $fold_bin_add:    add some variables (separated by ,) during writing binary
+  * $fold_bin_prereq: quit writing binary if this condition is true
+  * $fold_bin_valid:  test if condition is true
 
 In a stand-alone comment
 
@@ -85,7 +91,7 @@ In a stand-alone comment
 In arguments of the command, `@' has special meanings
   * @@:       this item
   * @var:     ptrname->var
-  * @-func:   fprefixfunc
+  * @-func:   means: fprefix ## func
   * @:        ptrname
   * @^:       parent (parent is the variable name that has $usr:parent;)
   * @~:       the corresponding member under parent, e.g.,
@@ -117,13 +123,11 @@ class Fold:
   ''' a sub-object embedded inside an object '''
   def __init__(self, obj, name):
     # generate a name
-    self.name = obj.name
-    if len(name): self.name += "-%s" % name
-
+    self.name = name
     # generate a function prefix
-    if len(name) and not name.endswith("_"):
-      name += "_"
-    self.fprefix = obj.fprefix + name
+    if not name.endswith("_"):
+      namep = name + "_"
+    self.fprefix = obj.fprefix + namep
     self.items = []
   def additem(self, item):
     self.items += [item]
@@ -380,6 +384,8 @@ class Object:
     ''' 
     initialize folds 
     '''
+    # add a dictionary of Fold's, each of which is an object
+    # the key the fold name
     self.folds = {}
     for it in self.items:
       f = it.cmds["fold"]
@@ -387,10 +393,22 @@ class Object:
         self.folds[f] = Fold(self, f)
       self.folds[f].additem(it)
     print "%s has %d folds" % (self.name, len(self.folds))
+    
     for f in self.folds:
       print "fold %-8s has %3d items" % (f, len(self.folds[f]))
-    
+      self.folds[f].prereq = 1
+      self.folds[f].valid  = 1
 
+  def init_folds2(self):
+    ''' stuff need to be done after @'s are substituted '''
+    for it in self.items: # fill fold-specific prerequisite
+      f = it.cmds["fold"]
+      if len(f) == 0: continue
+      pr = it.cmds["fold_bin_prereq"]
+      if pr: self.folds[f].prereq = pr
+      vd = it.cmds["fold_bin_valid"]
+      if vd: self.folds[f].valid = vd
+    
   def get_prefix(self):
     '''
     determine ptrname, variable name for a pointer to the object
@@ -410,6 +428,10 @@ class Object:
 
 
   def var2item(self, nm):  # for debug use
+    ptrpfx = self.ptrname + "->"
+    if nm.startswith(ptrpfx): # remove the prefix, if any
+      nm = nm[len(ptrpfx):]
+
     for it in self.items:
       if it.decl and it.decl.name == nm: 
         return it
@@ -426,6 +448,7 @@ class Object:
       it.fill_test()
       it.sub_prefix(self.ptrname, self.fprefix, 
           self.parent) # @ to $ptrname
+    self.init_folds2()
   
   def gen_code(self):
     ''' 
@@ -785,11 +808,18 @@ class Object:
   def gen_func_write_bin(self, f):
     ''' write a function of writing data in binary form '''
     ow = CCodeWriter()
-    funcnm = "%swrite_bin" % self.fprefix
+    funcnm = "%swrite_bin" % self.folds[f].fprefix
     fdecl = "int %s(%s *%s, const char *fname, int ver)" % (
         funcnm, self.name, self.ptrname)
     ow.begin_function(funcnm, fdecl, 
-        "%s: write %s data as binary" % (self.name, f))
+        "write %s/%s data as binary" % (self.name, f))
+
+    # add prerequisite/validation tests
+    if self.folds[f].prereq != 1:
+      ow.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
+    if self.folds[f].valid != 1:
+      cond = "%s" % self.folds[f].valid
+      ow.insist(cond, "validation in write binary")
 
     ow.declare_var("FILE *fp")
     condf = '(fp = fopen(fname, "wb")) == NULL'
@@ -806,15 +836,27 @@ class Object:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue
+      if it.cmds["fold"] != f: continue
+      #print "%s" % it.cmds; raw_input()
+     
+      xvars = it.cmds["fold_bin_add"]
+      if xvars: # additional vars to be written to binary file
+        xvl = [s.strip() for s in xvars.split(",")]
+        for xv in xvl:
+          xit = self.var2item(xv)
+          if not xit: raise Exception
+          if xit.gtype == "dynamic array":
+            dim = xit.cmds["dim"]
+            ow.wb_arr(xv, dim, xit.decl.datatype, 1)
+          else:
+            ow.wb_var(xv, xit.gtype)
+        continue
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
-      if it.cmds["fold"] != f: continue
-
-      print "%s" % it.cmds; raw_input()
 
       varname = "%s->%s" % (self.ptrname, it.decl.name)
-      dim = it.cmds["dim"]
       if it.gtype == "dynamic array":
+        dim = it.cmds["dim"]
         ow.wb_arr(varname, dim, it.decl.datatype, 1)
       else:
         ow.wb_var(varname, it.gtype)
@@ -906,7 +948,7 @@ def handle(file, template = ""):
 
 def main():
   #files = ["spb.c", "at.c", "mb.c"]
-  files = ["spb.c"]
+  files = ["mb.c"]
   if len(sys.argv) > 1: files = [sys.argv[1]]
   for file in files:
     handle(file)
