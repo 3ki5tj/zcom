@@ -852,11 +852,9 @@ class Object:
       else:
         ow.wb_var(varname, it.gtype)
 
-    ow.addln("fclose(fp);")
     ow.addln("return 0;")
     ow.addln("ERR:")
-    ow.addln("fclose(fp);")
-    ow.addln("return 1;")
+    ow.addln("return -1;")
     ow.end_function("")
     return ow.prototype, ow.function
 

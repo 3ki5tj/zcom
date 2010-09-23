@@ -349,10 +349,8 @@ class Item:
       iodef = ""
     elif it.gtype in ("static array", "dynamic array"):
       iodef = "bt"
-    elif it.gtype == "char *":
-      iodef = "c"
     elif it.gtype in simple_types:
-      iodef = "cbt"
+      iodef = "c" 
     else:
       iodef = ""
     # assume iodef if necessary
