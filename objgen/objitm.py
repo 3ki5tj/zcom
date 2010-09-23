@@ -326,9 +326,17 @@ class Item:
     if it.gtype == "static array": # static type
       return
     dim = [s.strip() for s in cnt.split(",")] # split into dimensions
+    
     if len(dim) > 2: #
       print "item %s: do not support > 2 dimensional array!"
       raise Exception
+    elif len(dim) > 1:
+      for i in range(len(dim)):
+        if (re.search(r"[\+\-]", dim[i])
+            and not (dim[i][0] == "(" and dim[i][-1:] == ")") ):
+          print "for %s add parentheses around %s, %d" % (
+              it.decl.name, dim[i], i); # raw_input()
+          dim[i] = "(" + dim[i] + ")"
     cnt = '*'.join(dim)
     it.cmds["cnt"] = cnt
     it.cmds["dim"] = dim
@@ -337,7 +345,9 @@ class Item:
     ''' expand the io string '''
     if not it.decl: return
     # default I/O mode, bt for array, cbt for others
-    if it.gtype in ("static array", "dynamic array"):
+    if it.cmds["usr"]:
+      iodef = ""
+    elif it.gtype in ("static array", "dynamic array"):
       iodef = "bt"
     elif it.gtype == "char *":
       iodef = "c"

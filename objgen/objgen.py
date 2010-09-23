@@ -126,7 +126,7 @@ class Fold:
     self.name = name
     # generate a function prefix
     if not name.endswith("_"):
-      namep = name + "_"
+      namep = name + ("_" if len(name) else "")
     self.fprefix = obj.fprefix + namep
     self.items = []
   def additem(self, item):
@@ -455,13 +455,16 @@ class Object:
     generate code for an object to decl, header, source 
     '''
     funclist = []
-    funclist += [self.gen_func_cfgread()]
+    funclist += [self.gen_func_cfgopen_()]
     funclist += [self.gen_func_cfgopen()]
     funclist += [self.gen_func_close()]
+    funclist += [self.gen_func_binwrite_("")]
+    funclist += [self.gen_func_binwrite("")]
     # fold-specific functions
     for f in self.folds:
       if f == "": continue
-      funclist += [self.gen_func_write_bin(f)]
+      funclist += [self.gen_func_binwrite_(f)]
+      funclist += [self.gen_func_binwrite(f)]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -652,7 +655,7 @@ class Object:
         var_list += ", %s" % usr_name
     return param_list, var_list
 
-  def gen_func_cfgread(obj):
+  def gen_func_cfgopen_(obj):
     ''' 
     write a function that initialize an object from configuration file
     Note: it loads configuration parameters only, 
@@ -660,7 +663,7 @@ class Object:
     '''
     objtp   = obj.name
     objptr  = obj.ptrname
-    fread   = "%scfgread"  % obj.fprefix
+    fread   = "%scfgopen_"  % obj.fprefix
     fdesc   = '''initialize members of %s from configuration 
     file `cfg', or if unavailable, from default values ''' % objtp
     
@@ -718,7 +721,7 @@ class Object:
         ow.alloc_darr(varname, etp, cnt)
         ow.declare_var("int i;")
         ow.addln("for (i = 0; i < %s; i++) {" % cnt)
-        s = "0 != %scfgread(%s+i, cfg%s)" % (
+        s = "0 != %scfgopen_(%s+i, cfg%s)" % (
           fpfx, varname, it.get_init_args())
         ow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
         ow.addln("}\n")
@@ -763,7 +766,7 @@ class Object:
     objtp   = obj.name
     objptr  = obj.ptrname
     fopen   = "%scfgopen"  % obj.fprefix
-    fread   = "%scfgread"  % obj.fprefix
+    fread   = fopen + "_"
     fdesc   = '''return a pointer of an initialized %s
               if possible, initial values are taken from configuration
               file `cfg', otherwise default values are assumed ''' % objtp
@@ -805,32 +808,14 @@ class Object:
 
     return ow.prototype, ow.function
 
-  def gen_func_write_bin(self, f):
+  def gen_func_binwrite_(self, f):
     ''' write a function of writing data in binary form '''
     ow = CCodeWriter()
-    funcnm = "%swrite_bin" % self.folds[f].fprefix
-    fdecl = "int %s(%s *%s, const char *fname, int ver)" % (
+    funcnm = "%sbinwrite_" % self.folds[f].fprefix
+    fdecl = "int %s(%s *%s, FILE *fp, int ver)" % (
         funcnm, self.name, self.ptrname)
     ow.begin_function(funcnm, fdecl, 
         "write %s/%s data as binary" % (self.name, f))
-
-    # add prerequisite/validation tests
-    if self.folds[f].prereq != 1:
-      ow.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
-    if self.folds[f].valid != 1:
-      cond = "%s" % self.folds[f].valid
-      ow.insist(cond, "validation in write binary")
-
-    ow.declare_var("FILE *fp")
-    condf = '(fp = fopen(fname, "wb")) == NULL'
-    ow.begin_if(condf)
-    ow.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
-    ow.addln("return 1;")
-    ow.end_if(condf)
-
-    # add checking bytes
-    ow.wb_checkbytes();
-    ow.wb_var("ver", "int")
 
     for it in self.items:
       if it.pre:
@@ -855,9 +840,15 @@ class Object:
       if not it.cmds["io_bin"]: continue
 
       varname = "%s->%s" % (self.ptrname, it.decl.name)
+      dim = it.cmds["dim"]
+      cnt = it.cmds["cnt"]
       if it.gtype == "dynamic array":
-        dim = it.cmds["dim"]
         ow.wb_arr(varname, dim, it.decl.datatype, 1)
+      elif it.gtype == "object array":
+        ow.addln("for (i = 0; i < %s; i++) {", cnt)
+        fpfx = it.get_obj_fprefix();
+        ow.addln("%sbinwrite_(%s+i, fp, ver);", fpfx, varname)
+        ow.addln("}")
       else:
         ow.wb_var(varname, it.gtype)
 
@@ -868,6 +859,41 @@ class Object:
     ow.addln("return 1;")
     ow.end_function("")
     return ow.prototype, ow.function
+
+  def gen_func_binwrite(self, f):
+    ''' write a function of writing data in binary form '''
+    ow = CCodeWriter()
+    funcnm = "%sbinwrite" % self.folds[f].fprefix
+    funcnm_ = funcnm + "_"
+    fdecl = "int %s(%s *%s, const char *fname, int ver)" % (
+        funcnm, self.name, self.ptrname)
+    ow.begin_function(funcnm, fdecl, 
+        "write %s/%s data as binary" % (self.name, f))
+
+    # add prerequisite/validation tests
+    if self.folds[f].prereq != 1:
+      ow.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
+    if self.folds[f].valid != 1:
+      cond = "%s" % self.folds[f].valid
+      ow.insist(cond, "validation in write binary")
+
+    ow.declare_var("FILE *fp")
+    condf = '(fp = fopen(fname, "wb")) == NULL'
+    ow.begin_if(condf)
+    ow.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
+    ow.addln("return -1;")
+    ow.end_if(condf)
+
+    # add checking bytes
+    ow.wb_checkbytes();
+    ow.wb_var("ver", "int")
+    ow.declare_var("int i")
+    ow.addln("i = %s(%s, fp, ver);", funcnm_, self.ptrname);
+    ow.addln("fclose(fp);")
+    ow.addln("return i;")
+    ow.end_function("")
+    return ow.prototype, ow.function
+
 
 
 class Parser:
