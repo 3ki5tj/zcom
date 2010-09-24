@@ -84,7 +84,7 @@ class Commands:
       '''
       goodcmd = 1
       pattern = r"[^\$\\]*(\$)([\w\-]+)\s*([\+\-\:]?=|:?:)\s*(.*?)((?<!\\)\;|$)"
-      m = re.search(pattern, s, re.MULTILINE | re.DOTALL)
+      m = re.search(pattern, s, re.MULTILINE | re.DOTALL) # full command
       if m:
         '''
         group 2 is the cmd
@@ -94,7 +94,8 @@ class Commands:
         cmd  = self.subdash(m.group(2))
         args = m.group(4)
         if m.group(3) in (":=", "::"):
-          if args.strip() == "$0": # means removing a command from the persistent list
+          # we assume @0 means $0, it's just too confusing otherwise
+          if args.strip() in ("$0", "@0"): # means removing a command from the persistent list
             #print "turning off an persistent command, raw=[%s]" % s; raw_input()
             self.persist[cmd] = -1
             goodcmd = 0

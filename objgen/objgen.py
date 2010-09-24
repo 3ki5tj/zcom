@@ -298,10 +298,10 @@ class Object:
           # print "add global command [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
         elif key in p_cmds:
-          # print "remove global command [%s:%s] for %s" % (key, cmds[key], it)
-          # raw_input()
           pval0 = p_cmds[key]
           if persist < 0:
+            #print "remove global command [%s:%s] for %s" % (key, cmds[key], it)
+            #raw_input()
             del p_cmds[key]
           if persist == -2: # preprocessor #else
             assert (key == "#if")
@@ -449,7 +449,9 @@ class Object:
         idep += [items.index(itdep)]
       ideps[i] = idep
     idx = sortidx(ideps)
-    # print idx; raw_input()
+    #print '\n\n'.join(["%3d: %s" % (i, items[idx[i]].getraw()) for i in range(nitems)] )
+    #print idx; raw_input()
+    return [items[idx[i]] for i in range(nitems)]
 
   def gen_code(self):
     ''' 
@@ -798,8 +800,8 @@ class Object:
     ow.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
 
-    self.sort_items(self.folds[f].items, "bin")
-    for it in self.items:
+    bin_items = self.sort_items(self.folds[f].items, "bin")
+    for it in bin_items:
       if it.pre:
         ow.addln("#" + it.pre.raw)
         continue

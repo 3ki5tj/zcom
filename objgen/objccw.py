@@ -412,7 +412,7 @@ class CCodeWriter:
       self.vars.addln(dcl + ";")
   
   def wb_var(self, var, type):
-    if type == "int":
+    if type in ("int", "unsigned", "unsigned int"):
       s = "BIO_WI(%s);" % var
     elif type == "double":
       s = "BIO_WD(%s);" % var
