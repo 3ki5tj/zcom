@@ -30,6 +30,26 @@ class Item:
     self.begin = copy(p)
     self.parse(src, p)
 
+  def duckcopy(s, dcl = 1):
+    ''' 
+    cheaper version of deepcopy 
+    if dcl = 0, .decl and .dl are not copied
+    '''
+    c = Item(None, None)
+    c.empty = s.empty
+    c.src = s.src
+    c.begin = copy(s.begin)
+    c.end = copy(s.end)
+    c.pre = deepcopy(s.pre) # this is cheap, optimized
+    c.cmt = deepcopy(s.cmt)
+    if hasattr(s, "gtype"): c.gtype = s.gtype
+    if hasattr(s, "cmds"): c.cmds = deepcopy(s.cmds)
+    c.itlist = s.itlist  # only a reference
+    if dcl:
+      if hasattr(s, "decl"): c.decl = deepcopy(s.decl)
+      if hasattr(s, "dl"):   c.dl   = deepcopy(s.dl)
+    return c
+
   def __deepcopy__(s, memo):
     c = Item(None, None)
     memo[id(s)] = c
@@ -201,7 +221,7 @@ class Item:
 
   def add_item_to_list(self, dcl): 
     ''' add an item with decl being dcl '''
-    it = deepcopy(self) # make a copy
+    it = self.duckcopy(dcl = 0) # make a copy cheaper than deepcopy
     it.decl = dcl
     it.dl = None   # destory the list
     self.itlist += [it]

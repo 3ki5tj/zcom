@@ -5,10 +5,30 @@ from copy import copy
 class CPreprocessor:
   '''
   preprocessor, taken literally, not understood
+  properties:
+    empty
+    raw
+    begin, end
+    pif, pelse, pendif
   '''
   def __init__(self, src, p):
     self.empty = 1
-    self.parse(src, p)
+    if src:
+      self.parse(src, p)
+
+  def __copy__(s):
+    c = CPreprocessor(None, None)
+    c.empty = s.empty
+    c.raw = s.raw
+    c.begin = copy(s.begin)
+    c.end = copy(s.end)
+    c.pif = s.pif
+    c.pelse = s.pelse
+    c.pendif = s.pendif
+    return c
+
+  def __deepcopy__(s, memo):
+    return copy(s)
 
   def parse(self, src, p):
     s = p.skipspace(src)
@@ -18,6 +38,7 @@ class CPreprocessor:
     self.raw = s[1:].strip()
     self.empty = 0
     p.col += len(s)
+    self.end = copy(p)
 
     self.pif = None
     self.pelse = 0

@@ -39,8 +39,8 @@ class Commands:
   def __copy__(self): # awkward!
     c = Commands("")
     c.raw = s.raw
-    c.cmds = deepcopy(self.cmds)
-    c.persist = deepcopy(self.persist)
+    c.cmds = copy(self.cmds)
+    c.persist = copy(self.persist)
     return c
   def __deepcopy__(s, memo):
     c = Commands("")

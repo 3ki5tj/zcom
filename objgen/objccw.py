@@ -100,7 +100,7 @@ class CCodeWriter:
 
   def notalways(self, cond):
     ''' test if a condition is missing or always true '''
-    return (cond and cond not in ("TRUE", "1", 1))
+    return (cond and cond != 1 and cond != "1")
 
   def begin_if(self, cond):
     '''

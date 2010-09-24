@@ -332,15 +332,6 @@ class Object:
         return it
     else: return None
 
-  def getdeclfrom(obj, var):
-    ''' 
-    for dummy variable, e.g., flag or alternative input,
-    copy declaration of var to me 
-    '''
-    it = obj.var2item(var)
-    if it == None: raise Exception
-    return deepcopy(it.decl)
-    
   def add_dummies(self):
     ''' 
     add a declaration field for dummy variables, 
@@ -363,7 +354,7 @@ class Object:
       else: continue
 
       # now copy the declaration of the reference
-      it.decl = self.getdeclfrom(varref)
+      it.decl = deepcopy(self.var2item(varref).decl)
       it.isdummy = 1
       # print ("copied decl from %s for %s\n" % (varref, it))
       # raw_input()
@@ -458,7 +449,7 @@ class Object:
         idep += [items.index(itdep)]
       ideps[i] = idep
     idx = sortidx(ideps)
-    print idx; raw_input()
+    # print idx; raw_input()
 
   def gen_code(self):
     ''' 
@@ -958,9 +949,11 @@ def main():
     handle(file)
 
 if __name__ == "__main__":
+  '''
   try:
     import psyco
     psyco.full()
   except ImportError: pass
+  '''
   main()
 
