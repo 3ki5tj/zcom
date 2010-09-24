@@ -388,7 +388,7 @@ class Item:
 
     # create itemized io
     it.cmds["io_cfg"] = 1 if "c" in io else 0
-    it.cmds["io_bin"] = 1 if "b" in io else 0
+    it.cmds["io_bin"] = 1 if ("b" in io or it.cmds["usr"]=="bintmp") else 0
     it.cmds["io_txt"] = 1 if "t" in io else 0
 
   def fill_test(it):
@@ -449,11 +449,14 @@ class Item:
     return pfx
 
   def get_init_args(it):
+    return it.get_args("init")
+
+  def get_args(it, tag):
     ''' get additional arguments to be passed to an object initializer '''
     if not it.cmds["obj"]:
       print "item is not an object %s" % it
       raise Exception
-    args = it.cmds["init_args"]
+    args = it.cmds[("%s_args" % tag)]
     if not args: return ""
     arr = args.strip().split(",")
     arr = [""] + [s.strip() for s in arr]
@@ -465,9 +468,19 @@ class Item:
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     cond = it.cmds["bin_prereq"]
+    defl = it.cmds["def"]
+    usrval = it.cmds["usr"]
+    pp = it.cmds["#if"]
+    if pp:
+      ow.addln("#if %s", pp)
     if notalways(cond):
       ow.begin_if(cond)
 
+    if usrval == "bintmp": 
+      ow.declare_var(it.decl.datatype + " " + it.decl.name)
+      if defl:
+        ow.addln("%s = %s;", varname, defl)
+    
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       bincnt = it.cmds["bin_cnt"]
@@ -476,7 +489,8 @@ class Item:
       ow.wb_arr(varname, dim, it.decl.datatype, 1)
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinwrite_(%%s, fp, ver);" % fpfx;
+      funcall = "%sbinwrite_(%%s, fp, ver%s);" % (
+          fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
       ow.wb_objarr(varname, dim, funcall, [1, 1],
@@ -486,4 +500,6 @@ class Item:
 
     if notalways(cond):
       ow.end_if(cond)
+    if pp:
+      ow.addln("#endif")
 

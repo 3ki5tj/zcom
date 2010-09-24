@@ -809,13 +809,14 @@ class Object:
     ''' write a function of writing data in binary form '''
     ow = CCodeWriter()
     funcnm = "%sbinwrite_" % self.folds[f].fprefix
-    fdecl = "int %s(%s *%s, FILE *fp, int ver)" % (
-        funcnm, self.name, self.ptrname)
+    usrs = self.get_usr_vars("bin", f)[0]
+    fdecl = "int %s(%s *%s, FILE *fp, int ver%s)" % (
+        funcnm, self.name, self.ptrname, usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
     ow.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
     
-    usrs = self.get_usr_vars("bin", f)[0]
+    '''
     if len(usrs):
       usrs = [s.strip() for s in usrs.lstrip(", ").split(",")]
       for usr in usrs:
@@ -824,13 +825,12 @@ class Object:
         uit = self.var2item(usrvar)
         defl = uit.cmds["def"]
         if defl:
-          ow.assign("usrvar", "defl", usrtp)
+          ow.assign("usrvar", defl, usrtp)
+    '''
 
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
-      if it.pre:
-        ow.addln("#" + it.pre.raw)
-        continue
+      if it.pre: continue
       if it.cmds["fold"] != f: continue
       #print "%s" % it.cmds; raw_input()
      
@@ -845,7 +845,8 @@ class Object:
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
 
-      varname = "%s->%s" % (self.ptrname, it.decl.name)
+      varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
+          else "") + it.decl.name
       it.binwrite_var(ow, varname)
 
     ow.addln("return 0;")
@@ -859,8 +860,9 @@ class Object:
     ow = CCodeWriter()
     funcnm = "%sbinwrite" % self.folds[f].fprefix
     funcnm_ = funcnm + "_"
-    fdecl = "int %s(%s *%s, const char *fname, int ver)" % (
-        funcnm, self.name, self.ptrname)
+    usrs = self.get_usr_vars("bin", f)
+    fdecl = "int %s(%s *%s, const char *fname, int ver%s)" % (
+        funcnm, self.name, self.ptrname, usrs[0])
     ow.begin_function(funcnm, fdecl, 
         "write %s/%s data as binary" % (self.name, f))
 
@@ -882,7 +884,7 @@ class Object:
     ow.wb_checkbytes();
     ow.wb_var("ver", "int")
     ow.declare_var("int i")
-    ow.addln("i = %s(%s, fp, ver);", funcnm_, self.ptrname);
+    ow.addln("i = %s(%s, fp, ver%s);", funcnm_, self.ptrname, usrs[1]);
     ow.addln("fclose(fp);")
     ow.addln("return i;")
     ow.addln("ERR:")
