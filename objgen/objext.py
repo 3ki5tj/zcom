@@ -5,18 +5,21 @@ additional components
 
 class Fold:
   ''' a sub-object embedded inside an object '''
-  def __init__(self, obj, name):
+  def __init__(f, fprefix, name):
     # generate a name
-    self.name = name
+    f.name = name
     # generate a function prefix
     if not name.endswith("_"):
       namep = name + ("_" if len(name) else "")
-    self.fprefix = obj.fprefix + namep
-    self.items = []
-  def additem(self, item):
-    self.items += [item]
-  def __len__(self):
-    return len(self.items)
+    f.fprefix = fprefix + namep
+    f.items = []
+
+  def additem(f, item):
+    f.items += [item]
+
+  def __len__(f):
+    return len(f.items)
+
 
 def checkcycl_i(deps, i0, n, checked):
   ''' check cyclic dependencies starting from i0 '''

@@ -19,6 +19,29 @@ class CPreprocessor:
     self.empty = 0
     p.col += len(s)
 
+    self.pif = None
+    self.pelse = 0
+    self.pendif = 0
+
+    # try to understand what the preprocessor does
+    s = self.raw
+    if s.startswith("endif"):
+      self.pendif = 1
+    elif s.startswith("if"):
+      if s.startswith("ifdef"):
+        self.pif = "defined(%s)" % s[5:].strip()
+      elif s.startswith("ifndef"):
+        self.pif = "!defined(%s)" % s[6:].strip()
+      else:
+        self.pif = s[2:].strip()
+    elif s.startswith("else"):
+      self.pelse = 1
+    elif s.startswith("elif"):
+      self.pelse = 1
+      self.pif = s[4:].strip()
+    else:
+      pass
+
   def isempty(self): return self.empty
 
 

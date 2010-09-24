@@ -111,13 +111,11 @@ TODO:
 import os, sys, re, filecmp
 from copy    import copy, deepcopy 
 from objpos  import P 
-from objdcl  import CDeclaratorList
 from objcmt  import CComment
-from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
-from objext  import Fold
+from objext  import Fold, sortidx
 
 class Object:
   '''
@@ -280,15 +278,16 @@ class Object:
     p_cmds = Commands("") # persistent commands
     p_cmds["fold"] = ""   # apply an empty fold
     for it in self.items:
-      if not it.cmt:
-        it.cmds = deepcopy(p_cmds)
-        it.cmds["desc"] = ""  # add an empty description
-        continue
+      if it.cmt:
+        cmds = Commands(it.cmt.raw)
+      else:
+        cmds = Commands("")
+        if it.pre:
+          cmds.addpre(it.pre.pif, it.pre.pelse, it.pre.pendif)
       #if "cnt" in p_cmds:
       #  print "cnt is persistent when analysing %s in %s" % (it, self)
       #  raw_input()
 
-      cmds = Commands(it.cmt.raw)
       # update global persistent commands
       for key in cmds.persist:
         persist = cmds.persist[key]
@@ -296,10 +295,19 @@ class Object:
           p_cmds[key] = cmds[key]
           # print "add global command [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
-        elif persist < 0 and key in p_cmds:
+        elif key in p_cmds:
           # print "remove global command [%s:%s] for %s" % (key, cmds[key], it)
           # raw_input()
-          del p_cmds[key]
+          pval0 = p_cmds[key]
+          if persist < 0:
+            del p_cmds[key]
+          if persist == -2: # preprocessor #else
+            assert (key == "#if")
+            newval = "!(%s)" % pval0
+            if cmds[key]: newval += " && (%s)" % cmds[key] 
+            p_cmds[key] = newval
+            cmds[key] = newval
+            print "new[%s] is %s" % (key, newval)
           
       # merge with global persistent commands
       for key in p_cmds:
@@ -370,18 +378,21 @@ class Object:
     '''
     # add a dictionary of Fold's, each of which is an object
     # the key the fold name
-    self.folds = {}
+    folds = {}
     for it in self.items:
       f = it.cmds["fold"]
-      if f not in self.folds:
-        self.folds[f] = Fold(self, f)
-      self.folds[f].additem(it)
-    print "%s has %d folds" % (self.name, len(self.folds))
+      if f not in folds:
+        folds[f] = Fold(self.fprefix, f)
+      folds[f].additem(it)
+    print "%s has %d folds" % (self.name, len(folds))
     
-    for f in self.folds:
-      print "fold %-8s has %3d items" % (f, len(self.folds[f]))
-      self.folds[f].prereq = 1
-      self.folds[f].valid  = 1
+    for f in folds:
+      print "fold %-8s has %3d items" % (f, len(folds[f]))
+      folds[f].prereq = 1
+      folds[f].valid  = 1
+      #for it in folds[f].items: print it.getraw()
+      #raw_input()
+    self.folds = folds
 
   def init_folds2(self):
     ''' stuff need to be done after @'s are substituted '''
@@ -432,15 +443,19 @@ class Object:
           self.parent) # @ to $ptrname
     self.init_folds2()
  
-  def sort_items(items, tag):
-    ''' sort items according to ordering tags '''
+  def sort_items(self, items, tag):
+    ''' 
+    sort items according to ordering tags 
+    `tag' can be bin or cfg
+    '''
+    sprev = "%s_prev" % tag
+    nitems = len(items)
     ideps = [None] * nitems
     # for each item build a dependency list
-    for i in range(len(items)):
+    for i in range(nitems):
       it = items[i]
 
       # parse dependency string
-      sprev = "%s_prev" % tag
       vars = it.cmds[sprev]
       deps = [s.strip() for s in vars.split(",")] if vars else []
 
@@ -450,7 +465,8 @@ class Object:
         if itdep not in items: continue
         idep += [items.index(itdep)]
       ideps[i] = idep
-    
+    idx = sortidx(ideps)
+    print idx; raw_input()
 
   def gen_code(self):
     ''' 
@@ -819,6 +835,7 @@ class Object:
     ow.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
 
+    self.sort_items(self.folds[f].items, "bin")
     for it in self.items:
       if it.pre:
         ow.addln("#" + it.pre.raw)

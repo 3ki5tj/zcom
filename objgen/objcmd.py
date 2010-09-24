@@ -13,9 +13,9 @@ class Commands:
   '''
   def __init__(self, s):
     # do symbol substitution first
-    self.raw = self.subst_symbols(s)
     self.cmds = {}
     self.persist = {}
+    self.raw = self.subst_symbols(s)
     self.parse_commands()
 
   # make the object looks like a dictionary
@@ -59,7 +59,9 @@ class Commands:
     the process
     '''
     s = self.raw
-    if len(s) == 0: return
+    if len(s) == 0: 
+      self.cmds["desc"] = "" # add an empty description
+      return
     pos = 0
    
     ''' 
@@ -143,3 +145,19 @@ class Commands:
     s = re.sub(r"[\$\\]\$", "$", s) # literal $
     s = re.sub(r"\\;", ";", s) # literal ;
     return s
+
+  def addpre(self, pif, pelse, pendif):
+    ''' preprocessor commands '''
+    cmd = "#if"
+    
+    if pif:
+      self.cmds[cmd] = pif
+      self.persist[cmd] = 1
+    
+    if pelse:
+      self.persist[cmd] = -2
+
+    if pendif:
+      assert (not pelse and not pif)
+      self.persist[cmd] = -1
+

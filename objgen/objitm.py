@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 import os, sys, re 
 from copy    import * 
-from objpos  import P 
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
 from objccw  import CCodeWriter
-from objcmd  import Commands
 
 simple_types = ("int", "unsigned int", "unsigned", 
   "long", "unsigned long", "real", "double", "float", 
@@ -76,11 +74,17 @@ class Item:
    
     self.expand_multiple_declarators()
 
+  def getraw(self):
+    return self.begin.gettext(self.src, self.end).strip()
+
+  def __repr__(self):
+    return self.getraw()
+
   def __str__(self):
     return "pre: %5s, dl: %5s, decl: %5s, cmt: %5s, raw = [%s]" % (
         self.pre != None, self.dl != None, 
         self.decl != None, self.cmt != None, 
-        self.begin.gettext(self.src, self.end).strip() )
+        self.getraw() )
 
   def name(self):
     if self.decl: 
