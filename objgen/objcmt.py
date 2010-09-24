@@ -19,10 +19,21 @@ class CComment:
   '''
   def __init__(self, src, p, maxnl = 0):
     self.empty = 1
-    if 0 != self.span(src, p, maxnl):    # .begin, .end, and .raw
+    if not src or 0 != self.span(src, p, maxnl):    # .begin, .end, and .raw
       return
     self.empty = 0
 
+  def __copy__(s):
+    c = CComment(None, None)
+    c.empty = s.empty
+    c.raw = s.raw
+    c.begin = copy(s.begin)
+    c.end = copy(s.end)
+    return c
+
+  def __deepcopy__(self, memo):
+    return copy(self)
+    
   def span(self, src, p, maxnl = 0):
     '''
     find the beginning and end of a comment,

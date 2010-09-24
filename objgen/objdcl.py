@@ -14,13 +14,21 @@ class CDeclarator:
     self.empty = 1
     if src != None:
       self.parse(src, p)
-  
-  def __deepcopy__(s, memo):
+ 
+  def __copy__(s):
     c = CDeclarator(None, None)
-    memo[id(s)] = c
-    for n, v in s.__dict__.iteritems():
-      setattr(c, n, deepcopy(v, memo))
+    c.empty = s.empty
+    c.raw = s.raw
+    c.begin = copy(s.begin)
+    c.end = copy(s.end)
+    c.name = s.name
+    c.datatype = s.datatype
+    c.param_level = s.param_level
+    c.types = copy(s.types)
     return c
+
+  def __deepcopy__(s, memo):
+    return copy(s);
 
   def parse(self, src, p):
     s = p.skipspace(src)
@@ -203,7 +211,7 @@ class CDeclarator:
 class CDeclaratorList(CDeclarator): 
   '''
   C declarations of multiple variables
-  we inherit `dclspec()' and `datatype' from CDeclarator
+  we inherit `dclspec()' from CDeclarator
   '''
   def __init__(self, src, p):
     self.dclist = []

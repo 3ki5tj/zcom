@@ -942,18 +942,16 @@ def handle(file, template = ""):
   open(file, 'w').write(psr.output())
 
 def main():
-  #files = ["spb.c", "at.c", "mb.c"]
-  files = ["mb.c"]
+  files = ["spb.c", "at.c", "mb.c"]
+  #files = ["mb.c"]
   if len(sys.argv) > 1: files = [sys.argv[1]]
   for file in files:
     handle(file)
 
 if __name__ == "__main__":
-  '''
   try:
     import psyco
     psyco.full()
   except ImportError: pass
-  '''
   main()
 

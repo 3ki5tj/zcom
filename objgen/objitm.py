@@ -41,7 +41,7 @@ class Item:
     c.begin = copy(s.begin)
     c.end = copy(s.end)
     c.pre = deepcopy(s.pre) # this is cheap, optimized
-    c.cmt = deepcopy(s.cmt)
+    c.cmt = deepcopy(s.cmt) # also cheap
     if hasattr(s, "gtype"): c.gtype = s.gtype
     if hasattr(s, "cmds"): c.cmds = deepcopy(s.cmds)
     c.itlist = s.itlist  # only a reference

@@ -15,6 +15,10 @@ class P:
     self.row = row
     self.col = col
     self.check() # see if input are integers
+  def __copy__(s):
+    return P(s.row, s.col)
+  def __deepcopy__(s, memo):
+    return copy(s)
   def __str__(self):
     self.check()
     return "line: %d, col %d" % (self.row + 1, self.col + 1)
