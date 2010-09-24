@@ -307,7 +307,7 @@ class CCodeWriter:
     # get flag to a temporary variable i
     if (default not in ("1", "0") or 
         type not in ("unsigned", "unsigned int", "unsigned long")):
-      print "flag %s (key %s) with bad default %s or type %s" % (var, dm(key), default, type)
+      print "flag %s (key %s) with bad default [%s] or type [%s]" % (var, dm(key), default, type)
       raise Exception
     
     self.begin_if(prereq)

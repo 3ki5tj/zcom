@@ -497,47 +497,8 @@ class Object:
     cw = CCodeWriter()
     cw.addln("typedef struct {")
     block = [] # block list
-    for i in range(len(self.items)):
-      item = self.items[i]
-      decl0 = decl1 = scmt = ""
-      # 1. handle pre
-      if item.pre:
-        dump_block(block, cw)
-        block = [] # empty the block
-        cw.addln("#" + item.pre.raw)
-        continue
-      
-      # 2. handle declaration
-      if item.cmds["usr"] not in (None, 1, "cfg"):
-        continue
-      if item.decl:
-        decl0 = item.decl.datatype
-        if item.isdummy: continue
-        decl1 = item.decl.raw
-      else:
-        # skip a comment if it contains instructions
-        if item.cmds["assert"]: continue
-        if item.cmds["call"]:   continue
-        if item.cmds["flag"]:   continue # skip flags
-        #raw_input ("%s %s" % (decl0, decl1))
-
-      # 3. handle comment
-      desc = item.cmds["desc"]
-      if len(desc) > 0:
-        scmt = "/* " + desc + " */"
-      
-      #print "decl: %s, cmds: %s" % (item.decl, item.cmds)
-      #raw_input()
-
-      # 4. output the content
-      if len(decl0) > 0:  # put it to a code block
-        block += [(decl0, decl1+';', scmt)] # just buffer it
-      else:
-        dump_block(block, cw, tab, offset)
-        block = [] # empty the block
-        # also print this line
-        if len(scmt) > 0: 
-          cw.addln(scmt)
+    for it in self.items:
+      block = it.declare_var(cw, block, tab, offset)
     dump_block(block, cw, tab, offset)
     block = []
     cw.addln("} " + self.name + ";")
@@ -580,44 +541,7 @@ class Object:
         it.decl and it.gtype in ("char *", "dynamic array") ) else 0
     maxwid = max(calc_len(it) for it in self.items)
     for it in self.items:
-      if it.pre:
-        ow.addln("#" + it.pre.raw)
-        continue
-      if not it.decl or it.isdummy: continue
-      if it.cmds["usr"] == "parent": continue
-
-      varnm = it.decl.name;
-      varname = "%s->%s" % (self.ptrname, varnm)
-      
-      #if varnm == "cache":
-      #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
-      #  raw_input()
-      if it.gtype == "char *": 
-        funcfree = "ssdelete"
-      elif it.gtype == "dynamic array":
-        funcfree = "free"
-      elif it.gtype == "object pointer":
-        fpfx = it.get_obj_fprefix()
-        funcfree = "%sclose" % fpfx
-      elif it.gtype == "object array": 
-        fpfx = it.get_obj_fprefix()
-        funcfree = "%sclose_" % fpfx
-        cnt = it.cmds["cnt"]
-        ow.declare_var("int i")
-
-        cond = "%s != NULL" % varname
-        ow.begin_if(cond)
-        ow.addln("for (i = 0; i < %s; i++) {" % cnt)
-        ow.addln("%s(%s + i);", funcfree, varname) 
-        ow.addln("}");
-        ow.addln("free(%s);", varname);
-        ow.end_if(cond)
-        continue
-      else:
-        continue
-  
-      ow.addln("if (%-*s != NULL) %s(%s);",
-               maxwid, varname, funcfree, varname)
+      it.close_var(ow, self.ptrname, maxwid)
 
     ow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
     ow.end_function("")
@@ -670,86 +594,8 @@ class Object:
 
     # read configuration file
     for it in obj.items:
-      if it.pre:
-        ow.addln("#" + it.pre.raw)
-        continue
-      if it.cmds["usr"] == "parent":
-        continue
+      it.cfgget_var(ow, obj.ptrname)
 
-      defl    = it.cmds["def"]
-      key     = it.cmds["key"]
-      prereq  = it.cmds["prereq"]
-      tfirst  = it.cmds["test_first"]
-      valid   = it.cmds["valid"]
-      must    = it.cmds["must"]
-      desc    = it.cmds["desc"]
-      cnt     = it.cmds["cnt"]
-
-      if not it.decl: # stand-alone comment
-        ow.add_comment(desc)
-        ow.insist(it.cmds["assert"], desc)
-        call = it.cmds["call"]
-        if call: ow.addln(call + ";")
-        continue
-      
-      varnm = it.decl.name
-      varname = obj.ptrname + "->" + varnm
-
-      # add a remark before we start
-      ow.add_comment(desc)
-
-      if "flag" in it.cmds and "key" in it.cmds: # input flag
-        flag = it.get_flag()
-        fmt = it.type2fmt(it.gtype)
-        ow.cfgget_flag(varname, key, flag, it.gtype, fmt,
-            defl, prereq, desc)
-      
-      elif it.gtype == "object pointer":
-        fpfx = it.get_obj_fprefix()
-        s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
-          fpfx, it.get_init_args())
-        ow.die_if(s, r"failed to initialize %s\n" % varname)
-
-      elif it.gtype == "object array":
-        fpfx = it.get_obj_fprefix()
-        etp = it.get_gtype(offset = 1)
-        ow.alloc_darr(varname, etp, cnt)
-        ow.declare_var("int i;")
-        ow.addln("for (i = 0; i < %s; i++) {" % cnt)
-        s = "0 != %scfgopen_(%s+i, cfg%s)" % (
-          fpfx, varname, it.get_init_args())
-        ow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
-        ow.addln("}\n")
-
-      elif it.gtype == "dynamic array":
-        ow.init_darr(varname, it.get_gtype(offset = 1),
-            defl, cnt, desc)
-      
-      elif it.gtype == "static array":
-        etp = it.get_gtype(offset = 1)
-        # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
-        if not it.cmds["io_cfg"]: 
-          ow.init_sarr(varname, etp, defl, cnt, desc)
-        else:
-          fmt  = it.type2fmt(etp)
-          cmpl = it.cmds["complete"]
-          ow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
-              must, valid, cmpl, desc)
-
-      else: # regular variable
-        usrval = it.cmds["usr"]
-        if usrval:
-          if usrval in ("cfg", 1): # usr variables
-            ow.assign(varname, "usr_%s" % varnm, it.gtype)
-          else: pass # ignore other usr variables
-        elif not it.cmds["io_cfg"]: # assign default value
-          if len(defl): 
-            ow.assign(varname, defl, it.gtype);
-        else:
-          fmt = it.type2fmt(it.gtype)
-          ow.cfgget_var(varname, key, it.gtype, fmt, 
-            defl, must, prereq, tfirst, valid, desc)
-    
     ow.end_function("return 0;")
     return ow.prototype, ow.function
 
@@ -816,18 +662,6 @@ class Object:
     ow.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
     
-    '''
-    if len(usrs):
-      usrs = [s.strip() for s in usrs.lstrip(", ").split(",")]
-      for usr in usrs:
-        ow.declare_var(usr)
-        usrtp, usrvar = usr.split()
-        uit = self.var2item(usrvar)
-        defl = uit.cmds["def"]
-        if defl:
-          ow.assign("usrvar", defl, usrtp)
-    '''
-
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
       if it.pre: continue
