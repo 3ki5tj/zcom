@@ -20,6 +20,29 @@ class Fold:
   def __len__(f):
     return len(f.items)
 
+def dump_block(block, cw, tab = 4, offset = 2):
+  ''' 
+  dump a block of lines that are broken to fields 
+  cw is a CodeWriter
+  '''
+  if len(block) == 0: return
+  nfields = len(block[0])
+  wid = [8] * nfields
+  #print "block of %s\n%s" % (len(block), block)
+  #raw_input()
+
+  # align and format all items in the bufferred block
+  # and append the result to string s
+  for j in range(nfields):
+    w = max(len(item[j]) for item in block) + 1 # +1 for the following blank
+    wid[j] = ((w + offset + tab - 1) // tab)*tab - offset
+
+  for item in block:
+    s = ""
+    for j in range(nfields-1):
+      s += "%-*s" % (wid[j], item[j])
+    s += item[nfields - 1] 
+    cw.addln(s.rstrip())
 
 def checkcycl_i(deps, i0, n, checked):
   ''' check cyclic dependencies starting from i0 '''

@@ -115,7 +115,7 @@ from objcmt  import CComment
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
-from objext  import Fold, sortidx
+from objext  import *
 
 class Object:
   '''
@@ -263,10 +263,12 @@ class Object:
     #raw_input()
 
   def expand_multidecl_items(self):
-    nitems = []
-    for it in self.items:
-      nitems += it.itlist
-    self.items = nitems
+    ''' expand lines that declares multiple items, 
+    e.g.,   int a, b, c;  '''
+    its = []
+    for it in self.items: 
+      its += it.itlist
+    self.items = its
 
   def fill_cmds(self):
     ''' 
@@ -317,27 +319,27 @@ class Object:
           # raw_input()
       it.cmds = cmds
  
+  def var2item(self, nm):  # for debug use
+    if nm.startswith("@"):
+      nm = nm[1:]
+    elif hasattr(self, 'ptrname'):
+      ptrpfx = self.ptrname + "->"
+      if nm.startswith(ptrpfx): # remove the prefix, if any
+        nm = nm[len(ptrpfx):]
+
+    for it in self.items:
+      if it.decl and it.decl.name == nm: 
+        return it
+    else: return None
+
   def getdeclfrom(obj, var):
     ''' 
     for dummy variable, e.g., flag or alternative input,
     copy declaration of var to me 
     '''
-    if var == None:
-      print "variable name is None"
-      raise Exception
-    # print "calling substitution for [%s]" % var; raw_input
-    
-    # we first strip away the prefix, if any
-    if var.startswith("@"): # in case substitution
-      var = var[1:]
-
-    # search over items
-    for it in obj.items:
-      if (not it.isdummy and it.decl.name == var):
-        return deepcopy(it.decl)
-    else:
-      print "cannot determine the type of [%s]" % var
-      raise Exception
+    it = obj.var2item(var)
+    if it == None: raise Exception
+    return deepcopy(it.decl)
     
   def add_dummies(self):
     ''' 
@@ -419,16 +421,6 @@ class Object:
     for it in self.items:
       if it.decl and it.cmds["usr"] == "parent":
         self.parent = it.decl.name
-
-  def var2item(self, nm):  # for debug use
-    ptrpfx = self.ptrname + "->"
-    if nm.startswith(ptrpfx): # remove the prefix, if any
-      nm = nm[len(ptrpfx):]
-
-    for it in self.items:
-      if it.decl and it.decl.name == nm: 
-        return it
-    else: return None
 
   def enrich_cmds(self):
     ''' refine and enrich commands '''
@@ -514,7 +506,7 @@ class Object:
       decl0 = decl1 = scmt = ""
       # 1. handle pre
       if item.pre:
-        self.dump_block(block, cw)
+        dump_block(block, cw)
         block = [] # empty the block
         cw.addln("#" + item.pre.raw)
         continue
@@ -545,36 +537,16 @@ class Object:
       if len(decl0) > 0:  # put it to a code block
         block += [(decl0, decl1+';', scmt)] # just buffer it
       else:
-        self.dump_block(block, cw, tab, offset)
+        dump_block(block, cw, tab, offset)
         block = [] # empty the block
         # also print this line
         if len(scmt) > 0: 
           cw.addln(scmt)
-    self.dump_block(block, cw, tab, offset)
+    dump_block(block, cw, tab, offset)
     block = []
     cw.addln("} " + self.name + ";")
     
     return cw.gets()
-
-  def dump_block(self, block, cw, tab = 4, offset = 2):
-    if len(block) == 0: return
-    nfields = len(block[0])
-    wid = [8] * nfields
-    #print "block of %s\n%s" % (len(block), block)
-    #raw_input()
-
-    # align and format all items in the bufferred block
-    # and append the result to string s
-    for j in range(nfields):
-      w = max(len(item[j]) for item in block) + 1 # +1 for the following blank
-      wid[j] = ((w + offset + tab - 1) // tab)*tab - offset
-
-    for item in block:
-      s = ""
-      for j in range(nfields-1):
-        s += "%-*s" % (wid[j], item[j])
-      s += item[nfields - 1] 
-      cw.addln(s.rstrip())
 
   def gen_flags_def(self):
     tab = 4
@@ -593,9 +565,9 @@ class Object:
         # print flag, bval, cmt; raw_input()
         block += [("#define", flag, bval, cmt)]
       else:
-        self.dump_block(block, cw, tab, offset)
+        dump_block(block, cw, tab, offset)
         block = []
-    self.dump_block(block, cw, tab, offset)
+    dump_block(block, cw, tab, offset)
     return cw.gets()
 
   def gen_func_close(self):
