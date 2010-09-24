@@ -9,13 +9,13 @@ e.g., read parameters from configuration file
 Commands syntax
   $cmd = args;
 or
-  $cmd[;]  (lazy command for switches)
+  $cmd;  (lazy command mainly for switches)
   + cmd contains characters, numbers, and _ or -
   + the operator = can be replaced by :, it can also be := for
     persistent commands
   + currently args cannot contain ; even within a string
     it should be replaced by \\;
-  + $# ... ; means a comment commands
+  + $# ... ; means a comment on commands
   + if the terminal ; is missing, args extend to the end of line
 
 Commands of an object:
@@ -117,23 +117,7 @@ from objpre  import CPreprocessor
 from objccw  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
-
-
-class Fold:
-  ''' a sub-object embedded inside an object '''
-  def __init__(self, obj, name):
-    # generate a name
-    self.name = name
-    # generate a function prefix
-    if not name.endswith("_"):
-      namep = name + ("_" if len(name) else "")
-    self.fprefix = obj.fprefix + namep
-    self.items = []
-  def additem(self, item):
-    self.items += [item]
-  def __len__(self):
-    return len(self.items)
-
+from objext  import Fold
 
 class Object:
   '''
@@ -425,8 +409,6 @@ class Object:
       if it.decl and it.cmds["usr"] == "parent":
         self.parent = it.decl.name
 
-
-
   def var2item(self, nm):  # for debug use
     ptrpfx = self.ptrname + "->"
     if nm.startswith(ptrpfx): # remove the prefix, if any
@@ -449,7 +431,27 @@ class Object:
       it.sub_prefix(self.ptrname, self.fprefix, 
           self.parent) # @ to $ptrname
     self.init_folds2()
-  
+ 
+  def sort_items(items, tag):
+    ''' sort items according to ordering tags '''
+    ideps = [None] * nitems
+    # for each item build a dependency list
+    for i in range(len(items)):
+      it = items[i]
+
+      # parse dependency string
+      sprev = "%s_prev" % tag
+      vars = it.cmds[sprev]
+      deps = [s.strip() for s in vars.split(",")] if vars else []
+
+      idep = [] # build dependency list
+      for dep in deps:
+        itdep = self.var2item(dep)
+        if itdep not in items: continue
+        idep += [items.index(itdep)]
+      ideps[i] = idep
+    
+
   def gen_code(self):
     ''' 
     generate code for an object to decl, header, source 
@@ -805,7 +807,6 @@ class Object:
     if cfgopen:
       ow.addln("cfgclose(cfg);")
     ow.end_function("return %s;" % objptr)
-
     return ow.prototype, ow.function
 
   def gen_func_binwrite_(self, f):
@@ -814,8 +815,9 @@ class Object:
     funcnm = "%sbinwrite_" % self.folds[f].fprefix
     fdecl = "int %s(%s *%s, FILE *fp, int ver)" % (
         funcnm, self.name, self.ptrname)
+    title = self.name + (("/%s" % f) if len(f) else "")
     ow.begin_function(funcnm, fdecl, 
-        "write %s/%s data as binary" % (self.name, f))
+        "write %s data as binary" % title)
 
     for it in self.items:
       if it.pre:
@@ -825,32 +827,18 @@ class Object:
       #print "%s" % it.cmds; raw_input()
      
       xvars = it.cmds["fold_bin_add"]
-      if xvars: # additional vars to be written to binary file
+      if xvars: # additional vars to the fold variables
         xvl = [s.strip() for s in xvars.split(",")]
         for xv in xvl:
           xit = self.var2item(xv)
           if not xit: raise Exception
-          if xit.gtype == "dynamic array":
-            dim = xit.cmds["dim"]
-            ow.wb_arr(xv, dim, xit.decl.datatype, 1)
-          else:
-            ow.wb_var(xv, xit.gtype)
+          xit.binwrite_var(ow, xv)
         continue
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
 
       varname = "%s->%s" % (self.ptrname, it.decl.name)
-      dim = it.cmds["dim"]
-      cnt = it.cmds["cnt"]
-      if it.gtype == "dynamic array":
-        ow.wb_arr(varname, dim, it.decl.datatype, 1)
-      elif it.gtype == "object array":
-        ow.addln("for (i = 0; i < %s; i++) {", cnt)
-        fpfx = it.get_obj_fprefix();
-        ow.addln("%sbinwrite_(%s+i, fp, ver);", fpfx, varname)
-        ow.addln("}")
-      else:
-        ow.wb_var(varname, it.gtype)
+      it.binwrite_var(ow, varname)
 
     ow.addln("return 0;")
     ow.addln("ERR:")
@@ -889,6 +877,9 @@ class Object:
     ow.addln("i = %s(%s, fp, ver);", funcnm_, self.ptrname);
     ow.addln("fclose(fp);")
     ow.addln("return i;")
+    ow.addln("ERR:")
+    ow.addln("fclose(fp);")
+    ow.addln("return -1;")
     ow.end_function("")
     return ow.prototype, ow.function
 

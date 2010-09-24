@@ -347,7 +347,7 @@ class Item:
     # default I/O mode, bt for array, cbt for others
     if it.cmds["usr"]:
       iodef = ""
-    elif it.gtype in ("static array", "dynamic array"):
+    elif it.gtype in ("dynamic array", "object array"):
       iodef = "bt"
     elif it.gtype in simple_types:
       iodef = "c" 
@@ -436,5 +436,19 @@ class Item:
     # print args; raw_input()
     return args
 
-
+  def binwrite_var(it, ow, varname):
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    if it.gtype == "dynamic array":
+      # support nasty flag $bin_cnt
+      bincnt = it.cmds["bin_cnt"]
+      if len(dim) == 1 and bincnt:
+        dim[0] = bincnt
+      ow.wb_arr(varname, dim, it.decl.datatype, 1)
+    elif it.gtype == "object array":
+      fpfx = it.get_obj_fprefix();
+      funcall = "%sbinwrite_(%%s, fp, ver);" % fpfx;
+      ow.wb_objarr(varname, dim, funcall, [1, 1])
+    else:
+      ow.wb_var(varname, it.gtype)
 

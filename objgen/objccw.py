@@ -442,7 +442,8 @@ class CCodeWriter:
   def wb_arr2d(self, arr, dim, tp, trim):
     self.declare_var("int j")
     self.declare_var("int i")
-    self.declare_var("int size")
+    if trim:
+      self.declare_var("int size")
     
     pb = "pb%s" % tp[:1]
     self.declare_var("%s *%s" % (tp, pb))
@@ -452,17 +453,21 @@ class CCodeWriter:
 
     self.addln("for (j = 0; j < %s; j++) {" % dim[0])
     self.addln("%s = %s + j * %s;" % (pb, arr, dim[1]))
-    self.addln("for (imin = 0, i = %s-1; i >= 0 && %s[i] > 0.0; i--) ;",
-      dim[1], pb)
-    self.addln("imax = i + 1;")
-    self.addln("for (i = 0; i < imax && %s[i] > 0.0; i++) ;",
-      pb)
-    self.addln("imin = i;")
-    self.addln("if ((size = imax - imin) <= 0) continue;")
+    if trim:
+      self.addln("for (imin = 0, i = %s-1; i >= 0 && %s[i] > 0.0; i--) ;",
+        dim[1], pb)
+      self.addln("imax = i + 1;")
+      self.addln("for (i = 0; i < imax && %s[i] > 0.0; i++) ;",
+        pb)
+      self.addln("imin = i;")
+      self.addln("if ((size = imax - imin) <= 0) continue;")
     self.wb_var("j",    "int")  # current row index
-    self.wb_var("imin", "int")  # lowest
-    self.wb_var("size", "int")
-    self.wb_arr1d("%s+imin" % pb, "size", tp)
+    if trim:
+      self.wb_var("imin", "int")  # lowest
+      self.wb_var("size", "int")
+      self.wb_arr1d("%s+imin" % pb, "size", tp)
+    else:
+      self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
 
   def wb_arr(self, arr, dim, tp, trim):
@@ -472,4 +477,28 @@ class CCodeWriter:
     elif ndim == 1:
       self.wb_arr1d(arr, dim[0], tp)
     else: raise Exception
+
+  def wb_objarr1d(self, arr, dim, funcall, widx):
+    self.declare_var("int i")
+    self.addln("for (i = 0; i < %s; i++) {", dim[0])
+    if widx[0]: self.wb_var("i", "int")
+    self.addln(funcall, arr + "+i")
+    self.addln("}")
+
+  def wb_objarr2d(self, arr, dim, funcall, widx):
+    self.declare_var("int j")
+    self.addln("for (j = 0; j < %s; j++) {", dim[0])
+    if widx[0]: self.wb_var("j", "int")
+    self.wb_objarr1d("%s+j*%s" % (arr, dim[1]),
+        dim[1:], funcall, widx[1:])
+    self.addln("}")
+
+  def wb_objarr(self, arr, dim, funcall, widx):
+    ''' wrapper for writing an object array '''
+    self.die_if("%s == NULL" % arr, "array is empty")
+    ndim = len(dim)
+    if ndim == 2:
+      self.wb_objarr2d(arr, dim, funcall, widx)
+    elif ndim == 1:
+      self.wb_objarr1d(arr, dim, funcall, widx)
 
