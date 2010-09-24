@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import os, sys, re
-from copy import copy
-  
+from copy   import copy
+from objext import notalways
+
 def dm(s):
   ''' %d --> %%d in a string '''
   return re.sub(r"\%", "%%", s)
@@ -98,16 +99,12 @@ class CCodeWriter:
       if i == n - 1: s += " */"
       self.addln(s)
 
-  def notalways(self, cond):
-    ''' test if a condition is missing or always true '''
-    return (cond and cond != 1 and cond != "1")
-
   def begin_if(self, cond):
     '''
     start an if block
     note: it starts only if cond is not always true
     '''
-    if self.notalways(cond):
+    if notalways(cond):
       self.addln("if (%s) {", cond)
 
   def begin_else_if(self, cond):
@@ -117,7 +114,7 @@ class CCodeWriter:
     self.addln("} else {")
 
   def end_if(self, cond):
-    if self.notalways(cond):
+    if notalways(cond):
       self.addln("}")
 
   def simple_if(self, tag, cond, msg, args):
@@ -152,7 +149,7 @@ class CCodeWriter:
 
   def insist(self, cond, msg, args = None):
     ''' die if cond is *not* true '''
-    if self.notalways(cond):
+    if notalways(cond):
       self.simple_if("die", " !(%s)" % cond, msg, args)
 
   def init_sarr(self, var, type, default, cnt, desc):
@@ -478,27 +475,45 @@ class CCodeWriter:
       self.wb_arr1d(arr, dim[0], tp)
     else: raise Exception
 
-  def wb_objarr1d(self, arr, dim, funcall, widx):
+  def wb_objarr1d(self, arr, dim, funcall, widx, imin, imax):
     self.declare_var("int i")
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
     if widx[0]: self.wb_var("i", "int")
     self.addln(funcall, arr + "+i")
     self.addln("}")
 
-  def wb_objarr2d(self, arr, dim, funcall, widx):
+  def wb_objarr2d(self, arr, dim, funcall, widx, imin, imax):
     self.declare_var("int j")
     self.addln("for (j = 0; j < %s; j++) {", dim[0])
-    if widx[0]: self.wb_var("j", "int")
-    self.wb_objarr1d("%s+j*%s" % (arr, dim[1]),
-        dim[1:], funcall, widx[1:])
+    if widx[0]: self.wb_var("j", "int") # write index j
+    self.declare_var("int imin")
+    self.declare_var("int imax")
+    self.declare_var("int size")
+    arr1d = "%s+j*%s" % (arr, dim[1])
+    if imin or imax:
+      if imin:
+        self.addln("imin = %s;" % imin)
+      else:
+        self.addln("imin = 0;")
+      if imax:
+        self.addln("imax = %s" % imax)
+      else:
+        self.addln("imax = %s" % dim[1])
+      self.addln("size = imax - imin;")
+      size = "size"
+      arr1d += "+imin"
+    else:
+      size = dim[1]
+    self.wb_objarr1d(arr1d,
+        [size], funcall, widx[1:], None, None)
     self.addln("}")
 
-  def wb_objarr(self, arr, dim, funcall, widx):
+  def wb_objarr(self, arr, dim, funcall, widx, imin, imax):
     ''' wrapper for writing an object array '''
     self.die_if("%s == NULL" % arr, "array is empty")
     ndim = len(dim)
     if ndim == 2:
-      self.wb_objarr2d(arr, dim, funcall, widx)
+      self.wb_objarr2d(arr, dim, funcall, widx, imin, imax)
     elif ndim == 1:
-      self.wb_objarr1d(arr, dim, funcall, widx)
+      self.wb_objarr1d(arr, dim, funcall, widx, imin, imax)
 

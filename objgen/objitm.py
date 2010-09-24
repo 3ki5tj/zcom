@@ -5,6 +5,7 @@ from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
 from objccw  import CCodeWriter
+from objext  import notalways
 
 simple_types = ("int", "unsigned int", "unsigned", 
   "long", "unsigned long", "real", "double", "float", 
@@ -463,6 +464,10 @@ class Item:
   def binwrite_var(it, ow, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
+    cond = it.cmds["bin_prereq"]
+    if notalways(cond):
+      ow.begin_if(cond)
+
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       bincnt = it.cmds["bin_cnt"]
@@ -472,7 +477,13 @@ class Item:
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinwrite_(%%s, fp, ver);" % fpfx;
-      ow.wb_objarr(varname, dim, funcall, [1, 1])
+      imin = it.cmds["bin_imin"]
+      imax = it.cmds["bin_imax"]
+      ow.wb_objarr(varname, dim, funcall, [1, 1],
+          imin, imax)
     else:
       ow.wb_var(varname, it.gtype)
+
+    if notalways(cond):
+      ow.end_if(cond)
 

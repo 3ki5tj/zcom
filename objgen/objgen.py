@@ -445,6 +445,9 @@ class Object:
       idep = [] # build dependency list
       for dep in deps:
         itdep = self.var2item(dep)
+        if not itdep:
+          print "dependencies variable %s of %s is not found!" % (dep, it.decl.name)
+          raise Exception
         if itdep not in items: continue
         idep += [items.index(itdep)]
       ideps[i] = idep
@@ -505,7 +508,7 @@ class Object:
         continue
       
       # 2. handle declaration
-      if item.cmds["usr"] == "parent":
+      if item.cmds["usr"] not in (None, 1, "cfg"):
         continue
       if item.decl:
         decl0 = item.decl.datatype
@@ -620,7 +623,9 @@ class Object:
     ow.end_function("")
     return ow.prototype, ow.function
 
-  def get_usr_vars(self):
+  def get_usr_vars(self, tag, f = None):
+    ''' tag can be "cfg", "bin", "txt" '''
+    if tag not in ("cfg", "bin", "txt"): raise Exception
     param_list = ""
     var_list = ""
     for it in self.items:
@@ -628,12 +633,19 @@ class Object:
         decl0 = it.decl.datatype
         decl1 = it.decl.raw
         name = it.decl.name
+        usrval = it.cmds["usr"]
+        usr_name = name
         # replace the name by the proper usr_name in the declarator
-        if it.cmds["usr"] != "parent":
-          usr_name = "usr_%s" % name
+        if usrval == "parent" and tag == "cfg":
+          pass
+        elif usrval == tag or (tag == "cfg" and usrval == 1):
+          if f and it not in self.folds[f].items:
+            continue  # wrong fold
+          if tag == "cfg": usr_name = "usr_%s" % name
           decl1 = re.sub(name, usr_name, decl1) 
         else:
-          usr_name = name
+          continue # irrelavent variables
+          #print "strange: tag:%s, usr:%s," % (tag, usrval); raw_input()
         param_list += ", %s %s" % (decl0, decl1)
         var_list += ", %s" % usr_name
     return param_list, var_list
@@ -651,7 +663,7 @@ class Object:
     file `cfg', or if unavailable, from default values ''' % objtp
     
     cfgdecl = "cfgdata_t *cfg"
-    usrvars = obj.get_usr_vars()
+    usrvars = obj.get_usr_vars("cfg")
     fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
     ow = CCodeWriter()
     ow.begin_function(fread, fdecl, fdesc)
@@ -725,8 +737,11 @@ class Object:
               must, valid, cmpl, desc)
 
       else: # regular variable
-        if "usr" in it.cmds: # usr variables
-          ow.assign(varname, "usr_%s" % varnm, it.gtype)
+        usrval = it.cmds["usr"]
+        if usrval:
+          if usrval in ("cfg", 1): # usr variables
+            ow.assign(varname, "usr_%s" % varnm, it.gtype)
+          else: pass # ignore other usr variables
         elif not it.cmds["io_cfg"]: # assign default value
           if len(defl): 
             ow.assign(varname, defl, it.gtype);
@@ -755,7 +770,7 @@ class Object:
               file `cfg', otherwise default values are assumed ''' % objtp
     
     cfgdecl = "cfgdata_t *cfg"
-    usrvars = obj.get_usr_vars()
+    usrvars = obj.get_usr_vars("cfg")
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
             "const char *fname" if cfgopen else cfgdecl, 
             usrvars[0])
@@ -799,6 +814,17 @@ class Object:
     title = self.name + (("/%s" % f) if len(f) else "")
     ow.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
+    
+    usrs = self.get_usr_vars("bin", f)[0]
+    if len(usrs):
+      usrs = [s.strip() for s in usrs.lstrip(", ").split(",")]
+      for usr in usrs:
+        ow.declare_var(usr)
+        usrtp, usrvar = usr.split()
+        uit = self.var2item(usrvar)
+        defl = uit.cmds["def"]
+        if defl:
+          ow.assign("usrvar", "defl", usrtp)
 
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
@@ -935,6 +961,7 @@ def handle(file, template = ""):
   if template == "":
     pt = os.path.splitext(file)
     template = pt[0] + '.0' + pt[1]
+    ref = pt[0] + '1' + pt[1]
 
   # read in the template
   src = open(template, 'r').readlines()
@@ -942,6 +969,11 @@ def handle(file, template = ""):
   psr = Parser(src)
   # write the processed file
   open(file, 'w').write(psr.output())
+
+  if os.path.exists(ref):
+    if not filecmp.cmp(file, ref):
+      print "File %s is different from %s" % (file, ref)
+      raw_input()
 
 def main():
   files = ["spb.c", "at.c", "mb.c"]

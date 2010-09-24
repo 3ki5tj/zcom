@@ -3,6 +3,10 @@
 additional components 
 '''
 
+def notalways(cond):
+  ''' test if a condition is missing or always true '''
+  return cond not in (None, 1, "1", "TRUE")
+
 class Fold:
   ''' a sub-object embedded inside an object '''
   def __init__(f, fprefix, name):
