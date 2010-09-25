@@ -11,7 +11,7 @@ class CCodeWriter:
   '''
   output code in an indented fashion
   '''
-  enabletpcheck = 1
+  enabletpcheck = 0  # disable it by default
   sindent = "  "
 
   def __init__(self, nindents = 0):
@@ -132,22 +132,6 @@ class CCodeWriter:
     self.merge_if_blocks()
     return self.s
  
-  def print_file_line(self):
-    self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
-
-  def errmsg(self, msg, args = ""):
-    ''' print an error message with FILE/LINE 
-    NOTE: args are arguments for fprintf, not formatting args for msg '''
-    if len(args):
-      args = ", " + args.lstrip(" ,")
-    msg = r'fprintf(stderr, "error: %s\n"%s);' % (msg, args)
-    self.addraw(msg + '\n')
-    self.print_file_line()
-
-  def err_ret(self, ret, msg, args = ""):
-    self.errmsg(msg, args)
-    self.addln("return %s;", ret)
-
   def add_comment(self, text):
     ''' format text and put them in comment '''
     if not text or len(text) == 0: return
@@ -177,45 +161,63 @@ class CCodeWriter:
     if notalways(cond):
       self.addln("}")
 
-  def simple_if(self, tag, addfl, cond, msg, args):
+  def print_file_line(self):
+    self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
+
+  def errmsg(self, msg, args = "", addfl = 0, pfx = None):
+    ''' 
+    print an error message with FILE/LINE 
+    NOTE: args are arguments for fprintf, not formatting args for msg 
+    arguments are separated by `,' 
+    '''
+    lead = self.sindent * 2 
+    
+    # break msg into multiple line messages
+    msgs = msg.splitlines()
+    n = len(msgs)
+    sarr = [""] * n
+    sarr[0] = r'fprintf(stderr, "%s%s\n"' % (
+        (pfx + ": " if pfx else ""), msgs[0])
+    for i in range(1, n): # additional lines
+      sarr[i] = r'%s"%s\n"' % (lead, msgs[i])
+
+    # build an argument list
+    if args:
+      al = [a.strip() for a in args.split(",")] if args else []
+      sarg = ', '.join(al)
+      if len(sarg) + len(sarr[n-1]) >= 78:
+        sarr[n-1] += ','
+        sarr += [sarg + ');']
+      else:
+        sarr[n-1] += ', ' +sarg + ');'
+    else:
+      sarr[n-1] += ');'
+
+    # print each line
+    for l in sarr: self.addraw(l + '\n')
+
+    if addfl: self.print_file_line()
+
+  def foo_if(self, cond, msg, args, addfl, onerr = None, pfx = None):
     ''' 
     `args' are parameters to be passed to 
     printf-like functions: msg_if and die_if
     '''
-    self.addln("%s_if (%s,", tag, cond)
+    self.begin_if(cond)
+    self.errmsg(msg, args, addfl, pfx)
+    if onerr: self.addraw(onerr + '\n')
+    self.end_if(cond)
 
-    # break msg into multiple line messages
-    msgs = msg.splitlines()
-    n = len(msgs)
-    if addfl:
-      if not msgs[n-1].endswith(r"\n"): msgs[n-1] += r"\n"
-      msgs[n-1] += r"FILE: %s, LINE: %d\n"
-    lead = self.sindent
-    for i in range(n-1):
-      self.addln('%s"%s"', lead, msgs[i])
-    s = '%s"%s"' % (lead, msgs[n-1])
+  def msg_if(self, cond, msg, args = None, onerr = None):
+    self.foo_if(cond, msg, args, addfl = 0, onerr = onerr)
 
-    # build an argument list
-    if args or addfl:
-      al = [a.strip() for a in args.split(",")] if args else []
-      if addfl: al += ['__FILE__', '__LINE__']
-      sarg = lead + ', '.join(al)
-      s += ",\n" if (len(sarg) + len(s) + 2 >= 80) else ", "
-      self.addraw(s)  # stop the last message line
-      s = sarg
-    s += ");\n"
-    self.addraw(s)
+  def die_if(self, cond, msg, args = None, onerr = "exit(1);"):
+    self.foo_if(cond, msg, args, addfl = 1, onerr = onerr)
 
-  def msg_if(self, cond, msg, args = None):
-    self.simple_if("msg", 0, cond, msg, args)
-
-  def die_if(self, cond, msg, args = None):
-    self.simple_if("die", 1, cond, msg, args)
-
-  def insist(self, cond, msg, args = None):
+  def insist(self, cond, msg, args = None, onerr = "exit(1);"):
     ''' die if cond is *not* true '''
     if notalways(cond):
-      self.simple_if("die", 1, " !(%s)" % cond, msg, args)
+      self.foo_if(" !(%s) " % cond, msg, args, addfl = 1, onerr = onerr)
 
   def init_sarr(self, var, default, cnt):
     ''' write code for initializing a static array '''
@@ -577,10 +579,52 @@ class CCodeWriter:
 
   def wb_objarr(self, arr, dim, funcall, widx, imin, imax):
     ''' wrapper for writing an object array '''
-    self.die_if("%s == NULL" % arr, "array is empty")
+    self.die_if("%s == NULL" % arr, "%s is null" % arr)
     ndim = len(dim)
     if ndim == 2:
       self.wb_objarr2d(arr, dim, funcall, widx, imin, imax)
     elif ndim == 1:
       self.wb_objarr1d(arr, dim, funcall, widx, imin, imax)
+
+  def rb_var(self, var, type, match = 0, prec = "1e-5", tolerr = 0):
+    if type in ("int", "unsigned", "unsigned int"):
+      if match:
+        self.declare_var("int itmp")
+        self.addln("BIO_RMI(itmp, %s);", var)
+      else:
+        self.addln("BIO_RI_ERR(%s);", var)
+    elif type == "double":
+      if match:
+        self.declare_var("double dtmp")
+        self.addln("BIO_RMD(dtmp, %s, %s);", var, prec)
+      else:
+        self.addln("BIO_RD_ERR(%s);", var)
+    else:
+      print "don't know how to read type %s for %s" % (type, var)
+      raise Exception;
+    if not tolerr:
+      self.addln("if (err) goto ERR;");
+
+  def rb_checkbytes(self):
+    self.declare_var("int size")
+    self.declare_var("int endn")
+    self.declare_var("int err")
+    val = "size"
+    ref = "sizeof(int)"
+    cond = "(endn = endn_rmatchi(&%s, %s, fp)) < 0" % (val, ref)
+    self.die_if(cond,
+        "%s 0x%%X cannot match %s 0x%%X" % (val, ref),
+        "(unsigned) %s, (unsigned) %s" % (val, ref), 
+        onerr = "goto ERR;")
+    self.addraw("BIO_RMI(size, sizeof(double));\n")
+
+  '''
+  def rb_atom(self, var, cnt, onerr, onsuc):
+    # endian checked reading
+    cond = "(%s > 0) && end_fread(%s, sizeof(*(%s)), %s, fp, endn) != %s" % (
+        cnt, var, var, cnt, cnt)
+    self.begin_if(cond)
+    self.errmsg("error while reading %s, n = %s" % (var, cnt))
+    self.end_if(cond)
+  '''
 

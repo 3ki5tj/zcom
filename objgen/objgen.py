@@ -464,13 +464,13 @@ class Object:
     funclist += [self.gen_func_cfgopen_()]
     funclist += [self.gen_func_cfgopen()]
     funclist += [self.gen_func_close()]
-    funclist += [self.gen_func_binwrite_("")]
-    funclist += [self.gen_func_binwrite("")]
+    funclist += self.gen_func_binrw2("", "r")
+    funclist += self.gen_func_binrw2("", "w")
     # fold-specific functions
     for f in self.folds:
       if f == "": continue
-      funclist += [self.gen_func_binwrite_(f)]
-      funclist += [self.gen_func_binwrite(f)]
+      funclist += self.gen_func_binrw2(f, "r")
+      funclist += self.gen_func_binrw2(f, "w")
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -653,15 +653,26 @@ class Object:
     return cw.prototype, cw.function
 
   def gen_func_binwrite_(self, f):
-    ''' write a function of writing data in binary form '''
+    return self.gen_func_binrw_(f, "w")
+  
+  def gen_func_binread_(self, f):
+    return self.gen_func_binrw_(f, "r")
+  
+  def gen_func_binrw_(self, f, rw):
+    ''' write a function for reading/writing data in binary form '''
+    readwrite = "read" if rw == "r" else "write"
     cw = CCodeWriter()
-    funcnm = "%sbinwrite_" % self.folds[f].fprefix
+    funcnm = "%sbin%s_" % (self.folds[f].fprefix, readwrite)
     usrs = self.get_usr_vars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s)" % (
         funcnm, self.name, self.ptrname, usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
     cw.begin_function(funcnm, fdecl, 
-        "write %s data as binary" % title)
+        "%s %s data as binary" % (readwrite, title))
+
+    if rw == "r":
+      cw.declare_var("int err")
+      cw.addln("err = 0;")
     
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
@@ -675,14 +686,14 @@ class Object:
         for xv in xvl:
           xit = self.var2item(xv)
           if not xit: raise Exception
-          xit.binwrite_var(cw, xv)
+          xit.binrw_var(cw, xv, rw)
         continue
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
 
       varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
           else "") + it.decl.name
-      it.binwrite_var(cw, varname)
+      it.binrw_var(cw, varname, rw)
 
     cw.addln("return 0;")
     cw.addln("ERR:")
@@ -690,36 +701,53 @@ class Object:
     cw.end_function("")
     return cw.prototype, cw.function
 
+  def gen_func_binrw2(self, f, rw):
+    return [self.gen_func_binrw_(f, rw),
+            self.gen_func_binrw(f, rw)]
+
   def gen_func_binwrite(self, f):
-    ''' write a function of writing data in binary form '''
+    return self.gen_func_binrw(f, "w")
+
+  def gen_func_binread(self, f):
+    return self.gen_func_binrw(f, "r")
+
+  def gen_func_binrw(self, f, rw):
+    ''' write a wrapper function for reading/writing data in binary form '''
+    readwrite = "read" if rw == "r" else "write"
     cw = CCodeWriter()
-    funcnm = "%sbinwrite" % self.folds[f].fprefix
+    funcnm = "%sbin%s" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_"
     usrs = self.get_usr_vars("bin", f)
-    fdecl = "int %s(%s *%s, const char *fname, int ver%s)" % (
-        funcnm, self.name, self.ptrname, usrs[0])
+    fdecl = "int %s(%s *%s, const char *fname, int %s%s)" % (
+        funcnm, self.name, self.ptrname, 
+        "ver" if rw == "w" else "*pver", usrs[0])
     cw.begin_function(funcnm, fdecl, 
-        "write %s/%s data as binary" % (self.name, f))
+        "%s %s/%s data as binary" % (readwrite, self.name, f))
 
     # add prerequisite/validation tests
     if self.folds[f].prereq != 1:
       cw.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
     if self.folds[f].valid != 1:
       cond = "%s" % self.folds[f].valid
-      cw.insist(cond, "validation in write binary")
+      cw.insist(cond, "validation in %s binary" % readwrite)
 
     cw.declare_var("FILE *fp")
-    condf = '(fp = fopen(fname, "wb")) == NULL'
-    cw.begin_if(condf)
-    cw.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
-    cw.addln("return -1;")
-    cw.end_if(condf)
+    condf = '(fp = fopen(fname, "%sb")) == NULL' % rw
+    cw.die_if(condf, r"cannot %s binary file [%%s]." % readwrite, 
+      "fname", onerr = "goto ERR;")
 
     # add checking bytes
-    cw.wb_checkbytes();
-    cw.wb_var("ver", "int")
+    cw.rb_checkbytes();
+    if rw == "r": cw.declare_var("int ver")
+    cw.rb_var("ver", "int")
+    cw.addln("*pver = ver;")
     cw.declare_var("int i")
-    cw.addln("i = %s(%s, fp, ver%s);", funcnm_, self.ptrname, usrs[1]);
+    #cw.declare_var("int verify")
+    #cw.addln("verify = !(flags & IO_NOVERIFY)")
+
+    # call the actual function
+    cw.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
+        ", unsigned flags" if rw == "r" else "", usrs[1]);
     cw.addln("fclose(fp);")
     cw.addln("return i;")
     cw.addln("ERR:")
@@ -727,7 +755,6 @@ class Object:
     cw.addln("return -1;")
     cw.end_function("")
     return cw.prototype, cw.function
-
 
 
 class Parser:

@@ -633,6 +633,67 @@ class Item:
           defl, must, prereq, tfirst, valid, desc)
 
 
+  def binrw_var(it, cw, varname, rw):
+    if rw == "w": 
+      it.binwrite_var(cw, varname)
+    elif rw == "r":
+      it.binread_var(cw, varname)
+    else:
+      raise Exception
+   
+  def binread_var(it, cw, varname):
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    bincnt = it.cmds["bin_cnt"]
+    cond = it.cmds["bin_prereq"]
+    defl = it.cmds["def"]
+    usrval = it.cmds["usr"]
+    verify = it.cmds["verify"]
+    pp = it.cmds["#if"]
+    if pp:
+      cw.addln("#if %s", pp)
+    if notalways(cond):
+      cw.begin_if(cond)
+
+    if usrval == "bintmp": 
+      cw.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
+      if defl:
+        if it.gtype == "static array":
+          pass # cw.init_sarr(varname, defl, cnt)
+        else:
+          cw.addln("%s = %s;", varname, defl)
+    
+    if it.gtype == "dynamic array":
+      # support nasty flag $bin_cnt
+      if len(dim) == 1 and bincnt:
+        dim[0] = bincnt
+      #cw.rb_arr(varname, dim, it.decl.datatype, 1)
+    elif it.gtype == "object array":
+      fpfx = it.get_obj_fprefix();
+      funcall = "%sbinread_(%%s, fp, ver%s);" % (
+          fpfx, it.get_args("binwrite"));
+      imin = it.cmds["bin_imin"]
+      imax = it.cmds["bin_imax"]
+      #cw.rb_objarr(varname, dim, funcall, [1, 1],
+      #    imin, imax)
+    elif it.decl.datatype == "char" and (
+        it.gtype in ("char *", "static array")):
+      if it.gtype == "static array" and bincnt: 
+        cnt = bincnt
+      cond1 = "%s != fread(%s, 1, %s, fp)" % (cnt, varname, cnt)
+      cw.begin_if(cond1)
+      cw.addln(r'fprintf(stderr, "cannot read string of %%d for %s\n", %s);', 
+          varname, cnt)
+      cw.addln("goto ERR;")
+      cw.end_if(cond1)
+    else:
+      cw.rb_var(varname, it.gtype, verify)
+
+    if notalways(cond):
+      cw.end_if(cond)
+    if pp:
+      cw.addln("#endif")
+   
   def binwrite_var(it, cw, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
