@@ -528,24 +528,24 @@ class Object:
     return cw.gets()
 
   def gen_func_close(self):
-    ow = CCodeWriter()
+    cw = CCodeWriter()
     macroname = "%sclose" % self.fprefix
     funcnm = macroname + "_"
     macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
       macroname, self.ptrname, funcnm, self.ptrname, self.ptrname, self.ptrname)
     fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
-    ow.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, macro)
+    cw.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
         it.decl and it.gtype in ("char *", "dynamic array") ) else 0
     maxwid = max(calc_len(it) for it in self.items)
     for it in self.items:
-      it.close_var(ow, self.ptrname, maxwid)
+      it.close_var(cw, self.ptrname, maxwid)
 
-    ow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
-    ow.end_function("")
-    return ow.prototype, ow.function
+    cw.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
+    cw.end_function("")
+    return cw.prototype, cw.function
 
   def get_usr_vars(self, tag, f = None):
     ''' tag can be "cfg", "bin", "txt" '''
@@ -589,15 +589,15 @@ class Object:
     cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usr_vars("cfg")
     fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
-    ow = CCodeWriter()
-    ow.begin_function(fread, fdecl, fdesc)
+    cw = CCodeWriter()
+    cw.begin_function(fread, fdecl, fdesc)
 
     # read configuration file
     for it in obj.items:
-      it.cfgget_var(ow, obj.ptrname)
+      it.cfgget_var(cw, obj.ptrname)
 
-    ow.end_function("return 0;")
-    return ow.prototype, ow.function
+    cw.end_function("return 0;")
+    return cw.prototype, cw.function
 
   def gen_func_cfgopen(obj):
     ''' 
@@ -620,46 +620,47 @@ class Object:
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
             "const char *fname" if cfgopen else cfgdecl, 
             usrvars[0])
-    ow = CCodeWriter()
-    ow.begin_function(fopen, fdecl, fdesc)
-    ow.vars.addln("%s *%s;" % (objtp, objptr))
+    cw = CCodeWriter()
+    cw.begin_function(fopen, fdecl, fdesc)
+    cw.vars.addln("%s *%s;" % (objtp, objptr))
 
     # open a configuration file
     if cfgopen:
-      ow.vars.addln("cfgdata_t *cfg;")
+      cw.vars.addln("cfgdata_t *cfg;")
       scfg = "(cfg = cfgopen(fname)) == NULL"
-      ow.begin_if(scfg)
-      ow.errmsg(r"%s: cannot open config. file %%s.\n" % objtp,
+      cw.begin_if(scfg)
+      cw.errmsg(r"%s: cannot open config. file %%s.\n" % objtp,
           "fname");
-      ow.addln("return NULL;")
-      ow.end_if(scfg)
+      cw.addln("return NULL;")
+      cw.end_if(scfg)
 
     # allocate memory
     sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
-    ow.die_if(sobj, "no memory for %s" % obj.name);
+    cw.die_if(sobj, "no memory for %s (size %%u)" % obj.name,
+        "(unsigned) sizeof(*%s)" % objptr);
    
-    # ow.declare_var("int ret")
+    # cw.declare_var("int ret")
     s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
-    ow.begin_if(s)
-    ow.errmsg("%s: failed to read config." % objtp)
-    ow.addln("free(%s);" % objptr)
-    ow.addln("return NULL;")
-    ow.end_if(s)
+    cw.begin_if(s)
+    cw.errmsg("%s: failed to read config." % objtp)
+    cw.addln("free(%s);" % objptr)
+    cw.addln("return NULL;")
+    cw.end_if(s)
     
     if cfgopen:
-      ow.addln("cfgclose(cfg);")
-    ow.end_function("return %s;" % objptr)
-    return ow.prototype, ow.function
+      cw.addln("cfgclose(cfg);")
+    cw.end_function("return %s;" % objptr)
+    return cw.prototype, cw.function
 
   def gen_func_binwrite_(self, f):
     ''' write a function of writing data in binary form '''
-    ow = CCodeWriter()
+    cw = CCodeWriter()
     funcnm = "%sbinwrite_" % self.folds[f].fprefix
     usrs = self.get_usr_vars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s)" % (
         funcnm, self.name, self.ptrname, usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
-    ow.begin_function(funcnm, fdecl, 
+    cw.begin_function(funcnm, fdecl, 
         "write %s data as binary" % title)
     
     bin_items = self.sort_items(self.folds[f].items, "bin")
@@ -674,58 +675,58 @@ class Object:
         for xv in xvl:
           xit = self.var2item(xv)
           if not xit: raise Exception
-          xit.binwrite_var(ow, xv)
+          xit.binwrite_var(cw, xv)
         continue
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
 
       varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
           else "") + it.decl.name
-      it.binwrite_var(ow, varname)
+      it.binwrite_var(cw, varname)
 
-    ow.addln("return 0;")
-    ow.addln("ERR:")
-    ow.addln("return -1;")
-    ow.end_function("")
-    return ow.prototype, ow.function
+    cw.addln("return 0;")
+    cw.addln("ERR:")
+    cw.addln("return -1;")
+    cw.end_function("")
+    return cw.prototype, cw.function
 
   def gen_func_binwrite(self, f):
     ''' write a function of writing data in binary form '''
-    ow = CCodeWriter()
+    cw = CCodeWriter()
     funcnm = "%sbinwrite" % self.folds[f].fprefix
     funcnm_ = funcnm + "_"
     usrs = self.get_usr_vars("bin", f)
     fdecl = "int %s(%s *%s, const char *fname, int ver%s)" % (
         funcnm, self.name, self.ptrname, usrs[0])
-    ow.begin_function(funcnm, fdecl, 
+    cw.begin_function(funcnm, fdecl, 
         "write %s/%s data as binary" % (self.name, f))
 
     # add prerequisite/validation tests
     if self.folds[f].prereq != 1:
-      ow.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
+      cw.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
     if self.folds[f].valid != 1:
       cond = "%s" % self.folds[f].valid
-      ow.insist(cond, "validation in write binary")
+      cw.insist(cond, "validation in write binary")
 
-    ow.declare_var("FILE *fp")
+    cw.declare_var("FILE *fp")
     condf = '(fp = fopen(fname, "wb")) == NULL'
-    ow.begin_if(condf)
-    ow.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
-    ow.addln("return -1;")
-    ow.end_if(condf)
+    cw.begin_if(condf)
+    cw.addlnraw(r'printf("cannot write binary history file [%s].\n", fname);')
+    cw.addln("return -1;")
+    cw.end_if(condf)
 
     # add checking bytes
-    ow.wb_checkbytes();
-    ow.wb_var("ver", "int")
-    ow.declare_var("int i")
-    ow.addln("i = %s(%s, fp, ver%s);", funcnm_, self.ptrname, usrs[1]);
-    ow.addln("fclose(fp);")
-    ow.addln("return i;")
-    ow.addln("ERR:")
-    ow.addln("fclose(fp);")
-    ow.addln("return -1;")
-    ow.end_function("")
-    return ow.prototype, ow.function
+    cw.wb_checkbytes();
+    cw.wb_var("ver", "int")
+    cw.declare_var("int i")
+    cw.addln("i = %s(%s, fp, ver%s);", funcnm_, self.ptrname, usrs[1]);
+    cw.addln("fclose(fp);")
+    cw.addln("return i;")
+    cw.addln("ERR:")
+    cw.addln("fclose(fp);")
+    cw.addln("return -1;")
+    cw.end_function("")
+    return cw.prototype, cw.function
 
 
 

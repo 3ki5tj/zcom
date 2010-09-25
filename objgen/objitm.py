@@ -506,10 +506,10 @@ class Item:
         cw.addln(scmt)
     return block
 
-  def close_var(it, ow, ptrname, maxwid):
+  def close_var(it, cw, ptrname, maxwid):
     ''' free a pointer / close an object '''
     if it.pre:
-      ow.addln("#" + it.pre.raw)
+      cw.addln("#" + it.pre.raw)
       return
     if not it.decl or it.isdummy: return
     if it.cmds["usr"] == "parent": return
@@ -531,30 +531,31 @@ class Item:
       fpfx = it.get_obj_fprefix()
       funcfree = "%sclose_" % fpfx
       cnt = it.cmds["cnt"]
-      ow.declare_var("int i")
+      cw.declare_var("int i")
 
       cond = "%s != NULL" % varname
-      ow.begin_if(cond)
-      ow.addln("for (i = 0; i < %s; i++) {" % cnt)
-      ow.addln("%s(%s + i);", funcfree, varname) 
-      ow.addln("}");
-      ow.addln("free(%s);", varname);
-      ow.end_if(cond)
+      cw.begin_if(cond)
+      cw.addln("for (i = 0; i < %s; i++) {" % cnt)
+      cw.addln("%s(%s + i);", funcfree, varname) 
+      cw.addln("}");
+      cw.addln("free(%s);", varname);
+      cw.end_if(cond)
       return
     else:
       return
 
-    ow.addln("if (%-*s != NULL) %s(%s);",
+    cw.addln("if (%-*s != NULL) %s(%s);",
              maxwid, varname, funcfree, varname)
     
 
-  def cfgget_var(it, ow, ptrname):
+  def cfgget_var(it, cw, ptrname):
     ''' read a variable from config. '''
     if it.pre:
-      ow.addln("#" + it.pre.raw)
+      cw.addln("#" + it.pre.raw)
       return
   
-    if it.cmds["usr"] == "parent":
+    usr = it.cmds["usr"]
+    if usr == "parent" or usr in ("tmp", "bintmp", "txttmp"):
       return
     
     key     = it.cmds["key"]
@@ -567,107 +568,120 @@ class Item:
     desc    = it.cmds["desc"]
 
     if not it.decl: # stand-alone comment
-      ow.add_comment(desc)
-      ow.insist(it.cmds["assert"], desc)
+      cw.add_comment(desc)
+      cw.insist(it.cmds["assert"], desc)
       call = it.cmds["call"]
-      if call: ow.addln(call + ";")
+      if call: cw.addln(call + ";")
       return
     
     varnm = it.decl.name
     varname = ptrname + "->" + varnm
 
     # add a remark before we start
-    ow.add_comment(desc)
+    cw.add_comment(desc)
 
     if "flag" in it.cmds and "key" in it.cmds: # input flag
       flag = it.get_flag()
       fmt = it.type2fmt(it.gtype)
-      ow.cfgget_flag(varname, key, flag, it.gtype, fmt,
+      cw.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
     
     elif it.gtype == "object pointer":
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
         fpfx, it.get_init_args())
-      ow.die_if(s, r"failed to initialize %s\n" % varname)
+      cw.die_if(s, r"failed to initialize %s\n" % varname)
 
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix()
       etp = it.get_gtype(offset = 1)
-      ow.alloc_darr(varname, etp, cnt)
-      ow.declare_var("int i;")
-      ow.addln("for (i = 0; i < %s; i++) {" % cnt)
+      cw.alloc_darr(varname, etp, cnt)
+      cw.declare_var("int i;")
+      cw.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_(%s+i, cfg%s)" % (
         fpfx, varname, it.get_init_args())
-      ow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
-      ow.addln("}\n")
+      cw.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
+      cw.addln("}\n")
 
     elif it.gtype == "dynamic array":
-      ow.init_darr(varname, it.get_gtype(offset = 1),
+      cw.init_darr(varname, it.get_gtype(offset = 1),
           defl, cnt, desc)
     
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
       # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
       if not it.cmds["io_cfg"]: 
-        ow.init_sarr(varname, etp, defl, cnt, desc)
+        cw.init_sarr(varname, defl, cnt)
       else:
         fmt  = it.type2fmt(etp)
         cmpl = it.cmds["complete"]
-        ow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
+        cw.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
             must, valid, cmpl, desc)
 
     else: # regular variable
       usrval = it.cmds["usr"]
       if usrval:
         if usrval in ("cfg", 1): # usr variables
-          ow.assign(varname, "usr_%s" % varnm, it.gtype)
+          cw.assign(varname, "usr_%s" % varnm, it.gtype)
         else: pass # ignore other usr variables
       elif not it.cmds["io_cfg"]: # assign default value
         if defl and len(defl): 
-          ow.assign(varname, defl, it.gtype);
+          cw.assign(varname, defl, it.gtype);
       else:
         fmt = it.type2fmt(it.gtype)
-        ow.cfgget_var(varname, key, it.gtype, fmt, 
+        cw.cfgget_var(varname, key, it.gtype, fmt, 
           defl, must, prereq, tfirst, valid, desc)
 
 
-  def binwrite_var(it, ow, varname):
+  def binwrite_var(it, cw, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
+    bincnt = it.cmds["bin_cnt"]
     cond = it.cmds["bin_prereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     pp = it.cmds["#if"]
     if pp:
-      ow.addln("#if %s", pp)
+      cw.addln("#if %s", pp)
     if notalways(cond):
-      ow.begin_if(cond)
+      cw.begin_if(cond)
 
     if usrval == "bintmp": 
-      ow.declare_var(it.decl.datatype + " " + it.decl.name)
+      cw.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
       if defl:
-        ow.addln("%s = %s;", varname, defl)
+        if it.gtype == "static array":
+          cw.init_sarr(varname, defl, cnt)
+        else:
+          cw.addln("%s = %s;", varname, defl)
     
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
-      bincnt = it.cmds["bin_cnt"]
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      ow.wb_arr(varname, dim, it.decl.datatype, 1)
+      cw.wb_arr(varname, dim, it.decl.datatype, 1)
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinwrite_(%%s, fp, ver%s);" % (
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
-      ow.wb_objarr(varname, dim, funcall, [1, 1],
+      cw.wb_objarr(varname, dim, funcall, [1, 1],
           imin, imax)
+    elif it.decl.datatype == "char" and (
+        it.gtype in ("char *", "static array")):
+      if it.gtype == "static array" and bincnt: 
+        cnt = bincnt
+      cond1 = "%s != fwrite(%s, 1, %s, fp)" % (cnt, varname, cnt)
+      cw.begin_if(cond1)
+      cw.addln(r'fprintf(stderr, "cannot write string of %%d for %s\n", %s);', 
+          varname, cnt)
+      cw.addln("goto ERR;")
+      cw.end_if(cond1)
     else:
-      ow.wb_var(varname, it.gtype)
+      cw.wb_var(varname, it.gtype)
 
     if notalways(cond):
-      ow.end_if(cond)
+      cw.end_if(cond)
     if pp:
-      ow.addln("#endif")
+      cw.addln("#endif")
 

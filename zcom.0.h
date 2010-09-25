@@ -78,7 +78,7 @@
    3. avoid multiple inclusions
    By default (ZCOM_PICK not defined), we use everything old
  */
-#ifdef ZCOM_NONE  // equivalent to ZCOM_PICK
+#ifdef ZCOM_NONE  /* equivalent to ZCOM_PICK */
 #define ZCOM_PICK
 #endif
 

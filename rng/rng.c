@@ -19,18 +19,18 @@
 #define LMASK_MT 0x7fffffffUL /* least significant r bits */
 
 /* save the current mt state to file */
-static int mtsavestate_(int index, unsigned long arr[], const char *fname)
+static int mtsavestate_(int idx, unsigned long arr[], const char *fname)
 {
   FILE *fp;
   int k;
 
-  if (index < 0) /* RNG was never used, so it cannot be saved */
+  if (idx < 0) /* RNG was never used, so it cannot be saved */
     return 1;
   if ((fp = fopen(fname, "w")) == NULL) {
     fprintf(stderr, "mtrand: cannot save state to %s.\n", fname);
     return 1;
   }
-  fprintf(fp, "MTSEED\n%d\n", index);
+  fprintf(fp, "MTSEED\n%d\n", idx);
   for (k = 0; k < N_MT; k++)
     fprintf(fp, "%lu\n", arr[k]);
   fclose(fp);
@@ -136,7 +136,7 @@ static unsigned long  mtrandlow_(int *pindex, unsigned long arr[])
 unsigned long mtrand(int action, unsigned long seed0, const char *fname0)
 {
   static unsigned long arr[N_MT]; /* array for the mt state vector */
-  static int index = -1; /* index in arr, -1: uninitialized */
+  static int idx = -1; /* index in arr, -1: uninitialized */
   static char *fname = NULL;
 
   if (fname0 != NULL) /* if fname is given (not NULL), always use it */
@@ -146,16 +146,16 @@ unsigned long mtrand(int action, unsigned long seed0, const char *fname0)
 
   switch (action) {
   case MTA_RAND:   /* generate random number */
-    if (index < 0)
-      mtloadstate_(&index, arr, fname, seed0);
-    return mtrandlow_(&index, arr);
+    if (idx < 0)
+      mtloadstate_(&idx, arr, fname, seed0);
+    return mtrandlow_(&idx, arr);
 
   case MTA_SAVE:   /* save the current state  */
-    mtsavestate_(index, arr, fname);
+    mtsavestate_(idx, arr, fname);
     break;
 
   case MTA_DONE:   /* finish up */
-    mtsavestate_(index, arr, fname);
+    mtsavestate_(idx, arr, fname);
     ssdelete(fname);
     break;
 

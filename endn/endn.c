@@ -86,7 +86,7 @@ size_t endn_fwrite(const void *ptr, size_t size, size_t n, FILE *fp, int endn)
 
   p = (unsigned char *) ptr;
   for (i = 0; i < n; i++, p += size) {
-    endn_flip(buf, p, size, 1);
+    endn_flip(buf, (void *) p, size, 1);
     if (1 != fwrite(buf, size, 1, fp)) {
       fprintf(stderr, "error occurs when writing %u / %u object\n",
           (unsigned) i, (unsigned) n);

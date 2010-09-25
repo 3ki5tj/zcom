@@ -45,7 +45,7 @@ class CCodeWriter:
   def addln(self, t, *args):
     self.addraw( (t % args) + '\n' )
 
-  def remove_empty_pp(self):
+  def remove_idle_pp(self):
     ''' remove empty preprocessor blocks 
     #if
     #else
@@ -54,6 +54,7 @@ class CCodeWriter:
     endl = '\n' if self.s.endswith('\n') else ''
     lines = self.s.splitlines()
     i = 1
+    # remove empty pp
     while i < len(lines):
       if lines[i].startswith("#endif") and i > 0:
         lnprev = lines[i-1]
@@ -66,10 +67,35 @@ class CCodeWriter:
           lines = lines[:i-1] + lines[i+1:]
           continue
       i += 1
+
+    # merge neighoring preprocessing block
+    # if their conditions are the same
+    cond = None
+    i = 1
+    while i < len(lines):
+      line = lines[i].strip()
+      if line.startswith("#if "):
+        if not cond: cond = line[4:].strip()
+      elif line.startswith("#endif"):
+        if (not cond or i >= len(lines) - 2
+            or not lines[i+1].startswith("#if ")):
+          cond = None
+          i += 1
+          continue
+        ncond = lines[i+1].strip()[4:].strip()
+        if cond == ncond:
+          # print "removing\n%s\n%s" % (lines[i], lines[i+1]); raw_input()
+          lines = lines[:i] + lines[i+2:]
+        else:
+          cond = None
+      elif line.startswith("#el"):
+        cond = None
+      i += 1
+
     self.s = '\n'.join(lines) + endl
 
   def gets(self):
-    self.remove_empty_pp()
+    self.remove_idle_pp()
     return self.s
  
   def print_file_line(self):
@@ -117,7 +143,7 @@ class CCodeWriter:
     if notalways(cond):
       self.addln("}")
 
-  def simple_if(self, tag, cond, msg, args):
+  def simple_if(self, tag, addfl, cond, msg, args):
     ''' 
     `args' are parameters to be passed to 
     printf-like functions: msg_if and die_if
@@ -127,32 +153,37 @@ class CCodeWriter:
     # break msg into multiple line messages
     msgs = msg.splitlines()
     n = len(msgs)
+    if addfl:
+      if not msgs[n-1].endswith(r"\n"): msgs[n-1] += r"\n"
+      msgs[n-1] += r"FILE: %s, LINE: %d\n"
     lead = self.sindent
     for i in range(n-1):
       self.addln('%s"%s"', lead, msgs[i])
     s = '%s"%s"' % (lead, msgs[n-1])
 
     # build an argument list
-    if args:
-      s += ",\n"
+    if args or addfl:
+      al = [a.strip() for a in args.split(",")] if args else []
+      if addfl: al += ['__FILE__', '__LINE__']
+      sarg = lead + ', '.join(al)
+      s += ",\n" if (len(sarg) + len(s) + 2 >= 80) else ", "
       self.addraw(s)  # stop the last message line
-      al = [s.strip() for s in args.split(",")]
-      s = lead + ', '.join(al)
+      s = sarg
     s += ");\n"
     self.addraw(s)
 
   def msg_if(self, cond, msg, args = None):
-    self.simple_if("msg", cond, msg, args)
+    self.simple_if("msg", 0, cond, msg, args)
 
   def die_if(self, cond, msg, args = None):
-    self.simple_if("die", cond, msg, args)
+    self.simple_if("die", 1, cond, msg, args)
 
   def insist(self, cond, msg, args = None):
     ''' die if cond is *not* true '''
     if notalways(cond):
-      self.simple_if("die", " !(%s)" % cond, msg, args)
+      self.simple_if("die", 1, " !(%s)" % cond, msg, args)
 
-  def init_sarr(self, var, type, default, cnt, desc):
+  def init_sarr(self, var, default, cnt):
     ''' write code for initializing a static array '''
     self.declare_var("int i") # declare index i
     self.addln("for (i = 0; i < %s; i++)", cnt)
@@ -179,7 +210,7 @@ class CCodeWriter:
     ''' write code for initializing a dynamic array '''
     if cnt.strip() != "0":
       self.alloc_darr(var, type, cnt)
-      self.init_sarr(var, type, default, cnt, desc)
+      self.init_sarr(var, default, cnt)
 
   def assign(self, var, value, type):
     ''' assignment (for simple types) '''
@@ -191,9 +222,11 @@ class CCodeWriter:
   def checktp(self, var, type):
     # add type checking
     if self.enabletpcheck:
-      csiz = "sizeof(%s) == sizeof(%s)" % (var, type)
-      msgz = r"wrong size: %s is not %s" % (var, type)
-      self.insist(csiz, msgz)
+      sz1 = "sizeof(%s)" % var
+      sz2 = "sizeof(%s)" % type
+      msgz = r"wrong size: %s=%%d, %s=%%d" % (sz1, sz2)
+      self.insist("%s == %s" % (sz1, sz2), msgz, 
+          "(int) %s, (int) %s" % (sz1, sz2))
 
 
   def getkeystr(self, key):
@@ -231,7 +264,7 @@ class CCodeWriter:
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
-        r"missing var: %s, key: %s, fmt: %s\n" % (var, dm(key), fmt))
+        r"missing var: %s, key: %s, fmt: %%%s\n" % (var, dm(key), fmt))
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
@@ -285,7 +318,7 @@ class CCodeWriter:
   def cfgget_sarr(self, var, key, type, fmt, default, cnt, 
       must, valid, cmpl, desc):
     # make initial assignment first 
-    self.init_sarr(var, type, default, cnt, desc)
+    self.init_sarr(var, default, cnt)
 
     # read a string from configuration file
     sbuf = "sbuf" # declare a string buffer

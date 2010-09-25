@@ -83,7 +83,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   struct ssheader *h = NULL, *hp;
   size_t size;
 
-  die_if(php == NULL, "ssresize_: NULL pointer to resize");
+  die_if(php == NULL, "ssresize_: php is NULL, n = %u", (unsigned) n);
 
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp = *php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
