@@ -657,25 +657,20 @@ class Item:
 
     if usrval == "bintmp": 
       cw.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
-      if defl:
-        if it.gtype == "static array":
-          pass # cw.init_sarr(varname, defl, cnt)
-        else:
-          cw.addln("%s = %s;", varname, defl)
     
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      #cw.rb_arr(varname, dim, it.decl.datatype, 1)
+      cw.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinread_(%%s, fp, ver%s);" % (
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
-      #cw.rb_objarr(varname, dim, funcall, [1, 1],
-      #    imin, imax)
+      cw.rb_objarr(varname, dim, funcall, [1, 1],
+          imin, imax)
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
@@ -719,7 +714,7 @@ class Item:
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cw.wb_arr(varname, dim, it.decl.datatype, 1)
+      cw.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinwrite_(%%s, fp, ver%s);" % (

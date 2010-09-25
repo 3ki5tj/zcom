@@ -185,9 +185,10 @@ class CCodeWriter:
     if args:
       al = [a.strip() for a in args.split(",")] if args else []
       sarg = ', '.join(al)
-      if len(sarg) + len(sarr[n-1]) >= 78:
+      if len(sarg) + len(sarr[n-1]) >= 78: # last line is too long
         sarr[n-1] += ','
-        sarr += [sarg + ');']
+        # start a new line for arguments
+        sarr += [lead + sarg + ');']
       else:
         sarr[n-1] += ', ' +sarg + ');'
     else:
@@ -536,14 +537,6 @@ class CCodeWriter:
       self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
 
-  def wb_arr(self, arr, dim, tp, trim):
-    ndim = len(dim)
-    if ndim == 2:
-      self.wb_arr2d(arr, dim, tp, trim)
-    elif ndim == 1:
-      self.wb_arr1d(arr, dim[0], tp)
-    else: raise Exception
-
   def wb_objarr1d(self, arr, dim, funcall, widx, imin, imax):
     self.declare_var("int i")
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
@@ -560,14 +553,8 @@ class CCodeWriter:
     self.declare_var("int size")
     arr1d = "%s+j*%s" % (arr, dim[1])
     if imin or imax:
-      if imin:
-        self.addln("imin = %s;" % imin)
-      else:
-        self.addln("imin = 0;")
-      if imax:
-        self.addln("imax = %s" % imax)
-      else:
-        self.addln("imax = %s" % dim[1])
+      self.addln("imin = " + (imin if imin else "0") + ";")
+      self.addln("imax = " + (imax if imax else dim[1]) + ";")
       self.addln("size = imax - imin;")
       size = "size"
       arr1d += "+imin"
@@ -592,23 +579,102 @@ class CCodeWriter:
         self.declare_var("int itmp")
         self.addln("BIO_RMI(itmp, %s);", var)
       else:
-        self.addln("BIO_RI_ERR(%s);", var)
+        if tolerr:
+          self.addln("BIO_RI_ERR(%s);", var)
+        else:
+          self.addln("BIO_RI(%s);", var)
     elif type == "double":
       if match:
         self.declare_var("double dtmp")
         self.addln("BIO_RMD(dtmp, %s, %s);", var, prec)
       else:
-        self.addln("BIO_RD_ERR(%s);", var)
+        if tolerr:
+          self.addln("BIO_RD_ERR(%s);", var)
+        else:
+          self.addln("BIO_RD(%s);", var)
     else:
       print "don't know how to read type %s for %s" % (type, var)
       raise Exception;
-    if not tolerr:
-      self.addln("if (err) goto ERR;");
+  
+  def rb_arr1d(self, arr, cnt, type):
+    if type == "int":
+      self.addraw( "BIO_RIARR(%s, %s);\n" % (arr, cnt) )
+    elif type == "double":
+      self.addraw( "BIO_RDARR(%s, %s);\n" % (arr, cnt) )
+    else:
+      print "don't know how to write type %s for %s" % (type, arr)
+      raise Exception
+
+  def rb_arr2d(self, arr, dim, tp, trim):
+    self.declare_var("int j")
+    self.declare_var("int i")
+    if trim:
+      self.declare_var("int size")
+    
+    pb = "pb%s" % tp[0]
+    self.declare_var("%s *%s" % (tp, pb))
+    if trim:
+      self.declare_var("int imin")
+
+    self.addln("for (j = 0; j < %s; j++) {" % dim[0])
+
+    # read major index
+    self.rb_var("itmp", "int", match = 0, tolerr = 1)
+    ceof = "feof(fp)"
+    self.begin_if(ceof) # EOF encountered, normal quit */
+    self.addln("break;")
+    self.begin_else_if("err")
+    self.errmsg(r"%s error: j = %%d, itmp = %%d\n" % arr,
+        "j, itmp")
+    self.addraw("goto ERR;\n")
+    self.end_if(ceof)
+
+    # handle major index mismatch
+    cidx = "itmp > i && itmp < %s" % dim[0]
+    self.begin_if(cidx)
+    self.addln("i = itmp;")
+    self.begin_else()
+    self.die_if("i != itmp", 
+        "%s major index mismatch at i = %%d, (read) %%d" % arr,
+        "i, itmp", onerr = "goto ERR;")
+    self.end_if(cidx)
+
+    self.addln("%s = %s + j * %s;" % (pb, arr, dim[1]))
+    if trim:
+      self.rb_var("imin", "int")  # lowest
+      self.insist("imin >= 0 && imin < %s" % dim[1],
+          r"%s: base index %%d out of boudary [0, %s=%%d)" % (arr, dim[1]),
+          "imin, %s" % dim[1], onerr = "goto ERR;")
+      self.rb_var("size", "int")
+      self.insist("size > 0 && imin + size <= %s" % dim[1],
+          r"%s: invalid size %%d, imin=%%d, [0, %s=%%d)" % (arr, dim[1]),
+          "size, imin, %s" % dim[1], onerr = "goto ERR;")
+      self.rb_arr1d("%s+imin" % pb, "size", tp)
+    else:
+      self.rb_arr1d(pb, dim[1], tp)
+
+    self.addln("}") # end of the loop
+
+  def rwb_arr(self, arr, dim, tp, trim, rw):
+    ndim = len(dim)
+    if ndim == 2:
+      if rw == "w":
+        self.wb_arr2d(arr, dim, tp, trim)
+      else:
+        self.rb_arr2d(arr, dim, tp, trim)
+    elif ndim == 1:
+      if rw == "w":
+        self.wb_arr1d(arr, dim[0], tp)
+      else:
+        self.rb_arr1d(arr, dim[0], tp)
+    else: raise Exception
 
   def rb_checkbytes(self):
     self.declare_var("int size")
     self.declare_var("int endn")
     self.declare_var("int err")
+
+    self.add_comment("determine file endian")
     val = "size"
     ref = "sizeof(int)"
     cond = "(endn = endn_rmatchi(&%s, %s, fp)) < 0" % (val, ref)
@@ -617,6 +683,33 @@ class CCodeWriter:
         "(unsigned) %s, (unsigned) %s" % (val, ref), 
         onerr = "goto ERR;")
     self.addraw("BIO_RMI(size, sizeof(double));\n")
+
+  def rb_objarr1d(self, arr, dim, funcall, widx, imin, imax):
+    self.declare_var("int i")
+    self.addln("for (i = 0; i < %s; i++) {", dim[0])
+    if widx[0]: self.rb_var("i", "int", match = 1)
+    self.addln(funcall, arr + "+i")
+    self.addln("}")
+
+  def rb_objarr2d(self, arr, dim, funcall, widx, imin, imax):
+    self.declare_var("int j")
+    self.addln("for (j = 0; j < %s; j++) {", dim[0])
+    if widx[0]: # write index j
+      self.rb_var("j", "int", match = 1) 
+    arr1d = "%s+j*%s" % (arr, dim[1])
+    size = dim[1]
+    self.rb_objarr1d(arr1d,
+        [size], funcall, widx[1:], None, None)
+    self.addln("}")
+
+  def rb_objarr(self, arr, dim, funcall, widx, imin, imax):
+    ''' wrapper for reading an object array '''
+    self.die_if("%s == NULL" % arr, "%s is null" % arr)
+    ndim = len(dim)
+    if ndim == 2:
+      self.rb_objarr2d(arr, dim, funcall, widx, imin, imax)
+    elif ndim == 1:
+      self.rb_objarr1d(arr, dim, funcall, widx, imin, imax)
 
   '''
   def rb_atom(self, var, cnt, onerr, onsuc):
