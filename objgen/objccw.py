@@ -91,11 +91,45 @@ class CCodeWriter:
       elif line.startswith("#el"):
         cond = None
       i += 1
+    self.s = '\n'.join(lines) + endl
 
+
+  def merge_if_blocks(self):
+    '''
+    merge neighboring if-blocks with the same condition
+        if (abc) {
+          ...
+    X   }
+    X   if (abc) {
+          ...
+        }
+    '''
+    endl = '\n' if self.s.endswith('\n') else ''
+    lines = self.s.splitlines()
+    cond = None
+    i = 1
+    # remove empty pp
+    while i < len(lines):
+      line = lines[i]
+      pattern = r"if\s*\(.*\)\s*\{$"
+      m = re.match(pattern, line.strip())
+      if m:
+        #print "i:%4d, %s" % (i, line); raw_input()
+        if not cond: cond = line
+      elif (line.strip() == "}" and cond
+          and line.index("}") == cond.index("if")):
+        #print "match! i=%d\n%s\n%s\n" % (i, cond, line); raw_input()
+        if i < len(lines)-1 and lines[i+1] == cond: 
+          #print "removing i: %d\n%s\n%s\n...%s\n" % (i, lines[i], lines[i+1], lines[i+2]); raw_input()
+          lines = lines[:i] + lines[i+2:]
+          continue
+        cond = None  # terminate condition
+      i += 1
     self.s = '\n'.join(lines) + endl
 
   def gets(self):
     self.remove_idle_pp()
+    self.merge_if_blocks()
     return self.s
  
   def print_file_line(self):
