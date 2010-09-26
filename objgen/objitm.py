@@ -669,8 +669,8 @@ class Item:
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
-      cw.rb_objarr(varname, dim, funcall, [1, 1],
-          imin, imax)
+      cw.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
+          [1, 1], imin, imax)
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
@@ -721,8 +721,8 @@ class Item:
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
-      cw.wb_objarr(varname, dim, funcall, [1, 1],
-          imin, imax)
+      cw.wb_objarr(varname, dim, funcall, it.cmds["#if"],
+          [1, 1], imin, imax)
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 

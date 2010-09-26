@@ -574,7 +574,7 @@ class Object:
         var_list += ", %s" % usr_name
     return param_list, var_list
 
-  def gen_func_cfgopen_(obj):
+  def gen_func_cfgopen_low(obj):
     ''' 
     write a function that initialize an object from configuration file
     Note: it loads configuration parameters only, 
@@ -618,35 +618,38 @@ class Object:
     cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usr_vars("cfg")
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
-            "const char *fname" if cfgopen else cfgdecl, 
+            "const char *cfgname" if cfgopen else cfgdecl, 
             usrvars[0])
     cw = CCodeWriter()
     cw.begin_function(fopen, fdecl, fdesc)
-    cw.vars.addln("%s *%s;" % (objtp, objptr))
+    cw.declare_var("%s *%s" % (objtp, objptr), objptr)
 
     # open a configuration file
     if cfgopen:
       cw.add_comment("open configuration file")
-      cw.vars.addln("cfgdata_t *cfg;")
-      scfg = "(cfg = cfgopen(fname)) == NULL"
+      cw.declare_var("cfgdata_t *cfg", "cfg")
+      scfg = "(cfg = cfgopen(cfgname)) == NULL"
       cw.die_if(scfg,
           r"%s: cannot open config. file %%s.\n" % objtp,
-          "fname", onerr = "return NULL;")
-      cw.addln("")
+          "cfgname", onerr = "return NULL;")
+      cw.addln()
 
     # allocate memory
-    cw.add_comment("allocate memory")
+    cw.add_comment("allocate memory for %s" % obj.name)
     sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
     cw.die_if(sobj, "no memory for %s (size %%u)" % obj.name,
         "(unsigned) sizeof(*%s)" % objptr);
-    cw.addln("")
+    cw.addln()
    
     cw.add_comment("call low level function")
     s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
-    cw.die_if(s,
-      "%s: failed to read configuration file %%s" % objtp, 
-      "fname", onerr = "free(%s); return NULL;" % objptr)
-    cw.addln("")
+    ermsg = objtp + ": error while reading configuration file"
+    onerr = "free(%s);\nreturn NULL;" % objptr
+    if cfgopen:
+      cw.die_if(s, ermsg + " %s", "cfgname", onerr = onerr)
+    else:
+      cw.die_if(s, ermsg, onerr = onerr) 
+    cw.addln()
     
     if cfgopen:
       cw.add_comment("close handle to configuration file")
@@ -655,7 +658,7 @@ class Object:
     return cw.prototype, cw.function
 
   def gen_func_cfgopen2(self):
-    list = [self.gen_func_cfgopen_()]
+    list = [self.gen_func_cfgopen_low()]
     if not self.cmds["private"]:
       list += [self.gen_func_cfgopen()]
     return list
@@ -726,7 +729,7 @@ class Object:
 
     # add prerequisite/validation tests
     if self.folds[f].prereq != 1:
-      cw.addlnraw("if (!(%s)) return 0;" % self.folds[f].prereq)
+      cw.addln("if (!(%s)) return 0;", self.folds[f].prereq)
     if self.folds[f].valid != 1:
       cond = "%s" % self.folds[f].valid
       cw.insist(cond, "validation in %s binary" % readwrite)
@@ -735,7 +738,7 @@ class Object:
     condf = '(fp = fopen(fname, "%sb")) == NULL' % rw
     cw.die_if(condf, r"cannot %s binary file [%%s]." % readwrite, 
       "fname", onerr = "goto ERR;")
-    cw.addln("");
+    cw.addln()
 
     # add checking bytes
     if rw == "r": 
@@ -745,12 +748,12 @@ class Object:
       cw.addln("*pver = ver;")
     else:
       cw.wb_checkbytes();
-
+    cw.addln()
     #cw.declare_var("int verify")
     #cw.addln("verify = !(flags & IO_NOVERIFY)")
 
     # call the actual low-level function
-    cw.addraw("\n")
+    cw.add_comment("call low level %s function for members" % readwrite)
     cw.declare_var("int i")
     cw.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
         ", flags, endn" if rw == "r" else "", usrs[1]);

@@ -39,7 +39,9 @@ void fatal_(const char *f, int l, const char *fmt, ...)
 
 /* shorter version */
 void die_if(int cond, const char *fmt, ...) PERRMSG__(NULL, 0, cond, 1)
+#ifdef USE_MSG_IF
 void msg_if(int cond, const char *fmt, ...) PERRMSG__(NULL, 0, cond, 0)
+#endif
 #ifdef USE_FATAL
 void fatal(const char *fmt, ...) PERRMSG__(NULL, 0, 1, 1)
 #endif

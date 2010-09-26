@@ -13,7 +13,9 @@ void fatal_(const char *f, int l, const char *fmt, ...);
 #endif
 
 void die_if(int cond, const char *fmt, ...);
+#ifdef USE_MSG_IF
 void msg_if(int cond, const char *fmt, ...);
+#endif
 #ifdef USE_FATAL
 void fatal(const char *fmt, ...);
 #endif

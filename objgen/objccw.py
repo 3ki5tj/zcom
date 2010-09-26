@@ -24,26 +24,37 @@ class CCodeWriter:
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
   def addraw(self, t):
-    ''' write a plain string `t' without format conversion '''
+    r''' 
+    write a plain string `t' without format conversion 
+    indents are added if the current text ends with `\n'
+    no newline is appended after `t'
+    '''
     # we write to self.body, if we are in a function
     who = self.body if self.funcname else self
 
     if t.lstrip().startswith("}"): who.dec()
     if (who.s == "" or who.s.endswith("\n")) and (
-        not t.lstrip().startswith("#") and 
-        not t.strip().endswith(":")):  # label
+        t.strip() != "" and   # no need to indent for a blank line
+        not t.lstrip().startswith("#") and   # preprocessor
+        not t.strip().endswith(":")):        # label
       who.s += who.sindent * who.nindents
     who.s += t
     if t.rstrip().endswith("{"): who.inc()
 
   def addlnraw(self, t):
-    self.addraw(t + '\n')
+    if not t.find('\n'):
+      self.addraw(t + '\n') # single line
+    else:
+      for line in t.splitlines():
+        self.addraw(line + '\n')
 
-  def add(self, t, *args):
-    self.addraw( t % args)
-
-  def addln(self, t, *args):
-    self.addraw( (t % args) + '\n' )
+  def addln(self, t = None, *args):
+    r''' 
+    add text with an appending '\n'
+    now support multiple line 
+    '''
+    if not t: return self.addraw('\n')
+    self.addlnraw(t % args)
 
   def remove_idle_pp(self):
     ''' remove empty preprocessor blocks 
@@ -206,7 +217,7 @@ class CCodeWriter:
     '''
     self.begin_if(cond)
     self.errmsg(msg, args, addfl, pfx)
-    if onerr: self.addraw(onerr + '\n')
+    if onerr: self.addlnraw(onerr)
     self.end_if(cond)
 
   def msg_if(self, cond, msg, args = None, onerr = None):
@@ -225,7 +236,7 @@ class CCodeWriter:
     self.declare_var("int i") # declare index i
     self.addln("for (i = 0; i < %s; i++)", cnt)
     self.addln(self.sindent + "%s[i] = %s;", var, default)
-    self.addln("")
+    self.addln()
 
   def alloc_darr(self, var, type, cnt):
     self.checktp('*'+var, type)
@@ -321,7 +332,7 @@ class CCodeWriter:
         must, valid, desc)
     
     self.end_if(prereq)
-    self.addln("")
+    self.addln()
 
   def str_to_arr(self, sbuf, var, type, fmt, cnt, 
       valid, cmpl, desc):
@@ -339,14 +350,14 @@ class CCodeWriter:
     self.addln("for (i = 0; i < %s; i++) {" % cnt)
     s = r'1 != sscanf(ps, "%s%%n", %s+i, &nps)' % (fmt, var)
     if cmpl:  # allow incomplete
-      self.die_if(s, "incomplete array %s at i = %%s" % var, "i")
+      self.die_if(s, "incomplete array %s at i = %%d" % var, "i")
     else:
       self.begin_if(s)
       self.addln("break;")
       self.end_if(s)
     if valid:
       self.insist(valid, 
-        r"%s: validation %s failed at i = %%s\n" % (var, valid),
+        r"%s: validation %s failed at i = %%d" % (var, valid),
         "i")
     self.addln("ps += nps;")
     self.addln("}")
@@ -367,7 +378,7 @@ class CCodeWriter:
 
     # parse the string to get individual items
     self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, desc)
-    self.addln("")
+    self.addln()
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
       prereq, desc):
@@ -392,7 +403,7 @@ class CCodeWriter:
     self.addln("%s &= ~%s;", var, flag)
     self.end_if(ivar)
     self.end_if(prereq)
-    self.addln("")
+    self.addln()
 
   def begin_function(self, name, fdecl, desc, macro = None):
     ''' 
@@ -413,7 +424,6 @@ class CCodeWriter:
     decl.addln("{")
     
     # create a variable list `vls'
-    self.vars = CCodeWriter(self.nindents + 1)
     self.vls = {}
 
     # prototype
@@ -427,32 +437,48 @@ class CCodeWriter:
     
     self.funcname = name
     self.function = ""  # the content of the function
- 
+
+  def print_vars(self, dopp):
+    for v in self.vls:
+      dcl,pp = self.vls[v]
+      if dopp:
+        if not pp: continue
+        self.decl.addln("#if %s" % pp)
+        self.decl.addln(dcl+";")
+        self.decl.addln("#endif")
+        #print dcl, pp
+      else:
+        if pp: continue
+        self.decl.addln(dcl+";")
+        #print dcl
+
   def end_function(self, sret = ""):
     # write variable list
-    if self.vars.s != "":
-      self.vars.addln("");
-
+    if len(self.vls):
+      # write normal variables first, then those with pp's
+      self.print_vars(0)
+      self.print_vars(1)
+      self.decl.addln()
+      #raw_input()
+    
     s  = self.decl.gets()
-    s += self.vars.gets()
     s += self.body.gets()
     
     tail = self.tail = CCodeWriter(self.nindents + 1)
     if len(sret): tail.addln(sret);
-    tail.addln("}")
-    tail.addln("")
+    tail.addln("}\n")
     
     s += self.tail.gets()
     self.function = s
     self.funcname = None  # no longer inside the function
     self.vls = None  # kill variable list
-    self.decl = self.vars = self.body = self.hdr = self.tail = None
+    self.decl = self.body = self.hdr = self.tail = None
 
-  def declare_var(self, dcl, var = None):
+  def declare_var(self, dcl, var = None, pp = None):
     ''' 
     declare a variable within a function
-    `var': variable name
     `dcl': declarator
+    `var': variable name
     e.g. in 
       double *arr;
     `var' is arr; `double *arr' is the declarator
@@ -469,14 +495,21 @@ class CCodeWriter:
         print "cannot determine the var [%s]" % var
         raise Exception
 
-    if var in self.vls:
-      newdcl = self.vls[var]
-      if dcl != newdcl:  # reject if the new type is different from the existing one
-        print "var. %s is already declared as %s, diff. from %s" % (var, dcl, newdcl)
+    if var in self.vls: # existing variable
+      olddcl, oldpp = self.vls[var]
+      if dcl != olddcl:  # reject if the new type is different from the existing one
+        print "var. %s is already declared as [%s], diff. from [%s]" % (var, olddcl, dcl)
         raise Exception
-    else:
-      self.vls[var] = dcl
-      self.vars.addln(dcl + ";")
+
+      # update preprocessing condition
+      if oldpp: # an existing condition
+        if not pp: # relieve the pp
+          self.vls[var] = (olddcl, None)
+        elif oldpp != pp:
+          self.vls[var] = (olddcl, oldpp + " || " +pp)
+        else: pass # same old condition
+    else: # new variable
+      self.vls[var] = dcl, pp
   
   def wb_var(self, var, type):
     if type in ("int", "unsigned", "unsigned int"):
@@ -537,20 +570,20 @@ class CCodeWriter:
       self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
 
-  def wb_objarr1d(self, arr, dim, funcall, widx, imin, imax):
-    self.declare_var("int i")
+  def wb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
+    self.declare_var("int i", pp = pp)
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
-    if widx[0]: self.wb_var("i", "int")
+    if widx[0]: self.wb_var("i", "int") # write index
     self.addln(funcall, arr + "+i")
     self.addln("}")
 
-  def wb_objarr2d(self, arr, dim, funcall, widx, imin, imax):
-    self.declare_var("int j")
+  def wb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):
+    self.declare_var("int j", pp = pp)
     self.addln("for (j = 0; j < %s; j++) {", dim[0])
     if widx[0]: self.wb_var("j", "int") # write index j
-    self.declare_var("int imin")
-    self.declare_var("int imax")
-    self.declare_var("int size")
+    self.declare_var("int imin", pp = pp)
+    self.declare_var("int imax", pp = pp)
+    self.declare_var("int size", pp = pp)
     arr1d = "%s+j*%s" % (arr, dim[1])
     if imin or imax:
       self.addln("imin = " + (imin if imin else "0") + ";")
@@ -560,18 +593,18 @@ class CCodeWriter:
       arr1d += "+imin"
     else:
       size = dim[1]
-    self.wb_objarr1d(arr1d,
-        [size], funcall, widx[1:], None, None)
+    self.wb_objarr1d(arr1d, [size], funcall, pp, 
+        widx[1:], None, None)
     self.addln("}")
 
-  def wb_objarr(self, arr, dim, funcall, widx, imin, imax):
+  def wb_objarr(self, arr, dim, funcall, pp, widx, imin, imax):
     ''' wrapper for writing an object array '''
     self.die_if("%s == NULL" % arr, "%s is null" % arr)
     ndim = len(dim)
     if ndim == 2:
-      self.wb_objarr2d(arr, dim, funcall, widx, imin, imax)
+      self.wb_objarr2d(arr, dim, funcall, pp, widx, imin, imax)
     elif ndim == 1:
-      self.wb_objarr1d(arr, dim, funcall, widx, imin, imax)
+      self.wb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
   def rb_var(self, var, type, match = 0, prec = "1e-5", tolerr = 0):
     if type in ("int", "unsigned", "unsigned int"):
@@ -684,32 +717,32 @@ class CCodeWriter:
         onerr = "goto ERR;")
     self.addraw("BIO_RMI(size, sizeof(double));\n")
 
-  def rb_objarr1d(self, arr, dim, funcall, widx, imin, imax):
-    self.declare_var("int i")
+  def rb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
+    self.declare_var("int i", pp = pp)
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
     if widx[0]: self.rb_var("i", "int", match = 1)
     self.addln(funcall, arr + "+i")
     self.addln("}")
 
-  def rb_objarr2d(self, arr, dim, funcall, widx, imin, imax):
-    self.declare_var("int j")
+  def rb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):
+    self.declare_var("int j", pp = pp)
     self.addln("for (j = 0; j < %s; j++) {", dim[0])
     if widx[0]: # write index j
       self.rb_var("j", "int", match = 1) 
     arr1d = "%s+j*%s" % (arr, dim[1])
     size = dim[1]
-    self.rb_objarr1d(arr1d,
-        [size], funcall, widx[1:], None, None)
+    self.rb_objarr1d(arr1d, [size], funcall, pp, 
+        widx[1:], None, None)
     self.addln("}")
 
-  def rb_objarr(self, arr, dim, funcall, widx, imin, imax):
+  def rb_objarr(self, arr, dim, funcall, pp, widx, imin, imax):
     ''' wrapper for reading an object array '''
     self.die_if("%s == NULL" % arr, "%s is null" % arr)
     ndim = len(dim)
     if ndim == 2:
-      self.rb_objarr2d(arr, dim, funcall, widx, imin, imax)
+      self.rb_objarr2d(arr, dim, funcall, pp, widx, imin, imax)
     elif ndim == 1:
-      self.rb_objarr1d(arr, dim, funcall, widx, imin, imax)
+      self.rb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
   '''
   def rb_atom(self, var, cnt, onerr, onsuc):
