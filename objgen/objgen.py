@@ -461,8 +461,7 @@ class Object:
     generate code for an object to decl, header, source 
     '''
     funclist = []
-    funclist += [self.gen_func_cfgopen_()]
-    funclist += [self.gen_func_cfgopen()]
+    funclist += self.gen_func_cfgopen2()
     funclist += [self.gen_func_close()]
     funclist += self.gen_func_binrw2("", "r")
     funclist += self.gen_func_binrw2("", "w")
@@ -530,11 +529,12 @@ class Object:
   def gen_func_close(self):
     cw = CCodeWriter()
     macroname = "%sclose" % self.fprefix
-    funcnm = macroname + "_"
+    funcnm = macroname + "_low"
     macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
       macroname, self.ptrname, funcnm, self.ptrname, self.ptrname, self.ptrname)
     fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
-    cw.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, macro)
+    cw.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, 
+        None if self.cmds["private"] else macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
@@ -582,7 +582,7 @@ class Object:
     '''
     objtp   = obj.name
     objptr  = obj.ptrname
-    fread   = "%scfgopen_"  % obj.fprefix
+    fread   = "%scfgopen_low"  % obj.fprefix
     fdesc   = '''initialize members of %s from configuration 
     file `cfg', or if unavailable, from default values ''' % objtp
     
@@ -610,7 +610,7 @@ class Object:
     objtp   = obj.name
     objptr  = obj.ptrname
     fopen   = "%scfgopen"  % obj.fprefix
-    fread   = fopen + "_"
+    fread   = fopen + "_low"
     fdesc   = '''return a pointer of an initialized %s
               if possible, initial values are taken from configuration
               file `cfg', otherwise default values are assumed ''' % objtp
@@ -626,31 +626,39 @@ class Object:
 
     # open a configuration file
     if cfgopen:
+      cw.add_comment("open configuration file")
       cw.vars.addln("cfgdata_t *cfg;")
       scfg = "(cfg = cfgopen(fname)) == NULL"
-      cw.begin_if(scfg)
-      cw.errmsg(r"%s: cannot open config. file %%s.\n" % objtp,
-          "fname");
-      cw.addln("return NULL;")
-      cw.end_if(scfg)
+      cw.die_if(scfg,
+          r"%s: cannot open config. file %%s.\n" % objtp,
+          "fname", onerr = "return NULL;")
+      cw.addln("")
 
     # allocate memory
+    cw.add_comment("allocate memory")
     sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
     cw.die_if(sobj, "no memory for %s (size %%u)" % obj.name,
         "(unsigned) sizeof(*%s)" % objptr);
+    cw.addln("")
    
-    # cw.declare_var("int ret")
+    cw.add_comment("call low level function")
     s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
-    cw.begin_if(s)
-    cw.errmsg("%s: failed to read config." % objtp)
-    cw.addln("free(%s);" % objptr)
-    cw.addln("return NULL;")
-    cw.end_if(s)
+    cw.die_if(s,
+      "%s: failed to read configuration file %%s" % objtp, 
+      "fname", onerr = "free(%s); return NULL;" % objptr)
+    cw.addln("")
     
     if cfgopen:
+      cw.add_comment("close handle to configuration file")
       cw.addln("cfgclose(cfg);")
     cw.end_function("return %s;" % objptr)
     return cw.prototype, cw.function
+
+  def gen_func_cfgopen2(self):
+    list = [self.gen_func_cfgopen_()]
+    if not self.cmds["private"]:
+      list += [self.gen_func_cfgopen()]
+    return list
 
   def gen_func_binrw_low(self, f, rw):
     ''' 
@@ -700,12 +708,10 @@ class Object:
     cw.end_function("")
     return cw.prototype, cw.function
 
-  def gen_func_binrw2(self, f, rw):
-    return [self.gen_func_binrw_low(f, rw),
-            self.gen_func_binrw(f, rw)]
-
   def gen_func_binrw(self, f, rw):
-    ''' write a wrapper function for reading/writing data in binary form '''
+    ''' 
+    write a wrapper function for reading/writing data in binary form 
+    '''
     readwrite = "read" if rw == "r" else "write"
     cw = CCodeWriter()
     funcnm = "%sbin%s" % (self.folds[f].fprefix, readwrite)
@@ -732,10 +738,14 @@ class Object:
     cw.addln("");
 
     # add checking bytes
-    cw.rb_checkbytes();
-    if rw == "r": cw.declare_var("int ver")
-    cw.rb_var("ver", "int")
-    cw.addln("*pver = ver;")
+    if rw == "r": 
+      cw.rb_checkbytes();
+      cw.declare_var("int ver")
+      cw.rb_var("ver", "int")
+      cw.addln("*pver = ver;")
+    else:
+      cw.wb_checkbytes();
+
     #cw.declare_var("int verify")
     #cw.addln("verify = !(flags & IO_NOVERIFY)")
 
@@ -752,6 +762,12 @@ class Object:
     cw.end_function("")
     return cw.prototype, cw.function
 
+  def gen_func_binrw2(self, f, rw):
+    list = [self.gen_func_binrw_low(f, rw)]
+    private =  self.cmds["private"]
+    if not private:
+      list += [self.gen_func_binrw(f, rw)]
+    return list
 
 class Parser:
   '''

@@ -529,7 +529,7 @@ class Item:
       funcfree = "%sclose" % fpfx
     elif it.gtype == "object array": 
       fpfx = it.get_obj_fprefix()
-      funcfree = "%sclose_" % fpfx
+      funcfree = "%sclose_low" % fpfx
       cnt = it.cmds["cnt"]
       cw.declare_var("int i")
 
@@ -598,7 +598,7 @@ class Item:
       cw.alloc_darr(varname, etp, cnt)
       cw.declare_var("int i;")
       cw.addln("for (i = 0; i < %s; i++) {" % cnt)
-      s = "0 != %scfgopen_(%s+i, cfg%s)" % (
+      s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
         fpfx, varname, it.get_init_args())
       cw.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
       cw.addln("}\n")
@@ -665,7 +665,7 @@ class Item:
       cw.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinread_(%%s, fp, ver%s);" % (
+      funcall = "%sbinread_low(%%s, fp, ver, flags, endn%s);" % (
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]
@@ -717,7 +717,7 @@ class Item:
       cw.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinwrite_(%%s, fp, ver%s);" % (
+      funcall = "%sbinwrite_low(%%s, fp, ver%s);" % (
           fpfx, it.get_args("binwrite"));
       imin = it.cmds["bin_imin"]
       imax = it.cmds["bin_imax"]

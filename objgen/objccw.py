@@ -394,7 +394,7 @@ class CCodeWriter:
     self.end_if(prereq)
     self.addln("")
 
-  def begin_function(self, name, fdecl, desc, macro = ""):
+  def begin_function(self, name, fdecl, desc, macro = None):
     ''' 
     start a function
     construct four code-writers:  decl, vars, hdr, body 
@@ -418,7 +418,7 @@ class CCodeWriter:
 
     # prototype
     hdr = self.hdr = CCodeWriter(0)  # prototype writer
-    if len(macro): hdr.addln(macro)  # extra macro
+    if macro: hdr.addln(macro)  # extra macro
     hdr.addln(fdecl + ";")
     self.prototype = hdr.gets()
 
