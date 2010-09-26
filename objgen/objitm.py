@@ -5,7 +5,7 @@ from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
 from objcow  import CCodeWriter
-from objext  import notalways 
+from objext  import *
 
 simple_types = ("int", "unsigned int", "unsigned", 
   "long", "unsigned long", "real", "double", "float", 
@@ -171,6 +171,15 @@ class Item:
       raw_input()        
     return ret
 
+  def get_elegtype(self):
+    ''' return gtype for simple, or gtype of elements for arrays '''
+    gtype = self.gtype
+    if gtype in ("static array", "dynamic array"):
+      return self.get_gtype(offset = 1)
+    else:
+      return gtype
+
+
   def type2fmt(self, tp):
     fmt = ""
     if   tp == "int":      
@@ -194,34 +203,32 @@ class Item:
       raise Exception
     return fmt
 
+  def get_zero(self):
+    if not self.decl:
+      raise Exception
+    gtype = self.get_elegtype()
+    zval = None
+    if gtype in ("int", "unsigned", "unsigned int", 
+        "long", "unsigned long"):
+      zval = "0"
+    elif gtype in ("float", "real"):
+      zval = "0.0f"
+    elif gtype in ("double"):
+      zval = "0.0"
+    elif gtype in ("pointer", "function pointer", "char *", 
+        "pointer to object"):
+      zval = "NULL"
+    elif gtype == "MPI_Comm":
+      zval = "MPI_COMM_NULL"    
+    # if not zval: zval = "(%s) 0" % self.decl.datatype
+    return zval
+
   def fill_def(self):
     ''' set 'def' value '''
     if not self.decl or "def" in self.cmds: return
-    defval = None
-    gtype = self.gtype
-    # for arrays, 'def' means the default value of its elements
-    if gtype in ("static array", "dynamic array"):
-      gtype = self.get_gtype(offset = 1)
-      # print "gtype of %s is %s" % (self.decl.name, gtype); raw_input()
-    
-    if gtype in ("int", "unsigned", "unsigned int", 
-        "long", "unsigned long"):
-      defval = "0"
-    elif gtype in ("float", "real"):
-      defval = "0.0f"
-    elif gtype in ("double"):
-      defval = "0.0"
-    elif gtype in ("pointer", "function pointer", "char *", 
-        "pointer to object"):
-      defval = "NULL"
-    elif gtype == "MPI_Comm":
-      defval = "MPI_COMM_NULL"
-    else: 
-      defval = "(%s) 0" % self.decl.datatype
-    if defval != None: 
-      #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
-      #raw_input()
-      self.cmds["def"] = defval
+    self.cmds["def"] = self.get_zero()
+    #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
+    #raw_input()
 
   def add_item_to_list(self, dcl): 
     ''' add an item with decl being dcl '''
@@ -323,14 +330,14 @@ class Item:
     #if not it.decl or "key" in it.cmds: return
     if not it.decl: return
 
-    if "key" in it.cmds:
-      cfgkey = it.cmds["key"]
-    else:
-      cfgkey = it.decl.name
+    key0 = it.cmds["key"]
+    cfgkey = key0 if key0 else it.decl.name
+    
+    if not key0 or it.cmds["flag"]:
       pm = it.cmds["key_unprefix"]
       if pm and cfgkey.startswith(pm):
         cfgkey = cfgkey[len(pm):]
-      pfx = it.cmds["key_prefix"]
+      pfx  = it.cmds["key_prefix"]
       if pfx:  cfgkey = pfx + cfgkey
     # append key argument
     args = it.cmds["key_args"]
@@ -509,48 +516,6 @@ class Item:
         cow.addln(scmt)
     return block
 
-  def close_var(it, cow, ptrname, maxwid):
-    ''' free a pointer / close an object '''
-    if it.pre:
-      cow.addln("#" + it.pre.raw)
-      return
-    if not it.decl or it.isdummy: return
-    if it.cmds["usr"] == "parent": return
-
-    varnm = it.decl.name;
-    varname = "%s->%s" % (ptrname, varnm)
-    
-    #if varnm == "cache":
-    #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
-    #  raw_input()
-    if it.gtype == "char *": 
-      funcfree = "ssdelete"
-    elif it.gtype == "dynamic array":
-      funcfree = "free"
-    elif it.gtype == "object pointer":
-      fpfx = it.get_obj_fprefix()
-      funcfree = "%sclose" % fpfx
-    elif it.gtype == "object array": 
-      fpfx = it.get_obj_fprefix()
-      funcfree = "%sclose_low" % fpfx
-      cnt = it.cmds["cnt"]
-      cow.declare_var("int i")
-
-      cond = "%s != NULL" % varname
-      cow.begin_if(cond)
-      cow.addln("for (i = 0; i < %s; i++) {" % cnt)
-      cow.addln("%s(%s + i);", funcfree, varname) 
-      cow.addln("}");
-      cow.addln("free(%s);", varname);
-      cow.end_if(cond)
-      return
-    else:
-      return
-
-    cow.addln("if (%-*s != NULL) %s(%s);",
-             maxwid, varname, funcfree, varname)
-    
-
   def cfgget_var(it, cow, ptrname):
     ''' read a variable from config. '''
     if it.pre:
@@ -570,6 +535,7 @@ class Item:
     cnt     = it.cmds["cnt"]
     desc    = it.cmds["desc"]
     pp      = it.cmds["#if"]
+    flag    = it.cmds["flag"]
 
     if not it.decl: # stand-alone comment
       cow.add_comment(desc)
@@ -577,6 +543,7 @@ class Item:
       call = it.cmds["call"]
       if call: cow.addln(call + ";")
       return
+    if flag and (not key or key == "flags"): return
     
     varnm = it.decl.name
     varname = ptrname + "->" + varnm
@@ -584,12 +551,13 @@ class Item:
     # add a remark before we start
     cow.add_comment(desc)
 
-    if "flag" in it.cmds and "key" in it.cmds: # input flag
+    if flag: # input flag
+      #raw_input("flag with key %s" % key)
       flag = it.get_flag()
       fmt = it.type2fmt(it.gtype)
       cow.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
-    
+  
     elif it.gtype == "object pointer":
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
@@ -653,11 +621,16 @@ class Item:
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     verify = it.cmds["verify"]
+    valid = it.cmds["valid"]
     pp = it.cmds["#if"]
     if pp:
       cow.addln("#if %s", pp)
     if notalways(cond):
       cow.begin_if(cond)
+
+    if not it.decl:
+      print "no declare gtype = %s" % it.gtype
+      raw_input()
 
     if usrval == "bintmp": 
       cow.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
@@ -691,7 +664,7 @@ class Item:
       cow.addln("goto ERR;")
       cow.end_if(cond1)
     else:
-      cow.rb_var(varname, it.gtype, verify)
+      cow.rb_var(varname, it.gtype, verify, valid = valid)
 
     if notalways(cond):
       cow.end_if(cond)
@@ -752,4 +725,88 @@ class Item:
       cow.end_if(cond)
     if pp:
       cow.addln("#endif")
+
+  def clear_var(it, cow, ptr):
+    if not it.decl or it.isdummy: return
+
+    varnm = it.decl.name
+    varname = ptr + "->" + varnm
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    prereq = it.cmds["prereq"]
+    defl = it.get_zero()
+
+    pp = it.cmds["#if"]
+    if pp: cow.addln("#if %s", pp)
+    if notalways(prereq): cow.begin_if(prereq)
+
+    if it.gtype in ("dynamic array", "static array"):
+      cow.init_sarr(varname, defl, cnt, pp = pp)
+    elif it.gtype in ("object array", "object pointer"):
+      fpfx = it.get_obj_fprefix();
+      cond = "%s != NULL" % varname
+      cow.begin_if(cond)      
+      funcall = "%sclear(%%s)" % fpfx      
+      if it.gtype == "object array":
+        cow.declare_var("int i", pp = pp) # declare index i
+        cow.addln("for (i = 0; i < %s; i++)", cnt)
+        cow.addln(cow.sindent + funcall % (varname+"+i") + ";")
+      else:
+        cow.addln(funcall % varname + ";")
+      cow.end_if(cond)
+    else:
+      cow.assign(varname, defl, it.gtype)
+
+    if notalways(prereq): cow.end_if(prereq)
+    if pp: cow.addln("#endif")
+
+  def close_var(it, cow, ptrname, maxwid):
+    ''' free a pointer / close an object '''
+    if not it.decl or it.isdummy: return
+    if it.cmds["usr"] == "parent": return
+    if it.gtype not in ("char *", "dynamic array",
+        "object array", "object pointer"): return
+
+    varnm = it.decl.name;
+    varname = "%s->%s" % (ptrname, varnm)
+
+    pp = it.cmds["#if"]
+    prereq = it.cmds["prereq"]
+    if pp: cow.addln("#if %s", pp)
+    if notalways(prereq): cow.begin_if(prereq)    
+ 
+    handled = 0
+    #if varnm == "cache":
+    #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
+    #  raw_input()
+    if it.gtype == "char *": 
+      funcfree = "ssdelete"
+    elif it.gtype == "dynamic array":
+      funcfree = "free"
+    elif it.gtype == "object pointer":
+      fpfx = it.get_obj_fprefix()
+      funcfree = "%sclose" % fpfx
+    elif it.gtype == "object array": 
+      fpfx = it.get_obj_fprefix()
+      funcfree = "%sclose_low" % fpfx
+      cnt = it.cmds["cnt"]
+      cow.declare_var("int i")
+
+      cond = "%s != NULL" % varname
+      cow.begin_if(cond)
+      cow.addln("for (i = 0; i < %s; i++) {" % cnt)
+      cow.addln("%s(%s + i);", funcfree, varname) 
+      cow.addln("}");
+      cow.addln("free(%s);", varname);
+      cow.end_if(cond)
+      handled = 1
+
+    if not handled:
+      cow.addln("if (%-*s != NULL) %s(%s);",
+             maxwid, varname, funcfree, varname)
+
+    if notalways(prereq): cow.end_if(prereq)
+    if pp: cow.addln("#endif")
+    
+
 

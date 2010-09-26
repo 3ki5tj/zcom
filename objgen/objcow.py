@@ -259,7 +259,6 @@ class CCodeWriter:
     self.declare_var("int i", pp = pp) # declare index i
     self.addln("for (i = 0; i < %s; i++)", cnt)
     self.addln(self.sindent + "%s[i] = %s;", var, default)
-    self.addln()
 
   def alloc_darr(self, var, type, cnt):
     self.checktp('*'+var, type)
@@ -299,7 +298,6 @@ class CCodeWriter:
       self.insist("%s == %s" % (sz1, sz2), msgz, 
           "(int) %s, (int) %s" % (sz1, sz2))
 
-
   def getkeystr(self, key):
     ''' breaking key '''
     keyslen = 128
@@ -321,28 +319,37 @@ class CCodeWriter:
       args = ""
     return keystr, fmt, args
 
+  def validate(self, valid, var = None, 
+      fmt = "", args = None, onerr = "exit(1);"):
+    msg = (var + ": ") if var else ""
+    msg += "failed validation: %s" % valid
+    if fmt: msg += ", " + fmt
+    self.insist(valid, msg, args, onerr)
 
   def cfgget_var_low(self, var, key, type, fmt, default, 
-      must, valid, desc):
-    ''' get a variable and make a validation '''
+      must, valid, desc, var_ = None):
+    ''' 
+    get a variable and make a validation 
+    var_ is the actual variable, used for printing
+    '''
 
+    if not var_: var_ = var;
     self.checktp(var, type)
-
     keystr, keyfmt, keyargs = self.getkeystr(key)
-
-    cond = r'0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
+    cond = '0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
     if must:
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
-        r"missing var: %s, key: %s, fmt: %%%s\n" % (var, dm(key), fmt))
+        "missing var: %s, key: %s, fmt: %%%s" % (var_, dm(key), fmt))
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
-        ('assuming default value\n' +
-         'var: %s, key: %s, def: %s') % (var, dm(key), default) )
-    self.insist(valid, r"failed validation: %s\n" % valid)
+        'assuming default: %s = %s, key: %s' 
+        % (var_, default, dm(key)))
+
+    self.validate(valid, var_)
 
   def cfgget_var(self, var, key, type, fmt, default,
       must, prereq, tfirst, valid, desc):
@@ -379,9 +386,7 @@ class CCodeWriter:
       self.addln("break;")
       self.end_if(s)
     if valid:
-      self.insist(valid, 
-        r"%s: validation %s failed at i = %%d" % (var, valid),
-        "i")
+      self.validate(valid, var, fmt = "i = %d", args = "i")
     self.addln("ps += nps;")
     self.addln("}")
     self.end_if(sbufgood)
@@ -419,7 +424,7 @@ class CCodeWriter:
     self.assign(ivar, default, type)
     self.cfgget_var_low(ivar, key, "int", fmt, default, 
         "FALSE", # flag is usually optional
-        "%s == 0 || %s == 1" % (ivar, ivar), desc)
+        "%s == 0 || %s == 1" % (ivar, ivar), desc, var_ = flag)
     self.begin_if(ivar)
     self.addln("%s |= %s;", var, flag)
     self.begin_else()
@@ -634,7 +639,8 @@ class CCodeWriter:
     elif ndim == 1:
       self.wb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
-  def rb_var(self, var, type, match = 0, prec = "1e-5", tolerr = 0):
+  def rb_var(self, var, type, match = 0, prec = "1e-5", 
+      tolerr = 0, valid = None):
     if type in ("int", "unsigned", "unsigned int"):
       if match:
         self.declare_var("int itmp")
@@ -655,7 +661,9 @@ class CCodeWriter:
           self.addln("BIO_RD(%s);", var)
     else:
       print "don't know how to read type %s for %s" % (type, var)
-      raise Exception;
+      raise Exception
+
+    self.validate(valid, var)
   
   def rb_arr1d(self, arr, cnt, type):
     if type == "int":

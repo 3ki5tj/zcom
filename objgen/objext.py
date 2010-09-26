@@ -51,7 +51,6 @@ def checkcycl_i(deps, i0, n, checked):
       checked[x] = 1 # circular dependency from x will be checked as well
     # print "i0: %d, top: %s, stack: %s, j: %s" % (i0, top, st[:top+1], jt[:top+1]); raw_input()
   return 0
-      
 
 def checkcycl(deps):
   ''' check circular dependencies '''

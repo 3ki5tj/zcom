@@ -309,7 +309,7 @@ class Object:
             if cmds[key]: newval += " && (%s)" % cmds[key] 
             p_cmds[key] = newval
             cmds[key] = newval
-            print "new[%s] is %s" % (key, newval)
+            #print "new[%s] is %s" % (key, newval)
           
       # merge with global persistent commands
       for key in p_cmds:
@@ -464,11 +464,9 @@ class Object:
     funclist = []
     funclist += self.gen_func_cfgopen2()
     funclist += [self.gen_func_close()]
-    funclist += self.gen_func_binrw2("", "r")
-    funclist += self.gen_func_binrw2("", "w")
     # fold-specific functions
     for f in self.folds:
-      if f == "": continue
+      funclist += [self.gen_func_clear(f)]
       funclist += self.gen_func_binrw2(f, "r")
       funclist += self.gen_func_binrw2(f, "w")
 
@@ -699,7 +697,10 @@ class Object:
           if not xit: raise Exception
           xit.binrw_var(cow, xv, rw)
         continue
-      if not it.decl or it.isdummy: continue
+      if not it.decl or it.isdummy:
+        call = it.cmds[rw + "b_call"]
+        if call: cow.addln(call)
+        continue
       if not it.cmds["io_bin"]: continue
 
       varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
@@ -772,6 +773,24 @@ class Object:
     if not private:
       list += [self.gen_func_binrw(f, rw)]
     return list
+
+  def gen_func_clear(self, f):
+    ''' write a function for clearing data '''
+    cow = CCodeWriter()
+    funcnm = "%sclear" % (self.folds[f].fprefix)
+    fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
+    cow.begin_function(funcnm, fdecl, 
+        "clear %s data" % self.name + ("/" + f if len(f) else ""))
+
+    # for f = "", we clear everything including contents in folds
+    items = self.folds[f].items if len(f) else self.items
+    items = [it for it in items if it.cmds["clr"]]
+    #print "fold: %s\nitems: %s" % (f, items)
+    for it in items:
+      it.clear_var(cow, self.ptrname)
+    cow.end_function("")
+    return cow.prototype, cow.function
+
 
 class Parser:
   '''
