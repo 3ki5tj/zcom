@@ -164,7 +164,8 @@ class Item:
           print "  set $cnt if it is actually an array"
         ret = "pointer"
 
-    if self.decl.name == "000":  # debug code
+    # debug code
+    if self.decl.name == "XXXmbYYY":  
       print "gtype [%s] with %s, %s" % (ret, offset, types); 
       print "commands: %s" % self.cmds
       raw_input()        
@@ -372,7 +373,7 @@ class Item:
     # default I/O mode, bt for array, cbt for others
     if it.cmds["usr"]:
       iodef = ""
-    elif it.gtype in ("dynamic array", "object array"):
+    elif it.gtype in ("dynamic array", "object array", "object pointer"):
       iodef = "bt"
     elif it.gtype in simple_types:
       iodef = "c" 
@@ -566,6 +567,7 @@ class Item:
     must    = it.cmds["must"]
     cnt     = it.cmds["cnt"]
     desc    = it.cmds["desc"]
+    pp      = it.cmds["#if"]
 
     if not it.decl: # stand-alone comment
       cw.add_comment(desc)
@@ -596,7 +598,7 @@ class Item:
       fpfx = it.get_obj_fprefix()
       etp = it.get_gtype(offset = 1)
       cw.alloc_darr(varname, etp, cnt)
-      cw.declare_var("int i;")
+      cw.declare_var("int i;", pp = pp)
       cw.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
         fpfx, varname, it.get_init_args())
@@ -605,13 +607,13 @@ class Item:
 
     elif it.gtype == "dynamic array":
       cw.init_darr(varname, it.get_gtype(offset = 1),
-          defl, cnt, desc)
+          defl, cnt, desc, pp)
     
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
       # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
       if not it.cmds["io_cfg"]: 
-        cw.init_sarr(varname, defl, cnt)
+        cw.init_sarr(varname, defl, cnt, pp)
       else:
         fmt  = it.type2fmt(etp)
         cmpl = it.cmds["complete"]
@@ -663,14 +665,19 @@ class Item:
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
       cw.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
-    elif it.gtype == "object array":
+    elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinread_low(%%s, fp, ver, flags, endn%s);" % (
+      funcall = "%sbinread_low(%%s, fp, ver, flags, endn%s)" % (
           fpfx, it.get_args("binwrite"));
-      imin = it.cmds["bin_imin"]
-      imax = it.cmds["bin_imax"]
-      cw.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
-          [1, 1], imin, imax)
+      
+      if it.gtype == "object array":
+        imin = it.cmds["bin_imin"]
+        imax = it.cmds["bin_imax"]
+        cw.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
+            [1, 1], imin, imax)
+      else:
+        cw.rb_obj(varname, funcall)
+
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
@@ -715,14 +722,17 @@ class Item:
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
       cw.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
-    elif it.gtype == "object array":
+    elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinwrite_low(%%s, fp, ver%s);" % (
-          fpfx, it.get_args("binwrite"));
-      imin = it.cmds["bin_imin"]
-      imax = it.cmds["bin_imax"]
-      cw.wb_objarr(varname, dim, funcall, it.cmds["#if"],
-          [1, 1], imin, imax)
+      funcall = "%sbinwrite_low(%%s, fp, ver%s)" % (
+          fpfx, it.get_args("binwrite"))
+      if it.gtype == "object array":
+        imin = it.cmds["bin_imin"]
+        imax = it.cmds["bin_imax"]
+        cw.wb_objarr(varname, dim, funcall, it.cmds["#if"],
+            [1, 1], imin, imax)
+      else:
+        cw.wb_obj(varname, funcall)
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 

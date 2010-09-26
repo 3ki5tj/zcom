@@ -231,9 +231,9 @@ class CCodeWriter:
     if notalways(cond):
       self.foo_if(" !(%s) " % cond, msg, args, addfl = 1, onerr = onerr)
 
-  def init_sarr(self, var, default, cnt):
+  def init_sarr(self, var, default, cnt, pp = None):
     ''' write code for initializing a static array '''
-    self.declare_var("int i") # declare index i
+    self.declare_var("int i", pp = pp) # declare index i
     self.addln("for (i = 0; i < %s; i++)", cnt)
     self.addln(self.sindent + "%s[i] = %s;", var, default)
     self.addln()
@@ -254,11 +254,11 @@ class CCodeWriter:
     msg = r"no memory! var: %s, type: %s\n" % (var, type)
     self.die_if(cond, msg)
 
-  def init_darr(self, var, type, default, cnt, desc):
+  def init_darr(self, var, type, default, cnt, desc, pp = None):
     ''' write code for initializing a dynamic array '''
     if cnt.strip() != "0":
       self.alloc_darr(var, type, cnt)
-      self.init_sarr(var, default, cnt)
+      self.init_sarr(var, default, cnt, pp)
 
   def assign(self, var, value, type):
     ''' assignment (for simple types) '''
@@ -317,8 +317,8 @@ class CCodeWriter:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
-        (r'assuming default value\n' + '\n' +
-         r'var: %s, key: %s, def: %s\n') % (var, dm(key), default) )
+        ('assuming default value\n' +
+         'var: %s, key: %s, def: %s') % (var, dm(key), default) )
     self.insist(valid, r"failed validation: %s\n" % valid)
 
   def cfgget_var(self, var, key, type, fmt, default,
@@ -569,12 +569,17 @@ class CCodeWriter:
     else:
       self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
+  
+  def wb_obj(self, var, funcall):
+    cond = "0 != " + funcall % var
+    self.die_if(cond, "error writing object %s" % var,
+        onerr = "goto ERR;")
 
   def wb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
     self.declare_var("int i", pp = pp)
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
     if widx[0]: self.wb_var("i", "int") # write index
-    self.addln(funcall, arr + "+i")
+    self.wb_obj(arr + "+i", funcall)
     self.addln("}")
 
   def wb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):
@@ -717,11 +722,16 @@ class CCodeWriter:
         onerr = "goto ERR;")
     self.addraw("BIO_RMI(size, sizeof(double));\n")
 
+  def rb_obj(self, var, funcall):
+    cond = "0 != " + funcall % var
+    self.die_if(cond, "error reading object %s" % var,
+        onerr = "goto ERR;")
+
   def rb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
     self.declare_var("int i", pp = pp)
     self.addln("for (i = 0; i < %s; i++) {", dim[0])
     if widx[0]: self.rb_var("i", "int", match = 1)
-    self.addln(funcall, arr + "+i")
+    self.rb_obj(arr + "+i", funcall)
     self.addln("}")
 
   def rb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):

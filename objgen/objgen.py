@@ -630,7 +630,7 @@ class Object:
       cw.declare_var("cfgdata_t *cfg", "cfg")
       scfg = "(cfg = cfgopen(cfgname)) == NULL"
       cw.die_if(scfg,
-          r"%s: cannot open config. file %%s.\n" % objtp,
+          "%s: cannot open config. file %%s." % objtp,
           "cfgname", onerr = "return NULL;")
       cw.addln()
 
