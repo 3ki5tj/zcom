@@ -112,7 +112,7 @@ import os, sys, re, filecmp
 from copy    import copy, deepcopy 
 from objpos  import P 
 from objcmt  import CComment
-from objccw  import CCodeWriter
+from objcow  import CCodeWriter
 from objcmd  import Commands
 from objitm  import Item
 from objext  import *
@@ -372,6 +372,7 @@ class Object:
     # add a dictionary of Fold's, each of which is an object
     # the key the fold name
     folds = {}
+    folds[''] = Fold(self.fprefix, '')
     for it in self.items:
       f = it.cmds["fold"]
       if f not in folds:
@@ -493,21 +494,21 @@ class Object:
     '''
     tab    = 4
     offset = 2
-    cw = CCodeWriter()
-    cw.addln("typedef struct {")
+    cow = CCodeWriter()
+    cow.addln("typedef struct {")
     block = [] # block list
     for it in self.items:
-      block = it.declare_var(cw, block, tab, offset)
-    dump_block(block, cw, tab, offset)
+      block = it.declare_var(cow, block, tab, offset)
+    cow.dump_block(block, tab, offset)
     block = []
-    cw.addln("} " + self.name + ";")
+    cow.addln("} " + self.name + ";")
     
-    return cw.gets()
+    return cow.gets()
 
   def gen_flags_def(self):
     tab = 4
     offset = 2
-    cw = CCodeWriter()
+    cow = CCodeWriter()
     block = []
     for it in self.items:
       if "flag" in it.cmds:
@@ -521,31 +522,31 @@ class Object:
         # print flag, bval, cmt; raw_input()
         block += [("#define", flag, bval, cmt)]
       else:
-        dump_block(block, cw, tab, offset)
+        cow.dump_block(block, tab, offset)
         block = []
-    dump_block(block, cw, tab, offset)
-    return cw.gets()
+    cow.dump_block(block, tab, offset)
+    return cow.gets()
 
   def gen_func_close(self):
-    cw = CCodeWriter()
+    cow = CCodeWriter()
     macroname = "%sclose" % self.fprefix
     funcnm = macroname + "_low"
     macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
       macroname, self.ptrname, funcnm, self.ptrname, self.ptrname, self.ptrname)
     fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
-    cw.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, 
+    cow.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, 
         None if self.cmds["private"] else macro)
 
     # compute the longest variable
     calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
         it.decl and it.gtype in ("char *", "dynamic array") ) else 0
-    maxwid = max(calc_len(it) for it in self.items)
+    maxwid = max(calc_len(it) for it in self.items) if len(self.items) else 0
     for it in self.items:
-      it.close_var(cw, self.ptrname, maxwid)
+      it.close_var(cow, self.ptrname, maxwid)
 
-    cw.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
-    cw.end_function("")
-    return cw.prototype, cw.function
+    cow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
+    cow.end_function("")
+    return cow.prototype, cow.function
 
   def get_usr_vars(self, tag, f = None):
     ''' tag can be "cfg", "bin", "txt" '''
@@ -589,15 +590,15 @@ class Object:
     cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usr_vars("cfg")
     fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
-    cw = CCodeWriter()
-    cw.begin_function(fread, fdecl, fdesc)
+    cow = CCodeWriter()
+    cow.begin_function(fread, fdecl, fdesc)
 
     # read configuration file
     for it in obj.items:
-      it.cfgget_var(cw, obj.ptrname)
+      it.cfgget_var(cow, obj.ptrname)
 
-    cw.end_function("return 0;")
-    return cw.prototype, cw.function
+    cow.end_function("return 0;")
+    return cow.prototype, cow.function
 
   def gen_func_cfgopen(obj):
     ''' 
@@ -620,42 +621,42 @@ class Object:
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
             "const char *cfgname" if cfgopen else cfgdecl, 
             usrvars[0])
-    cw = CCodeWriter()
-    cw.begin_function(fopen, fdecl, fdesc)
-    cw.declare_var("%s *%s" % (objtp, objptr), objptr)
+    cow = CCodeWriter()
+    cow.begin_function(fopen, fdecl, fdesc)
+    cow.declare_var("%s *%s" % (objtp, objptr), objptr)
 
     # open a configuration file
     if cfgopen:
-      cw.add_comment("open configuration file")
-      cw.declare_var("cfgdata_t *cfg", "cfg")
+      cow.add_comment("open configuration file")
+      cow.declare_var("cfgdata_t *cfg", "cfg")
       scfg = "(cfg = cfgopen(cfgname)) == NULL"
-      cw.die_if(scfg,
+      cow.die_if(scfg,
           "%s: cannot open config. file %%s." % objtp,
           "cfgname", onerr = "return NULL;")
-      cw.addln()
+      cow.addln()
 
     # allocate memory
-    cw.add_comment("allocate memory for %s" % obj.name)
+    cow.add_comment("allocate memory for %s" % obj.name)
     sobj = "(%s = calloc(1, sizeof(*%s))) == NULL" % (objptr, objptr)
-    cw.die_if(sobj, "no memory for %s (size %%u)" % obj.name,
+    cow.die_if(sobj, "no memory for %s (size %%u)" % obj.name,
         "(unsigned) sizeof(*%s)" % objptr);
-    cw.addln()
+    cow.addln()
    
-    cw.add_comment("call low level function")
+    cow.add_comment("call low level function")
     s = "0 != %s(%s, cfg%s)" % (fread, objptr, usrvars[1])
     ermsg = objtp + ": error while reading configuration file"
     onerr = "free(%s);\nreturn NULL;" % objptr
     if cfgopen:
-      cw.die_if(s, ermsg + " %s", "cfgname", onerr = onerr)
+      cow.die_if(s, ermsg + " %s", "cfgname", onerr = onerr)
     else:
-      cw.die_if(s, ermsg, onerr = onerr) 
-    cw.addln()
+      cow.die_if(s, ermsg, onerr = onerr) 
+    cow.addln()
     
     if cfgopen:
-      cw.add_comment("close handle to configuration file")
-      cw.addln("cfgclose(cfg);")
-    cw.end_function("return %s;" % objptr)
-    return cw.prototype, cw.function
+      cow.add_comment("close handle to configuration file")
+      cow.addln("cfgclose(cfg);")
+    cow.end_function("return %s;" % objptr)
+    return cow.prototype, cow.function
 
   def gen_func_cfgopen2(self):
     list = [self.gen_func_cfgopen_low()]
@@ -670,19 +671,19 @@ class Object:
     and thus can be recursively applied to member objects
     '''
     readwrite = "read" if rw == "r" else "write"
-    cw = CCodeWriter()
+    cow = CCodeWriter()
     funcnm = "%sbin%s_low" % (self.folds[f].fprefix, readwrite)
     usrs = self.get_usr_vars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
         ", unsigned flags, int endn" if rw == "r" else "", usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
-    cw.begin_function(funcnm, fdecl, 
+    cow.begin_function(funcnm, fdecl, 
         "%s %s data as binary" % (readwrite, title))
 
     if rw == "r":
-      cw.declare_var("int err")
-      cw.addln("err = 0;")
+      cow.declare_var("int err")
+      cow.addln("err = 0;")
     
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
@@ -696,27 +697,27 @@ class Object:
         for xv in xvl:
           xit = self.var2item(xv)
           if not xit: raise Exception
-          xit.binrw_var(cw, xv, rw)
+          xit.binrw_var(cow, xv, rw)
         continue
       if not it.decl or it.isdummy: continue
       if not it.cmds["io_bin"]: continue
 
       varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
           else "") + it.decl.name
-      it.binrw_var(cw, varname, rw)
+      it.binrw_var(cow, varname, rw)
 
-    cw.addln("return 0;")
-    cw.addln("ERR:")
-    cw.addln("return -1;")
-    cw.end_function("")
-    return cw.prototype, cw.function
+    cow.addln("return 0;")
+    cow.addln("ERR:")
+    cow.addln("return -1;")
+    cow.end_function("")
+    return cow.prototype, cow.function
 
   def gen_func_binrw(self, f, rw):
     ''' 
     write a wrapper function for reading/writing data in binary form 
     '''
     readwrite = "read" if rw == "r" else "write"
-    cw = CCodeWriter()
+    cow = CCodeWriter()
     funcnm = "%sbin%s" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_low"
     usrs = self.get_usr_vars("bin", f)
@@ -724,46 +725,46 @@ class Object:
         funcnm, self.name, self.ptrname, 
         "ver" if rw == "w" else "*pver, unsigned flags", 
         usrs[0])
-    cw.begin_function(funcnm, fdecl, 
+    cow.begin_function(funcnm, fdecl, 
         "%s %s/%s data as binary" % (readwrite, self.name, f))
 
     # add prerequisite/validation tests
     if self.folds[f].prereq != 1:
-      cw.addln("if (!(%s)) return 0;", self.folds[f].prereq)
+      cow.addln("if (!(%s)) return 0;", self.folds[f].prereq)
     if self.folds[f].valid != 1:
       cond = "%s" % self.folds[f].valid
-      cw.insist(cond, "validation in %s binary" % readwrite)
+      cow.insist(cond, "validation in %s binary" % readwrite)
 
-    cw.declare_var("FILE *fp")
+    cow.declare_var("FILE *fp")
     condf = '(fp = fopen(fname, "%sb")) == NULL' % rw
-    cw.die_if(condf, r"cannot %s binary file [%%s]." % readwrite, 
+    cow.die_if(condf, r"cannot %s binary file [%%s]." % readwrite, 
       "fname", onerr = "goto ERR;")
-    cw.addln()
+    cow.addln()
 
     # add checking bytes
     if rw == "r": 
-      cw.rb_checkbytes();
-      cw.declare_var("int ver")
-      cw.rb_var("ver", "int")
-      cw.addln("*pver = ver;")
+      cow.rb_checkbytes();
+      cow.declare_var("int ver")
+      cow.rb_var("ver", "int")
+      cow.addln("*pver = ver;")
     else:
-      cw.wb_checkbytes();
-    cw.addln()
-    #cw.declare_var("int verify")
-    #cw.addln("verify = !(flags & IO_NOVERIFY)")
+      cow.wb_checkbytes();
+    cow.addln()
+    #cow.declare_var("int verify")
+    #cow.addln("verify = !(flags & IO_NOVERIFY)")
 
     # call the actual low-level function
-    cw.add_comment("call low level %s function for members" % readwrite)
-    cw.declare_var("int i")
-    cw.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
+    cow.add_comment("call low level %s function for members" % readwrite)
+    cow.declare_var("int i")
+    cow.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
         ", flags, endn" if rw == "r" else "", usrs[1]);
-    cw.addln("fclose(fp);")
-    cw.addln("return i;")
-    cw.addln("ERR:")
-    cw.addln("fclose(fp);")
-    cw.addln("return -1;")
-    cw.end_function("")
-    return cw.prototype, cw.function
+    cow.addln("fclose(fp);")
+    cow.addln("return i;")
+    cow.addln("ERR:")
+    cow.addln("fclose(fp);")
+    cow.addln("return -1;")
+    cow.end_function("")
+    return cow.prototype, cow.function
 
   def gen_func_binrw2(self, f, rw):
     list = [self.gen_func_binrw_low(f, rw)]

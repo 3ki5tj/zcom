@@ -4,8 +4,8 @@ from copy    import *
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
-from objccw  import CCodeWriter
-from objext  import notalways, dump_block
+from objcow  import CCodeWriter
+from objext  import notalways 
 
 simple_types = ("int", "unsigned int", "unsigned", 
   "long", "unsigned long", "real", "double", "float", 
@@ -175,9 +175,11 @@ class Item:
     fmt = ""
     if   tp == "int":      
       fmt = "%d"
-    elif tp == "long":
+    elif tp in ("long", "long int"):
       fmt = "%ld"
-    elif tp == "unsigned": 
+    elif tp in ("long long", "long long int"):
+      fmt = "%lld"
+    elif tp in ("unsigned", "unsigned int"): 
       fmt = "%u"
     elif tp == "unsigned long": 
       fmt = "%ul"
@@ -465,14 +467,14 @@ class Item:
     # print args; raw_input()
     return args
 
-  def declare_var(it, cw, block, tab, offset):
+  def declare_var(it, cow, block, tab, offset):
     ''' declare a variable '''
     decl0 = decl1 = scmt = ""
     # 1. handle pre
     if it.pre:
-      dump_block(block, cw)
+      cow.dump_block(block)
       block = [] # empty the block
-      cw.addln("#" + it.pre.raw)
+      cow.addln("#" + it.pre.raw)
       return block
     
     # 2. handle declaration
@@ -500,17 +502,17 @@ class Item:
     if len(decl0) > 0:  # put it to a code block
       block +=  [(decl0, decl1+';', scmt)] # just buffer it
     else:
-      dump_block(block, cw, tab, offset)
+      cow.dump_block(block, tab, offset)
       block = [] # empty the block
       # also print this line
       if len(scmt) > 0: 
-        cw.addln(scmt)
+        cow.addln(scmt)
     return block
 
-  def close_var(it, cw, ptrname, maxwid):
+  def close_var(it, cow, ptrname, maxwid):
     ''' free a pointer / close an object '''
     if it.pre:
-      cw.addln("#" + it.pre.raw)
+      cow.addln("#" + it.pre.raw)
       return
     if not it.decl or it.isdummy: return
     if it.cmds["usr"] == "parent": return
@@ -532,27 +534,27 @@ class Item:
       fpfx = it.get_obj_fprefix()
       funcfree = "%sclose_low" % fpfx
       cnt = it.cmds["cnt"]
-      cw.declare_var("int i")
+      cow.declare_var("int i")
 
       cond = "%s != NULL" % varname
-      cw.begin_if(cond)
-      cw.addln("for (i = 0; i < %s; i++) {" % cnt)
-      cw.addln("%s(%s + i);", funcfree, varname) 
-      cw.addln("}");
-      cw.addln("free(%s);", varname);
-      cw.end_if(cond)
+      cow.begin_if(cond)
+      cow.addln("for (i = 0; i < %s; i++) {" % cnt)
+      cow.addln("%s(%s + i);", funcfree, varname) 
+      cow.addln("}");
+      cow.addln("free(%s);", varname);
+      cow.end_if(cond)
       return
     else:
       return
 
-    cw.addln("if (%-*s != NULL) %s(%s);",
+    cow.addln("if (%-*s != NULL) %s(%s);",
              maxwid, varname, funcfree, varname)
     
 
-  def cfgget_var(it, cw, ptrname):
+  def cfgget_var(it, cow, ptrname):
     ''' read a variable from config. '''
     if it.pre:
-      cw.addln("#" + it.pre.raw)
+      cow.addln("#" + it.pre.raw)
       return
   
     usr = it.cmds["usr"]
@@ -570,80 +572,80 @@ class Item:
     pp      = it.cmds["#if"]
 
     if not it.decl: # stand-alone comment
-      cw.add_comment(desc)
-      cw.insist(it.cmds["assert"], desc)
+      cow.add_comment(desc)
+      cow.insist(it.cmds["assert"], desc)
       call = it.cmds["call"]
-      if call: cw.addln(call + ";")
+      if call: cow.addln(call + ";")
       return
     
     varnm = it.decl.name
     varname = ptrname + "->" + varnm
 
     # add a remark before we start
-    cw.add_comment(desc)
+    cow.add_comment(desc)
 
     if "flag" in it.cmds and "key" in it.cmds: # input flag
       flag = it.get_flag()
       fmt = it.type2fmt(it.gtype)
-      cw.cfgget_flag(varname, key, flag, it.gtype, fmt,
+      cow.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
     
     elif it.gtype == "object pointer":
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
         fpfx, it.get_init_args())
-      cw.die_if(s, r"failed to initialize %s\n" % varname)
+      cow.die_if(s, r"failed to initialize %s\n" % varname)
 
     elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix()
       etp = it.get_gtype(offset = 1)
-      cw.alloc_darr(varname, etp, cnt)
-      cw.declare_var("int i;", pp = pp)
-      cw.addln("for (i = 0; i < %s; i++) {" % cnt)
+      cow.alloc_darr(varname, etp, cnt)
+      cow.declare_var("int i;", pp = pp)
+      cow.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
         fpfx, varname, it.get_init_args())
-      cw.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
-      cw.addln("}\n")
+      cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
+      cow.addln("}\n")
 
     elif it.gtype == "dynamic array":
-      cw.init_darr(varname, it.get_gtype(offset = 1),
+      cow.init_darr(varname, it.get_gtype(offset = 1),
           defl, cnt, desc, pp)
     
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
       # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
       if not it.cmds["io_cfg"]: 
-        cw.init_sarr(varname, defl, cnt, pp)
+        cow.init_sarr(varname, defl, cnt, pp)
       else:
         fmt  = it.type2fmt(etp)
         cmpl = it.cmds["complete"]
-        cw.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
+        cow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
             must, valid, cmpl, desc)
 
     else: # regular variable
       usrval = it.cmds["usr"]
       if usrval:
         if usrval in ("cfg", 1): # usr variables
-          cw.assign(varname, "usr_%s" % varnm, it.gtype)
+          cow.assign(varname, "usr_%s" % varnm, it.gtype)
         else: pass # ignore other usr variables
       elif not it.cmds["io_cfg"]: # assign default value
         if defl and len(defl): 
-          cw.assign(varname, defl, it.gtype);
+          cow.assign(varname, defl, it.gtype);
       else:
         fmt = it.type2fmt(it.gtype)
-        cw.cfgget_var(varname, key, it.gtype, fmt, 
+        cow.cfgget_var(varname, key, it.gtype, fmt, 
           defl, must, prereq, tfirst, valid, desc)
 
 
-  def binrw_var(it, cw, varname, rw):
+  def binrw_var(it, cow, varname, rw):
     if rw == "w": 
-      it.binwrite_var(cw, varname)
+      it.binwrite_var(cow, varname)
     elif rw == "r":
-      it.binread_var(cw, varname)
+      it.binread_var(cow, varname)
     else:
       raise Exception
    
-  def binread_var(it, cw, varname):
+  def binread_var(it, cow, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds["bin_cnt"]
@@ -653,18 +655,18 @@ class Item:
     verify = it.cmds["verify"]
     pp = it.cmds["#if"]
     if pp:
-      cw.addln("#if %s", pp)
+      cow.addln("#if %s", pp)
     if notalways(cond):
-      cw.begin_if(cond)
+      cow.begin_if(cond)
 
     if usrval == "bintmp": 
-      cw.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
+      cow.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
     
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cw.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
+      cow.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinread_low(%%s, fp, ver, flags, endn%s)" % (
@@ -673,30 +675,30 @@ class Item:
       if it.gtype == "object array":
         imin = it.cmds["bin_imin"]
         imax = it.cmds["bin_imax"]
-        cw.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
+        cow.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
             [1, 1], imin, imax)
       else:
-        cw.rb_obj(varname, funcall)
+        cow.rb_obj(varname, funcall)
 
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
         cnt = bincnt
       cond1 = "%s != fread(%s, 1, %s, fp)" % (cnt, varname, cnt)
-      cw.begin_if(cond1)
-      cw.addln(r'fprintf(stderr, "cannot read string of %%d for %s\n", %s);', 
+      cow.begin_if(cond1)
+      cow.addln(r'fprintf(stderr, "cannot read string of %%d for %s\n", %s);', 
           varname, cnt)
-      cw.addln("goto ERR;")
-      cw.end_if(cond1)
+      cow.addln("goto ERR;")
+      cow.end_if(cond1)
     else:
-      cw.rb_var(varname, it.gtype, verify)
+      cow.rb_var(varname, it.gtype, verify)
 
     if notalways(cond):
-      cw.end_if(cond)
+      cow.end_if(cond)
     if pp:
-      cw.addln("#endif")
+      cow.addln("#endif")
    
-  def binwrite_var(it, cw, varname):
+  def binwrite_var(it, cow, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds["bin_cnt"]
@@ -705,23 +707,23 @@ class Item:
     usrval = it.cmds["usr"]
     pp = it.cmds["#if"]
     if pp:
-      cw.addln("#if %s", pp)
+      cow.addln("#if %s", pp)
     if notalways(cond):
-      cw.begin_if(cond)
+      cow.begin_if(cond)
 
     if usrval == "bintmp": 
-      cw.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
+      cow.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
       if defl:
         if it.gtype == "static array":
-          cw.init_sarr(varname, defl, cnt)
+          cow.init_sarr(varname, defl, cnt)
         else:
-          cw.addln("%s = %s;", varname, defl)
+          cow.addln("%s = %s;", varname, defl)
     
     if it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cw.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
+      cow.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinwrite_low(%%s, fp, ver%s)" % (
@@ -729,25 +731,25 @@ class Item:
       if it.gtype == "object array":
         imin = it.cmds["bin_imin"]
         imax = it.cmds["bin_imax"]
-        cw.wb_objarr(varname, dim, funcall, it.cmds["#if"],
+        cow.wb_objarr(varname, dim, funcall, it.cmds["#if"],
             [1, 1], imin, imax)
       else:
-        cw.wb_obj(varname, funcall)
+        cow.wb_obj(varname, funcall)
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
         cnt = bincnt
       cond1 = "%s != fwrite(%s, 1, %s, fp)" % (cnt, varname, cnt)
-      cw.begin_if(cond1)
-      cw.addln(r'fprintf(stderr, "cannot write string of %%d for %s\n", %s);', 
+      cow.begin_if(cond1)
+      cow.addln(r'fprintf(stderr, "cannot write string of %%d for %s\n", %s);', 
           varname, cnt)
-      cw.addln("goto ERR;")
-      cw.end_if(cond1)
+      cow.addln("goto ERR;")
+      cow.end_if(cond1)
     else:
-      cw.wb_var(varname, it.gtype)
+      cow.wb_var(varname, it.gtype)
 
     if notalways(cond):
-      cw.end_if(cond)
+      cow.end_if(cond)
     if pp:
-      cw.addln("#endif")
+      cow.addln("#endif")
 
