@@ -24,6 +24,61 @@ class Fold:
   def __len__(f):
     return len(f.items)
 
+  def add_fold_tests(f, cow, funcnm, ret = "0", validate = 1):
+    ''' add prerequisite/validation tests '''
+    if notalways(f.prereq):
+      cow.addln("if ( !(%s) ) return %s;", f.prereq, ret)
+    if notalways(f.valid) and validate:
+      cow.validate(f.valid, funcnm)
+
+
+def type2fmt_s(tp):
+  ''' format for scanf '''
+  fmt = ""
+  if   tp == "int":      
+    fmt = "%d"
+  elif tp in ("long", "long int"):
+    fmt = "%ld"
+  elif tp in ("long long", "long long int"):
+    fmt = "%lld"
+  elif tp in ("unsigned", "unsigned int"): 
+    fmt = "%u"
+  elif tp == "unsigned long": 
+    fmt = "%ul"
+  elif tp == "float":
+    fmt = "%f"
+  elif tp == "double":
+    fmt = "%lf"
+  elif tp == "char *":
+    fmt = "%s"
+  else:
+    print "no scanf format string for type [%s]" % (tp)
+    raise Exception
+  return fmt
+
+def type2fmt_p(tp, var):
+  ''' format for printf '''
+  fmt = ""
+  if   tp in ("int", "char"):      
+    fmt = "%4d"
+  elif tp in ("long", "long int"):
+    fmt = "%4ld"
+  elif tp in ("long long", "long long int"):
+    fmt = "%8lld"
+  elif tp in ("unsigned", "unsigned int"): 
+    fmt = "0x%8X"
+  elif tp == "unsigned long": 
+    fmt = "0x%8lX"
+  elif tp in ("float", "double"):
+    fmt = "%f"
+  elif tp == "char *":
+    fmt = "%s"
+  else:
+    #print "no printf format string for type [%s]%s" % (tp,
+    #    " item: "+var if var else "")
+    raise TypeError
+  return fmt
+
 def checkcycl_i(deps, i0, n, checked):
   ''' check cyclic dependencies starting from i0 '''
   checked[i0] = 1

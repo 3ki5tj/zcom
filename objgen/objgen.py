@@ -4,7 +4,10 @@ a code generator for serializing objects
 
 It uses a template, locates "typedef struct" code
 and try to generate io functions, 
-e.g., read parameters from configuration file
+ * cfgopen(): read parameters from configuration file
+ * close():   recursively free call resources
+ * clear():   clear data
+ * binread(), binwrite(): read and write data in binary format
 
 Commands syntax
   $cmd = args;
@@ -59,11 +62,19 @@ Commands of an item:
                   from configuration file, but after assigning the 
                   given by $def; this is the default order because it
                   ensures a variable is assigned at a reasonable value
-                  
-  * $test_first:  if this is set, we do not assign the default value $def 
+  * $tfirst:      if this is set, we do not assign the default value $def 
                   unless $prereq is true, useful for dummy variables
   * $valid:       a condition to be tested for validity *after* reading
                   a variable from configuration file
+
+  * $bin_prereq:  a prerequisite that applies to reading/writing binary files
+                  it can contain a variable `ver', a version number of
+                  binary data.
+                  binread()/binwrite() rely on the this condition.
+
+  * $com_prereq:  a general prerequisite that applies to accessing data
+                  usually related to MPI rank.
+                  clear()/close() rely on this condition
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it; 
@@ -77,10 +88,13 @@ Commands of an item:
               $usr:parent; declare the variable represents 
               a pointer to the parent object
 
-  * $fold:            follow by a fold-identifier
-  * $fold_bin_add:    add some variables (separated by ,) during writing binary
-  * $fold_bin_prereq: quit writing binary if this condition is true
-  * $fold_bin_valid:  test if condition is true
+A fold is an embed object that has its own i/o routines
+  * $fold:          follow by a fold-identifier
+  * $fold_bin_add:  add some variables (separated by ,) during writing binary
+  * $fold_prereq:   skip io if this condition is not true
+                    applies to:
+                      binread(), binwrite(), clear()
+  * $fold_valid:    raise an error if condition is not true
 
 In a stand-alone comment
 
@@ -382,8 +396,8 @@ class Object:
     
     for f in folds:
       print "fold %-8s has %3d items" % (f, len(folds[f]))
-      folds[f].prereq = 1
-      folds[f].valid  = 1
+      folds[f].prereq = 1  # prereq is always met
+      folds[f].valid  = 1  # always valid
       #for it in folds[f].items: print it.getraw()
       #raw_input()
     self.folds = folds
@@ -393,9 +407,9 @@ class Object:
     for it in self.items: # fill fold-specific prerequisite
       f = it.cmds["fold"]
       if len(f) == 0: continue
-      pr = it.cmds["fold_bin_prereq"]
+      pr = it.cmds["fold_prereq"]
       if pr: self.folds[f].prereq = pr
-      vd = it.cmds["fold_bin_valid"]
+      vd = it.cmds["fold_valid"]
       if vd: self.folds[f].valid = vd
     
   def get_prefix(self):
@@ -469,6 +483,7 @@ class Object:
       funclist += [self.gen_func_clear(f)]
       funclist += self.gen_func_binrw2(f, "r")
       funclist += self.gen_func_binrw2(f, "w")
+    funclist += [self.gen_func_manifest()]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -669,8 +684,9 @@ class Object:
     and thus can be recursively applied to member objects
     '''
     readwrite = "read" if rw == "r" else "write"
+    fprefix = self.folds[f].fprefix
     cow = CCodeWriter()
-    funcnm = "%sbin%s_low" % (self.folds[f].fprefix, readwrite)
+    funcnm = "%sbin%s_low" % (fprefix, readwrite)
     usrs = self.get_usr_vars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
@@ -678,10 +694,16 @@ class Object:
     title = self.name + (("/%s" % f) if len(f) else "")
     cow.begin_function(funcnm, fdecl, 
         "%s %s data as binary" % (readwrite, title))
+    callclear = "%sclear(%s);" % (fprefix, self.ptrname)
 
     if rw == "r":
       cow.declare_var("int err")
       cow.addln("err = 0;")
+      #cow.declare_var("int verify")
+      #cow.addln("verify = !(flags & IO_NOVERIFY);")
+      cow.add_comment("clear data before reading")
+      cow.addln(callclear)
+      cow.addln()
     
     bin_items = self.sort_items(self.folds[f].items, "bin")
     for it in bin_items:
@@ -709,6 +731,7 @@ class Object:
 
     cow.addln("return 0;")
     cow.addln("ERR:")
+    if rw == "r": cow.addln(callclear)  # clear data on failure
     cow.addln("return -1;")
     cow.end_function("")
     return cow.prototype, cow.function
@@ -727,14 +750,10 @@ class Object:
         "ver" if rw == "w" else "*pver, unsigned flags", 
         usrs[0])
     cow.begin_function(funcnm, fdecl, 
-        "%s %s/%s data as binary" % (readwrite, self.name, f))
+        "%s %s data as binary" % (readwrite, 
+          self.name + ("/"+f if len(f) else "") ) )
 
-    # add prerequisite/validation tests
-    if self.folds[f].prereq != 1:
-      cow.addln("if (!(%s)) return 0;", self.folds[f].prereq)
-    if self.folds[f].valid != 1:
-      cond = "%s" % self.folds[f].valid
-      cow.insist(cond, "validation in %s binary" % readwrite)
+    self.folds[f].add_fold_tests(cow, funcnm, "0")
 
     cow.declare_var("FILE *fp")
     condf = '(fp = fopen(fname, "%sb")) == NULL' % rw
@@ -782,12 +801,28 @@ class Object:
     cow.begin_function(funcnm, fdecl, 
         "clear %s data" % self.name + ("/" + f if len(f) else ""))
 
-    # for f = "", we clear everything including contents in folds
-    items = self.folds[f].items if len(f) else self.items
+    # add fold prereq and validation
+    self.folds[f].add_fold_tests(cow, funcnm, "")
+    
+    ## for f = "", we clear everything including contents in folds
+    #items = self.folds[f].items if len(f) else self.items
+    items = self.folds[f].items
     items = [it for it in items if it.cmds["clr"]]
     #print "fold: %s\nitems: %s" % (f, items)
     for it in items:
       it.clear_var(cow, self.ptrname)
+    cow.end_function("")
+    return cow.prototype, cow.function
+
+  def gen_func_manifest(self):
+    ''' write a function to present current data '''
+    cow = CCodeWriter()
+    funcnm = "%smanifest" % (self.fprefix)
+    fdecl = "void %s(%s *%s, FILE *fp)" % (funcnm, self.name, self.ptrname)
+    cow.begin_function(funcnm, fdecl, "clear %s data" % self.name)
+
+    for it in self.items:
+      it.manifest_var(cow, self.ptrname)
     cow.end_function("")
     return cow.prototype, cow.function
 

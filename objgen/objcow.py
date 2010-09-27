@@ -19,7 +19,8 @@ class CCodeWriter:
     self.s = ""
     self.funcname = None
 
-  def inc(self): self.nindents += 1
+  def inc(self): 
+    self.nindents += 1
   def dec(self): 
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
@@ -641,6 +642,7 @@ class CCodeWriter:
 
   def rb_var(self, var, type, match = 0, prec = "1e-5", 
       tolerr = 0, valid = None):
+    verify = "verify"
     if type in ("int", "unsigned", "unsigned int"):
       if match:
         self.declare_var("int itmp")
@@ -784,6 +786,10 @@ class CCodeWriter:
       self.rb_objarr2d(arr, dim, funcall, pp, widx, imin, imax)
     elif ndim == 1:
       self.rb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
+
+  def manifest(self, var, type):
+    fmt = type2fmt(type)
+    self.addln('printf("%s", %s);', fmt, var)
 
   '''
   def rb_atom(self, var, cnt, onerr, onsuc):

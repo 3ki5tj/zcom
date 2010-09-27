@@ -179,30 +179,6 @@ class Item:
     else:
       return gtype
 
-
-  def type2fmt(self, tp):
-    fmt = ""
-    if   tp == "int":      
-      fmt = "%d"
-    elif tp in ("long", "long int"):
-      fmt = "%ld"
-    elif tp in ("long long", "long long int"):
-      fmt = "%lld"
-    elif tp in ("unsigned", "unsigned int"): 
-      fmt = "%u"
-    elif tp == "unsigned long": 
-      fmt = "%ul"
-    elif tp == "float":
-      fmt = "%f"
-    elif tp == "double":
-      fmt = "%lf"
-    elif tp == "char *":
-      fmt = "%s"
-    else:
-      print "no format string for type [%s] item: %s" % (tp, self)
-      raise Exception
-    return fmt
-
   def get_zero(self):
     if not self.decl:
       raise Exception
@@ -408,9 +384,9 @@ class Item:
     becomes a stand-alone comment can contain assignment
     or other commands
     '''
-    # turn on $test_first for dummy variables
-    if ("test_first" not in it.cmds and it.isdummy):
-      it.cmds["test_first"] = 1
+    # turn on $tfirst for dummy variables
+    if ("tfirst" not in it.cmds and it.isdummy):
+      it.cmds["tfirst"] = 1
 
   def prepare_flag(it):
     ''' 
@@ -529,7 +505,7 @@ class Item:
     key     = it.cmds["key"]
     defl    = it.cmds["def"]
     prereq  = it.cmds["prereq"]
-    tfirst  = it.cmds["test_first"]
+    tfirst  = it.cmds["tfirst"]
     valid   = it.cmds["valid"]
     must    = it.cmds["must"]
     cnt     = it.cmds["cnt"]
@@ -554,7 +530,7 @@ class Item:
     if flag: # input flag
       #raw_input("flag with key %s" % key)
       flag = it.get_flag()
-      fmt = it.type2fmt(it.gtype)
+      fmt = type2fmt_s(it.gtype)
       cow.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
   
@@ -585,7 +561,7 @@ class Item:
       if not it.cmds["io_cfg"]: 
         cow.init_sarr(varname, defl, cnt, pp)
       else:
-        fmt  = it.type2fmt(etp)
+        fmt  = type2fmt_s(etp)
         cmpl = it.cmds["complete"]
         cow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
             must, valid, cmpl, desc)
@@ -600,7 +576,7 @@ class Item:
         if defl and len(defl): 
           cow.assign(varname, defl, it.gtype);
       else:
-        fmt = it.type2fmt(it.gtype)
+        fmt = type2fmt_s(it.gtype)
         cow.cfgget_var(varname, key, it.gtype, fmt, 
           defl, must, prereq, tfirst, valid, desc)
 
@@ -733,7 +709,7 @@ class Item:
     varname = ptr + "->" + varnm
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    prereq = it.cmds["prereq"]
+    prereq = it.cmds["com_prereq"]
     defl = it.get_zero()
 
     pp = it.cmds["#if"]
@@ -771,7 +747,7 @@ class Item:
     varname = "%s->%s" % (ptrname, varnm)
 
     pp = it.cmds["#if"]
-    prereq = it.cmds["prereq"]
+    prereq = it.cmds["com_prereq"]
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)    
  
@@ -809,4 +785,66 @@ class Item:
     if pp: cow.addln("#endif")
     
 
+  def manifest_var(it, cow, ptr):
+    if not it.decl or it.isdummy: return
+
+    varnm = it.decl.name
+    varname = ptr + "->" + varnm
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    prereq = it.cmds["com_prereq"]
+
+    pp = it.cmds["#if"]
+    if pp: cow.addln("#if %s", pp)
+    if notalways(prereq): cow.begin_if(prereq)
+
+    if it.gtype in ("dynamic array", "static array"):
+      parr = 1
+      try:
+        fmt = type2fmt_p(it.get_elegtype(), varname)
+        cow.addln(r'fprintf(fp, "%s: %s of %s\n");',
+            varname, it.gtype, cnt)
+      except TypeError:
+        cow.addln(r'fprintf(fp, "%s: %s of %s %%p\n", %s);',
+          varname, it.gtype, cnt, varname)
+        parr = 0
+
+      if cnt == "0": parr = 0
+      if parr:
+        cow.declare_var("int i", pp = pp) # declare index i
+        cow.addln("for (i = 0; i < %s; i++) {", cnt)
+        cow.addln('fprintf(fp, "%s, ", %s);', fmt, varname + "[i]")
+        cow.addln(r'if ((i+1) %% 10 == 0) printf("\n");')
+        cow.addln("}")
+        
+        cow.addln(r'if ((%s) %% 10 != 0) fprintf(fp, "\n");', cnt)
+    elif it.gtype in ("object array", "object pointer"):
+      fpfx = it.get_obj_fprefix();
+      cond = "%s != NULL" % varname
+      cow.begin_if(cond)      
+      funcall = "%smanifest(%%s)" % fpfx      
+      if it.gtype == "object array":
+        cow.addln(r'fprintf(fp, "%s: %s of %s %s\n");',
+          varname, it.gtype, cnt, it.decl.datatype)
+        cow.declare_var("int i", pp = pp) # declare index i
+        cow.addln("for (i = 0; i < %s; i++)", cnt)
+        cow.addln(cow.sindent + funcall % (varname+"+i") + ";")
+      else:
+        cow.addln(r'fprintf(fp, "%s: %s to %s\n");',
+          varname, it.gtype, it.decl.datatype)
+        cow.addln(funcall % varname + ";")
+      cow.end_if(cond)
+    elif it.gtype in ("pointer"):
+      pass
+    else:
+      try:
+        fmt = type2fmt_p(it.gtype, varname)
+        cow.addln(r'fprintf(fp, "%s: %s, %s\n", %s);',
+          varname, it.gtype, fmt, varname)
+      except TypeError:
+        cow.addln(r'fprintf(fp, "%s: %s, 0x%%X\n", (unsigned) %s);',
+          varname, it.gtype, varname)
+
+    if notalways(prereq): cow.end_if(prereq)
+    if pp: cow.addln("#endif")
 
