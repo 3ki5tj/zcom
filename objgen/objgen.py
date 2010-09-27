@@ -90,6 +90,7 @@ Commands of an item:
               not read from the configuration file
               $usr:parent; declare the variable represents 
               a pointer to the parent object
+              $usr:bintmp; temporary variable used in bin
 
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier
@@ -488,6 +489,7 @@ class Object:
       funclist += self.gen_func_binrw2(f, "r")
       funclist += self.gen_func_binrw2(f, "w")
     funclist += [self.gen_func_manifest()]
+    funclist += [self.gen_func_initmpi()]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -544,30 +546,9 @@ class Object:
     cow.dump_block(block, tab, offset)
     return cow.gets()
 
-  def gen_func_close(self):
-    cow = CCodeWriter()
-    macroname = "%sclose" % self.fprefix
-    funcnm = macroname + "_low"
-    macro = "#define %s(%s) { %s(%s); free(%s); %s = NULL; }" % (
-      macroname, self.ptrname, funcnm, self.ptrname, self.ptrname, self.ptrname)
-    fdecl = "void %s(%s *%s)" % (funcnm, self.name, self.ptrname)
-    cow.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, 
-        None if self.cmds["private"] else macro)
-
-    # compute the longest variable
-    calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
-        it.decl and it.gtype in ("char *", "dynamic array") ) else 0
-    maxwid = max(calc_len(it) for it in self.items) if len(self.items) else 0
-    for it in self.items:
-      it.close_var(cow, self.ptrname, maxwid)
-
-    cow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
-    cow.end_function("")
-    return cow.prototype, cow.function
-
   def get_usr_vars(self, tag, f = None):
-    ''' tag can be "cfg", "bin", "txt" '''
-    if tag not in ("cfg", "bin", "txt"): raise Exception
+    ''' tag can be "cfg", "bin", "txt", "close" '''
+    if tag not in ("cfg", "bin", "txt", "close"): raise Exception
     param_list = ""
     var_list = ""
     for it in self.items:
@@ -818,6 +799,31 @@ class Object:
     cow.end_function("")
     return cow.prototype, cow.function
 
+  def gen_func_close(self):
+    cow = CCodeWriter()
+    usrs = self.get_usr_vars("close")
+
+    macroname = "%sclose" % self.fprefix
+    funcnm = macroname + "_low"
+    macro = "#define %s(%s%s) { %s(%s%s); free(%s); %s = NULL; }" % (
+      macroname, self.ptrname, usrs[1],
+      funcnm, self.ptrname, usrs[1], 
+      self.ptrname, self.ptrname)
+    fdecl = "void %s(%s *%s%s)" % (funcnm, self.name, self.ptrname, usrs[0])
+    cow.begin_function(funcnm, fdecl, "close a pointer to %s" % self.name, 
+        None if self.cmds["private"] else macro)
+
+    # compute the longest variable
+    calc_len = lambda it: len(it.decl.name)+2+len(self.ptrname) if (
+        it.decl and it.gtype in ("char *", "dynamic array") ) else 0
+    maxwid = max(calc_len(it) for it in self.items) if len(self.items) else 0
+    for it in self.items:
+      it.close_var(cow, self.ptrname, maxwid)
+
+    cow.addln("memset(%s, 0, sizeof(*%s));", self.ptrname, self.ptrname)
+    cow.end_function("")
+    return cow.prototype, cow.function
+
   def gen_func_manifest(self):
     ''' write a function to present current data '''
     cow = CCodeWriter()
@@ -830,6 +836,33 @@ class Object:
     cow.end_function("")
     return cow.prototype, cow.function
 
+  def gen_func_initmpi(self):
+    '''
+    write a function to initialize MPI 
+    every node calls this function
+    '''
+    cow = CCodeWriter()
+    funcnm = "%sinitmpi" % (self.fprefix)
+    obj = self.name
+    ptr = self.ptrname
+    fdecl = "int %s(%s *%s, MPI_Comm comm)" % (funcnm, obj, ptr)
+    cow.begin_function(funcnm, fdecl, 
+        "initialize MPI for %s" % obj,
+        pp = "#ifdef %s" % USE_MPI)
+
+    cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
+        onerr = "return -1;")
+    cow.addln("MPI_Bcast(%s, sizeof(*%s), MPI_BYTE, %s, comm);\n",
+        ptr, ptr, MASTERID);
+    # assign rank and communicator
+    # must be done after Bcast to avoid being overwritten 
+    cow.addln("%s->comm = comm;", ptr)
+    cow.addln("MPI_Comm(comm, &%s->rank);", ptr)
+
+    for it in self.items:
+      it.initmpi_var(cow, self.ptrname)
+    cow.end_function("")
+    return cow.prototype, cow.function
 
 class Parser:
   '''

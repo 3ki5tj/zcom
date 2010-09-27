@@ -673,6 +673,7 @@ class Item:
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
       cow.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
+    
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       funcall = "%sbinwrite_low(%%s, fp, ver%s)" % (
@@ -680,10 +681,11 @@ class Item:
       if it.gtype == "object array":
         imin = it.cmds["bin_imin"]
         imax = it.cmds["bin_imax"]
-        cow.wb_objarr(varname, dim, funcall, it.cmds["#if"],
+        cow.wb_objarr(varname, dim, funcall, pp,
             [1, 1], imin, imax)
       else:
         cow.wb_obj(varname, funcall)
+    
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
@@ -694,6 +696,7 @@ class Item:
           varname, cnt)
       cow.addln("goto ERR;")
       cow.end_if(cond1)
+    
     else:
       cow.wb_var(varname, it.gtype)
 
@@ -787,6 +790,7 @@ class Item:
 
   def manifest_var(it, cow, ptr):
     if not it.decl or it.isdummy: return
+    if it.cmds["usr"] not in (None, 1): return
 
     varnm = it.decl.name
     varname = ptr + "->" + varnm
@@ -822,7 +826,7 @@ class Item:
       fpfx = it.get_obj_fprefix();
       cond = "%s != NULL" % varname
       cow.begin_if(cond)      
-      funcall = "%smanifest(%%s)" % fpfx      
+      funcall = "%smanifest(%%s, fp)" % fpfx      
       if it.gtype == "object array":
         cow.addln(r'fprintf(fp, "%s: %s of %s %s\n");',
           varname, it.gtype, cnt, it.decl.datatype)
@@ -846,5 +850,90 @@ class Item:
           varname, it.gtype, varname)
 
     if notalways(prereq): cow.end_if(prereq)
+    if pp: cow.addln("#endif")
+
+
+  def initmpi_var(it, cow, ptr):
+    if not it.decl or it.isdummy: return
+    if it.cmds["usr"] not in (None, 1): return
+
+    varnm = it.decl.name
+    varname = ptr + "->" + varnm
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    desc = it.cmds["desc"]
+    mpicnt = it.cmds["mpi_cnt"]
+    if mpicnt: cnt = mpicnt;
+    prereq = it.cmds["com_prereq"]
+    mpi = it.cmds["mpi"]
+    etype = it.get_elegtype()
+
+    pp = it.cmds["#if"]
+    if pp: cow.addln("#if %s", pp)
+    #if notalways(prereq): cow.begin_if(prereq)
+
+    notmaster = "%s->rank != %s" % (ptr, MASTERID)
+    if mpi in ("alloc", "2"): # allocate memory only, temporary variables
+      if it.gtype not in ("dynamic array"):
+        print "cannot just allocate space for %s (%s)" % (it.decl.name, it.gtype)
+        raise Exception
+      cow.add_comment(desc)
+      cow.begin_if(notmaster)
+      cow.alloc_darr(varname, etype, cnt)
+      cow.end_if(notmaster)
+    
+    elif mpi in (1, "1", "bcast"):  # allocate and bcast
+      if it.gtype == "dynamic array":
+        cow.add_comment(desc)
+        cow.begin_if(notmaster)
+        cow.alloc_darr(varname, etype, cnt)
+        cow.end_if(notmaster)
+        cow.addln("MPI_Bcast(%s, (%s) * sizeof(%s[0]), MPI_BTYE, %s, comm);",
+            varname, cnt, varname, MASTERID)
+        cow.addln()
+      elif it.gtype in ("object array", "object pointer"):
+        isarr = (it.gtype == "object array")
+        if not isarr: cnt = "1"
+        cow.add_comment(desc)
+        cow.begin_if(notmaster)
+        cow.alloc_darr(varname, it.decl.datatype, cnt)
+        cow.end_if(notmaster)
+        if isarr: 
+          cow.declare_var("int i")
+          cow.addln('for (i = 0; i < %s; i++) {' % cnt)
+        fpfx = it.get_obj_fprefix()
+        cow.addln("%sinitmpi(%s, comm);", fpfx, varname+("+i" if isarr else ""))
+        if isarr: cow.addln('}\n')
+      elif it.gtype == "char *":
+        cow.declare_var("int i")
+        cow.add_comment(desc)
+        cow.addln("i = strlen(%s);", varname)
+        cow.addln("MPI_Bcast(&i, sizeof(int), MPI_BTYE, %s, comm);", MASTERID)
+        cow.begin_if(notmaster)
+        cow.addln("%s = ssnew(i);" % varname)
+        cow.end_if(notmaster)
+        cow.addln("MPI_Bcast(%s, i*sizeof(char), MPI_BTYE, %s, comm);", 
+            varname, MASTERID)
+        cow.addln()
+      else:
+        print "cannot bcast %s of type %s" % (it.decl.name, it.gtype)
+        raise Exception
+
+    elif mpi in (0, "0", None): # mpi == None
+      if it.gtype in ("dynamic array", "char *", "object array", "object pointer"):
+        cow.begin_if(notmaster)
+        cow.addln('%s = NULL;', varname)
+        cow.end_if(notmaster)
+      elif it.gtype == "static array" and etype == "char *":
+        cow.begin_if(notmaster)
+        cow.addln('for (i = 0; i < %s; i++) {\n%s[i] = NULL;\n}', cnt, varname)
+        cow.end_if(notmaster)
+      # do nothing otherwise
+    
+    else:
+      print "unknown mpi tag %s" % mpi
+      raise Exception
+
+    #if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
 

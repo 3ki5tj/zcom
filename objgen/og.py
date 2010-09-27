@@ -28,10 +28,10 @@ def handle(file, template = ""):
   if os.path.exists(file):
     if not filecmp.cmp(tmpfile, file): # different files
       # make a backup of the original file
-      fn = file + "bak"
+      fn = file + ".bak"
       i = 1
       while os.path.exists(fn):
-        fn = file + "bak" + str(i)
+        fn = file + ".bak." + str(i)
         i += 1
       shutil.copy2(file, fn)
     else:

@@ -274,7 +274,7 @@ class CCodeWriter:
 
     # allocate array
     cond = "(%s = calloc(%s, sizeof(%s))) == NULL" % (var, cnta, type)
-    msg = r"no memory! var: %s, type: %s\n" % (var, type)
+    msg = r"no memory! var: %s, type: %s" % (var, type)
     self.die_if(cond, msg)
 
   def init_darr(self, var, type, default, cnt, desc, pp = None):
@@ -434,7 +434,7 @@ class CCodeWriter:
     self.end_if(prereq)
     self.addln()
 
-  def begin_function(self, name, fdecl, desc, macro = None):
+  def begin_function(self, name, fdecl, desc, macro = None, pp = None):
     ''' 
     start a function
     construct four code-writers:  decl, vars, hdr, body 
@@ -446,8 +446,12 @@ class CCodeWriter:
       print "need a function name"
       raise Exception
 
+    # save the preprocessing condition, like #if XXX 
+    self.pp = pp
+
     # declare the function
     decl = self.decl = CCodeWriter(self.nindents) # start a declaration writer
+    if pp: decl.addln(pp)
     decl.add_comment("%s: %s" % (name, desc))
     decl.addln(fdecl)
     decl.addln("{")
@@ -455,10 +459,12 @@ class CCodeWriter:
     # create a variable list `vls'
     self.vls = {}
 
-    # prototype
+    # prototype, placed in the header
     hdr = self.hdr = CCodeWriter(0)  # prototype writer
     if macro: hdr.addln(macro)  # extra macro
+    if pp: hdr.addln(pp)
     hdr.addln(fdecl + ";")
+    if pp: hdr.addln("#endif")
     self.prototype = hdr.gets()
 
     # body writer
@@ -495,12 +501,15 @@ class CCodeWriter:
     
     tail = self.tail = CCodeWriter(self.nindents + 1)
     if len(sret): tail.addln(sret);
-    tail.addln("}\n")
+    tail.addln("}")
+    if self.pp: tail.addln("#endif")
+    tail.addln()
     
     s += self.tail.gets()
     self.function = s
     self.funcname = None  # no longer inside the function
     self.vls = None  # kill variable list
+    self.pp = None
     self.decl = self.body = self.hdr = self.tail = None
 
   def declare_var(self, dcl, var = None, pp = None):
@@ -615,11 +624,11 @@ class CCodeWriter:
     self.declare_var("int j", pp = pp)
     self.addln("for (j = 0; j < %s; j++) {", dim[0])
     if widx[0]: self.wb_var("j", "int") # write index j
-    self.declare_var("int imin", pp = pp)
-    self.declare_var("int imax", pp = pp)
-    self.declare_var("int size", pp = pp)
     arr1d = "%s+j*%s" % (arr, dim[1])
     if imin or imax:
+      self.declare_var("int imin", pp = pp)
+      self.declare_var("int imax", pp = pp)
+      self.declare_var("int size", pp = pp)
       self.addln("imin = " + (imin if imin else "0") + ";")
       self.addln("imax = " + (imax if imax else dim[1]) + ";")
       self.addln("size = imax - imin;")

@@ -7,12 +7,15 @@ def cntsize(list):
   nlines = 0
   nchars = 0
   maxwid = max(len(f) for f in list)
+  block = []
   for f in list:
     nc = len(open(f).read())
     nl = len(open(f).readlines())
-    print "%-*s: %6d lines, %8d chars, %6.2f chars per line" % (maxwid, f, nl, nc, 1.0 *nc/nl)
+    block += [( nl, "%-*s: %6d lines, %8d chars, %6.2f chars per line" % (maxwid, f, nl, nc, 1.0 *nc/nl) )]
     nchars += nc
     nlines += nl
+  for it in sorted(block, key=lambda it: it[0]):
+    print it[1]
   print "%d files, %d lines, %d characters" % (nfiles, nlines, nchars)
   print "%.2f lines per file, %s characters per line" % (
       1.0 * nlines / nfiles, 1.0 * nchars / nlines)

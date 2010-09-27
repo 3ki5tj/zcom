@@ -3,6 +3,10 @@
 additional components 
 '''
 
+USE_MPI = "USE_MPI"  # macro indicating we have MPI
+MASTERID = "0"       # master rank in MPI
+
+
 def notalways(cond):
   ''' test if a condition is missing or always true '''
   return cond not in (None, 1, "1", "TRUE")
