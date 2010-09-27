@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+
 r'''
 a code generator for serializing objects
+
+Copyright (c) 2010 Cheng Zhang
 
 It uses a template, locates "typedef struct" code
 and try to generate io functions, 
@@ -121,6 +124,7 @@ TODO:
   * preprocessor
   * skip struct in comment or string
 '''
+
 
 import os, sys, re, filecmp
 from copy    import copy, deepcopy 
@@ -889,37 +893,4 @@ class Parser:
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
 
-def handle(file, template = ""):
-  ''' generate a C file according to a template '''
-  # guess the template name if it's empty
-  if template == "":
-    pt = os.path.splitext(file)
-    template = pt[0] + '.0' + pt[1]
-    ref = pt[0] + '1' + pt[1]
-
-  # read in the template
-  src = open(template, 'r').readlines()
-  # construct a parser
-  psr = Parser(src)
-  # write the processed file
-  open(file, 'w').write(psr.output())
-
-  if os.path.exists(ref):
-    if not filecmp.cmp(file, ref):
-      print "File %s is different from %s" % (file, ref)
-      raw_input()
-
-def main():
-  files = ["spb.c", "at.c", "mb.c"]
-  #files = ["mb.c"]
-  if len(sys.argv) > 1: files = [sys.argv[1]]
-  for file in files:
-    handle(file)
-
-if __name__ == "__main__":
-  try:
-    import psyco
-    psyco.full()
-  except ImportError: pass
-  main()
 
