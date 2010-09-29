@@ -136,6 +136,8 @@ from objcmd  import Commands
 from objitm  import Item
 from objext  import *
 
+USE_MPI = "USE_MPI"  # macro indicating we have MPI
+
 class Object:
   '''
   a struct defined as
@@ -384,7 +386,7 @@ class Object:
       if it.decl: 
         it.gtype = it.get_gtype()
   
-  def init_folds(self):
+  def init_folds(self, verbose = 0):
     ''' 
     initialize folds 
     '''
@@ -397,10 +399,11 @@ class Object:
       if f not in folds:
         folds[f] = Fold(self.fprefix, f)
       folds[f].additem(it)
-    print "%s has %d folds" % (self.name, len(folds))
+    if verbose:
+      print "%s has %d folds" % (self.name, len(folds))
     
     for f in folds:
-      print "fold %-8s has %3d items" % (f, len(folds[f]))
+      if verbose: print "fold %-8s has %3d items" % (f, len(folds[f]))
       folds[f].prereq = 1  # prereq is always met
       folds[f].valid  = 1  # always valid
       #for it in folds[f].items: print it.getraw()
@@ -520,6 +523,8 @@ class Object:
       block = it.declare_var(cow, block, tab, offset)
     cow.dump_block(block, tab, offset)
     block = []
+    cow.addln("int mpi_rank;")
+    cow.addln("#ifdef %s\nMPI_Comm mpi_comm;\n#endif\n", USE_MPI)
     cow.addln("} " + self.name + ";")
     
     return cow.gets()
@@ -856,11 +861,12 @@ class Object:
         ptr, ptr, MASTERID);
     # assign rank and communicator
     # must be done after Bcast to avoid being overwritten 
-    cow.addln("%s->comm = comm;", ptr)
-    cow.addln("MPI_Comm(comm, &%s->rank);", ptr)
+    cow.addln("%s->mpi_comm = comm;", ptr)
+    cow.addln("MPI_Comm_rank(%s->mpi_comm, &%s->mpi_rank);", ptr, ptr)
 
     for it in self.items:
       it.initmpi_var(cow, self.ptrname)
+    cow.addln("return 0;")
     cow.end_function("")
     return cow.prototype, cow.function
 
@@ -869,7 +875,11 @@ class Parser:
   handle objects in a file
   '''
   def __init__(self, src):
+    '''
+    `src' is a list of lines 
+    '''
     self.src = src
+    self.change_use_mpi()
     self.parse_lines()
 
   def parse_lines(self):
@@ -885,10 +895,10 @@ class Parser:
       if obj.empty == 1: break
       if obj.empty == -1: continue  # skip
 
-      print "found a new object '%s' with %d items, from %s to %s\n" % (
+      print "found a new object '%s' with %d items, from %s to %s" % (
           obj.name, len(obj.items), obj.begin, obj.end)
       objs += [obj]
-    print "I got %d objects" % (len(objs))
+    #print "I got %d objects" % (len(objs))
 
   def output(self):
     for obj in self.objs:
@@ -926,4 +936,25 @@ class Parser:
       s += obj.end.gettext(src, pnext) # this object's end to the next object's beginning
     return s
 
+  def change_use_mpi(self):
+    # find `#define USE_MPI xxx'
+    for i in range(len(self.src)):
+      line = self.src[i]
+      m = re.match(r"\#define\s+USE_MPI\s+(.*)$", line)
+      if not m: continue
+      # found a match
+      global USE_MPI
+      USE_MPI = m.group(1).strip()
+      print "USE_MPI is now %s" % (USE_MPI)
+      self.src[i] = "/* %s */\n" % line.strip()
+      idef = i
+      break
+    else:
+      return
 
+    # substitute every line with USE_MPI 
+    for i in range(len(self.src)):
+      if i == idef: continue
+      line = self.src[i]
+      if line.find("USE_MPI") < 0: continue
+      self.src[i] = re.sub("USE_MPI", USE_MPI, line)

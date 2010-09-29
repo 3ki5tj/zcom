@@ -237,8 +237,10 @@ class Item:
   def isempty(self):
     return self.empty
 
-  def subpfx(it, val, ptrname, fprefix, parent):
-    ''' change `@' by ptrname-> in command arguments '''
+  def subpfx(it, val, ptr, fprefix, parent):
+    ''' 
+    change `@' by ptr-> in command arguments 
+    '''
     # @- means function prefix
     pattern = r"(?<![\@\\])\@\-(?=\w)"
     val = re.sub(pattern, fprefix, val)
@@ -253,7 +255,7 @@ class Item:
       if not it.decl:
         print "use @@ for %s without decl." % it
         raise_exception
-      val = re.sub(pattern, ptrname + "->" + it.decl.name, val)
+      val = re.sub(pattern, ptr+"->" + it.decl.name, val)
 
     # @~ means parent's corresponding name 
     pattern = r"(?<![\@\\])\@\~(?!\w)"
@@ -271,12 +273,16 @@ class Item:
 
     # @var
     pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
-    val = re.sub(pattern, ptrname + "->", val)
+    val = re.sub(pattern, ptr+"->", val)
+
+    # $ismaster  --> ptr->mpi_rank == %s
+    pattern = "\$ismaster"
+    val = re.sub(pattern, "(%s->mpi_rank == %s)" % (ptr, MASTERID), val)
     
-    # for a single hanging @, means ptrname
+    # for a single hanging @, means ptr
     pattern = r"(?<![\@\\])\@(?!\w)"
     if re.search(pattern, val):
-      val = re.sub(pattern, ptrname, val)
+      val = re.sub(pattern, ptr, val)
 
     return val
 
@@ -286,7 +292,7 @@ class Item:
       val = it.cmds[key]
       if type(val) == str:
         it.cmds[key] = it.subpfx(val, ptrname, fprefix, parent)
-      elif type(val) == list:
+      elif type(val) == list: # list of strings, in case it is already parsed
         for i in range(len(val)):
           val[i] = it.subpfx(val[i], ptrname, fprefix, parent)
       else: continue
@@ -872,7 +878,7 @@ class Item:
     if pp: cow.addln("#if %s", pp)
     #if notalways(prereq): cow.begin_if(prereq)
 
-    notmaster = "%s->rank != %s" % (ptr, MASTERID)
+    notmaster = "%s->mpi_rank != %s" % (ptr, MASTERID)
     if mpi in ("alloc", "2"): # allocate memory only, temporary variables
       if it.gtype not in ("dynamic array"):
         print "cannot just allocate space for %s (%s)" % (it.decl.name, it.gtype)
@@ -888,7 +894,7 @@ class Item:
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, etype, cnt)
         cow.end_if(notmaster)
-        cow.addln("MPI_Bcast(%s, (%s) * sizeof(%s[0]), MPI_BTYE, %s, comm);",
+        cow.addln("MPI_Bcast(%s, (%s) * sizeof(%s[0]), MPI_BYTE, %s, comm);",
             varname, cnt, varname, MASTERID)
         cow.addln()
       elif it.gtype in ("object array", "object pointer"):
@@ -899,13 +905,13 @@ class Item:
         cow.alloc_darr(varname, it.decl.datatype, cnt)
         cow.end_if(notmaster)
         if isarr: 
-          cow.declare_var("int i")
+          cow.declare_var("int i", pp=pp)
           cow.addln('for (i = 0; i < %s; i++) {' % cnt)
         fpfx = it.get_obj_fprefix()
         cow.addln("%sinitmpi(%s, comm);", fpfx, varname+("+i" if isarr else ""))
         if isarr: cow.addln('}\n')
       elif it.gtype == "char *":
-        cow.declare_var("int i")
+        cow.declare_var("int i", pp=pp)
         cow.add_comment(desc)
         cow.addln("i = strlen(%s);", varname)
         cow.addln("MPI_Bcast(&i, sizeof(int), MPI_BTYE, %s, comm);", MASTERID)
@@ -926,6 +932,7 @@ class Item:
         cow.end_if(notmaster)
       elif it.gtype == "static array" and etype == "char *":
         cow.begin_if(notmaster)
+        cow.declare_var("int i", pp=pp)
         cow.addln('for (i = 0; i < %s; i++) {\n%s[i] = NULL;\n}', cnt, varname)
         cow.end_if(notmaster)
       # do nothing otherwise
