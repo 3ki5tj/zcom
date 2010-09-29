@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, sys, re
 from copy   import copy
-from objext import notalways
+from objext import *
 
 def dm(s):
   ''' %d --> %%d in a string '''
@@ -487,7 +487,13 @@ class CCodeWriter:
         self.decl.addln(dcl+";")
         #print dcl
 
-  def end_function(self, sret = ""):
+  def end_function(self, sret = "", silence = None):
+    ''' 
+    end a function, return header and prototype
+    `silence' is a list variables to be silenced if unused, e.g.,
+      ["cfg", "err!"]
+    `!' at the variable end is used to force a silencing statement
+    '''
     # write variable list
     if len(self.vls):
       # write normal variables first, then those with pp's
@@ -497,9 +503,22 @@ class CCodeWriter:
       #raw_input()
     
     s  = self.decl.gets()
-    s += self.body.gets()
-    
+    sb = self.body.gets()
+
     tail = self.tail = CCodeWriter(self.nindents + 1)
+    # add void statements to avoid warnings for unused variables
+    if silence: # silence unused variables
+      if type(silence) == str: silence = [silence] # in case a single string
+      for var in silence:
+        force = var.endswith("!")
+        var.rstrip("!")
+        #print "var %s, in decl: %s; in body: %s;" % (var, findvar(var, s), findvar(var, sb)); raw_input()
+        if force or (not findvar(var, sb) # not found in the body 
+            and findvar(var, s)): # but can be found in the declaration
+          tail.addln("(void) %s;", var);
+    
+    s += sb
+    
     if len(sret): tail.addln(sret);
     tail.addln("}")
     if self.pp: tail.addln("#endif")
@@ -527,10 +546,12 @@ class CCodeWriter:
 
     dcl = dcl.rstrip(";")
     if var == None: # make a cheap guess of variable
-      arr = dcl.split()
+      pivot = dcl.find("=")
+      dcl0 = dcl[:pivot] if pivot >= 0 else dcl
+      arr = dcl0.split()
       var = arr[len(arr) - 1].strip("*()")
       if var == "" or var[0].isdigit() or not re.match("\w+$", var):
-        print "cannot determine the var [%s]" % var
+        print "cannot determine the var [%s], decl0 = [%s]" % (var, dcl0)
         raise Exception
 
     if var in self.vls: # existing variable
@@ -649,10 +670,14 @@ class CCodeWriter:
     elif ndim == 1:
       self.wb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
+  def declare_err(self):
+    self.declare_var("int err = 0")
+
   def rb_var(self, var, type, match = 0, prec = "1e-5", 
       tolerr = 0, valid = None):
     verify = "verify"
     if type in ("int", "unsigned", "unsigned int"):
+      self.declare_err()
       if match:
         self.declare_var("int itmp")
         self.addln("BIO_RMI(itmp, %s);", var)
@@ -662,6 +687,7 @@ class CCodeWriter:
         else:
           self.addln("BIO_RI(%s);", var)
     elif type == "double":
+      self.declare_err()
       if match:
         self.declare_var("double dtmp")
         self.addln("BIO_RMD(dtmp, %s, %s);", var, prec)
@@ -678,8 +704,10 @@ class CCodeWriter:
   
   def rb_arr1d(self, arr, cnt, type):
     if type == "int":
+      self.declare_err()
       self.addraw( "BIO_RIARR(%s, %s);\n" % (arr, cnt) )
     elif type == "double":
+      self.declare_err()
       self.addraw( "BIO_RDARR(%s, %s);\n" % (arr, cnt) )
     else:
       print "don't know how to write type %s for %s" % (type, arr)
@@ -752,7 +780,7 @@ class CCodeWriter:
   def rb_checkbytes(self):
     self.declare_var("int size")
     self.declare_var("int endn")
-    self.declare_var("int err")
+    self.declare_err()
 
     self.add_comment("determine file endian")
     val = "size"

@@ -266,7 +266,7 @@ class Item:
       val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
 
     # @< means keyname
-    kprefix = it.cmds["key_prefix"]
+    kprefix = it.cmds["kprefix"]
     if kprefix:
       pattern = r"(?<![\@\\])\@\<(?=\w)"
       val = re.sub(pattern, kprefix, val)
@@ -303,9 +303,9 @@ class Item:
     add default key for configuration file reading
     unless "key" is specified, it is calculated as
     1. it.decl.name is the first guess
-    2. if it starts with key_unprefix, remove it
-    3. add key_prefix
-    4. append key_args, after a `#'
+    2. if it starts with kdepfx, remove it
+    3. add kprefix
+    4. append kargs, after a `#'
     '''
 
     # skip if it is not a declaration
@@ -316,13 +316,13 @@ class Item:
     cfgkey = key0 if key0 else it.decl.name
     
     if not key0 or it.cmds["flag"]:
-      pm = it.cmds["key_unprefix"]
+      pm = it.cmds["kdepfx"]
       if pm and cfgkey.startswith(pm):
         cfgkey = cfgkey[len(pm):]
-      pfx  = it.cmds["key_prefix"]
+      pfx  = it.cmds["kprefix"]
       if pfx:  cfgkey = pfx + cfgkey
     # append key argument
-    args = it.cmds["key_args"]
+    args = it.cmds["kargs"]
     if args: cfgkey += "#" + args
     it.cmds["key"] = cfgkey
 

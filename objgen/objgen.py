@@ -52,12 +52,12 @@ Commands of an item:
               for configuration, binary and text respectively
               it can also be `none' or `all'
 
-  * $key:           key to get from configuration file
-  * $key_prefix:    prefix to be added when it is deduced from 
-                    variable name, usually as a persistent command
-  * $key_unprefix:  if variable name starts with $key_unprefix, that part 
-                    is first removed before applying $key_prefix
-  * $key_args:      printf arguments in constructing key
+  * $key:     key to get from configuration file
+  * $kprefix: prefix to be added when it is deduced from 
+              variable name, usually as a persistent command
+  * $kdepfx:  if variable name starts with $key_unprefix, that part 
+              is first removed before applying $kprefix
+  * $kargs:   printf arguments in constructing key
   
   * $must:       a critial key that must present in configuration file
 
@@ -492,7 +492,8 @@ class Object:
       funclist += self.gen_func_binrw2(f, "r")
       funclist += self.gen_func_binrw2(f, "w")
     funclist += [self.gen_func_manifest()]
-    funclist += [self.gen_func_initmpi()]
+    if not disabled(self.cmds["mpi"]):
+      funclist += [self.gen_func_initmpi()]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -523,8 +524,9 @@ class Object:
       block = it.declare_var(cow, block, tab, offset)
     cow.dump_block(block, tab, offset)
     block = []
-    cow.addln("int mpi_rank;")
-    cow.addln("#ifdef %s\nMPI_Comm mpi_comm;\n#endif\n", USE_MPI)
+    if not disabled(self.cmds["mpi"]):
+      cow.addln("int mpi_rank;")
+      cow.addln("#ifdef %s\nMPI_Comm mpi_comm;\n#endif\n", USE_MPI)
     cow.addln("} " + self.name + ";")
     
     return cow.gets()
@@ -600,7 +602,7 @@ class Object:
     for it in obj.items:
       it.cfgget_var(cow, obj.ptrname)
 
-    cow.end_function("return 0;")
+    cow.end_function("return 0;", silence = ["cfg"])
     return cow.prototype, cow.function
 
   def gen_func_cfgopen(obj):
@@ -687,8 +689,7 @@ class Object:
     callclear = "%sclear(%s);" % (fprefix, self.ptrname)
 
     if rw == "r":
-      cow.declare_var("int err")
-      cow.addln("err = 0;")
+      #cow.declare_var("int err = 0")
       #cow.declare_var("int verify")
       #cow.addln("verify = !(flags & IO_NOVERIFY);")
       cow.add_comment("clear data before reading")
@@ -719,11 +720,10 @@ class Object:
           else "") + it.decl.name
       it.binrw_var(cow, varname, rw)
 
-    cow.addln("return 0;")
-    cow.addln("ERR:")
-    if rw == "r": cow.addln(callclear)  # clear data on failure
-    cow.addln("return -1;")
-    cow.end_function("")
+    unused_vars = ["ver"] + (["flags"] if rw == "r" else [])
+    cow.end_function("return 0;\nERR:\n%sreturn -1;" % (
+      callclear+"\n" if rw == "r" else ""), # clear data 
+      silence = unused_vars)
     return cow.prototype, cow.function
 
   def gen_func_binrw(self, f, rw):
@@ -768,12 +768,7 @@ class Object:
     cow.declare_var("int i")
     cow.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
         ", flags, endn" if rw == "r" else "", usrs[1]);
-    cow.addln("fclose(fp);")
-    cow.addln("return i;")
-    cow.addln("ERR:")
-    cow.addln("fclose(fp);")
-    cow.addln("return -1;")
-    cow.end_function("")
+    cow.end_function("fclose(fp);\nreturn i;\nERR:\nfclose(fp);\nreturn -1;");
     return cow.prototype, cow.function
 
   def gen_func_binrw2(self, f, rw):

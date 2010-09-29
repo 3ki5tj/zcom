@@ -2,12 +2,25 @@
 '''
 additional components 
 '''
+import re
 
 MASTERID = "0"       # master rank in MPI
 
 def notalways(cond):
   ''' test if a condition is missing or always true '''
   return cond not in (None, 1, "1", "TRUE")
+
+def disabled(cond):
+  ''' 
+  test if a default command is explicitly disabled
+  cond is assumed to be enabled if it is None
+  '''
+  return cond in (0, "0", "FALSE", "off")
+
+def findvar(var, s):
+  pattern = "(?<![a-z_])%s(?![a-z_])" % var
+  m = re.search(pattern, s)
+  return (m.start(0) + 1) if m else 0
 
 class Fold:
   ''' a sub-object embedded inside an object '''
