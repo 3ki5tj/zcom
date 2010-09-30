@@ -338,7 +338,7 @@ class CCodeWriter:
     self.checktp(var, type)
     keystr, keyfmt, keyargs = self.getkeystr(key)
     cond = '0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
-    if must:
+    if must in (1, "1"):
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
@@ -824,9 +824,24 @@ class CCodeWriter:
     elif ndim == 1:
       self.rb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
+  def test_arrempty(self, var, cnt, type, isobj = 0):
+    ''' test if an array is empty '''
+
+    if type in ("double", "float"):
+      test = "fabs(%s[i]) > 1e-30" % var
+    elif type in ("int", "unsigned", "long"):
+      test = var + "[i]"
+    elif isobj:
+      test = "*((char *)%s + i)" % var
+      cnt = "%s*sizeof(%s)" % (cnt, type)
+    else: return None
+    self.declare_var("int i")
+    self.addln("for (i = %s-1; i >= 0; i--) if (%s) break;", cnt, test)
+    return "i >= 0"
+
   def manifest(self, var, type):
     fmt = type2fmt(type)
-    self.addln('printf("%s", %s);', fmt, var)
+    self.addln('printf("%s", %s);\n', fmt, var)
 
   '''
   def rb_atom(self, var, cnt, onerr, onsuc):
