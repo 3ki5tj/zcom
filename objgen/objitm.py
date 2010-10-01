@@ -603,7 +603,9 @@ class Item:
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     verify = it.cmds["verify"]
-    valid = it.cmds["valid"]
+    valid = it.cmds["rb_valid"]
+    if not valid:
+      valid = it.cmds["valid"]
     pp = it.cmds["#if"]
     if pp:
       cow.addln("#if %s", pp)

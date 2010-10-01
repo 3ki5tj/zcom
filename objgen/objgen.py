@@ -67,17 +67,17 @@ Commands of an item:
                   ensures a variable is assigned at a reasonable value
   * $tfirst:      if this is set, we do not assign the default value $def 
                   unless $prereq is true, useful for dummy variables
-  * $valid:       a condition to be tested for validity *after* reading
-                  a variable from configuration file
-
   * $bin_prereq:  a prerequisite that applies to reading/writing binary files
                   it can contain a variable `ver', a version number of
                   binary data.
                   readbin()/writebin() rely on the this condition.
-
   * $com_prereq:  a general prerequisite that applies to accessing data
                   usually related to MPI rank.
                   clear()/close() rely on this condition
+
+  * $valid:       a condition to be tested for validity *after* reading
+                  a variable from configuration file
+  * $rb_valid:    to override $valid during rb
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it; 
@@ -488,15 +488,16 @@ class Object:
     funclist += [self.gen_func_close()]
     # fold-specific functions
     for f in self.folds:
-      hasrb = not disabled(self.cmds["rb"])
-      haswb = not disabled(self.cmds["wb"])
+      hasrb = not (disabled(self.cmds["rb"]) or disabled(self.cmds["readbin"]))
+      haswb = not (disabled(self.cmds["wb"]) or disabled(self.cmds["writebin"]))
       if hasrb or haswb:
         funclist += [self.gen_func_clear(f)]
       if hasrb:
         funclist += self.gen_func_binrw2(f, "r")
       if haswb:
         funclist += self.gen_func_binrw2(f, "w")
-    funclist += [self.gen_func_manifest()]
+    if not disabled(self.cmds["manifest"]):
+      funclist += [self.gen_func_manifest()]
     if not disabled(self.cmds["mpi"]):
       funclist += [self.gen_func_initmpi()]
 

@@ -46,7 +46,6 @@ class Fold:
     if notalways(f.valid) and validate:
       cow.validate(f.valid, funcnm)
 
-
 def type2fmt_s(tp):
   ''' format for scanf '''
   fmt = ""

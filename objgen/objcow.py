@@ -572,24 +572,18 @@ class CCodeWriter:
       self.vls[var] = dcl, pp
   
   def wb_var(self, var, type):
-    if type in ("int", "unsigned", "unsigned int"):
-      s = "BIO_WI(%s);" % var
-    elif type == "double":
-      s = "BIO_WD(%s);" % var
+    if type in ("int", "unsigned", "unsigned int", "double"):
+      self.rwb_atom("w", var)
     else:
       print "don't know how to write type %s for %s" % (type, var)
       raise Exception;
-    self.addraw(s + "\n")
 
   def wb_arr1d(self, arr, cnt, type):
-    if type == "int":
-      s = "BIO_WIARR(%s, %s);" % (arr, cnt)
-    elif type == "double":
-      s = "BIO_WDARR(%s, %s);" % (arr, cnt)
+    if type in ("int", "double"):
+      self.rwb_atom("w", arr, cnt = cnt)
     else:
       print "don't know how to write type %s for %s" % (type, arr)
       raise Exception
-    self.addraw(s + "\n")
 
   def wb_checkbytes(self):
     ''' write some checking bytes '''
@@ -671,32 +665,54 @@ class CCodeWriter:
     elif ndim == 1:
       self.wb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
-  def declare_err(self):
-    self.declare_var("int err = 0")
+  def rwb_atom(self, tag, var, cnt = None, tolerr = None):
+    ''' read a variable or array '''
+    default_endian = 1 # big endian
+    
+    # endian checked reading
+    if cnt: # array
+      ptr = var
+      val = "*(%s)" % var
+      cond = cnt+">0 && "
+    else: # single variable
+      cnt = 1
+      ptr = "&"+var
+      val = var
+      cond = ""
+    cond += "endn_f%s(%s, sizeof(%s), %s, fp, %s) != %s" % (
+        ("read" if tag == "r" else "write"), ptr, val, cnt, 
+        ("endn" if tag == "r" else default_endian), cnt)
+    self.begin_if(cond)
+    msg = "error in "+("reading" if tag == "r" else "writing")+" "+var
+    if cnt == 1:
+      self.errmsg(msg)
+    else:
+      self.errmsg(msg+", n = %s(%%d)" % cnt, cnt)
+    self.addln(tolerr if tolerr else "goto ERR;")
+    self.end_if(cond)
+
+  def match_var(self, x, var, prec = None):
+    ''' raise an error if x is not equal to var '''
+    cint = "%s != %s" % (x, var)
+    cdbl = "fabs(%s - %s) > %s" % (x, var, prec)
+    cond = cdbl if prec else cint
+    fmt = "%g" if prec else "%d"
+    self.die_if (cond, var+" mismatch, expect: "+fmt+", read: "+fmt,
+       args = var+", "+x, onerr = "goto ERR;")
 
   def rb_var(self, var, type, match = 0, prec = "1e-5", 
       tolerr = 0, valid = None):
     verify = "verify"
-    if type in ("int", "unsigned", "unsigned int"):
-      self.declare_err()
-      if match:
-        self.declare_var("int itmp")
-        self.addln("BIO_RMI(itmp, %s);", var)
-      else:
-        if tolerr:
-          self.addln("BIO_RI_ERR(%s);", var)
-        else:
-          self.addln("BIO_RI(%s);", var)
-    elif type == "double":
-      self.declare_err()
-      if match:
-        self.declare_var("double dtmp")
-        self.addln("BIO_RMD(dtmp, %s, %s);", var, prec)
-      else:
-        if tolerr:
-          self.addln("BIO_RD_ERR(%s);", var)
-        else:
-          self.addln("BIO_RD(%s);", var)
+    tpint = ("int", "unsigned", "unsigned int")
+    tpdbl = ("double",)
+    if match: tolerr = 0 # no error if we want to match
+    if type in (tpint + tpdbl):
+      isdbl = type in tpdbl
+      tmp = "dtmp" if isdbl else "itmp"
+      rvar = tmp if match else var # read to tmp var. if we need to match
+      if match: self.declare_var("%s %s" % (type, tmp)) # declare tmp var
+      self.rwb_atom("r", rvar, tolerr = tolerr)
+      if match: self.match_var(tmp, var, prec if isdbl else None)
     else:
       print "don't know how to read type %s for %s" % (type, var)
       raise Exception
@@ -704,17 +720,18 @@ class CCodeWriter:
     self.validate(valid, var)
   
   def rb_arr1d(self, arr, cnt, type):
-    if type == "int":
-      self.declare_err()
-      self.addraw( "BIO_RIARR(%s, %s);\n" % (arr, cnt) )
-    elif type == "double":
-      self.declare_err()
-      self.addraw( "BIO_RDARR(%s, %s);\n" % (arr, cnt) )
+    if type in ("int", "double"):
+      self.rwb_atom("r", arr, cnt = cnt)
     else:
       print "don't know how to write type %s for %s" % (type, arr)
       raise Exception
 
   def rb_arr2d(self, arr, dim, tp, trim):
+    '''
+    read two dimensional array 
+    allow a compact format for array of many zeroes, `trim':
+    but need an offset and size for each 1D array
+    '''
     self.declare_var("int j")
     self.declare_var("int i")
     if trim:
@@ -728,15 +745,7 @@ class CCodeWriter:
     self.addln("for (j = 0; j < %s; j++) {" % dim[0])
 
     # read major index
-    self.rb_var("itmp", "int", match = 0, tolerr = 1)
-    ceof = "feof(fp)"
-    self.begin_if(ceof) # EOF encountered, normal quit */
-    self.addln("break;")
-    self.begin_else_if("err")
-    self.errmsg(r"%s error: j = %%d, itmp = %%d\n" % arr,
-        "j, itmp")
-    self.addraw("goto ERR;\n")
-    self.end_if(ceof)
+    self.rb_var("itmp", "int", match = 0, tolerr = "if (feof(fp)) break;")
 
     # handle major index mismatch
     cidx = "itmp > i && itmp < %s" % dim[0]
@@ -779,19 +788,18 @@ class CCodeWriter:
     else: raise Exception
 
   def rb_checkbytes(self):
-    self.declare_var("int size")
+    tmp = "itmp"
+    self.declare_var("int %s" % tmp)
     self.declare_var("int endn")
-    self.declare_err()
 
     self.add_comment("determine file endian")
-    val = "size"
     ref = "sizeof(int)"
-    cond = "(endn = endn_rmatchi(&%s, %s, fp)) < 0" % (val, ref)
+    cond = "(endn = endn_rmatchi(&%s, %s, fp)) < 0" % (tmp, ref)
     self.die_if(cond,
-        "%s 0x%%X cannot match %s 0x%%X" % (val, ref),
-        "(unsigned) %s, (unsigned) %s" % (val, ref), 
+        "%s 0x%%X cannot match %s 0x%%X" % (tmp, ref),
+        "(unsigned) %s, (unsigned) %s" % (tmp, ref), 
         onerr = "goto ERR;")
-    self.addraw("BIO_RMI(size, sizeof(double));\n")
+    self.match_var(tmp, "sizeof(double)")
 
   def rb_obj(self, var, funcall):
     cond = "0 != " + funcall % var
@@ -844,13 +852,4 @@ class CCodeWriter:
     fmt = type2fmt(type)
     self.addln('printf("%s", %s);\n', fmt, var)
 
-  '''
-  def rb_atom(self, var, cnt, onerr, onsuc):
-    # endian checked reading
-    cond = "(%s > 0) && end_fread(%s, sizeof(*(%s)), %s, fp, endn) != %s" % (
-        cnt, var, var, cnt, cnt)
-    self.begin_if(cond)
-    self.errmsg("error while reading %s, n = %s" % (var, cnt))
-    self.end_if(cond)
-  '''
 
