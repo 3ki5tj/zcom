@@ -488,9 +488,14 @@ class Object:
     funclist += [self.gen_func_close()]
     # fold-specific functions
     for f in self.folds:
-      funclist += [self.gen_func_clear(f)]
-      funclist += self.gen_func_binrw2(f, "r")
-      funclist += self.gen_func_binrw2(f, "w")
+      hasrb = not disabled(self.cmds["rb"])
+      haswb = not disabled(self.cmds["wb"])
+      if hasrb or haswb:
+        funclist += [self.gen_func_clear(f)]
+      if hasrb:
+        funclist += self.gen_func_binrw2(f, "r")
+      if haswb:
+        funclist += self.gen_func_binrw2(f, "w")
     funclist += [self.gen_func_manifest()]
     if not disabled(self.cmds["mpi"]):
       funclist += [self.gen_func_initmpi()]
@@ -756,7 +761,7 @@ class Object:
       cow.rb_checkbytes();
       cow.declare_var("int ver")
       cow.rb_var("ver", "int")
-      cow.addln("*pver = ver;")
+      cow.addln("if (pver != NULL) *pver = ver;")
     else:
       cow.wb_checkbytes();
     cow.addln()
