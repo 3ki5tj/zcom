@@ -641,12 +641,9 @@ class Item:
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
         cnt = bincnt
-      cond1 = "%s != fread(%s, 1, %s, fp)" % (cnt, varname, cnt)
-      cow.begin_if(cond1)
-      cow.addln(r'fprintf(stderr, "cannot read string of %%d for %s\n", %s);', 
-          varname, cnt)
-      cow.addln("goto ERR;")
-      cow.end_if(cond1)
+      cow.die_if ("%s != fread(%s, 1, %s, fp)" % (cnt, varname, cnt),
+        r"cannot read string of %d for "+varname, cnt, 
+        onerr = "goto ERR;");
     else:
       cow.rb_var(varname, it.gtype, verify, valid = valid)
 
@@ -698,12 +695,9 @@ class Item:
         it.gtype in ("char *", "static array")):
       if it.gtype == "static array" and bincnt: 
         cnt = bincnt
-      cond1 = "%s != fwrite(%s, 1, %s, fp)" % (cnt, varname, cnt)
-      cow.begin_if(cond1)
-      cow.addln(r'fprintf(stderr, "cannot write string of %%d for %s\n", %s);', 
-          varname, cnt)
-      cow.addln("goto ERR;")
-      cow.end_if(cond1)
+      cow.die_if ("%s != fwrite(%s, 1, %s, fp)" % (cnt, varname, cnt),
+        r"cannot write string of %d for "+varname, cnt, 
+        onerr = "goto ERR;");
     
     else:
       cow.wb_var(varname, it.gtype)
