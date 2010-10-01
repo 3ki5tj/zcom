@@ -576,7 +576,7 @@ class Item:
       usrval = it.cmds["usr"]
       if usrval:
         if usrval in ("cfg", 1): # usr variables
-          cow.assign(varname, "usr_%s" % varnm, it.gtype)
+          cow.assign(varname, varnm, it.gtype)
         else: pass # ignore other usr variables
       elif not it.cmds["io_cfg"]: # assign default value
         if defl and len(defl): 

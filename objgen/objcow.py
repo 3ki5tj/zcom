@@ -205,6 +205,7 @@ class CCodeWriter:
     NOTE: args are arguments for fprintf, not formatting args for msg 
     arguments are separated by `,' 
     '''
+    if msg in (None, ""): return
     lead = self.sindent * 2 
     
     # break msg into multiple line messages

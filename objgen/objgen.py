@@ -553,7 +553,7 @@ class Object:
     cow.dump_block(block, tab, offset)
     return cow.gets()
 
-  def get_usr_vars(self, tag, f = None):
+  def get_usrvars(self, tag, f = None):
     ''' tag can be "cfg", "bin", "txt", "close" '''
     if tag not in ("cfg", "bin", "txt", "close"): raise Exception
     param_list = ""
@@ -571,7 +571,7 @@ class Object:
         elif usrval == tag or (tag == "cfg" and usrval == 1):
           if f and it not in self.folds[f].items:
             continue  # wrong fold
-          if tag == "cfg": usr_name = "usr_%s" % name
+          if tag == "cfg": usr_name = name
           decl1 = re.sub(name, usr_name, decl1) 
         else:
           continue # irrelavent variables
@@ -593,7 +593,7 @@ class Object:
     file `cfg', or if unavailable, from default values ''' % objtp
     
     cfgdecl = "cfgdata_t *cfg"
-    usrvars = obj.get_usr_vars("cfg")
+    usrvars = obj.get_usrvars("cfg")
     fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
     cow = CCodeWriter()
     cow.begin_function(fread, fdecl, fdesc)
@@ -622,7 +622,7 @@ class Object:
               file `cfg', otherwise default values are assumed ''' % objtp
     
     cfgdecl = "cfgdata_t *cfg"
-    usrvars = obj.get_usr_vars("cfg")
+    usrvars = obj.get_usrvars("cfg")
     fdecl = "%s *%s(%s%s)" % (obj.name, fopen, 
             "const char *cfgname" if cfgopen else cfgdecl, 
             usrvars[0])
@@ -679,7 +679,7 @@ class Object:
     fprefix = self.folds[f].fprefix
     cow = CCodeWriter()
     funcnm = "%s%sbin_low" % (fprefix, readwrite)
-    usrs = self.get_usr_vars("bin", f)[0]
+    usrs = self.get_usrvars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
         ", unsigned flags, int endn" if rw == "r" else "", usrs)
@@ -734,7 +734,7 @@ class Object:
     cow = CCodeWriter()
     funcnm = "%s%sbin" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_low"
-    usrs = self.get_usr_vars("bin", f)
+    usrs = self.get_usrvars("bin", f)
     fdecl = "int %s(%s *%s, const char *fname, int %s%s)" % (
         funcnm, self.name, self.ptrname, 
         "ver" if rw == "w" else "*pver, unsigned flags", 
@@ -801,7 +801,7 @@ class Object:
 
   def gen_func_close(self):
     cow = CCodeWriter()
-    usrs = self.get_usr_vars("close")
+    usrs = self.get_usrvars("close")
 
     macroname = "%sclose" % self.fprefix
     funcnm = macroname + "_low"
