@@ -589,13 +589,13 @@ class Item:
 
   def binrw_var(it, cow, varname, rw):
     if rw == "w": 
-      it.binwrite_var(cow, varname)
+      it.wb_var(cow, varname)
     elif rw == "r":
-      it.binread_var(cow, varname)
+      it.rb_var(cow, varname)
     else:
       raise Exception
    
-  def binread_var(it, cow, varname):
+  def rb_var(it, cow, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds["bin_cnt"]
@@ -624,8 +624,8 @@ class Item:
       cow.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinread_low(%%s, fp, ver, flags, endn%s)" % (
-          fpfx, it.get_args("binwrite"));
+      funcall = "%sreadbin_low(%%s, fp, ver, flags, endn%s)" % (
+          fpfx, it.get_args("wb"));
       
       if it.gtype == "object array":
         imin = it.cmds["bin_imin"]
@@ -653,7 +653,7 @@ class Item:
     if pp:
       cow.addln("#endif")
    
-  def binwrite_var(it, cow, varname):
+  def wb_var(it, cow, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds["bin_cnt"]
@@ -682,8 +682,8 @@ class Item:
     
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      funcall = "%sbinwrite_low(%%s, fp, ver%s)" % (
-          fpfx, it.get_args("binwrite"))
+      funcall = "%swritebin_low(%%s, fp, ver%s)" % (
+          fpfx, it.get_args("wb"))
       if it.gtype == "object array":
         imin = it.cmds["bin_imin"]
         imax = it.cmds["bin_imax"]
@@ -718,8 +718,9 @@ class Item:
     varname = ptr + "->" + varnm
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
+    defl = it.cmds["def"]
+    #defl = it.get_zero()  zero is unreliable, e.g., sth needs to be 1.0
     prereq = it.cmds["com_prereq"]
-    defl = it.get_zero()
 
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)

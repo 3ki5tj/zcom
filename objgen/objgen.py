@@ -10,7 +10,7 @@ and try to generate io functions,
  * cfgopen(): read parameters from configuration file
  * close():   recursively free call resources
  * clear():   clear data
- * binread(), binwrite(): read and write data in binary format
+ * readbin(), writebin(): read and write data in binary format
 
 Commands syntax
   $cmd = args;
@@ -73,7 +73,7 @@ Commands of an item:
   * $bin_prereq:  a prerequisite that applies to reading/writing binary files
                   it can contain a variable `ver', a version number of
                   binary data.
-                  binread()/binwrite() rely on the this condition.
+                  readbin()/writebin() rely on the this condition.
 
   * $com_prereq:  a general prerequisite that applies to accessing data
                   usually related to MPI rank.
@@ -97,7 +97,7 @@ A fold is an embed object that has its own i/o routines
   * $fold_bin_add:  add some variables (separated by ,) during writing binary
   * $fold_prereq:   skip io if this condition is not true
                     applies to:
-                      binread(), binwrite(), clear()
+                      readbin(), writebin(), clear()
   * $fold_valid:    raise an error if condition is not true
 
 In a stand-alone comment
@@ -678,7 +678,7 @@ class Object:
     readwrite = "read" if rw == "r" else "write"
     fprefix = self.folds[f].fprefix
     cow = CCodeWriter()
-    funcnm = "%sbin%s_low" % (fprefix, readwrite)
+    funcnm = "%s%sbin_low" % (fprefix, readwrite)
     usrs = self.get_usr_vars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
@@ -732,7 +732,7 @@ class Object:
     '''
     readwrite = "read" if rw == "r" else "write"
     cow = CCodeWriter()
-    funcnm = "%sbin%s" % (self.folds[f].fprefix, readwrite)
+    funcnm = "%s%sbin" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_low"
     usrs = self.get_usr_vars("bin", f)
     fdecl = "int %s(%s *%s, const char *fname, int %s%s)" % (
