@@ -571,99 +571,108 @@ class CCodeWriter:
     else: # new variable
       self.vls[var] = dcl, pp
   
-  def wb_var(self, var, type):
-    if type in ("int", "unsigned", "unsigned int", "double"):
-      self.rwb_atom("w", var)
-    else:
-      print "don't know how to write type %s for %s" % (type, var)
-      raise Exception;
-
   def wb_arr1d(self, arr, cnt, type):
-    if type in ("int", "double"):
-      self.rwb_atom("w", arr, cnt = cnt)
-    else:
+    if type not in ("int", "double"):
       print "don't know how to write type %s for %s" % (type, arr)
       raise Exception
+    self.rwb_atom("w", arr, cnt = cnt)
 
   def wb_checkbytes(self):
     ''' write some checking bytes '''
     self.declare_var("int size");
     self.addln("size = sizeof(int);")
     self.wb_var("size", "int")
-    self.addln("size = sizeof(int);")
+    self.addln("size = sizeof(double);")
     self.wb_var("size", "int")
 
   def wb_arr2d(self, arr, dim, tp, trim):
-    self.declare_var("int j")
-    self.declare_var("int i")
+    major = "j"
+    self.declare_var("int "+major)
+    minor = "i"
+    self.declare_var("int "+minor)
     if trim:
       self.declare_var("int size")
     
-    pb = "pb%s" % tp[:1]
+    pb = "p%s" % tp[:1]
     self.declare_var("%s *%s" % (tp, pb))
     if trim:
-      self.declare_var("int imax")
-      self.declare_var("int imin")
+      jmin = minor+"min"
+      jmax = minor+"max"
+      self.declare_var("int "+jmin)
+      self.declare_var("int "+jmax)
 
-    self.addln("for (j = 0; j < %s; j++) {" % dim[0])
-    self.addln("%s = %s + j * %s;" % (pb, arr, dim[1]))
+    self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
+    self.addln("%s = %s + %s * %s;", pb, arr, major, dim[1])
     if trim:
-      self.addln("for (imin = 0, i = %s-1; i >= 0 && %s[i] > 0.0; i--) ;",
-        dim[1], pb)
-      self.addln("imax = i + 1;")
-      self.addln("for (i = 0; i < imax && %s[i] > 0.0; i++) ;",
-        pb)
-      self.addln("imin = i;")
-      self.addln("if ((size = imax - imin) <= 0) continue;")
-    self.wb_var("j",    "int")  # current row index
+      self.addln("for (%s = 0, %s = %s-1; %s >= 0 && %s[%s] > 0.0; %s--) ;",
+        jmin, minor, dim[1], minor, pb, minor, minor)
+      self.addln("%s = %s + 1;", jmax, minor)
+      self.addln("for (%s = 0; %s < %s && %s[%s] > 0.0; %s++) ;",
+        minor, minor, jmax, pb, minor, minor)
+      self.addln("%s = %s;", jmin, minor)
+      self.addln("if ((size = %s - %s) <= 0) continue;", jmax, jmin)
+    self.wb_var(major, "int")  # current row index
     if trim:
-      self.wb_var("imin", "int")  # lowest
+      self.wb_var(jmin, "int")  # lowest
       self.wb_var("size", "int")
-      self.wb_arr1d("%s+imin" % pb, "size", tp)
+      self.wb_arr1d(pb+"+"+jmin, "size", tp)
     else:
       self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
   
-  def wb_obj(self, var, funcall):
+  def rwb_obj(self, tag, var, funcall):
     cond = "0 != " + funcall % var
-    self.die_if(cond, "error writing object %s" % var,
+    self.die_if(cond, "error %s object %s" % ("reading" if tag == "r" else "writing", var), 
         onerr = "goto ERR;")
 
-  def wb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
-    self.declare_var("int i", pp = pp)
-    self.addln("for (i = 0; i < %s; i++) {", dim[0])
-    if widx[0]: self.wb_var("i", "int") # write index
-    self.wb_obj(arr + "+i", funcall)
-    self.addln("}")
-
-  def wb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):
-    self.declare_var("int j", pp = pp)
-    self.addln("for (j = 0; j < %s; j++) {", dim[0])
-    if widx[0]: self.wb_var("j", "int") # write index j
-    arr1d = "%s+j*%s" % (arr, dim[1])
+  def rwb_objarr1d(self, tag, arr, dim, funcall, pp, widx, imin, imax, idx="i"):
+    self.declare_var("int "+idx, pp = pp)
     if imin or imax:
-      self.declare_var("int imin", pp = pp)
-      self.declare_var("int imax", pp = pp)
-      self.declare_var("int size", pp = pp)
-      self.addln("imin = " + (imin if imin else "0") + ";")
-      self.addln("imax = " + (imax if imax else dim[1]) + ";")
-      self.addln("size = imax - imin;")
-      size = "size"
-      arr1d += "+imin"
+      pass
     else:
-      size = dim[1]
-    self.wb_objarr1d(arr1d, [size], funcall, pp, 
-        widx[1:], None, None)
+      imin = 0
+      imax = dim[0]
+    self.addln("for (%s = %s; %s < %s; %s++) {", idx, imin, idx, imax, idx)
+    if widx[0]: self.rwb_var(tag, idx, "int", match = 1) # major index
+    self.rwb_obj(tag, arr+"+"+idx, funcall)
     self.addln("}")
 
-  def wb_objarr(self, arr, dim, funcall, pp, widx, imin, imax):
-    ''' wrapper for writing an object array '''
+  def rwb_objarr2d(self, tag, arr, dim, funcall, pp, widx, j0, j1):
+    major = "i"
+    self.declare_var("int "+major, pp = pp)
+    minor = "j"
+    self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
+    if widx[0]: # write major index
+      self.rwb_var(tag, major, "int", match = 1) 
+    arr1d = "%s+%s*%s" % (arr, major, dim[1])
+    if j0 or j1:
+      jmin = minor+"min"
+      jmax = minor+"max"
+      self.declare_var("int "+jmin, pp = pp)
+      self.declare_var("int "+jmax, pp = pp)
+      #self.declare_var("int size", pp = pp)
+      self.addln(jmin+" = " + (j0 if j0 else "0") + ";")
+      self.addln(jmax+" = " + (j1 if j1 else dim[1]) + ";")
+      #self.addln("size = %s - %s;", jmax, jmin)
+      size = "size"
+      arr1d += "-"+jmin
+    else:
+      jmin = 0
+      jmax = dim[1]
+      size = dim[1] 
+    self.rwb_objarr1d(tag, arr1d, [size], funcall, pp, 
+        widx[1:], jmin, jmax, idx = minor)
+    self.addln("}")
+
+  def rwb_objarr(self, tag, arr, dim, funcall, pp, widx, jmin, jmax):
+    ''' wrapper for reading/writing an object array '''
     self.die_if("%s == NULL" % arr, "%s is null" % arr)
     ndim = len(dim)
     if ndim == 2:
-      self.wb_objarr2d(arr, dim, funcall, pp, widx, imin, imax)
+      self.rwb_objarr2d(tag, arr, dim, funcall, pp, widx, jmin, jmax)
     elif ndim == 1:
-      self.wb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
+      self.rwb_objarr1d(tag, arr, dim, funcall, pp, widx, jmin, jmax)
+
 
   def rwb_atom(self, tag, var, cnt = None, tolerr = None):
     ''' read a variable or array '''
@@ -697,34 +706,40 @@ class CCodeWriter:
     cdbl = "fabs(%s - %s) > %s" % (x, var, prec)
     cond = cdbl if prec else cint
     fmt = "%g" if prec else "%d"
-    self.die_if (cond, var+" mismatch, expect: "+fmt+", read: "+fmt,
-       args = var+", "+x, onerr = "goto ERR;")
+    self.die_if (cond, 
+       var+" mismatch, expect: "+fmt+", read: "+fmt+", pos: %#lx",
+       args = var+", "+x+", (unsigned long) ftell(fp)", 
+       onerr = "goto ERR;")
 
-  def rb_var(self, var, type, match = 0, prec = "1e-5", 
-      tolerr = 0, valid = None):
+
+  def wb_var(self, var, type): self.rwb_var("w", var, type)
+  def rb_var(self, var, type, match=0, prec="1e-5", tolerr=0, valid=None):
+    self.rwb_var("r", var, type, match, prec, tolerr, valid)
+  def rwb_var(self, tag, var, type, match=0, prec="1e-5", tolerr=0, valid=None):
     verify = "verify"
     tpint = ("int", "unsigned", "unsigned int")
     tpdbl = ("double",)
+    if tag == "w": match = 0
     if match: tolerr = 0 # no error if we want to match
-    if type in (tpint + tpdbl):
+    if type not in (tpint + tpdbl):
+      print "don't know how to read type %s for %s" % (type, var)
+      raise Exception
+    if tag == "r":
       isdbl = type in tpdbl
       tmp = "dtmp" if isdbl else "itmp"
       rvar = tmp if match else var # read to tmp var. if we need to match
       if match: self.declare_var("%s %s" % (type, tmp)) # declare tmp var
-      self.rwb_atom("r", rvar, tolerr = tolerr)
+    else: rvar = var
+    self.rwb_atom(tag, rvar, tolerr = tolerr)
+    if tag == "r":
       if match: self.match_var(tmp, var, prec if isdbl else None)
-    else:
-      print "don't know how to read type %s for %s" % (type, var)
-      raise Exception
-
-    self.validate(valid, var)
+      self.validate(valid, var)
   
   def rb_arr1d(self, arr, cnt, type):
-    if type in ("int", "double"):
-      self.rwb_atom("r", arr, cnt = cnt)
-    else:
+    if type not in ("int", "double"):
       print "don't know how to write type %s for %s" % (type, arr)
       raise Exception
+    self.rwb_atom("r", arr, cnt = cnt)
 
   def rb_arr2d(self, arr, dim, tp, trim):
     '''
@@ -732,42 +747,43 @@ class CCodeWriter:
     allow a compact format for array of many zeroes, `trim':
     but need an offset and size for each 1D array
     '''
-    self.declare_var("int j")
-    self.declare_var("int i")
+    major = "i"
+    self.declare_var("int "+major)
     if trim:
       self.declare_var("int size")
     
-    pb = "pb%s" % tp[0]
+    pb = "p%s" % tp[0]
     self.declare_var("%s *%s" % (tp, pb))
     if trim:
-      self.declare_var("int imin")
+      jmin = "jmin"
+      self.declare_var("int %s" % jmin)
 
-    self.addln("for (j = 0; j < %s; j++) {" % dim[0])
+    self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
 
     # read major index
     self.rb_var("itmp", "int", match = 0, tolerr = "if (feof(fp)) break;")
 
     # handle major index mismatch
-    cidx = "itmp > i && itmp < %s" % dim[0]
+    cidx = "itmp > %s && itmp < %s" % (major, dim[0])
     self.begin_if(cidx)
-    self.addln("i = itmp;")
-    self.begin_else()
-    self.die_if("i != itmp", 
-        "%s major index mismatch at i = %%d, (read) %%d" % arr,
-        "i, itmp", onerr = "goto ERR;")
+    self.addln("%s = itmp;", major)
+    self.begin_else_if("%s != itmp" % major)
+    self.errmsg("%s bad major index, %s: %%d, read %%d" % (arr, major),
+        major+", itmp")
+    self.addln("goto ERR;")
     self.end_if(cidx)
 
-    self.addln("%s = %s + j * %s;" % (pb, arr, dim[1]))
+    self.addln("%s = %s + %s * %s;", pb, arr, major, dim[1])
     if trim:
-      self.rb_var("imin", "int")  # lowest
-      self.insist("imin >= 0 && imin < %s" % dim[1],
+      self.rb_var(jmin, "int")  # lowest
+      self.insist("%s >= 0 && %s < %s" % (jmin, jmin, dim[1]),
           r"%s: base index %%d out of boudary [0, %s=%%d)" % (arr, dim[1]),
-          "imin, %s" % dim[1], onerr = "goto ERR;")
+          "%s, %s" % (jmin, dim[1]), onerr = "goto ERR;")
       self.rb_var("size", "int")
-      self.insist("size > 0 && imin + size <= %s" % dim[1],
-          r"%s: invalid size %%d, imin=%%d, [0, %s=%%d)" % (arr, dim[1]),
-          "size, imin, %s" % dim[1], onerr = "goto ERR;")
-      self.rb_arr1d("%s+imin" % pb, "size", tp)
+      self.insist("size > 0 && %s + size <= %s" % (jmin, dim[1]),
+          r"%s: invalid size %%d, %s=%%d, [0, %s=%%d)" % (arr, jmin, dim[1]),
+          "size, %s, %s" % (jmin, dim[1]), onerr = "goto ERR;")
+      self.rb_arr1d(pb+"+"+jmin, "size", tp)
     else:
       self.rb_arr1d(pb, dim[1], tp)
 
@@ -799,39 +815,8 @@ class CCodeWriter:
         "%s 0x%%X cannot match %s 0x%%X" % (tmp, ref),
         "(unsigned) %s, (unsigned) %s" % (tmp, ref), 
         onerr = "goto ERR;")
+    self.rb_var(tmp, "int")
     self.match_var(tmp, "sizeof(double)")
-
-  def rb_obj(self, var, funcall):
-    cond = "0 != " + funcall % var
-    self.die_if(cond, "error reading object %s" % var,
-        onerr = "goto ERR;")
-
-  def rb_objarr1d(self, arr, dim, funcall, pp, widx, imin, imax):
-    self.declare_var("int i", pp = pp)
-    self.addln("for (i = 0; i < %s; i++) {", dim[0])
-    if widx[0]: self.rb_var("i", "int", match = 1)
-    self.rb_obj(arr + "+i", funcall)
-    self.addln("}")
-
-  def rb_objarr2d(self, arr, dim, funcall, pp, widx, imin, imax):
-    self.declare_var("int j", pp = pp)
-    self.addln("for (j = 0; j < %s; j++) {", dim[0])
-    if widx[0]: # write index j
-      self.rb_var("j", "int", match = 1) 
-    arr1d = "%s+j*%s" % (arr, dim[1])
-    size = dim[1]
-    self.rb_objarr1d(arr1d, [size], funcall, pp, 
-        widx[1:], None, None)
-    self.addln("}")
-
-  def rb_objarr(self, arr, dim, funcall, pp, widx, imin, imax):
-    ''' wrapper for reading an object array '''
-    self.die_if("%s == NULL" % arr, "%s is null" % arr)
-    ndim = len(dim)
-    if ndim == 2:
-      self.rb_objarr2d(arr, dim, funcall, pp, widx, imin, imax)
-    elif ndim == 1:
-      self.rb_objarr1d(arr, dim, funcall, pp, widx, imin, imax)
 
   def test_arrempty(self, var, cnt, type, isobj = 0):
     ''' test if an array is empty '''

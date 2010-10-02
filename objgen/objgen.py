@@ -765,6 +765,7 @@ class Object:
       cow.addln("if (pver != NULL) *pver = ver;")
     else:
       cow.wb_checkbytes();
+      cow.wb_var("ver", "int")
     cow.addln()
     #cow.declare_var("int verify")
     #cow.addln("verify = !(flags & IO_NOVERIFY)")

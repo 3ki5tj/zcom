@@ -630,12 +630,12 @@ class Item:
           fpfx, it.get_args("wb"));
       
       if it.gtype == "object array":
-        imin = it.cmds["bin_imin"]
-        imax = it.cmds["bin_imax"]
-        cow.rb_objarr(varname, dim, funcall, it.cmds["#if"], 
+        imin = it.cmds["bin_jmin"]
+        imax = it.cmds["bin_jmax"]
+        cow.rwb_objarr("r", varname, dim, funcall, it.cmds["#if"], 
             [1, 1], imin, imax)
       else:
-        cow.rb_obj(varname, funcall)
+        cow.rwb_obj("r", varname, funcall)
 
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
@@ -645,7 +645,7 @@ class Item:
         r"cannot read string of %d for "+varname, cnt, 
         onerr = "goto ERR;");
     else:
-      cow.rb_var(varname, it.gtype, verify, valid = valid)
+      cow.rwb_var("r", varname, it.gtype, verify, valid = valid)
 
     if notalways(cond):
       cow.end_if(cond)
@@ -684,12 +684,12 @@ class Item:
       funcall = "%swritebin_low(%%s, fp, ver%s)" % (
           fpfx, it.get_args("wb"))
       if it.gtype == "object array":
-        imin = it.cmds["bin_imin"]
-        imax = it.cmds["bin_imax"]
-        cow.wb_objarr(varname, dim, funcall, pp,
+        imin = it.cmds["bin_jmin"]
+        imax = it.cmds["bin_jmax"]
+        cow.rwb_objarr("w", varname, dim, funcall, pp,
             [1, 1], imin, imax)
       else:
-        cow.wb_obj(varname, funcall)
+        cow.rwb_obj("w", varname, funcall)
     
     elif it.decl.datatype == "char" and (
         it.gtype in ("char *", "static array")):
@@ -700,7 +700,7 @@ class Item:
         onerr = "goto ERR;");
     
     else:
-      cow.wb_var(varname, it.gtype)
+      cow.rwb_var("w", varname, it.gtype)
 
     if notalways(cond):
       cow.end_if(cond)
