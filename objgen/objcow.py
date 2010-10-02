@@ -586,9 +586,9 @@ class CCodeWriter:
     self.wb_var("size", "int")
 
   def wb_arr2d(self, arr, dim, tp, trim):
-    major = "j"
+    major = "i"
     self.declare_var("int "+major)
-    minor = "i"
+    minor = "j"
     self.declare_var("int "+minor)
     if trim:
       self.declare_var("int size")
@@ -604,10 +604,10 @@ class CCodeWriter:
     self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
     self.addln("%s = %s + %s * %s;", pb, arr, major, dim[1])
     if trim:
-      self.addln("for (%s = 0, %s = %s-1; %s >= 0 && %s[%s] > 0.0; %s--) ;",
+      self.addln("for (%s = 0, %s = %s-1; %s >= 0 && %s[%s] <= 0.0; %s--) ;",
         jmin, minor, dim[1], minor, pb, minor, minor)
       self.addln("%s = %s + 1;", jmax, minor)
-      self.addln("for (%s = 0; %s < %s && %s[%s] > 0.0; %s++) ;",
+      self.addln("for (%s = 0; %s < %s && %s[%s] <= 0.0; %s++) ;",
         minor, minor, jmax, pb, minor, minor)
       self.addln("%s = %s;", jmin, minor)
       self.addln("if ((size = %s - %s) <= 0) continue;", jmax, jmin)
