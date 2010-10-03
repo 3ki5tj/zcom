@@ -834,4 +834,17 @@ class CCodeWriter:
     fmt = type2fmt(type)
     self.addln('printf("%s", %s);\n', fmt, var)
 
+  def mpibcast(self, var, cnt, type, master, comm):
+    self.addln("MPI_Bcast(%s, %s*sizeof(%s), MPI_BYTE, %s, %s);",
+            var, cnt, type, master, comm)
 
+  def mpisum(self, var, tmp, cnt, type, master, comm):
+    '''
+    sum local array to temporary array
+    '''
+    self.addln("MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s);", 
+        var, tmp, cnt, mpitype(type), master, comm)
+    self.declare_var("int i")
+    # clear the local variable
+    self.addln("for (i = 0; i < %s; i++) %s[i] = 0.0;",
+        cnt, var)

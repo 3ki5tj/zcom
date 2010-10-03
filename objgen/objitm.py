@@ -179,30 +179,10 @@ class Item:
     else:
       return gtype
 
-  def get_zero(self):
-    if not self.decl:
-      raise Exception
-    gtype = self.get_elegtype()
-    zval = None
-    if gtype in ("int", "unsigned", "unsigned int", 
-        "long", "unsigned long"):
-      zval = "0"
-    elif gtype in ("float", "real"):
-      zval = "0.0f"
-    elif gtype in ("double", "long double"):
-      zval = "0.0"
-    elif gtype in ("pointer", "function pointer", "char *", 
-        "pointer to object"):
-      zval = "NULL"
-    elif gtype == "MPI_Comm":
-      zval = "MPI_COMM_NULL"    
-    # if not zval: zval = "(%s) 0" % self.decl.datatype
-    return zval
-
   def fill_def(self):
     ''' set 'def' value '''
-    if not self.decl or "def" in self.cmds: return
-    self.cmds["def"] = self.get_zero()
+    if not self.decl or self.cmds["def"]: return
+    self.cmds["def"] = type2zero(self.get_elegtype())
     #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
     #raw_input()
 
@@ -866,8 +846,7 @@ class Item:
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, etype, cnt)
         cow.end_if(notmaster)
-        cow.addln("MPI_Bcast(%s, (%s) * sizeof(%s[0]), MPI_BYTE, %s, comm);",
-            varname, cnt, varname, MASTERID)
+        cow.mpibcast(varname, cnt, etype, MASTERID, "comm")
         cow.addln()
       elif it.gtype in ("object array", "object pointer"):
         isarr = (it.gtype == "object array")
@@ -886,12 +865,11 @@ class Item:
         cow.declare_var("int i", pp=pp)
         cow.add_comment(desc)
         cow.addln("i = strlen(%s);", varname)
-        cow.addln("MPI_Bcast(&i, sizeof(int), MPI_BTYE, %s, comm);", MASTERID)
+        cow.mpibcast("&i", 1, "int", MASTERID, "comm")
         cow.begin_if(notmaster)
         cow.addln("%s = ssnew(i);" % varname)
         cow.end_if(notmaster)
-        cow.addln("MPI_Bcast(%s, i*sizeof(char), MPI_BTYE, %s, comm);", 
-            varname, MASTERID)
+        cow.mpibcast(varname, "i", "char", MASTERID, "comm")
         cow.addln()
       else:
         print "cannot bcast %s of type %s" % (it.decl.name, it.gtype)
@@ -914,5 +892,68 @@ class Item:
       raise Exception
 
     #if notalways(prereq): cow.end_if(prereq)
+    if pp: cow.addln("#endif")
+
+
+  def mpitask_var(it, cow, tag, ptr):
+    call = it.cmds[tag+"_call"]
+    if call:
+      cond="%s->mpi_rank == %s"%(ptr, MASTERID)
+      cow.begin_if(cond)
+      cow.addln(call+";"); 
+      cow.end_if(cond)
+      return
+    if not it.decl or it.isdummy: return
+    if it.cmds["usr"] not in (None, 1): return
+
+    varnm = it.decl.name
+    varname = ptr + "->" + varnm
+    dim = it.cmds["dim"]
+    cnt = it.cmds["cnt"]
+    desc = it.cmds["desc"]
+    prereq = it.cmds["com_prereq"]
+    etype = it.get_elegtype()
+    task = it.cmds[tag]
+    comm = ptr+"->mpi_comm"
+    if tag == "reduce":
+      redtmp = it.cmds["redtmp"]
+    if not task: return
+
+    pp = it.cmds["#if"]
+    if pp: cow.addln("#if %s", pp)
+
+    if it.gtype in ("object array", "object pointer"):
+      isarr = (it.gtype == "object array")
+      if not isarr: cnt = "1"
+      cow.add_comment(desc)
+      if isarr: 
+        cow.declare_var("int i", pp=pp)
+        cow.addln('for (i = 0; i < %s; i++) {' % cnt)
+      fpfx = it.get_obj_fprefix()
+      cow.addln("%s%s(%s);", 
+          fpfx, tag, varname+("+i" if isarr else ""))
+      if isarr: cow.addln('}\n') 
+    elif it.gtype == "dynamic array":
+      cow.add_comment(desc)
+      if tag == "reduce":
+        if not redtmp:
+          print "need temporary array for reduce, use $redtmp:"
+          raise Exception
+        cow.mpisum(varname, redtmp, cnt, etype, MASTERID, comm)
+        cond = "%s->mpi_rank == %s"%(ptr, MASTERID)
+        cow.begin_if(cond)
+        # add synchonized variable on the master
+        cow.declare_var("int i")
+        cow.addln("for (i = 0; i < %s; i++) %s[i] += %s[i];",
+          cnt, task, redtmp)
+        cow.end_if(cond)
+      elif tag == "bcast":
+        cow.mpibcast(varname, cnt, etype, MASTERID, comm)
+      
+      cow.addln()
+    else:
+      print "cannot %s %s of type %s" % (tag, it.decl.name, it.gtype)
+      raise Exception
+
     if pp: cow.addln("#endif")
 

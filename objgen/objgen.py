@@ -500,6 +500,10 @@ class Object:
       funclist += [self.gen_func_manifest()]
     if not disabled(self.cmds["mpi"]):
       funclist += [self.gen_func_initmpi()]
+      if not disabled(self.cmds["reduce"]):
+        funclist += [self.gen_func_mpitask("reduce")]
+      if not disabled(self.cmds["bcast"]):
+        funclist += [self.gen_func_mpitask("bcast")]
 
     decl = self.gen_decl().rstrip()
     desc = self.cmds["desc"]
@@ -868,6 +872,32 @@ class Object:
 
     for it in self.items:
       it.initmpi_var(cow, self.ptrname)
+    cow.addln("return 0;")
+    cow.end_function("")
+    return cow.prototype, cow.function
+
+  def gen_func_mpitask(self, tag):
+    '''
+    write a function to for mpi taks
+    every node calls this function
+    '''
+    cow = CCodeWriter()
+    funcnm = self.fprefix+tag
+    obj = self.name
+    ptr = self.ptrname
+    fdecl = "int %s(%s *%s)" % (funcnm, obj, ptr)
+    cow.begin_function(funcnm, fdecl, "MPI %s for %s" % (tag, obj),
+        pp = "#ifdef %s" % USE_MPI)
+
+    cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
+        onerr = "return -1;")
+    cow.die_if("%s->mpi_comm == %s"%(ptr, type2zero("MPI_Comm")), 
+        "null communicator: %s of %s" % (ptr, obj), 
+        onerr = "return -1;")
+    
+    items = self.sort_items(self.items, tag)
+    for it in items:
+      it.mpitask_var(cow, tag, self.ptrname)
     cow.addln("return 0;")
     cow.end_function("")
     return cow.prototype, cow.function

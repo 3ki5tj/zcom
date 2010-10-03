@@ -93,6 +93,31 @@ def type2fmt_p(tp, var):
     raise TypeError
   return fmt
 
+def type2zero(tp):
+  zval = None
+  if tp in ("int", "unsigned", "unsigned int", 
+      "long", "unsigned long"):
+    zval = "0"
+  elif tp in ("float", "real"):
+    zval = "0.0f"
+  elif tp in ("double", "long double"):
+    zval = "0.0"
+  elif tp in ("pointer", "function pointer", "char *", 
+      "pointer to object"):
+    zval = "NULL"
+  elif tp == "MPI_Comm":
+    zval = "MPI_COMM_NULL"
+  return zval
+
+def mpitype(tp):
+  if tp == "double": return "MPI_DOUBLE"
+  elif tp == "float": return "MPI_FLOAT"
+  elif tp == "int": return "MPI_INT"
+  elif tp == "long": return "MPI_LONG"
+  elif tp == "unsigned char": return "MPI_UNSIGNED_CHAR"
+  elif tp == "byte": return "MPI_BYTE"
+  else: raise Exception
+
 def checkcycl_i(deps, i0, n, checked):
   ''' check cyclic dependencies starting from i0 '''
   checked[i0] = 1
