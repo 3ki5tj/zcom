@@ -588,24 +588,28 @@ class Item:
 
 
   def binrw_var(it, cow, varname, rw):
-    if rw == "w": 
-      it.wb_var(cow, varname)
-    elif rw == "r":
-      it.rb_var(cow, varname)
+    if rw in ("w", "r"): 
+      it.rwb_var(cow, rw, varname)
     else:
       raise Exception
-   
-  def rb_var(it, cow, varname):
+
+  def rwb_var(it, cow, rw, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds["bin_cnt"]
     cond = it.cmds["bin_prereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
-    verify = it.cmds["verify"]
-    valid = it.cmds["rb_valid"]
-    if not valid:
-      valid = it.cmds["valid"]
+    if rw == "r":
+      readwrite = "read"
+      verify = it.cmds["verify"]
+      valid = it.cmds["rb_valid"]
+      if not valid:
+        valid = it.cmds["valid"]
+    else:
+      readwrite = "write"
+      verify = 0
+      valid = None
     pp = it.cmds["#if"]
     if pp:
       cow.addln("#if %s", pp)
@@ -613,61 +617,13 @@ class Item:
       cow.begin_if(cond)
 
     if not it.decl:
-      print "no declare gtype = %s" % it.gtype
-      raw_input()
+      print "no declaration gtype = %s" % it.gtype
+      raise Exception
 
+    # init. temp. var. before writing
     if usrval == "bintmp": 
-      cow.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
-    
-    if it.gtype == "dynamic array":
-      # support nasty flag $bin_cnt
-      if len(dim) == 1 and bincnt:
-        dim[0] = bincnt
-      cow.rwb_arr(varname, dim, it.decl.datatype, 1, "r")
-    elif it.gtype in ("object array", "object pointer"):
-      fpfx = it.get_obj_fprefix();
-      funcall = "%sreadbin_low(%%s, fp, ver, flags, endn%s)" % (
-          fpfx, it.get_args("wb"));
-      
-      if it.gtype == "object array":
-        imin = it.cmds["bin_jmin"]
-        imax = it.cmds["bin_jmax"]
-        cow.rwb_objarr("r", varname, dim, funcall, it.cmds["#if"], 
-            [1, 1], imin, imax)
-      else:
-        cow.rwb_obj("r", varname, funcall)
-
-    elif it.decl.datatype == "char" and (
-        it.gtype in ("char *", "static array")):
-      if it.gtype == "static array" and bincnt: 
-        cnt = bincnt
-      cow.die_if ("%s != fread(%s, 1, %s, fp)" % (cnt, varname, cnt),
-        r"cannot read string of %d for "+varname, cnt, 
-        onerr = "goto ERR;");
-    else:
-      cow.rwb_var("r", varname, it.gtype, verify, valid = valid)
-
-    if notalways(cond):
-      cow.end_if(cond)
-    if pp:
-      cow.addln("#endif")
-   
-  def wb_var(it, cow, varname):
-    dim = it.cmds["dim"]
-    cnt = it.cmds["cnt"]
-    bincnt = it.cmds["bin_cnt"]
-    cond = it.cmds["bin_prereq"]
-    defl = it.cmds["def"]
-    usrval = it.cmds["usr"]
-    pp = it.cmds["#if"]
-    if pp:
-      cow.addln("#if %s", pp)
-    if notalways(cond):
-      cow.begin_if(cond)
-
-    if usrval == "bintmp": 
-      cow.declare_var(it.decl.datatype + " " + it.decl.raw, it.decl.name)
-      if defl:
+      cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
+      if defl and rw == "w": 
         if it.gtype == "static array":
           cow.init_sarr(varname, defl, cnt)
         else:
@@ -677,36 +633,33 @@ class Item:
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cow.rwb_arr(varname, dim, it.decl.datatype, 1, "w")
-    
+      cow.rwb_arr(varname, dim, it.decl.datatype, 1, rw)
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      funcall = "%swritebin_low(%%s, fp, ver%s)" % (
-          fpfx, it.get_args("wb"))
+      extra = ", flags, endn" if rw == "r" else ""
+      extra += it.get_args(rw+"b")
+      funcall = "%s%sbin_low(%%s, fp, ver%s)" % (fpfx, readwrite, extra);
       if it.gtype == "object array":
         imin = it.cmds["bin_jmin"]
         imax = it.cmds["bin_jmax"]
-        cow.rwb_objarr("w", varname, dim, funcall, pp,
-            [1, 1], imin, imax)
+        cow.rwb_objarr(rw, varname, dim, funcall, pp, [1, 1], imin, imax)
       else:
-        cow.rwb_obj("w", varname, funcall)
-    
-    elif it.decl.datatype == "char" and (
-        it.gtype in ("char *", "static array")):
+        cow.rwb_obj(rw, varname, funcall)
+    elif it.decl.datatype == "char" and it.gtype in ("char *", "static array"):
       if it.gtype == "static array" and bincnt: 
         cnt = bincnt
-      cow.die_if ("%s != fwrite(%s, 1, %s, fp)" % (cnt, varname, cnt),
-        r"cannot write string of %d for "+varname, cnt, 
+      cow.die_if ("%s != f%s(%s, 1, %s, fp)" % (cnt, readwrite, varname, cnt),
+        "cannot "+readwrite+" string of %d for "+varname, cnt, 
         onerr = "goto ERR;");
-    
     else:
-      cow.rwb_var("w", varname, it.gtype)
+      cow.rwb_var(rw, varname, it.gtype, verify, valid = valid)
 
     if notalways(cond):
       cow.end_if(cond)
     if pp:
       cow.addln("#endif")
 
+   
   def clear_var(it, cow, ptr):
     if not it.decl or it.isdummy: return
 
