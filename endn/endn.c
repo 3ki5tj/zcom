@@ -13,7 +13,7 @@ int endn_system(void)
   return (*p == 0xFF) ? 0 : 1;
 }
 
-/* change endiannes for items of `size' in src 
+/* change endianness for items of `size' in src 
  * results are saved to dest, if it's not NULL, 
  * or an in-place conversion is performed  */
 void *endn_flip(void *dest, void *src, size_t size, size_t n)
@@ -42,7 +42,7 @@ void *endn_flip(void *dest, void *src, size_t size, size_t n)
 }
 
 #ifdef ENDN_LEGACY
-/* Correct endianness from the current operating system to the desired one
+/* correct endianness from the current operating system to the desired one
  * operates on an array of `n' objects, each of `size' bytes
  * The target endianness is specified by `endn', whereas
  * the endianness of the current operating system is automatically computed.
