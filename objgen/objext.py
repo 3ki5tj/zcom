@@ -84,7 +84,7 @@ def type2fmt_p(tp, var):
   elif tp == "unsigned long": 
     fmt = "0x%08lX"
   elif tp in ("float", "double"):
-    fmt = "%f"
+    fmt = "%g"
   elif tp == "char *":
     fmt = "%s"
   else:

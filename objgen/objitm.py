@@ -350,8 +350,10 @@ class Item:
       iodef = "c" 
     else:
       iodef = ""
+
     # assume iodef if necessary
-    io = it.cmds["io"] if it.cmds["io"] else iodef
+    io = it.cmds["io"]
+    io = io if io != None else iodef
     io = io.strip()
 
     # a human shortcut
@@ -494,7 +496,8 @@ class Item:
     tfirst  = it.cmds["tfirst"]
     valid   = it.cmds["valid"]
     must    = it.cmds["must"]
-    cnt     = it.cmds["cnt"]
+    cnt = it.cmds["cfg_cnt"]
+    if cnt == None: cnt = it.cmds["cnt"]
     desc    = it.cmds["desc"]
     pp      = it.cmds["#if"]
     flag    = it.cmds["flag"]
@@ -767,6 +770,8 @@ class Item:
           cow.begin_else()
           cow.addln(r'fprintf(fp, " {0}\n");')
           cow.end_if(emptest)
+      else:
+        cow.addln(r'fprintf(fp, "\n");')
 
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
@@ -897,6 +902,10 @@ class Item:
 
   def mpitask_var(it, cow, tag, ptr):
     call = it.cmds[tag+"_call"]
+    valid = it.cmds[tag+"_valid"]
+    if valid:
+      cow.validate(valid)
+      return
     if call:
       cond="%s->mpi_rank == %s"%(ptr, MASTERID)
       cow.begin_if(cond)

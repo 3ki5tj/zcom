@@ -280,9 +280,13 @@ class CCodeWriter:
 
   def init_darr(self, var, type, default, cnt, desc, pp = None):
     ''' write code for initializing a dynamic array '''
-    if cnt.strip() != "0":
+    # since we allocate array space by default (as long as $cnt exists
+    # assign cnt to 0 is the trick to avoid dynamic allocation
+    if cnt.strip() != "0":  
       self.alloc_darr(var, type, cnt)
       self.init_sarr(var, default, cnt, pp)
+    else:
+      self.addln(var+" = NULL;")
 
   def assign(self, var, value, type):
     ''' assignment (for simple types) '''
