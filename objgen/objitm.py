@@ -217,67 +217,6 @@ class Item:
   def isempty(self):
     return self.empty
 
-  def subpfx(it, val, ptr, fprefix, parent):
-    ''' 
-    change `@' by ptr-> in command arguments 
-    '''
-    # @- means function prefix
-    pattern = r"(?<![\@\\])\@\-(?=\w)"
-    val = re.sub(pattern, fprefix, val)
-    
-    # @^ means function prefix
-    pattern = r"(?<![\@\\])\@\^(?=\w)"
-    val = re.sub(pattern, "parent", val)
-
-    # @@ means this variable 
-    pattern = r"(?<![\@\\])\@\@(?!\w)"
-    if re.search(pattern, val):
-      if not it.decl:
-        print "use @@ for %s without decl." % it
-        raise_exception
-      val = re.sub(pattern, ptr+"->" + it.decl.name, val)
-
-    # @~ means parent's corresponding name 
-    pattern = r"(?<![\@\\])\@\~(?!\w)"
-    if re.search(pattern, val):
-      if not it.decl:
-        print "use @~ for %s without decl." % it
-        raise_exception
-      val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
-
-    # @< means keyname
-    kprefix = it.cmds["kprefix"]
-    if kprefix:
-      pattern = r"(?<![\@\\])\@\<(?=\w)"
-      val = re.sub(pattern, kprefix, val)
-
-    # @var
-    pattern = r"(?<![\@\\])\@(?=\w)" # exclude @@, \@
-    val = re.sub(pattern, ptr+"->", val)
-
-    # $ismaster  --> ptr->mpi_rank == %s
-    pattern = "\$ismaster"
-    val = re.sub(pattern, "(%s->mpi_rank == %s)" % (ptr, MASTERID), val)
-    
-    # for a single hanging @, means ptr
-    pattern = r"(?<![\@\\])\@(?!\w)"
-    if re.search(pattern, val):
-      val = re.sub(pattern, ptr, val)
-
-    return val
-
-  def sub_prefix(it, ptrname, fprefix, parent):
-    ''' wrapper of subpfx '''
-    for key in it.cmds:
-      val = it.cmds[key]
-      if type(val) == str:
-        it.cmds[key] = it.subpfx(val, ptrname, fprefix, parent)
-      elif type(val) == list: # list of strings, in case it is already parsed
-        for i in range(len(val)):
-          val[i] = it.subpfx(val[i], ptrname, fprefix, parent)
-      else: continue
-
-
   def fill_key(it):
     ''' 
     add default key for configuration file reading

@@ -88,9 +88,13 @@ Commands of an item:
 
   * $usr:     the variable should be passed as a parameter, 
               not read from the configuration file
+              $usr;  is equivalent to $usr:1; declare the variable
+                 whose value is to be taken from the corresponding 
+                 parameter in cfgopen
               $usr:parent; declare the variable represents 
-              a pointer to the parent object
-              $usr:bintmp; temporary variable used in bin
+                a pointer to the parent object, the pointer is 
+                function parameter of cfgopen()!
+              $usr:xxtmp; temporary variable readbin() / writebin()
 
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier
@@ -340,7 +344,8 @@ class Object:
           # raw_input()
       it.cmds = cmds
  
-  def var2item(self, nm):  # for debug use
+  def var2item(self, nm):
+    ''' return item that corresponds to variable `nm' '''
     if nm.startswith("@"):
       nm = nm[1:]
     elif hasattr(self, 'ptrname'):
@@ -436,6 +441,91 @@ class Object:
       if it.decl and it.cmds["usr"] == "parent":
         self.parent = it.decl.name
 
+  def subpfx(self, it, val):
+    ''' 
+    change `@' by ptr-> in command arguments 
+    '''
+    ptr = self.ptrname
+    fpfx = self.fprefix
+    parent = self.parent
+    
+    # @- means function prefix
+    pattern = r"(?<![\@\\])\@\-(?=\w)"
+    val = re.sub(pattern, fpfx, val)
+    
+    # @^ means function prefix
+    pattern = r"(?<![\@\\])\@\^(?=\w)"
+    val = re.sub(pattern, "parent", val)
+
+    # @@ means this variable 
+    pattern = r"(?<![\@\\])\@\@(?!\w)"
+    while 1:
+      m = re.search(pattern, val)
+      if not m: break
+      if not it.decl:
+        print "use @@ for %s without decl." % it
+        raise_exception
+      nm = it.decl.name
+      if it.cmds["usr"] == None: nm = ptr+"->"+nm
+      val = val[:m.start(0)] + nm + val[m.end(0):]
+
+    # @~ means parent's corresponding name 
+    pattern = r"(?<![\@\\])\@\~(?!\w)"
+    if re.search(pattern, val):
+      if not it.decl:
+        print "use @~ for %s without decl." % it
+        raise_exception
+      val = re.sub(pattern, "%s->" % parent + it.decl.name, val)
+
+    # @< means keyname
+    kprefix = it.cmds["kprefix"]
+    if kprefix:
+      pattern = r"(?<![\@\\])\@\<(?=\w)"
+      val = re.sub(pattern, kprefix, val)
+
+    # $ismaster  --> ptr->mpi_rank == %s
+    pattern = "\$ismaster"
+    val = re.sub(pattern, "(%s->mpi_rank == %s)" % (ptr, MASTERID), val)
+
+    # @var
+    pattern = r"(?<![\@\\])\@([a-zA-Z_]\w*)" # exclude @@, \@
+    pos = 0 # offset
+    while 1:
+      m = re.search(pattern, val[pos:])
+      if not m: break
+      nm = m.group(1)
+      it1 = self.var2item(nm)
+      if it1 == None:
+        print "skip [@%s], raw=[%s]" % (nm, val)
+        pos += m.end(0)
+        continue
+      usr = it1.cmds["usr"]
+      if usr in (None, 1): # $usr;
+        nm = ptr+"->"+nm
+      else:
+        #print "[%s] --> [%s] in raw [%s] usr: %s"%(m.group(0), nm, val, usr); raw_input()
+        pass
+      #print "[%s] --> [%s] in raw [%s] usr: %s"%(m.group(0), nm, val, usr); raw_input()
+      val = val[:pos+m.start(0)]+nm+val[pos+m.end(0):]
+    
+    # for a single hanging @, means ptr
+    pattern = r"(?<![\@\\])\@(?!\w)"
+    if re.search(pattern, val):
+      val = re.sub(pattern, ptr, val)
+    return val
+
+  def sub_prefix(self):
+    ''' wrapper of subpfx '''
+    for it in self.items:
+      for key in it.cmds:
+        val = it.cmds[key]
+        if type(val) == str:
+          it.cmds[key] = self.subpfx(it, val)
+        elif type(val) == list: # list of strings, in case it is already parsed
+          for i in range(len(val)):
+            val[i] = self.subpfx(it, val[i])
+        else: continue
+
   def enrich_cmds(self):
     ''' refine and enrich commands '''
     state = 0
@@ -445,8 +535,7 @@ class Object:
       it.fill_dim()  # test array `cnt' and fill `dim'
       it.fill_io()
       it.fill_test()
-      it.sub_prefix(self.ptrname, self.fprefix, 
-          self.parent) # @ to $ptrname
+    self.sub_prefix() # @ to $ptrname
     self.init_folds2()
  
   def sort_items(self, items, tag):
