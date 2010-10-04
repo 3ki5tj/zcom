@@ -362,7 +362,8 @@ class Item:
 
     # create itemized io
     it.cmds["io_cfg"] = 1 if "c" in io else 0
-    it.cmds["io_bin"] = 1 if ("b" in io or it.cmds["usr"]=="bintmp") else 0
+    it.cmds["io_bin"] = 1 if ("b" in io or it.cmds["usr"] in (
+      "bintmp", "rbtmp", "wbtmp")) else 0
     it.cmds["io_txt"] = 1 if "t" in io else 0
 
   def fill_test(it):
@@ -487,7 +488,8 @@ class Item:
       return
   
     usr = it.cmds["usr"]
-    if usr == "parent" or usr in ("tmp", "bintmp", "txttmp"):
+    if usr == "parent" or (usr not in (None, 0, 1) and 
+        usr.endswith("tmp") and usr != "cfgtmp"):
       return
     
     key     = it.cmds["key"]
@@ -546,7 +548,7 @@ class Item:
     
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
-      # print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
+      #print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
       if not it.cmds["io_cfg"]: 
         cow.init_sarr(varname, defl, cnt, pp)
       else:
@@ -570,16 +572,11 @@ class Item:
           defl, must, prereq, tfirst, valid, desc)
 
 
-  def binrw_var(it, cow, varname, rw):
-    if rw in ("w", "r"): 
-      it.rwb_var(cow, rw, varname)
-    else:
-      raise Exception
-
   def rwb_var(it, cow, rw, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    bincnt = it.cmds["bin_cnt"]
+    bincnt = it.cmds[rw+"b_cnt"]
+    if bincnt == None: bincnt = it.cmds["bin_cnt"]
     cond = it.cmds["bin_prereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
@@ -604,15 +601,21 @@ class Item:
       raise Exception
 
     # init. temp. var. before writing
-    if usrval == "bintmp": 
+    passthis = 0
+    if usrval in ("bintmp", rw+"btmp"): 
       cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
       if defl and rw == "w": 
         if it.gtype == "static array":
           cow.init_sarr(varname, defl, cnt)
         else:
           cow.addln("%s = %s;", varname, defl)
+      #print "varname = %s" % varname; raw_input()
+    elif usrval != None and usrval.endswith("tmp"):
+      passthis = 1
     
-    if it.gtype == "dynamic array":
+    if passthis:
+      pass
+    elif it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
@@ -629,11 +632,12 @@ class Item:
       else:
         cow.rwb_obj(rw, varname, funcall)
     elif it.decl.datatype == "char" and it.gtype in ("char *", "static array"):
-      if it.gtype == "static array" and bincnt: 
+      if bincnt: 
         cnt = bincnt
       cow.die_if ("%s != f%s(%s, 1, %s, fp)" % (cnt, readwrite, varname, cnt),
         "cannot "+readwrite+" string of %d for "+varname, cnt, 
         onerr = "goto ERR;");
+      cow.validate(valid);
     else:
       cow.rwb_var(rw, varname, it.gtype, verify, valid = valid)
 

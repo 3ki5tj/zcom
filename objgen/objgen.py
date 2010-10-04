@@ -718,7 +718,7 @@ class Object:
         for xv in xvl:
           xit = self.var2item(xv)
           if not xit: raise Exception
-          xit.binrw_var(cow, xv, rw)
+          xit.rwb_var(cow, rw, xv)
         continue
       if not it.decl or it.isdummy:
         call = it.cmds[rw + "b_call"]
@@ -726,9 +726,10 @@ class Object:
         continue
       if not it.cmds["io_bin"]: continue
 
-      varname = (self.ptrname+"->" if (it.cmds["usr"] != "bintmp")
-          else "") + it.decl.name
-      it.binrw_var(cow, varname, rw)
+      usr = it.cmds["usr"]
+      varname = ("" if (usr != None and usr.endswith("tmp"))
+          else self.ptrname+"->") + it.decl.name
+      it.rwb_var(cow, rw, varname)
 
     unused_vars = ["ver"] + (["flags"] if rw == "r" else [])
     cow.end_function("return 0;\nERR:\n%sreturn -1;" % (

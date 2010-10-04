@@ -412,7 +412,7 @@ class CCodeWriter:
 
     # parse the string to get individual items
     self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, desc)
-    self.addln()
+    self.addln("ssdelete(%s);", sbuf)
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
       prereq, desc):
