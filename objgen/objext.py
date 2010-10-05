@@ -118,14 +118,12 @@ def mpitype(tp):
   elif tp == "byte": return "MPI_BYTE"
   else: raise Exception
 
-def remove_idle_pp(s):
+def remove_idle_pp(lines):
   ''' remove empty preprocessor blocks 
   #if
   #else
   #endif
   '''
-  endl = '\n' if s.endswith('\n') else ''
-  lines = s.splitlines()
   i = 1
   # remove empty pp
   while i < len(lines):
@@ -164,7 +162,7 @@ def remove_idle_pp(s):
     elif line.startswith("#el"):
       cond = None
     i += 1
-  return '\n'.join(lines) + endl
+  return lines
 
 def next_block(lines, i, cond):
   ''' return the line index if after several blank lines
@@ -180,7 +178,7 @@ def next_block(lines, i, cond):
     return j
   else: return -1
 
-def merge_if_blocks(s):
+def merge_if_blocks(lines):
   '''
   merge neighboring if-blocks with the same condition
       if (abc) {
@@ -190,14 +188,12 @@ def merge_if_blocks(s):
         ...
       }
   '''
-  return merge_blocks(s, r"\s*if\s*\(.*\)\s*{$", "if", "}")
+  return merge_blocks(lines, r"\s*if\s*\(.*\)\s*{$", "if", "}")
 
-def merge_pp_if_blocks(s):
-  return merge_blocks(s, r"\s*#if.*$", "#if", "#endif")
+def merge_pp_if_blocks(lines):
+  return merge_blocks(lines, r"\s*#if.*$", "#if", "#endif")
 
-def merge_blocks(s, pattern, sbegin, send):
-  endl = '\n' if s.endswith('\n') else ''
-  lines = s.splitlines()
+def merge_blocks(lines, pattern, sbegin, send):
   cond = None
   i = 1
   while i < len(lines):
@@ -216,13 +212,30 @@ def merge_blocks(s, pattern, sbegin, send):
         continue
       cond = None  # terminate condition
     i += 1
-  return '\n'.join(lines) + endl
+  return lines
+
+def use_ifdef(lines):
+  pat = r"\s*#if\s+(\!?)defined\((\w+)\)$"
+  n = len(lines)
+  for i in range(n):
+    line = lines[i]
+    #print "(%s)"%line; raw_input()
+    m = re.match(pat, line)
+    if not m: continue
+    pfx = "#ifndef" if len(m.group(1)) else "#ifdef"
+    lines[i] = pfx + " " + m.group(2)
+    #print "[%s] -> [%s]" % (line, lines[i]); raw_input()
+  return lines
 
 def trimcode(s):
-  s = remove_idle_pp(s)
-  s = merge_pp_if_blocks(s)
-  s = merge_if_blocks(s)
-  return s
+  ''' various code simplification '''
+  endl = '\n' if s.endswith('\n') else ''
+  lines = s.splitlines()
+  lines = remove_idle_pp(lines)
+  lines = merge_pp_if_blocks(lines)
+  lines = use_ifdef(lines)
+  lines = merge_if_blocks(lines)
+  return '\n'.join(lines) + endl
 
 # item sorting
 

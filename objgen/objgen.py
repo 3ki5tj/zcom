@@ -608,7 +608,7 @@ class Object:
       header += f[0]
       source += "\n" + f[1] 
     self.header = trimcode(header)
-    self.source = source
+    self.source = trimcode(source)
 
   def gen_decl(self):
     '''
