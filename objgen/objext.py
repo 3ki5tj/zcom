@@ -189,30 +189,44 @@ def merge_if_blocks(lines):
         ...
       }
   '''
-  return merge_blocks(lines, r"\s*if\s*\(.*\)\s*{$", "if", r"}\s*else", "}")
+  return merge_blocks(lines, r"\s*if\s*\(.*\)\s*{$", "if", r"\s*(\})\s*else", "}")
 
 def merge_pp_if_blocks(lines):
-  return merge_blocks(lines, r"\s*#if.*$", "#if", "#el", "#endif")
+  return merge_blocks(lines, r"\s*#if.*$", "#if", "\s*(#el)", "#endif")
 
 def merge_blocks(lines, pattern, sbegin, selse, send):
   cond = None
   i = 1
   while i < len(lines):
     line = lines[i]
+
+    # if
     m = re.match(pattern, line.strip())
     if m:
       #print "i:%4d, %s" % (i, line); raw_input()
       if not cond: cond = line
-    elif re.match(selse, line.strip()):
-      cond = None
-    elif (line.strip() == send and cond != None
-        and cond.find(sbegin) == line.find(send)):
-      ip = next_block(lines, i, cond)
-      #print "match end i=%d ip=%d\n%s\n%s\n" % (i, ip, cond, line); raw_input()
-      if ip >= 0:
-        #print "removing i: %d - %d\n%s\n%s\n...%s\n" % (i, ip, lines[i], lines[i+1], lines[i+2]); raw_input()
-        lines = lines[:i] + lines[i+1:ip] + lines[ip+1:]
-        continue
+      i += 1
+      continue
+
+    # else
+    m = re.match(selse, line)
+    if m:
+      if cond and m.start(1) <= cond.find(sbegin):
+        cond = None
+      i += 1
+      continue
+
+    # finish an if block
+    if line.strip() == send and (cond and 
+        cond.find(sbegin) >= line.find(send) ):
+      if cond != None and cond.find(sbegin) == line.find(send):
+        ip = next_block(lines, i, cond)
+        #if sbegin == "if":
+        #  print "match end i=%d ip=%d\n%s\n%s\n" % (i, ip, cond, line); raw_input()
+        if ip >= 0:
+          #print "removing i: %d - %d\n%s\n%s\n...%s\n" % (i, ip, lines[i], lines[i+1], lines[i+2]); raw_input()
+          lines = lines[:i] + lines[i+1:ip] + lines[ip+1:]
+          continue
       cond = None  # terminate condition
     i += 1
   return lines
