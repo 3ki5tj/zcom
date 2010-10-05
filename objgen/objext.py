@@ -189,12 +189,12 @@ def merge_if_blocks(lines):
         ...
       }
   '''
-  return merge_blocks(lines, r"\s*if\s*\(.*\)\s*{$", "if", "}")
+  return merge_blocks(lines, r"\s*if\s*\(.*\)\s*{$", "if", r"}\s*else", "}")
 
 def merge_pp_if_blocks(lines):
-  return merge_blocks(lines, r"\s*#if.*$", "#if", "#endif")
+  return merge_blocks(lines, r"\s*#if.*$", "#if", "#el", "#endif")
 
-def merge_blocks(lines, pattern, sbegin, send):
+def merge_blocks(lines, pattern, sbegin, selse, send):
   cond = None
   i = 1
   while i < len(lines):
@@ -203,6 +203,8 @@ def merge_blocks(lines, pattern, sbegin, send):
     if m:
       #print "i:%4d, %s" % (i, line); raw_input()
       if not cond: cond = line
+    elif re.match(selse, line.strip()):
+      cond = None
     elif (line.strip() == send and cond != None
         and cond.find(sbegin) == line.find(send)):
       ip = next_block(lines, i, cond)

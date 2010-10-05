@@ -356,15 +356,12 @@ class Item:
       pfx = tp + "_"
     return pfx
 
-  def get_init_args(it):
-    return it.get_args("init")
-
-  def get_args(it, tag):
+  def getargs(it, tag):
     ''' get additional arguments to be passed to an object initializer '''
     if not it.cmds["obj"]:
       print "item is not an object %s" % it
       raise Exception
-    args = it.cmds[("%s_args" % tag)]
+    args = it.cmds[("%sargs" % tag)]
     if not args: return ""
     arr = args.strip().split(",")
     arr = [""] + [s.strip() for s in arr]
@@ -465,7 +462,7 @@ class Item:
     elif it.gtype == "object pointer":
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
-        fpfx, it.get_init_args())
+        fpfx, it.getargs("cfg"))
       cow.die_if(s, r"failed to initialize %s\n" % varname)
 
     elif it.gtype == "object array":
@@ -475,7 +472,7 @@ class Item:
       cow.declare_var("int i;", pp = pp)
       cow.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
-        fpfx, varname, it.get_init_args())
+        fpfx, varname, it.getargs("cfg"))
       cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
       cow.addln("}\n")
 
@@ -522,8 +519,8 @@ class Item:
     usrval = it.cmds["usr"]
     if rw == "r":
       readwrite = "read"
-      verify = it.cmds["verify"]
-      valid = it.cmds["rb_valid"]
+      verify = it.cmds["rbverify"]
+      valid = it.cmds["rbvalid"]
       if not valid:
         valid = it.cmds["valid"]
     else:
@@ -561,7 +558,8 @@ class Item:
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       extra = ", endn" if rw == "r" else ""
-      extra += it.get_args(rw+"b")
+      extra += it.getargs(rw+"b")
+      #print "extra args = %s" % extra; raw_input()
       funcall = "%s%sbin_low(%%s, fp, ver%s)" % (fpfx, readwrite, extra);
       if it.gtype == "object array":
         imin = it.cmds["bin_jmin"]

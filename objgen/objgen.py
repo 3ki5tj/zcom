@@ -77,7 +77,7 @@ Commands of an item:
 
   * $valid:       a condition to be tested for validity *after* reading
                   a variable from configuration file
-  * $rb_valid:    to override $valid during rb
+  * $rbvalid:     to override $valid during rb
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it; 
@@ -100,6 +100,8 @@ Commands of an item:
                 no corresponding declaration in the struct
                 similar variable: wbtmp, bintmp;
 
+  * $cfgargs: additional args for cfgopen() objects
+              similarly $rbargs, $wbargs;
 
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier
@@ -508,7 +510,7 @@ class Object:
         pos += m.end(0)
         continue
       usr = it1.cmds["usr"]
-      if usr == None or not usr.endswith("tmp"): # $usr;
+      if usr in (None, "cfg"): 
         nm = ptr+"->"+nm
       else:
         #print "[%s] --> [%s] in raw [%s] usr: %s"%(m.group(0), nm, val, usr); raw_input()
@@ -783,7 +785,8 @@ class Object:
     fprefix = self.folds[f].fprefix
     cow = CCodeWriter()
     funcnm = "%s%sbin_low" % (fprefix, readwrite)
-    usrs = self.get_usrvars("bin", f)[0]
+    usrs = self.get_usrvars("bin", f)[0]+self.get_usrvars(rw+"b", f)[0]
+    #print "low %s rw=%s usrs: %s" % (self, rw, usrs); raw_input()    
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
         ", int endn" if rw == "r" else "", usrs)
@@ -835,7 +838,10 @@ class Object:
     cow = CCodeWriter()
     funcnm = "%s%sbin" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_low"
-    usrs = self.get_usrvars("bin", f) + self.get_usrvars(rw+"b", f)
+    u1 = self.get_usrvars("bin", f) 
+    u2 = self.get_usrvars(rw+"b", f)
+    usrs = [u1[0]+u2[0], u1[1]+u2[1]]
+    #print "%s rw=%s usrs: %s" % (self, rw, usrs); raw_input()
     fdecl = "int %s(%s *%s, const char *fname, int %s%s)" % (
         funcnm, self.name, self.ptrname, 
         "ver" if rw == "w" else "*pver", 
@@ -862,8 +868,6 @@ class Object:
       cow.wb_checkbytes();
       cow.wb_var("ver", "int")
     cow.addln()
-    #cow.declare_var("int verify")
-    #cow.addln("verify = !(flags & IO_NOVERIFY)")
 
     # call the actual low-level function
     cow.add_comment("call low level %s function for members" % readwrite)

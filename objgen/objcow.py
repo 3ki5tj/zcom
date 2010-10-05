@@ -591,7 +591,7 @@ class CCodeWriter:
       self.rwb_objarr1d(tag, arr, dim, funcall, pp, widx, jmin, jmax)
 
 
-  def rwb_atom(self, tag, var, cnt = None, tolerr = None):
+  def rwb_atom(self, tag, var, cnt = None, onerr = None):
     ''' read a variable or array '''
     default_endian = 1 # big endian
     
@@ -614,7 +614,7 @@ class CCodeWriter:
       self.errmsg(msg)
     else:
       self.errmsg(msg+", n = %s(%%d)" % cnt, cnt)
-    self.addln(tolerr if tolerr else "goto ERR;")
+    self.addln(onerr if onerr else "goto ERR;")
     self.end_if(cond)
 
   def match_var(self, x, var, prec = None):
@@ -630,31 +630,41 @@ class CCodeWriter:
 
 
   def wb_var(self, var, type): self.rwb_var("w", var, type)
-  def rb_var(self, var, type, match=0, prec="1e-5", tolerr=0, valid=None):
-    self.rwb_var("r", var, type, match, prec, tolerr, valid)
-  def rwb_var(self, tag, var, type, match=0, prec="1e-5", tolerr=0, valid=None):
-    verify = "verify"
+  def rb_var(self, var, type, match=0, prec="1e-5", onerr=0, valid=None):
+    self.rwb_var("r", var, type, match, prec, onerr, valid)
+
+  def rwb_var(self, tag, var, tp, match=0, prec="1e-5", onerr=0, valid=None):
+    ''' match: read to temporary space '''
     tpint = ("int", "unsigned", "unsigned int")
     tpdbl = ("double",)
     if tag == "w": match = 0
-    if match: tolerr = 0 # no error if we want to match
-    if type not in (tpint + tpdbl):
-      print "don't know how to read type %s for %s" % (type, var)
+    if match: onerr = 0 # default: onerr = goto ERR;
+    if tp not in (tpint + tpdbl):
+      print "don't know how to read type %s for %s" % (tp, var)
       raise Exception
     if tag == "r":
-      isdbl = type in tpdbl
+      isdbl = tp in tpdbl
       tmp = "dtmp" if isdbl else "itmp"
       rvar = tmp if match else var # read to tmp var. if we need to match
-      if match: self.declare_var("%s %s" % (type, tmp)) # declare tmp var
+      if match: 
+        self.declare_var("%s %s" % (tp, tmp)) # declare tmp var
+        if type(match) == str: # start an branch
+          self.begin_if(match)
     else: rvar = var
-    self.rwb_atom(tag, rvar, tolerr = tolerr)
+    self.rwb_atom(tag, rvar, onerr = onerr)
     if tag == "r":
-      if match: self.match_var(tmp, var, prec if isdbl else None)
+      if match:
+        self.match_var(tmp, var, prec if isdbl else None)
+        if type(match) == str:
+          self.begin_else()
+          self.rwb_atom(tag, var, onerr = 0)
+          self.end_if(match)
+          #self.end_if("XXX")
       self.validate(valid, var)
   
-  def rb_arr1d(self, arr, cnt, type):
-    if type not in ("int", "double"):
-      print "don't know how to write type %s for %s" % (type, arr)
+  def rb_arr1d(self, arr, cnt, tp):
+    if tp not in ("int", "double"):
+      print "don't know how to write type %s for %s" % (tp, arr)
       raise Exception
     self.rwb_atom("r", arr, cnt = cnt)
 
@@ -678,7 +688,7 @@ class CCodeWriter:
     self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
 
     # read major index
-    self.rb_var("itmp", "int", match = 0, tolerr = "if (feof(fp)) break;")
+    self.rb_var("itmp", "int", match = 0, onerr = "if (feof(fp)) break;")
 
     # handle major index mismatch
     cidx = "itmp > %s && itmp < %s" % (major, dim[0])
