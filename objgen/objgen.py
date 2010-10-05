@@ -307,6 +307,9 @@ class Object:
     for it in self.items:
       if it.cmt:
         cmds = Commands(it.cmt.raw)
+        if it.pre and it.pre.flag:
+          cmds["flag"] = it.pre.flag
+          cmds["flagval"] = it.pre.flagval
       else:
         cmds = Commands("")
         if it.pre:
@@ -372,10 +375,10 @@ class Object:
       if not it.isdummy: continue
       
       # determine the reference variable
-      if "flag" in it.cmds: 
+      if it.cmds["flag"]:
         it.prepare_flag()
-        varref = it.cmds["flag_var"]
-      elif "altvar" in it.cmds:
+        varref = it.cmds["flagvar"]
+      elif it.cmds["altvar"]:
         varref = it.cmds["altvar"]
       else: continue
 
@@ -638,10 +641,10 @@ class Object:
     for it in self.items:
       if "flag" in it.cmds:
         flag = it.cmds["flag"]
-        if "flag_val" not in it.cmds:
+        if not it.cmds["flagval"]:
           print "missing value for flag [%s]" % it.cmds["flag"]
           raise Exception
-        bval = it.cmds["flag_val"]
+        bval = it.cmds["flagval"]
         cmt = it.cmds["desc"]
         cmt = "/* %s */" % cmt if cmt else ""
         # print flag, bval, cmt; raw_input()
@@ -1057,6 +1060,7 @@ class Parser:
     return s
 
   def change_use_mpi(self):
+    global USE_MPI
     # reset USE_MPI
     USE_MPI = "USE_MPI"
     # find `#define USE_MPI xxx'
@@ -1065,7 +1069,6 @@ class Parser:
       m = re.match(r"\#define\s+USE_MPI\s+(.*)$", line)
       if not m: continue
       # found a match
-      global USE_MPI
       USE_MPI = m.group(1).strip()
       print "USE_MPI is now %s" % (USE_MPI)
       self.src[i] = "/* %s */\n" % line.strip()

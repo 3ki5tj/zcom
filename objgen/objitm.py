@@ -64,6 +64,7 @@ class Item:
     '''
     s = p.skipspace(src)
     if s[0] == "}": return -1
+    dodcl = docmt = 1
  
     # try to see it's a preprocessor
     pre = CPreprocessor(src, p)
@@ -73,14 +74,18 @@ class Item:
       self.empty = 0
       self.pre = pre
       self.dl = self.cmt = None
+      dodcl = docmt = 0
+      if pre.cmt: docmt = 1
     else:
       self.pre = None
 
+    if dodcl:
       # print "try to get a declaration from %s" % p; raw_input()
       self.decl = None
       dl = CDeclaratorList(src, p)
       self.dl = None if dl.isempty() else dl
       
+    if docmt:
       # try to get a comment
       cmt = CComment(src, p, 2)
       self.cmt = cmt if not cmt.isempty() else None
@@ -321,18 +326,8 @@ class Item:
     parse the original field into FLAG and flagval 
     attach prefix
     '''
-    if "flag" not in it.cmds:
-      return
-
-    # split into two parts
-    flag = it.cmds["flag"].strip()
-    pt = flag.split()
-    if len(pt) < 2:
-      print "flag is invalid! flag %s" % flag
-      raise Exception
-    flag = pt[0].strip()
-    it.cmds["flag_val"] = pt[1].strip()
-
+    flag = it.cmds["flag"]
+    if not flag: return
     # attach flag_prefix
     if "flag_prefix" in it.cmds:
       prefix = it.cmds["flag_prefix"]
@@ -340,10 +335,10 @@ class Item:
         flag = prefix + flag
     it.cmds["flag"] = flag
 
-    # assign the default flag_var
-    if "flag_var" not in it.cmds:
-      it.cmds["flag_var"] = "@flags"
-    #print "%s %s" % (it.cmds["flag"], it.cmds["flag_val"])
+    # assign the default flagvar
+    if "flagvar" not in it.cmds:
+      it.cmds["flagvar"] = "@flags"
+    #print "%s %s" % (it.cmds["flag"], it.cmds["flagval"])
     #raw_input()
     
   def get_flag(it):
@@ -382,7 +377,7 @@ class Item:
     ''' declare a variable '''
     decl0 = decl1 = scmt = ""
     # 1. handle pre
-    if it.pre:
+    if it.pre and not it.cmds["key"]:
       cow.dump_block(block)
       block = [] # empty the block
       cow.addln("#" + it.pre.raw)
@@ -422,9 +417,7 @@ class Item:
 
   def cfgget_var(it, cow, ptrname):
     ''' read a variable from config. '''
-    if it.pre:
-      #cow.addln("#" + it.pre.raw)
-      return
+    if it.pre and not it.cmds["key"]: return
   
     usr = it.cmds["usr"]
     if usr == "parent" or (usr not in (None, 0, 1) and 
