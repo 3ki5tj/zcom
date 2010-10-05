@@ -698,7 +698,8 @@ class Object:
     cow.begin_function(fread, fdecl, fdesc)
 
     # read configuration file
-    for it in obj.items:
+    items = obj.sort_items(obj.items, "cfg")
+    for it in items:
       it.cfgget_var(cow, obj.ptrname)
 
     cow.end_function("return 0;", silence = ["cfg"])
@@ -788,15 +789,12 @@ class Object:
     callclear = "%sclear(%s);" % (fprefix, self.ptrname)
 
     if rw == "r":
-      #cow.declare_var("int err = 0")
-      #cow.declare_var("int verify")
-      #cow.addln("verify = !(flags & IO_NOVERIFY);")
       cow.add_comment("clear data before reading")
       cow.addln(callclear)
       cow.addln()
     
-    bin_items = self.sort_items(self.folds[f].items, "bin")
-    for it in bin_items:
+    items = self.sort_items(self.folds[f].items, "bin")
+    for it in items:
       if it.pre: continue
       if it.cmds["fold"] != f: continue
       #print "%s" % it.cmds; raw_input()

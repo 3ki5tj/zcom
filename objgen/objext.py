@@ -120,9 +120,10 @@ def mpitype(tp):
 
 def remove_idle_pp(lines):
   ''' remove empty preprocessor blocks 
-  #if
-  #else
-  #endif
+    #if
+    #else
+    #endif
+  similar to merge_pp_if_blocks
   '''
   i = 1
   # remove empty pp
@@ -231,8 +232,8 @@ def trimcode(s):
   ''' various code simplification '''
   endl = '\n' if s.endswith('\n') else ''
   lines = s.splitlines()
-  lines = remove_idle_pp(lines)
   lines = merge_pp_if_blocks(lines)
+  lines = remove_idle_pp(lines)
   lines = use_ifdef(lines)
   lines = merge_if_blocks(lines)
   return '\n'.join(lines) + endl

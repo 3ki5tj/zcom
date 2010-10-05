@@ -423,7 +423,7 @@ class Item:
   def cfgget_var(it, cow, ptrname):
     ''' read a variable from config. '''
     if it.pre:
-      cow.addln("#" + it.pre.raw)
+      #cow.addln("#" + it.pre.raw)
       return
   
     usr = it.cmds["usr"]
@@ -440,24 +440,30 @@ class Item:
     cnt = it.cmds["cfg_cnt"]
     if cnt == None: cnt = it.cmds["cnt"]
     desc    = it.cmds["desc"]
-    pp      = it.cmds["#if"]
     flag    = it.cmds["flag"]
+    pp = it.cmds["#if"]
+    if pp: cow.addln("#if %s", pp)
+    ###raw_input("if pp=[%s], item=%s"%(pp, it))
 
+    passme = 0
     if not it.decl: # stand-alone comment
       cow.add_comment(desc)
       cow.insist(it.cmds["assert"], desc)
       call = it.cmds["call"]
       if call: cow.addln(call + ";")
-      return
-    if flag and (not key or key == "flags"): return
+      passme = 1
+    if flag and (not key or key == "flags"):
+      passme =1
     
-    varnm = it.decl.name
-    varname = ptrname + "->" + varnm
+    if not passme: 
+      varnm = it.decl.name
+      varname = ptrname + "->" + varnm
+      # add a remark before we start
+      cow.add_comment(desc)
 
-    # add a remark before we start
-    cow.add_comment(desc)
-
-    if flag: # input flag
+    if passme:
+      pass
+    elif flag: # input flag
       #raw_input("flag with key %s" % key)
       flag = it.get_flag()
       fmt = type2fmt_s(it.gtype)
@@ -510,6 +516,9 @@ class Item:
         cow.cfgget_var(varname, key, it.gtype, fmt, 
           defl, must, prereq, tfirst, valid, desc)
 
+    if pp: cow.addln("#endif")
+    ###raw_input("endif pp=[%s], item=%s"%(pp, it))
+    
 
   def rwb_var(it, cow, rw, varname):
     dim = it.cmds["dim"]
@@ -530,17 +539,15 @@ class Item:
       verify = 0
       valid = None
     pp = it.cmds["#if"]
-    if pp:
-      cow.addln("#if %s", pp)
-    if notalways(cond):
-      cow.begin_if(cond)
+    if pp: cow.addln("#if %s", pp)
+    if notalways(cond): cow.begin_if(cond)
 
     if not it.decl:
       print "no declaration gtype = %s" % it.gtype
       raise Exception
 
     # init. temp. var. before writing
-    passthis = 0
+    passme = 0
     if usrval in ("bintmp", rw+"btmp"): 
       cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
       if defl and rw == "w": 
@@ -550,9 +557,9 @@ class Item:
           cow.addln("%s = %s;", varname, defl)
       #print "varname = %s" % varname; raw_input()
     elif usrval != None and usrval.endswith("tmp"):
-      passthis = 1
+      passme = 1
     
-    if passthis:
+    if passme:
       pass
     elif it.gtype == "dynamic array":
       # support nasty flag $bin_cnt
@@ -580,10 +587,8 @@ class Item:
     else:
       cow.rwb_var(rw, varname, it.gtype, verify, valid = valid)
 
-    if notalways(cond):
-      cow.end_if(cond)
-    if pp:
-      cow.addln("#endif")
+    if notalways(cond): cow.end_if(cond)
+    if pp: cow.addln("#endif")
 
    
   def clear_var(it, cow, ptr):
@@ -664,7 +669,7 @@ class Item:
 
     if not handled:
       cow.addln("if (%-*s != NULL) %s(%s);",
-             maxwid, varname, funcfree, varname)
+          maxwid, varname, funcfree, varname)
 
     if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
