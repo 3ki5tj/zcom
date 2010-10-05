@@ -118,6 +118,114 @@ def mpitype(tp):
   elif tp == "byte": return "MPI_BYTE"
   else: raise Exception
 
+def remove_idle_pp(s):
+  ''' remove empty preprocessor blocks 
+  #if
+  #else
+  #endif
+  '''
+  endl = '\n' if s.endswith('\n') else ''
+  lines = s.splitlines()
+  i = 1
+  # remove empty pp
+  while i < len(lines):
+    if lines[i].startswith("#endif") and i > 0:
+      lnprev = lines[i-1]
+      if (lnprev.startswith("#else") or 
+          lnprev.startswith("#elif")):
+        # remove an empty #else/#elif branch
+        lines = lines[:i-1] + lines[i:]
+        continue
+      elif lnprev.startswith("#if"):
+        lines = lines[:i-1] + lines[i+1:]
+        continue
+    i += 1
+
+  # merge neighoring preprocessing block
+  # if their conditions are the same
+  cond = None
+  i = 1
+  while i < len(lines):
+    line = lines[i].strip()
+    if line.startswith("#if "):
+      if not cond: cond = line[4:].strip()
+    elif line.startswith("#endif"):
+      if (not cond or i >= len(lines) - 2
+          or not lines[i+1].startswith("#if ")):
+        cond = None
+        i += 1
+        continue
+      ncond = lines[i+1].strip()[4:].strip()
+      if cond == ncond:
+        # print "removing\n%s\n%s" % (lines[i], lines[i+1]); raw_input()
+        lines = lines[:i] + lines[i+2:]
+      else:
+        cond = None
+    elif line.startswith("#el"):
+      cond = None
+    i += 1
+  return '\n'.join(lines) + endl
+
+def next_block(lines, i, cond):
+  ''' return the line index if after several blank lines
+  a line exactly equal to cond occurs, otherwise return -1 '''
+  n = len(lines)
+  for j in range(i+1, n):
+    if lines[j].strip() != "":
+      break
+  else:
+    return -1
+  if j >= n-1: return -1
+  if lines[j] == cond:
+    return j
+  else: return -1
+
+def merge_if_blocks(s):
+  '''
+  merge neighboring if-blocks with the same condition
+      if (abc) {
+        ...
+  X   }
+  X   if (abc) {
+        ...
+      }
+  '''
+  return merge_blocks(s, r"\s*if\s*\(.*\)\s*{$", "if", "}")
+
+def merge_pp_if_blocks(s):
+  return merge_blocks(s, r"\s*#if.*$", "#if", "#endif")
+
+def merge_blocks(s, pattern, sbegin, send):
+  endl = '\n' if s.endswith('\n') else ''
+  lines = s.splitlines()
+  cond = None
+  i = 1
+  while i < len(lines):
+    line = lines[i]
+    m = re.match(pattern, line.strip())
+    if m:
+      #print "i:%4d, %s" % (i, line); raw_input()
+      if not cond: cond = line
+    elif (line.strip() == send and cond != None
+        and cond.find(sbegin) == line.find(send)):
+      ip = next_block(lines, i, cond)
+      #print "match end i=%d ip=%d\n%s\n%s\n" % (i, ip, cond, line); raw_input()
+      if ip >= 0:
+        #print "removing i: %d - %d\n%s\n%s\n...%s\n" % (i, ip, lines[i], lines[i+1], lines[i+2]); raw_input()
+        lines = lines[:i] + lines[ip+1:]
+        continue
+      cond = None  # terminate condition
+    i += 1
+  return '\n'.join(lines) + endl
+
+def trimcode(s):
+  s = remove_idle_pp(s)
+  s = merge_pp_if_blocks(s)
+  s = merge_if_blocks(s)
+  return s
+
+# item sorting
+
 def checkcycl_i(deps, i0, n, checked):
   ''' check cyclic dependencies starting from i0 '''
   checked[i0] = 1

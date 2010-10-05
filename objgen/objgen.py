@@ -607,7 +607,7 @@ class Object:
     for f in funclist: # add functions
       header += f[0]
       source += "\n" + f[1] 
-    self.header = header
+    self.header = trimcode(header)
     self.source = source
 
   def gen_decl(self):
