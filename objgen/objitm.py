@@ -9,8 +9,7 @@ from objext  import *
 
 simple_types = ("int", "unsigned int", "unsigned", 
   "long", "unsigned long", "real", "double", "float", 
-  "char *",
-  "dummy_t")
+  "char *")
 
 class Item:
   '''
@@ -757,6 +756,13 @@ class Item:
     if pp: cow.addln("#endif")
 
 
+  def mpipp(it):
+    ''' basically cmds["#if"], but avoids defined(USE_MPI) '''
+    pp = it.cmds["#if"]
+    if not pp: return None
+    from objgen import USE_MPI
+    return pp if pp != "defined(%s)"%USE_MPI else None
+
   def initmpi_var(it, cow, ptr):
     if not it.decl or it.isdummy: return
     if it.cmds["usr"] not in (None, 1): return
@@ -772,7 +778,7 @@ class Item:
     mpi = it.cmds["mpi"]
     etype = it.get_elegtype()
 
-    pp = it.cmds["#if"]
+    pp = it.mpipp()
     if pp: cow.addln("#if %s", pp)
     #if notalways(prereq): cow.begin_if(prereq)
 
@@ -840,7 +846,6 @@ class Item:
     #if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
 
-
   def mpitask_var(it, cow, tag, ptr):
     call = it.cmds[tag+"_call"]
     valid = it.cmds[tag+"_valid"]
@@ -869,7 +874,8 @@ class Item:
       redtmp = it.cmds["redtmp"]
     if not task: return
 
-    pp = it.cmds["#if"]
+    pp = it.mpipp()
+    #if pp: print pp; raw_input()
     if pp: cow.addln("#if %s", pp)
 
     if it.gtype in ("object array", "object pointer"):

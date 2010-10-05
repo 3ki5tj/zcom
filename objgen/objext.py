@@ -209,7 +209,7 @@ def merge_blocks(lines, pattern, sbegin, send):
       #print "match end i=%d ip=%d\n%s\n%s\n" % (i, ip, cond, line); raw_input()
       if ip >= 0:
         #print "removing i: %d - %d\n%s\n%s\n...%s\n" % (i, ip, lines[i], lines[i+1], lines[i+2]); raw_input()
-        lines = lines[:i] + lines[ip+1:]
+        lines = lines[:i] + lines[i+1:ip] + lines[ip+1:]
         continue
       cond = None  # terminate condition
     i += 1
