@@ -86,15 +86,20 @@ Commands of an item:
   * $flag:    two fields, name of flag and its value, something like 
               $flag: ABC_FLAG  0x000010;
 
-  * $usr:     the variable should be passed as a parameter, 
-              not read from the configuration file
-              $usr;  is equivalent to $usr:1; declare the variable
-                 whose value is to be taken from the corresponding 
-                 parameter in cfgopen
+  * $usr:     declare user variable, meaning varies:
+              $usr:cfg; declare the variable in the struct
+                whose value is to be taken from the corresponding 
+                parameter in cfgopen
               $usr:parent; declare the variable represents 
-                a pointer to the parent object, the pointer is 
-                function parameter of cfgopen()!
-              $usr:xxtmp; temporary variable readbin() / writebin()
+                a pointer to the parent object, the pointer is
+                function parameter of cfgopen()!                
+              $usr:bin; correpsonding value from parameters
+                but the variable is not declared in the struct
+                similar $usr:rb; $usr:wb; $usr:close;
+              $usr:rbtmp; temporary variable to be used in readbin()
+                no corresponding declaration in the struct
+                similar variable: wbtmp, bintmp;
+
 
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier
@@ -503,7 +508,7 @@ class Object:
         pos += m.end(0)
         continue
       usr = it1.cmds["usr"]
-      if usr in (None, 1): # $usr;
+      if usr == None or not usr.endswith("tmp"): # $usr;
         nm = ptr+"->"+nm
       else:
         #print "[%s] --> [%s] in raw [%s] usr: %s"%(m.group(0), nm, val, usr); raw_input()
@@ -656,8 +661,8 @@ class Object:
     return cow.gets()
 
   def get_usrvars(self, tag, f = None):
-    ''' tag can be "cfg", "bin", "txt", "close" '''
-    if tag not in ("cfg", "bin", "txt", "close"): raise Exception
+    ''' tag can be "cfg", "bin", "txt", "close", ... '''
+    if not tag: raise Exception
     param_list = ""
     var_list = ""
     for it in self.items:
@@ -666,20 +671,16 @@ class Object:
         decl1 = it.decl.raw
         name = it.decl.name
         usrval = it.cmds["usr"]
-        usr_name = name
         # replace the name by the proper usr_name in the declarator
         if usrval == "parent" and tag == "cfg":
           pass
-        elif usrval == tag or (tag == "cfg" and usrval == 1):
+        elif usrval == tag:
           if f and it not in self.folds[f].items:
             continue  # wrong fold
-          if tag == "cfg": usr_name = name
-          decl1 = re.sub(name, usr_name, decl1) 
         else:
           continue # irrelavent variables
-          #print "strange: tag:%s, usr:%s," % (tag, usrval); raw_input()
         param_list += ", %s %s" % (decl0, decl1)
-        var_list += ", %s" % usr_name
+        var_list += ", %s" % name
     return param_list, var_list
 
   def gen_func_cfgopen_low(obj):
@@ -785,7 +786,7 @@ class Object:
     usrs = self.get_usrvars("bin", f)[0]
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
         funcnm, self.name, self.ptrname, 
-        ", unsigned flags, int endn" if rw == "r" else "", usrs)
+        ", int endn" if rw == "r" else "", usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
     cow.begin_function(funcnm, fdecl, 
         "%s %s data as binary" % (readwrite, title))
@@ -821,10 +822,9 @@ class Object:
           else self.ptrname+"->") + it.decl.name
       it.rwb_var(cow, rw, varname)
 
-    unused_vars = ["ver"] + (["flags"] if rw == "r" else [])
     cow.end_function("return 0;\nERR:\n%sreturn -1;" % (
       callclear+"\n" if rw == "r" else ""), # clear data 
-      silence = unused_vars)
+      silence = ["ver"])
     return cow.prototype, cow.function
 
   def gen_func_binrw(self, f, rw):
@@ -835,10 +835,10 @@ class Object:
     cow = CCodeWriter()
     funcnm = "%s%sbin" % (self.folds[f].fprefix, readwrite)
     funcnm_ = funcnm + "_low"
-    usrs = self.get_usrvars("bin", f)
+    usrs = self.get_usrvars("bin", f) + self.get_usrvars(rw+"b", f)
     fdecl = "int %s(%s *%s, const char *fname, int %s%s)" % (
         funcnm, self.name, self.ptrname, 
-        "ver" if rw == "w" else "*pver, unsigned flags", 
+        "ver" if rw == "w" else "*pver", 
         usrs[0])
     cow.begin_function(funcnm, fdecl, 
         "%s %s data as binary" % (readwrite, 
@@ -869,7 +869,7 @@ class Object:
     cow.add_comment("call low level %s function for members" % readwrite)
     cow.declare_var("int i")
     cow.addln("i = %s(%s, fp, ver%s%s);", funcnm_, self.ptrname, 
-        ", flags, endn" if rw == "r" else "", usrs[1]);
+        ", endn" if rw == "r" else "", usrs[1]);
     cow.end_function("fclose(fp);\nreturn i;\nERR:\nfclose(fp);\nreturn -1;");
     return cow.prototype, cow.function
 

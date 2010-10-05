@@ -560,7 +560,7 @@ class Item:
       cow.rwb_arr(varname, dim, it.decl.datatype, 1, rw)
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
-      extra = ", flags, endn" if rw == "r" else ""
+      extra = ", endn" if rw == "r" else ""
       extra += it.get_args(rw+"b")
       funcall = "%s%sbin_low(%%s, fp, ver%s)" % (fpfx, readwrite, extra);
       if it.gtype == "object array":
