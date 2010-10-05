@@ -1057,6 +1057,8 @@ class Parser:
     return s
 
   def change_use_mpi(self):
+    # reset USE_MPI
+    USE_MPI = "USE_MPI"
     # find `#define USE_MPI xxx'
     for i in range(len(self.src)):
       line = self.src[i]

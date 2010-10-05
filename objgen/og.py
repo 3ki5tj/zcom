@@ -11,14 +11,15 @@ def handle(file, template = ""):
     pt = os.path.splitext(file)
     template = pt[0] + '.0' + pt[1]
     ref = pt[0] + '.1' + pt[1]
+  
+  tmpfile = tempfile.mkstemp(suffix = pt[1], dir = ".")[1]
+  #raw_input(tmpfile)
 
   # read in the template
   src = open(template, 'r').readlines()
   # construct a parser
   psr = Parser(src)
   # write the processed file
-  tmpfile = tempfile.mkstemp(suffix = pt[1], dir = ".")[1]
-  #raw_input(tmpfile)
   open(tmpfile, 'w').write(psr.output())
 
   if os.path.exists(ref):
