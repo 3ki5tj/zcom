@@ -5,8 +5,8 @@
 #define MTA_SAVE  1
 #define MTA_DONE  2
 #define MTA_FNAM  3
-/* a random number in [0, 1) */
-#define rnd0()        ((1.0/4294967296.0) * mtrand(MTA_RAND, 0, NULL))
+#define rand32()      mtrand(MTA_RAND, 0, NULL)
+#define rnd0()        ((1.0/4294967296.0) * rand32()) /* double, [0, 1) */
 #define mtsave(fn)    mtrand(MTA_SAVE, 0, fn)
 #define mtfinish(fn)  mtrand(MTA_DONE, 0, fn)
 #define mtsetfile(fn) mtrand(MTA_FNAM, 0, fn)

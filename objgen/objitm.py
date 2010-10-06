@@ -554,7 +554,7 @@ class Item:
       # support nasty flag $bin_cnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cow.rwb_arr(varname, dim, it.decl.datatype, 1, rw)
+      cow.rwb_arr(rw, varname, dim, it.decl.datatype, trim = 1, match = verify)
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       extra = ", endn" if rw == "r" else ""

@@ -1,5 +1,3 @@
-#include "die.h"
-
 #ifndef SS__
 #define SS__
 
@@ -83,7 +81,10 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   struct ssheader *h = NULL, *hp;
   size_t size;
 
-  die_if(php == NULL, "ssresize_: php is NULL, n = %u", (unsigned) n);
+  if (php == NULL) {
+    fprintf(stderr, "ssresize_: php is NULL, n = %u", (unsigned) n);
+    return NULL;
+  }
 
   /* we use the following if to assign hp and h, so the order is crucial */
   if ((hp = *php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
@@ -94,8 +95,10 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
        * hp->next will be freed by realloc */
       if (hp != NULL)
         sslistremove_(hp, 0);
-      die_if((h = realloc(h, sizeof(*h)+size)) == NULL,
-        "ssresize_: no memory for %u\n", size);
+      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
+        fprintf(stderr, "ssresize_: no memory for %u\n", (unsigned) size);
+        return NULL;
+      }
       if (hp == NULL) /* clear the first byte if we start from nothing */
         *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
       *php = hp = sslistadd_(h);
@@ -111,8 +114,6 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
     sslistremove_(hp, 1);
   else if (opt == SSSHRINK)
     ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
-  else
-    die_if(1, "unknown manage option %d", opt);
 }
 
 /* delete a string, shrink memory, etc ... */
