@@ -1,16 +1,17 @@
-binf=test 
-all: $(binf)
+bin=test 
+hdr=cfg.h ss.h
+src=cfg.c ss.c
+dep=$(src) $(hdr) Makefile
 
-CC = gcc -O0 -g3 -Wall
+all: $(bin)
 
-hdrs=cfg.h ss.h die.h
-src=cfg.c ss.c die.c
+CC = gcc -O0 -g3 -Wall -pedantic
 
-test: test.c $(src) $(hdrs)
+test: test.c $(dep)
 	$(CC) -o $@ $< $(src) -lm
 
 clean:
-	rm -f $(binf) *~
+	rm -f $(bin) *~
 
 .PHONY: all clean
 

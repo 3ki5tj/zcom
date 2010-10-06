@@ -16,10 +16,10 @@ cmp2: testsv test
 	./testsv >> out3
 	diff out1 out3
 
-test: test.c rng.c ss.c
+test: test.c rng.c 
 	$(CC) -o $@ $^ -lm
 
-testsv: test.c rng.c ss.c
+testsv: test.c rng.c
 	$(CC) -DSAVE -o $@ $^ -lm
 
 testref: test.c zcomref.h

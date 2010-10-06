@@ -422,9 +422,11 @@ class Item:
     
     key     = it.cmds["key"]
     defl    = it.cmds["def"]
-    prereq  = it.cmds["prereq"]
+    prereq  = it.cmds["cfgprereq"]
+    if not prereq:  prereq = it.cmds["prereq"]
     tfirst  = it.cmds["tfirst"]
-    valid   = it.cmds["valid"]
+    valid   = it.cmds["cfgvalid"]
+    if valid == None: valid = it.cmds["valid"]
     must    = it.cmds["must"]
     cnt = it.cmds["cfg_cnt"]
     if cnt == None: cnt = it.cmds["cnt"]
@@ -514,7 +516,7 @@ class Item:
     cnt = it.cmds["cnt"]
     bincnt = it.cmds[rw+"b_cnt"]
     if bincnt == None: bincnt = it.cmds["bin_cnt"]
-    cond = it.cmds["bin_prereq"]
+    cond = it.cmds["binprereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     if rw == "r":
@@ -590,7 +592,7 @@ class Item:
     cnt = it.cmds["cnt"]
     defl = it.cmds["def"]
     #defl = it.get_zero()  zero is unreliable, e.g., sth needs to be 1.0
-    prereq = it.cmds["com_prereq"]
+    prereq = it.cmds["prereq"]
 
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
@@ -623,14 +625,17 @@ class Item:
     if it.gtype not in ("char *", "dynamic array",
         "object array", "object pointer"): return
 
+    call = it.cmds["closecall"]
     varnm = it.decl.name;
     varname = "%s->%s" % (ptrname, varnm)
 
     pp = it.cmds["#if"]
-    prereq = it.cmds["com_prereq"]
+    prereq = it.cmds["prereq"]
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)    
  
+    if call: cow.addln(call+";")
+
     handled = 0
     #if varnm == "cache":
     #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
@@ -660,7 +665,7 @@ class Item:
     if not handled:
       cow.addln("if (%-*s != NULL) %s(%s);",
           maxwid, varname, funcfree, varname)
-
+    
     if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
     
@@ -674,7 +679,7 @@ class Item:
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     desc = it.cmds["desc"]
-    prereq = it.cmds["com_prereq"]
+    prereq = it.cmds["prereq"]
 
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
@@ -772,7 +777,7 @@ class Item:
     desc = it.cmds["desc"]
     mpicnt = it.cmds["mpi_cnt"]
     if mpicnt: cnt = mpicnt;
-    prereq = it.cmds["com_prereq"]
+    prereq = it.cmds["prereq"]
     mpi = it.cmds["mpi"]
     etype = it.get_elegtype()
 
@@ -864,7 +869,7 @@ class Item:
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     desc = it.cmds["desc"]
-    prereq = it.cmds["com_prereq"]
+    prereq = it.cmds["prereq"]
     etype = it.get_elegtype()
     task = it.cmds[tag]
     comm = ptr+"->mpi_comm"

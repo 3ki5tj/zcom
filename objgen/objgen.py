@@ -59,25 +59,25 @@ Commands of an item:
               is first removed before applying $kprefix
   * $kargs:   printf arguments in constructing key
   
-  * $must:       a critial key that must present in configuration file
+  * $must:    a critial key that must present in configuration file
 
-  * $prereq:      prerequisite to be tested *before* reading a variable
-                  from configuration file, but after assigning the 
-                  given by $def; this is the default order because it
-                  ensures a variable is assigned at a reasonable value
-  * $tfirst:      if this is set, we do not assign the default value $def 
-                  unless $prereq is true, useful for dummy variables
-  * $bin_prereq:  a prerequisite that applies to reading/writing binary files
-                  it can contain a variable `ver', a version number of
-                  binary data.
-                  readbin()/writebin() rely on the this condition.
-  * $com_prereq:  a general prerequisite that applies to accessing data
-                  usually related to MPI rank.
-                  clear()/close() rely on this condition
+  * $prereq:    a general prerequisite that applies to accessing data
+                usually related to MPI rank.
+                clear()/close() rely on this condition
+  * $cfgprereq: prerequisite to be tested *before* reading a variable
+                from configuration file, but after assigning the 
+                given by $def; this is the default order because it
+                ensures a variable is assigned at a reasonable value
+  * $tfirst:    if this is set, we do not assign the default value $def 
+                unless $prereq is true, useful for dummy variables
+  * $binprereq: a prerequisite that applies to reading/writing binary files
+                it can contain a variable `ver', a version number of
+                binary data.
+                readbin()/writebin() rely on the this condition.
 
-  * $valid:       a condition to be tested for validity *after* reading
-                  a variable from configuration file
-  * $rbvalid:     to override $valid during rb
+  * $valid:     a condition to be tested for validity *after* reading
+                a variable from configuration file
+  * $rbvalid:   to override $valid during rb
 
   * $obj:     a member object, a function needs to called to properly 
               initialize it; 
@@ -996,6 +996,30 @@ class Object:
     cow.addln("return 0;")
     cow.end_function("")
     return cow.prototype, cow.function
+
+class Fold:
+  ''' a sub-object embedded inside an object '''
+  def __init__(f, fprefix, name):
+    # generate a name
+    f.name = name
+    # generate a function prefix
+    if not name.endswith("_"):
+      namep = name + ("_" if len(name) else "")
+    f.fprefix = fprefix + namep
+    f.items = []
+
+  def additem(f, item):
+    f.items += [item]
+
+  def __len__(f):
+    return len(f.items)
+
+  def add_fold_tests(f, cow, funcnm, ret = "0", validate = 1):
+    ''' add prerequisite/validation tests '''
+    if notalways(f.prereq):
+      cow.addln("if ( !(%s) ) return %s;", f.prereq, ret)
+    if notalways(f.valid) and validate:
+      cow.validate(f.valid, funcnm)
 
 class Parser:
   '''

@@ -125,21 +125,15 @@
   #ifndef ZCOM_ENDN
   #define ZCOM_ENDN
   #endif
+  #ifndef ZCOM_BIO
+  #define ZCOM_BIO
+  #endif
 #endif
 
 /* build dependencies */
-#if (defined(ZCOM_RNG)  || defined(ZCOM_TRACE) || defined(ZCOM_CFG) || \
-     defined(ZCOM_HIST) || defined(ZCOM_LOG)   || defined(ZCOM_ZT) )
+#if (defined(ZCOM_CFG)   || defined(ZCOM_TRACE) || \
+     defined(ZCOM_HIST)  || defined(ZCOM_LOG)   || defined(ZCOM_ZT))
   #define ZCOM_SS  /* needs file name support */
-#endif
-
-#ifdef ZCOM_CFG
-  #define ZCOM_DIE
-  #define ZCOM_SS
-#endif
-
-#ifdef ZCOM_SS
-  #define ZCOM_DIE
 #endif
 
 #ifdef ZCOM_DIHCALC

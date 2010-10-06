@@ -22,29 +22,15 @@ def findvar(var, s):
   m = re.search(pattern, s)
   return (m.start(0) + 1) if m else 0
 
-class Fold:
-  ''' a sub-object embedded inside an object '''
-  def __init__(f, fprefix, name):
-    # generate a name
-    f.name = name
-    # generate a function prefix
-    if not name.endswith("_"):
-      namep = name + ("_" if len(name) else "")
-    f.fprefix = fprefix + namep
-    f.items = []
-
-  def additem(f, item):
-    f.items += [item]
-
-  def __len__(f):
-    return len(f.items)
-
-  def add_fold_tests(f, cow, funcnm, ret = "0", validate = 1):
-    ''' add prerequisite/validation tests '''
-    if notalways(f.prereq):
-      cow.addln("if ( !(%s) ) return %s;", f.prereq, ret)
-    if notalways(f.valid) and validate:
-      cow.validate(f.valid, funcnm)
+def escape(s, printf=1):
+  if type(s) != str:
+    print "s is not string! s = %s" % s
+    raise Exception
+  s = re.sub(r'"', r'\"', s)
+  s = re.sub(r"'", r"\'", s)
+  if printf:
+    s = re.sub("\%", "%%", s)
+  return s
 
 def type2fmt_s(tp):
   ''' format for scanf '''

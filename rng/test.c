@@ -18,7 +18,7 @@ int main(void)
     if (id <= 10)
       printf("%6d: %16.14f\n", id, x);
   }
-  mtsave(NULL);
+  mtsave(NULL); /* save to the default seed */
 #else
   for (i = 0; i < 20000; i++) {
     x = rnd0();

@@ -243,10 +243,11 @@ class CCodeWriter:
 
   def validate(self, valid, var = None, 
       fmt = "", args = None, onerr = "exit(1);"):
-    msg = (var + ": ") if var else ""
-    msg += "failed validation: %s" % valid
-    if fmt: msg += ", " + fmt
-    self.insist(valid, msg, args, onerr)
+    if notalways(valid):
+      msg = (var + ": ") if var else ""
+      msg += "failed validation: %s" % escape(valid)
+      if fmt: msg += ", " + fmt
+      self.insist(valid, msg, args, onerr)
 
   def cfgget_var_low(self, var, key, type, fmt, default, 
       must, valid, desc, var_ = None):
@@ -270,7 +271,7 @@ class CCodeWriter:
       self.msg_if(cond, 
         'assuming default: %s = %s, key: %s' 
         % (var_, default, dm(key)))
-
+  
     self.validate(valid, var_)
 
   def cfgget_var(self, var, key, type, fmt, default,
@@ -307,8 +308,7 @@ class CCodeWriter:
       self.begin_if(s)
       self.addln("break;")
       self.end_if(s)
-    if valid:
-      self.validate(valid, var, fmt = "i = %d", args = "i")
+    self.validate(valid, var, fmt = "i = %d", args = "i")
     self.addln("ps += nps;")
     self.addln("}")
     self.end_if(sbufgood)
