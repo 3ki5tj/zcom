@@ -74,7 +74,7 @@ def add_storage_class(hdr, prefix):
     
     #  NOTE: we cannot handle more complex cases
     if first_word in ("void", "char", "int", "unsigned", "long", 
-        "real", "float", "double", "cfgdata_t"):
+        "real", "float", "double", "cfgdata_t", "is_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 

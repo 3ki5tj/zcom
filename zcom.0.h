@@ -128,6 +128,9 @@
   #ifndef ZCOM_BIO
   #define ZCOM_BIO
   #endif
+  #ifndef ZCOM_IS2
+  #define ZCOM_IS2
+  #endif
 #endif
 
 /* build dependencies */
@@ -695,4 +698,11 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
 
 #endif /* ZCOM_BIO__ */
 #endif /* ZCOM_BIO */
+
+#ifdef  ZCOM_IS2
+#ifndef ZCOM_IS2__
+#define ZCOM_IS2__
+
+#endif /* ZCOM_IS2__ */
+#endif /* ZCOM_IS2 */
 
