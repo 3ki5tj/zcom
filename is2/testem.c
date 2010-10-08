@@ -3,7 +3,9 @@
 #include "rng.c"
 
 #define L 32
-//#define IS2_LB 5
+/*
+#define IS2_LB 5
+*/
 #include "is2.h"
 
 /* randomly pick a site and flip it */
