@@ -7,56 +7,67 @@
 /* compute total energy and magnetization */
 int is2_em(is_t *is)
 {
-  int l, i, j, s, nd, n1;
-  int *p, *pu;
+  int l, i, j, s, u, e, m, *p, *pu;
 
-  nd = n1 = 0;
+  e = m = 0;
   p = is->s;
   l = is->l;
   for (i = 0; i < l; ) {
     pu = (++i == l) ? is->s : p+l;
     for (j = 0; j < l; ) {
-      n1 += (s = *p++);
-      nd += s ^ (*pu++); /* upper neighbor */
-      nd += s ^ ( (++j == l) ? *(p-l) : *p ); /* right neighbor */
+      m += (s = *p++);
+      u = *pu++;
+      e += s*(u + ((++j == l) ? *(p-l) : *p));
     }
   }
-  is->M = n1*2 - is->n;
-  return is->E = (nd - is->n)*2;
+  is->M = m;
+  return is->E = -e;
+}
+
+int is2_check(is_t *is)
+{
+  int i, e, m;
+
+  for (i = 0; i < is->n; i++) 
+    if (is->s[i] != 1 && is->s[i] != -1) {
+      fprintf(stderr, "error: s[%d] = %d\n", i, is->s[i]);
+      return -1;
+    }
+  e = is->E;
+  m = is->M;
+  is2_em(is);
+  if  (e != is->E || e < -2*is->n || e > 2*is->n
+    || m != is->M || m < -is->n   || m > is->n) {
+    fprintf(stderr, "error: E = %d, %d; M = %d, %d\n", 
+        e, is->E, m, is->M);
+    return -1;
+  }
+  return 0;
 }
 
 /* pick a random site, count neighbors with different spins */
 int is2_pick(const is_t *is, int *h)
 {
-  int id, i, j, l, lm, n, nm;
-  int *p, s, nu;
+  int id, ix, iy, l, lm, n, nm, *p;
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
   id = (int)(rnd0() * n);
-  i = id / l;
-  j = id % l;
+  iy = id / l, ix = id % l;
   p = is->s + id;
-  s = *p;
-  nu  = -2;
-  nu += (j != 0 ) ? *(p-1) : *(p+lm); /* left */
-  nu += (j != lm) ? *(p+1) : *(p-lm); /* right */
-  nu += (i != 0 ) ? *(p-l) : *(p+nm); /* down */
-  nu += (i != lm) ? *(p+l) : *(p-nm); /* up */
-  *h = s ? nu : -nu;
+  *h = *p * ( ((ix != 0 ) ? *(p-1) : *(p+lm))   /* left  */
+            + ((ix != lm) ? *(p+1) : *(p-lm))   /* right */
+            + ((iy != 0 ) ? *(p-l) : *(p+nm))   /* down  */
+            + ((iy != lm) ? *(p+l) : *(p-nm))); /* up    */
   return id;
 }
 
 /* flip site id, with nd different neighbors */
-int is2_flip(is_t *is, int id, int nd)
+int is2_flip(is_t *is, int id, int h)
 {
-  int s, *p;
-
   assert(id < is->n);
-  s = *(p = is->s + id);
-  *p = !s;
-  is->M += *p ? 2 : -2;
-  return is->E += nd*4;
+  is->M += (is->s[id] = -is->s[id])*2;
+  return is->E += h*2;
 }
 
 int is2_load(is_t *is, const char *fname)
@@ -80,7 +91,7 @@ int is2_load(is_t *is, const char *fname)
   for (i = 0; i < n; i++) {
     while ((c=fgetc(fp)) != EOF && c == '\n') ;
     if (c == EOF) break;
-    is->s[i] = (c != ' ');
+    is->s[i] = (c == ' ') ? -1 : 1;
   }
   if (i < n)
     fprintf(stderr, "%s: data stopped at i = %d\n", fname, i);
@@ -88,7 +99,6 @@ int is2_load(is_t *is, const char *fname)
   is2_em(is);
   return 0;
 }
-
 
 int is2_save(const is_t *is, const char *fname)
 {
@@ -103,7 +113,7 @@ int is2_save(const is_t *is, const char *fname)
   fprintf(fp, "%d %d %d %d\n", is->d, l, l, is->n);
   for (p = is->s, i = 0; i < l; i++) {
     for (j = 0; j < l; j++, p++)
-      fprintf(fp, "%c", *p ? '#' : ' ');
+      fprintf(fp, "%c", (*p > 0) ? '#' : ' ');
     fprintf(fp, "\n");
   }
   fclose(fp);
@@ -127,7 +137,7 @@ is_t *is2_open(int l)
     fprintf(stderr, "no memory for spin, %dx%d\n", l, l);
     return NULL;
   }
-  for (i = 0; i < n; i++) is->s[i] = 0;
+  for (i = 0; i < n; i++) is->s[i] = -1;
   is->M = -n;
   is->E = -2*n;
   return is;

@@ -18,36 +18,31 @@ static void mc(is_t *is, double steps, double beta, int ncheck)
   int h, nt;
   unsigned id;
 
-  //if (0 != is2_load(is, DATAFILE))
-  //  fprintf(stderr, "cannot load prev. %s\n", DATAFILE);
-  proba[1] = exp(-4*beta);
-  proba[2] = proba[1]*proba[1];
+  if (0 != is2_load(is, DATAFILE))
+    fprintf(stderr, "cannot load previous %s\n", DATAFILE);
+  is2_setproba(proba, beta);
   acc = tot = 1e-8;
   s1 = se = se2 = 0.0;
   nt = ncheck;
   for (t = 1.0; t <= steps; t += 1.0) {
     IS2_PICK(is, id, h);
-    if (h <= 0 || rnd0() < proba[h]) {
+    if (h <= 0 || IS2_RNDSV() < proba[h]) {
       IS2_FLIP(is, id, h);
     }
-/*    
     if (nt-- > 0) {
       nt = ncheck;
       s1 += 1.0;
       se += e = is->E;
       se2 += e*e;
     }
-*/    
   }
-/*
   eav = se/s1;
   cv = (beta*beta)*(se2/s1 - eav*eav);
   lnzref = is2_exact(is, beta, &eref, &cvref);
   printf("ar: %g, eav: %.6f (%.6f), cv: %.3f (%.3f), lnz: %.6f\n", 
       acc/tot, eav, eref, cv, cvref, lnzref);
-  //is2_save(is, DATAFILE);
-  //mtsave(NULL);
-*/
+  is2_save(is, DATAFILE);
+  mtsave(NULL);
 }
 
 int main(void)

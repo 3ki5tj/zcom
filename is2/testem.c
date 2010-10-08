@@ -9,23 +9,20 @@
 /* randomly pick a site and flip it */
 static void randflip(is_t *is)
 {
-  int id, nd, E, M, E2, M2;
+  int id, h, E, M, E2, M2;
 /*
-  id = is2_pick(is, &nd);
-  is2_flip(is, id, nd);
+  id = is2_pick(is, &h);
+  is2_flip(is, id, h);
 */
-  IS2_PICK(is, id, nd);
-  IS2_FLIP(is, id, nd);
+  IS2_PICK(is, id, h);
+  IS2_FLIP(is, id, h);
   E = is->E;
   M = is->M;
   E2 = is2_em(is);
   M2 = is->M;
-  printf("id: %4d, nd = %2d, E = %4d, %4d, M = %4d, %4d\n", 
-      id, nd, E, E2, M, M2);
-  if (E != E2 || M != M2) {
-    fprintf(stderr, "error occured\n");
-    exit(1);
-  }
+  printf("id: %4d, s = %d, h = %2d, E = %4d, %4d, M = %4d, %4d\n", 
+      id, is->s[id], h, E, E2, M, M2);
+  if (is2_check(is) != 0) exit(1);
 }
 
 int main(void)
@@ -37,7 +34,7 @@ int main(void)
     fprintf(stderr, "cannot init\n");
     return -1;
   }
-
+  IS2_INFO(is, 1.0);
   for (i = 0; i < 10; i++) randflip(is);
   
   printf("E = %d, M = %d\n", is->E, is->M);
