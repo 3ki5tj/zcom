@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "rng.c"
 #include "is2.h"
 
 int main(void)

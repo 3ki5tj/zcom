@@ -26,10 +26,10 @@ int is2_em(is_t *is)
 }
 
 /* pick a random site, count neighbors with different spins */
-int is2_pick(const is_t *is, int *nd)
+int is2_pick(const is_t *is, int *h)
 {
   int id, i, j, l, lm, n, nm;
-  int *p, s, t1, t2, t3, t4, nu;
+  int *p, s, nu;
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
@@ -38,12 +38,12 @@ int is2_pick(const is_t *is, int *nd)
   j = id % l;
   p = is->s + id;
   s = *p;
-  t1  = (j != 0 ) ? *(p-1) : *(p+lm); /* left */
-  t2  = (j != lm) ? *(p+1) : *(p-lm); /* right */
-  t3  = (i != 0 ) ? *(p-l) : *(p+nm); /* down */
-  t4  = (i != lm) ? *(p+l) : *(p-nm); /* up */
-  nu  = (t1 + t2 + t3 + t4) - 2;
-  *nd = s ? nu : -nu;
+  nu  = -2;
+  nu += (j != 0 ) ? *(p-1) : *(p+lm); /* left */
+  nu += (j != lm) ? *(p+1) : *(p-lm); /* right */
+  nu += (i != 0 ) ? *(p-l) : *(p+nm); /* down */
+  nu += (i != lm) ? *(p+l) : *(p-nm); /* up */
+  *h = s ? nu : -nu;
   return id;
 }
 
@@ -108,6 +108,37 @@ int is2_save(const is_t *is, const char *fname)
   }
   fclose(fp);
   return 0;
+}
+
+/* initialize an lxl Ising model */
+is_t *is2_open(int l)
+{
+  int i, n;
+  is_t *is;
+
+  if ((is = calloc(1, sizeof(*is))) == NULL){
+    fprintf(stderr, "no memory for is.\n");
+    return NULL;
+  }
+  is->d = 2;
+  is->l = l;
+  is->n = n = l*l;
+  if ((is->s = malloc(sizeof(is->s[0])*n)) == NULL) {
+    fprintf(stderr, "no memory for spin, %dx%d\n", l, l);
+    return NULL;
+  }
+  for (i = 0; i < n; i++) is->s[i] = 0;
+  is->M = -n;
+  is->E = -2*n;
+  return is;
+}
+
+void is2_close(is_t *is) 
+{
+  if (is != NULL) {
+    free(is->s);
+    free(is);
+  }
 }
 
 #define LN_BIG 50.0

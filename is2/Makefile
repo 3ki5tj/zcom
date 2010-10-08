@@ -2,8 +2,8 @@ CC = gcc -Wall -O0 -g3 -lm -pedantic
 # optimized compiling
 CX = icc -Wall -O3 -g -lm
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
-src = is2.c rng.c
-dep = $(src) is2.h rng.h Makefile
+src = is2.c
+dep = $(src) is2.h rng.c rng.h Makefile
 bin = testmc testem testexact
 
 all: $(bin)

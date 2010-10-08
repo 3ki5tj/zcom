@@ -1,13 +1,22 @@
+/* check if pick() and flip() correctly computes the energy */
 #include <stdio.h>
+#include "rng.c"
+
+#define L 32
+//#define IS2_LB 5
 #include "is2.h"
 
 /* randomly pick a site and flip it */
 static void randflip(is_t *is)
 {
   int id, nd, E, M, E2, M2;
-
+/*
   id = is2_pick(is, &nd);
-  E = is2_flip(is, id, nd);
+  is2_flip(is, id, nd);
+*/
+  IS2_PICK(is, id, nd);
+  IS2_FLIP(is, id, nd);
+  E = is->E;
   M = is->M;
   E2 = is2_em(is);
   M2 = is->M;
@@ -24,7 +33,7 @@ int main(void)
   is_t *is;
   int i;
 
-  if ((is = is2_open(5)) == NULL) {
+  if ((is = is2_open(L)) == NULL) {
     fprintf(stderr, "cannot init\n");
     return -1;
   }
