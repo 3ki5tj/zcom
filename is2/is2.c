@@ -26,10 +26,10 @@ int is2_em(is_t *is)
 }
 
 /* pick a random site, count neighbors with different spins */
-int is2_pick(is_t *is, int *nd)
+int is2_pick(const is_t *is, int *nd)
 {
   int id, i, j, l, lm, n, nm;
-  int *p, s, t1, t2, t3, t4;
+  int *p, s, t1, t2, t3, t4, nu;
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
@@ -38,11 +38,12 @@ int is2_pick(is_t *is, int *nd)
   j = id % l;
   p = is->s + id;
   s = *p;
-  t1  = (j != 0)  ? *(p-1) : *(p+lm); /* left */
+  t1  = (j != 0 ) ? *(p-1) : *(p+lm); /* left */
   t2  = (j != lm) ? *(p+1) : *(p-lm); /* right */
-  t3  = (i != 0)  ? *(p-l) : *(p+nm); /* down */
+  t3  = (i != 0 ) ? *(p-l) : *(p+nm); /* down */
   t4  = (i != lm) ? *(p+l) : *(p-nm); /* up */
-  *nd = (s^t1) + (s^t2) + (s^t3) + (s^t4);
+  nu  = (t1 + t2 + t3 + t4) - 2;
+  *nd = s ? nu : -nu;
   return id;
 }
 
@@ -55,38 +56,7 @@ int is2_flip(is_t *is, int id, int nd)
   s = *(p = is->s + id);
   *p = !s;
   is->M += *p ? 2 : -2;
-  return is->E += 8 - (nd<<2);
-}
-
-/* initialize an lxl Ising model */
-is_t *is2_open(int l)
-{
-  int i, n;
-  is_t *is;
-
-  if ((is = calloc(1, sizeof(*is))) == NULL){
-    fprintf(stderr, "no memory for is.\n");
-    return NULL;
-  }
-  is->d = 2;
-  is->l = l;
-  is->n = n = l*l;
-  if ((is->s = malloc(sizeof(is->s[0])*n)) == NULL) {
-    fprintf(stderr, "no memory for spin, %dx%d\n", l, l);
-    return NULL;
-  }
-  for (i = 0; i < n; i++) is->s[i] = 0;
-  is->M = -n;
-  is->E = -2*n;
-  return is;
-}
-
-void is2_close(is_t *is) 
-{
-  if (is != NULL) {
-    free(is->s);
-    free(is);
-  }
+  return is->E += nd*4;
 }
 
 int is2_load(is_t *is, const char *fname)
@@ -96,7 +66,6 @@ int is2_load(is_t *is, const char *fname)
   char s[80];
 
   if ((fp = fopen(fname, "r")) == NULL) {
-    fprintf(stderr, "cannot read %s\n", fname);
     return -1;
   }
   if (fgets(s, sizeof s, fp) == NULL) {
@@ -116,6 +85,7 @@ int is2_load(is_t *is, const char *fname)
   if (i < n)
     fprintf(stderr, "%s: data stopped at i = %d\n", fname, i);
   fclose(fp);
+  is2_em(is);
   return 0;
 }
 
@@ -229,7 +199,8 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
     dr2 += x/th;
 
     /* g''=cl''/sl - cl' ^2 *cl/sl^3; */
-    ddg = exp(lnddcl - lnsl) - exp(lnch2b*2. + lncl - 3.*lnsl)*cdsqr;
+    ddg = exp(lnddcl - lnsl);
+    ddg -= exp(lnch2b*2. + lncl - 3.*lnsl)*cdsqr;
     sech = 2.0*dg/(ex + 1.0/ex); /* g' * sech(0.5*lx*g) */
     ddr1 += lxh*(ddg*th + lxh*(sech*sech));
     sech = 2.0*dg/(ex - 1.0/ex); /* g' * sech(0.5*lx*g) */
@@ -256,7 +227,8 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
     if (r == 0) {
       ddg = -4*coth2b*coth2b*exp(-lnch2b);
     } else {
-      ddg = exp(lnddcl - lnsl) - exp(lnch2b*2. + lncl - 3.*lnsl)*cdsqr;
+      ddg = exp(lnddcl - lnsl);
+      ddg -= exp(lnch2b*2. + lncl - 3.*lnsl)*cdsqr;
     }
     sech = 2.0*dg/(ex + 1.0/ex);
     ddr3 += lxh*(ddg*th + lxh*(sech*sech));
@@ -268,7 +240,8 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
   z31 = exp(lnz3 - lnz1);
   z41 = sgn4*exp(lnz4 - lnz1);
   za1 = 1.0 + z21 + z31 + z41;
-  lnz = lnz1 + log(za1) + .5*n*log(2.*sh2b) - log2;
+  lnz = lnz1 + log(za1);
+  lnz += .5*n*log(2.*sh2b) - log2;
   dz = (dr1 + z21*dr2 + z31*dr3 + z41*dr4)/za1;
   *eav = - n*coth2b - dz;
   ddr1 += dr1*dr1;

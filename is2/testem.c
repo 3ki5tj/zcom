@@ -11,7 +11,8 @@ static void randflip(is_t *is)
   M = is->M;
   E2 = is2_em(is);
   M2 = is->M;
-  printf("id: %4d, E = %4d, %4d, M = %4d, %4d\n", id, E, E2, M, M2);
+  printf("id: %4d, nd = %2d, E = %4d, %4d, M = %4d, %4d\n", 
+      id, nd, E, E2, M, M2);
   if (E != E2 || M != M2) {
     fprintf(stderr, "error occured\n");
     exit(1);

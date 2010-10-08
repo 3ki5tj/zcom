@@ -33,7 +33,7 @@ int mtsave(const char *fname)
 /* load mt state from `fname', or if it fails, use `seed' to initialize mt  */
 int mtload(const char *fname, unsigned long seed)
 {
-  char s[32];
+  static char s[64];
   int k, z, err = 1;
   FILE *fp;
   
@@ -71,7 +71,7 @@ int mtload(const char *fname, unsigned long seed)
 unsigned long mtrand(void)
 {
   unsigned long x;
-  static const unsigned long mag01[2] = { 0, 0x9908b0dfUL }; /* MATRIX_A */
+  static const unsigned long mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
   int k;
 
   if (mtidx_ < 0) mtload(NULL, 0);

@@ -1,5 +1,8 @@
+#define L 32
+
 #include <stdio.h>
 #include "rng.h"
+#define IS2_L L
 #include "is2.h"
 
 #define DATAFILE "is.dat"
@@ -7,25 +10,29 @@
 /* randomly pick a site and flip it */
 static void mc(is_t *is, int steps, double beta)
 {
+  static double proba[3] = {0.0};
   int t, id, nd;
-  double p[5], acc, tot;
+  double acc, tot;
   double e, s, se, se2, eav, cv;
   double eref, cvref, lnzref;
 
-  if (0 != is2_load(is, DATAFILE))
-    fprintf(stderr, "cannot load prev. %s\n", DATAFILE);
+  //if (0 != is2_load(is, DATAFILE))
+  //  fprintf(stderr, "cannot load prev. %s\n", DATAFILE);
 
-  p[0] = exp(-8*beta);
-  p[1] = exp(-4*beta);
-  p[2] = p[3] = p[4] = 1.0;
-  acc = tot = 0.0;
+  proba[0] = 0.0;
+  proba[1] = exp(-4*beta);
+  proba[2] = exp(-8*beta);
+  acc = tot = 1e-8;
   s = se = se2 = 0.0;
+  e = is->E;
   for (t = 1; t <= steps; t++) {
-    id = is2_pick(is, &nd);
-    tot += 1.0;
-    if (nd >= 2 || rnd0() < p[nd]) {
-      is2_flip(is, id, nd);
-      acc += 1.0;
+    IS2_PICK(is, id, nd);
+    //id = is2_pick(is, &nd);
+    //tot += 1.0;
+    if (nd <= 0 || rnd0() < proba[nd]) {
+      IS2_FLIP(is, id, nd);
+      //is2_flip(is, id, nd);
+      //acc += 1.0;
     }
     if (t % 10 == 0) {
       s += 1.0;
@@ -38,15 +45,15 @@ static void mc(is_t *is, int steps, double beta)
   lnzref = is2_exact(is, beta, &eref, &cvref);
   printf("ar: %g, eav: %.6f (%.6f), cv: %.3f (%.3f), lnz: %.6f\n", 
       acc/tot, eav, eref, cv, cvref, lnzref);
-  is2_save(is, DATAFILE);
-  mtsave(NULL);
+  //is2_save(is, DATAFILE);
+  //mtsave(NULL);
 }
 
 int main(void)
 {
   is_t *is;
 
-  if ((is = is2_open(32)) == NULL) {
+  if ((is = is2_open(L)) == NULL) {
     fprintf(stderr, "cannot init\n");
     return -1;
   }
