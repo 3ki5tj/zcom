@@ -4,50 +4,54 @@
 #include "rng.h"
 
 /* Mersenne Twister was developped by Makoto Matsumoto and Takuji Nishimura */
-#define N_MT 624
-#define M_MT 397
-#define UMASK_MT 0x80000000UL /* most significant w-r bits */
-#define LMASK_MT 0x7fffffffUL /* least significant r bits */
+#define MT_N 624
+#define MT_M 397
+#define MT_UMASK 0x80000000UL /* most significant w-r bits */
+#define MT_LMASK 0x7fffffffUL /* least significant r bits */
+
+int mtidx_ = -1; /* index in mt_, -1: uninitialized */
+unsigned long mt_[MT_N]; /* array for the mt state vector */
 
 /* save the current mt state to file */
-static int mtsave_(int idx, unsigned long arr[], const char *fname)
+int mtsave(const char *fname)
 {
   FILE *fp;
   int k;
 
-  if (idx < 0) return 1; /* RNG was never used, so it cannot be saved */
+  if (mtidx_ < 0) return 1; /* RNG was never used, so it cannot be saved */
+  if (fname == NULL) fname = MTFILE;
   if ((fp = fopen(fname, "w")) == NULL) {
     fprintf(stderr, "cannot save to %s.\n", fname);
     return 1;
   }
-  fprintf(fp, "MTSEED\n%d\n", idx);
-  for (k = 0; k < N_MT; k++) fprintf(fp, "%lu\n", arr[k]);
+  fprintf(fp, "MTSEED\n%d\n", mtidx_);
+  for (k = 0; k < MT_N; k++) fprintf(fp, "%lu\n", mt_[k]);
   fclose(fp);
   return 0;
 }
 
 /* load mt state from `fname', or if it fails, use `seed' to initialize mt  */
-static void mtload_(int *pindex, unsigned long arr[], const char *fname,
-    unsigned long seed)
+int mtload(const char *fname, unsigned long seed)
 {
   char s[32];
   int k, z, err = 1;
   FILE *fp;
-
+  
+  if (fname == NULL) fname = MTFILE;
   if ((fp = fopen(fname, "r")) != NULL) { /* try to load from file */
     if (fgets(s, sizeof s, fp) == NULL) {
       fprintf(stderr, "%s is empty\n", fname);
     } else if (strncmp(s, "MTSEED", 6) != 0) { /* to check the first line */
       fprintf(stderr, "mtrand: corrupted file.\n");
-    } else if (fscanf(fp, "%d", pindex) != 1) {
+    } else if (fscanf(fp, "%d", &mtidx_) != 1) {
       fprintf(stderr, "no index in %s\n", fname);
     } else {
-      if (*pindex < 0) *pindex = N_MT; /* request updating */
-      for (z = 1, k = 0; k < N_MT; k++) {
-        if (fscanf(fp, "%lu", &arr[k]) != 1) break;
-        if (arr[k] != 0) z = 0; /* a non-zero number */
+      if (mtidx_ < 0) mtidx_ = MT_N; /* request updating */
+      for (z = 1, k = 0; k < MT_N; k++) {
+        if (fscanf(fp, "%lu", &mt_[k]) != 1) break;
+        if (mt_[k] != 0) z = 0; /* a non-zero number */
       }
-      if (k != N_MT) fprintf(stderr, "%s incomplete %d/%d\n", fname, k, N_MT);
+      if (k != MT_N) fprintf(stderr, "%s incomplete %d/%d\n", fname, k, MT_N);
       else err = z; /* clear error, if array is nonzero */
     }
     fclose(fp);
@@ -55,33 +59,36 @@ static void mtload_(int *pindex, unsigned long arr[], const char *fname,
 
   if (err) { /* initialize from seed */
     if (seed == 0) seed = MTSEED;
-    arr[0] = seed & 0xffffffffUL;
-    for (k = 1; k < N_MT; k++) /* the final mask is for 64-bit machines */
-      arr[k] = (1812433253UL * (arr[k-1] ^ (arr[k-1]>>30)) + k) & 0xffffffffUL;
-    *pindex = N_MT; /* request updating */
+    mt_[0] = seed & 0xffffffffUL;
+    for (k = 1; k < MT_N; k++) /* the final mask is for 64-bit machines */
+      mt_[k] = (1812433253UL * (mt_[k-1] ^ (mt_[k-1]>>30)) + k) & 0xffffffffUL;
+    mtidx_ = MT_N; /* request updating */
   }
+  return (mtidx_ < 0);
 }
 
 /* return an unsigned random number */
-static unsigned long  mtrand_(int *pindex, unsigned long arr[])
+unsigned long mtrand(void)
 {
-  const unsigned long mag01[2] = { 0, 0x9908b0dfUL }; /* MATRIX_A */
   unsigned long x;
-  int k, kp;
+  static const unsigned long mag01[2] = { 0, 0x9908b0dfUL }; /* MATRIX_A */
+  int k;
 
-  if (*pindex >= N_MT) { /* generate N_MT words at one time */
-    for (k = 0; k < N_MT - M_MT; k++) {
-      x = (arr[k] & UMASK_MT) | (arr[k+1] & LMASK_MT);
-      arr[k] = arr[k+M_MT] ^ (x>>1) ^ mag01[x&1UL];
+  if (mtidx_ < 0) mtload(NULL, 0);
+  if (mtidx_ >= MT_N) { /* generate MT_N words at one time */
+    for (k = 0; k < MT_N - MT_M; k++) {
+      x = (mt_[k] & MT_UMASK) | (mt_[k+1] & MT_LMASK);
+      mt_[k] = mt_[k+MT_M] ^ (x>>1) ^ mag01[x&1UL];
     }
-    for (; k < N_MT; k++) {
-      if ((kp=k+1) == N_MT) kp = 0;
-      x = (arr[k] & UMASK_MT) | (arr[kp] & LMASK_MT);
-      arr[k] = arr[k+(M_MT-N_MT)] ^ (x>>1) ^ mag01[x&1UL];
+    for (; k < MT_N-1; k++) {
+      x = (mt_[k] & MT_UMASK) | (mt_[k+1] & MT_LMASK);
+      mt_[k] = mt_[k+(MT_M-MT_N)] ^ (x>>1) ^ mag01[x&1UL];
     }
-    *pindex = 0;
+    x = (mt_[MT_N-1] & MT_UMASK) | (mt_[0] & MT_LMASK);
+    mt_[MT_N-1] = mt_[MT_M-1] ^ (x>>1) ^ mag01[x&1UL];
+    mtidx_ = 0;
   }
-  x = arr[ (*pindex)++ ];
+  x = mt_[ mtidx_++ ];
   /* tempering */
   x ^= (x >> 11);
   x ^= (x <<  7) & 0x9d2c5680UL;
@@ -90,31 +97,10 @@ static unsigned long  mtrand_(int *pindex, unsigned long arr[])
   return x;
 }
 
-/* random number generator, `cmd' can be:
- * MTA_RAND: generate a 32-bit random number, try to load state from file
- *           at the beginning, and if unsuccessful, use `seed' to init.
- * MTA_SAVE: save the current state to file */
-unsigned long mtrand(int cmd, unsigned long seed, const char *fnm)
-{
-  static unsigned long arr[N_MT]; /* array for the mt state vector */
-  static int idx = -1; /* index in arr, -1: uninitialized */
-  const char *fname = (fnm != NULL) ? fnm : MTFILE;
-
-  switch (cmd) {
-  case MTA_RAND:   /* generate random number */
-    if (idx < 0) mtload_(&idx, arr, fname, seed);
-    return mtrand_(&idx, arr);
-  case MTA_SAVE:   /* save the current state  */
-    return mtsave_(idx, arr, fname);
-  default:
-    fprintf(stderr, "mtrand: unknown cmd %d\n", cmd);
-  }
-  return 0;
-}
-#undef N_MT
-#undef M_MT
-#undef UMASK_MT
-#undef LMASK_MT
+#undef MT_N
+#undef MT_M
+#undef MT_UMASK
+#undef MT_LMASK
 
 /* Gaussian distribution with zero mean and unit variance */
 double grand0(void)

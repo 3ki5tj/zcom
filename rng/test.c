@@ -6,26 +6,20 @@
 #include "rng.h"
 #endif
 
+#ifndef N
+#define N 1000000
+#endif
+
 int main(void) 
 {
   int i, id;
   double x;
 
-#ifdef SAVE
-  for (i = 0; i < 10000; i++) {
+  for (i = 0; i < 2*N; i++) {
     x = rnd0();
-    id = i % 10000;
-    if (id <= 10)
+    id = i % N;
+    if (id < 10)
       printf("%6d: %16.14f\n", id, x);
   }
-  mtsave(NULL); /* save to the default seed */
-#else
-  for (i = 0; i < 20000; i++) {
-    x = rnd0();
-    id = i % 10000;
-    if (id <= 10)
-      printf("%6d: %16.14f\n", id, x);
-  }
-#endif
   return 0;
 }

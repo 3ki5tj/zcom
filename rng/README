@@ -1,0 +1,54 @@
+random number generator
+
+Benchmark:
+make testsp && time ./testsp 
+16.2~16.4 s for 2x10^9 calls.
+
+Ising model test:
+32.5~7 s for 10^9 Monte Carlo steps
+
+Tips
+
+1. don't change the golden loop
+A. it's tempting to change the following loop
+    for (; k < MT_N-1; k++) {
+      x = (mt_[k] & MT_UMASK) | (mt_[k+1] & MT_LMASK);
+      mt_[k] = mt_[k+(MT_M-MT_N)] ^ (x>>1) ^ mag01[x&1UL];
+    }
+    x = (mt_[MT_N-1] & MT_UMASK) | (mt_[0] & MT_LMASK);
+    mt_[MT_N-1] = mt_[MT_M-1] ^ (x>>1) ^ mag01[x&1UL];
+to 
+    for (; k < MT_N; k++) {
+      if ((kp = (k+1)) == MT_N) kp = 0;
+      x = (mt_[k] & MT_UMASK) | (mt_[kp] & MT_LMASK);
+      mt_[k] = mt_[k+(MT_M-MT_N)] ^ (x>>1) ^ mag01[x&1UL];
+    }
+to avoid the trailing item, but actually it makes the loop slower
+because of the additional cost inside the loop.
+Ising:      33.7
+Benchmark:  16.84
+
+B. for the last item, its equivalent to
+    x = (mt_[k] & MT_UMASK) | (mt_[0] & MT_LMASK);
+    mt_[k] = mt_[k+(MT_M-MT_N)] ^ (x>>1) ^ mag01[x&1UL];
+Ising:      32.9  (bad)
+Benchmark:  16.0  (good?)
+
+C. for the second loop
+    for (; k < MT_N-1; k++) {
+is equivalent to 
+    for (k = MT_N-MT_M; k < MT_N-1; k++) {
+Ising:      33.0
+Benchmark:  18.23  (very bad) 
+
+2. claim mag01[2] as static
+This avoids the system allocate space on the stack.
+Note: declaring const doesn't imply static, so we need static const.
+Ising:      33.7 (bad)
+Benchmark:  17.0 (bad)
+
+3. do *not* declare mt_ and mtidx_ as static
+unclear why, but making them global slightly saves some time.
+Ising:      32.75
+Benchmark:  16.2
+

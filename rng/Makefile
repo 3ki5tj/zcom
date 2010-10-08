@@ -1,3 +1,10 @@
+src=rng.c
+hdr=rng.h
+dep=$(src) $(hdr) Makefile
+CC = icc -Wall -O0 -g3
+CX = icc -Wall -O3 
+#CX = gcc -Wall -O3 -g -march=pentium4 -funroll-all-loops -mfpmath=sse
+
 all: cmp1 cmp2
 
 # compares the result from test and testref
@@ -16,17 +23,20 @@ cmp2: testsv test
 	./testsv >> out3
 	diff out1 out3
 
-test: test.c rng.c 
-	$(CC) -o $@ $^ -lm
-
-testsv: test.c rng.c
-	$(CC) -DSAVE -o $@ $^ -lm
+test: test.c $(dep) 
+	$(CC) -o $@ $< $(src) -lm
 
 testref: test.c zcomref.h
 	$(CC) -DREF -o $@ $< -lm
 
+testsv: testsv.c $(dep)
+	$(CC) -o $@ $< $(src) -lm
+
+testsp: testsv.c $(dep) 
+	$(CX) -DTESTSP -DN=2000000000 -o $@ $< $(src) -lm
+
 clean:
-	rm -f test testref testsv out* MTSEED *~
+	rm -f test testsv testsp testref out* MTSEED mt.dat *~
 
 .PHONY: all clean
 

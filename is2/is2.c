@@ -28,8 +28,8 @@ int is2_em(is_t *is)
 /* pick a random site, count neighbors with different spins */
 int is2_pick(is_t *is, int *nd)
 {
-  int id, i, j, l, lm, n, nm, e;
-  int *p, s, t;
+  int id, i, j, l, lm, n, nm;
+  int *p, s, t1, t2, t3, t4;
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
@@ -38,15 +38,11 @@ int is2_pick(is_t *is, int *nd)
   j = id % l;
   p = is->s + id;
   s = *p;
-  t  = (j != 0)  ? *(p-1) : *(p+lm); /* left */
-  e  = s ^ t;
-  t  = (j != lm) ? *(p+1) : *(p-lm); /* right */
-  e += s ^ t;
-  t  = (i != 0)  ? *(p-l) : *(p+nm); /* down */
-  e += s ^ t;
-  t  = (i != lm) ? *(p+l) : *(p-nm); /* up */
-  e += s ^ t;
-  *nd = e;
+  t1  = (j != 0)  ? *(p-1) : *(p+lm); /* left */
+  t2  = (j != lm) ? *(p+1) : *(p-lm); /* right */
+  t3  = (i != 0)  ? *(p-l) : *(p+nm); /* down */
+  t4  = (i != lm) ? *(p+l) : *(p-nm); /* up */
+  *nd = (s^t1) + (s^t2) + (s^t3) + (s^t4);
   return id;
 }
 
@@ -58,7 +54,7 @@ int is2_flip(is_t *is, int id, int nd)
   assert(id < is->n);
   s = *(p = is->s + id);
   *p = !s;
-  is->M += (*p = !s) ? 2 : -2;
+  is->M += *p ? 2 : -2;
   return is->E += 8 - (nd<<2);
 }
 
