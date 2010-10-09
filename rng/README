@@ -2,7 +2,8 @@ random number generator
 
 Benchmark:
 make testsp && time ./testsp 
-16.2~16.4 s for 2x10^9 calls.
+16.2~16.4 s for 2x10^9 calls (using rnd0()).
+6.5s for 2x10^9 calls (using rand32()).
 
 Ising model test:
 32.5~7 s for 10^9 Monte Carlo steps

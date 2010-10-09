@@ -11,12 +11,12 @@
 /* randomly pick a site and flip it */
 static void mc(is_t *is, double steps, double beta, int ncheck)
 {
-  static double proba[5] = {0.0};
+  UINT32 proba[5] = {0};
   double t, acc, tot;
   double e, s1, se, se2, eav, cv;
   double eref, cvref, lnzref;
   int h, nt;
-  unsigned id;
+  unsigned id = 0;
 
   if (0 != is2_load(is, DATAFILE))
     fprintf(stderr, "cannot load previous %s\n", DATAFILE);
@@ -25,8 +25,11 @@ static void mc(is_t *is, double steps, double beta, int ncheck)
   s1 = se = se2 = 0.0;
   nt = ncheck;
   for (t = 1.0; t <= steps; t += 1.0) {
+    IS2_PSEQ(is, id, h);
+/*    
     IS2_PICK(is, id, h);
-    if (h <= 0 || IS2_RNDSV() < proba[h]) {
+*/    
+    if (h <= 0 || mtrand() < proba[h]) {
       IS2_FLIP(is, id, h);
     }
     if (nt-- > 0) {
@@ -53,7 +56,6 @@ int main(void)
     fprintf(stderr, "cannot init\n");
     return -1;
   }
-  IS2_INFO(is, 0.4);
   mc(is, 1e9, 0.4, 10);
   printf("E = %d, M = %d\n", is->E, is->M);
   is2_close(is);

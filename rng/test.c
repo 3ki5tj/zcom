@@ -3,7 +3,7 @@
 #ifdef REF
 #include "zcomref.h"
 #else
-#include "rng.h"
+#include "rng.c"
 #endif
 
 #ifndef N
@@ -13,13 +13,14 @@
 int main(void) 
 {
   int i, id;
-  double x;
+  UINT32 x;
 
   for (i = 0; i < 2*N; i++) {
-    x = rnd0();
+    x = mtrand();
     id = i % N;
     if (id < 10)
-      printf("%6d: %16.14f\n", id, x);
+      printf("%6d: " UI32FMT "\n", id, x);
   }
   return 0;
 }
+

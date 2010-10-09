@@ -18,7 +18,7 @@ testexact: testexact.c $(dep)
 	$(CC) -o $@ $< $(src) 
 
 clean:
-	rm -f *~ a.out MTSEED *.dat $(bin)
+	rm -f *~ *.out MTSEED *.dat $(bin)
 
 .PHONY: clean all
 

@@ -24,16 +24,16 @@ cmp2: testsv test
 	diff out1 out3
 
 test: test.c $(dep) 
-	$(CC) -o $@ $< $(src) -lm
+	$(CC) -o $@ $< -lm
 
 testref: test.c zcomref.h
 	$(CC) -DREF -o $@ $< -lm
 
 testsv: testsv.c $(dep)
-	$(CC) -o $@ $< $(src) -lm
+	$(CC) -o $@ $< -lm
 
 testsp: testsv.c $(dep) 
-	$(CX) -DTESTSP -DN=2000000000 -o $@ $< $(src) -lm
+	$(CX) -DTESTSP -DN=2000000000 -o $@ $< -lm
 
 clean:
 	rm -f test testsv testsp testref out* MTSEED mt.dat *~

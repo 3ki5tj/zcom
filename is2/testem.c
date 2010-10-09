@@ -36,9 +36,7 @@ int main(void)
     fprintf(stderr, "cannot init\n");
     return -1;
   }
-  IS2_INFO(is, 1.0);
   for (i = 0; i < 10; i++) randflip(is);
-  
   printf("E = %d, M = %d\n", is->E, is->M);
   is2_close(is); 
   return 0;

@@ -8,8 +8,12 @@ include "rng.h" and compile with "rng.c" 3.8s (icc)
 2. It appears that the signed version (s = -1, 1) is 
 about 10% faster than the unsigned version (s = 0, 1).
 
-3. Benchmark is2ref.c, 24.0s for 10^9 moves 
-  cold start, all spin down, BETA = 0.4, 10^9 moves, 
+3. Benchmark is2ref.c, for 10^9 moves, BETA = 0.4, all-spin-down
+  24.0s (using double rnd0() < proba[h])
+  22.0s (using unsigned rnd0() < proba[h])
+  14.0s (using sequential move, balance vs. detailed balance)
+  + this means 8.0s for 10^9 random numbers
+
 * int id, ix, iy;      id = (int)(N*rnd0());        32.8s
 * unsigned id, ix, iy; ...                          29.9s 
 * ...                  id = (unsigned)(N*rnd0());   35.5s  (surprise!)
