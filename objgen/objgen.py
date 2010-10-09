@@ -506,7 +506,7 @@ class Object:
       nm = m.group(1)
       it1 = self.var2item(nm)
       if it1 == None:
-        print "skip [@%s], raw=[%s]" % (nm, val)
+        #print "skip [@%s], raw=[%s]" % (nm, val)
         pos += m.end(0)
         continue
       usr = it1.cmds["usr"]

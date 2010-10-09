@@ -10,7 +10,7 @@
 #define MT_LMASK 0x7fffffffUL /* least significant r bits */
 
 int mtidx_ = -1; /* index in mt_, -1: uninitialized */
-UINT32 mt_[MT_N]; /* array for the mt state vector */
+uint32_t mt_[MT_N]; /* array for the mt state vector */
 
 /* save the current mt state to file */
 int mtsave(const char *fname)
@@ -25,13 +25,13 @@ int mtsave(const char *fname)
     return 1;
   }
   fprintf(fp, "MTSEED\n%d\n", mtidx_);
-  for (k = 0; k < MT_N; k++) fprintf(fp, UI32FMT "\n", mt_[k]);
+  for (k = 0; k < MT_N; k++) fprintf(fp, "%"PRIu32"\n", mt_[k]);
   fclose(fp);
   return 0;
 }
 
 /* load mt state from `fname', or if it fails, use `seed' to initialize mt  */
-int mtload(const char *fname, UINT32 seed)
+int mtload(const char *fname, uint32_t seed)
 {
   static char s[64];
   int k, z, err = 1;
@@ -48,7 +48,7 @@ int mtload(const char *fname, UINT32 seed)
     } else {
       if (mtidx_ < 0) mtidx_ = MT_N; /* request updating */
       for (z = 1, k = 0; k < MT_N; k++) {
-        if (fscanf(fp, UI32FMT, &mt_[k]) != 1) break;
+        if (fscanf(fp, "%"PRIu32, &mt_[k]) != 1) break;
         if (mt_[k] != 0) z = 0; /* a non-zero number */
       }
       if (k != MT_N) fprintf(stderr, "%s incomplete %d/%d\n", fname, k, MT_N);
@@ -68,10 +68,10 @@ int mtload(const char *fname, UINT32 seed)
 }
 
 /* return an unsigned random number */
-UINT32 mtrand(void)
+uint32_t mtrand(void)
 {
-  UINT32 x;
-  static const UINT32 mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
+  uint32_t x;
+  static const uint32_t mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
   int k;
 
   if (mtidx_ < 0) mtload(NULL, 0);

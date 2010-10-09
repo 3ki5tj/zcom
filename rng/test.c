@@ -13,13 +13,13 @@
 int main(void) 
 {
   int i, id;
-  UINT32 x;
+  uint32_t x;
 
   for (i = 0; i < 2*N; i++) {
     x = mtrand();
     id = i % N;
     if (id < 10)
-      printf("%6d: " UI32FMT "\n", id, x);
+      printf("%6d: %u\n", id, x);
   }
   return 0;
 }

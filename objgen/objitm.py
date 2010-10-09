@@ -462,12 +462,18 @@ class Item:
           defl, prereq, desc)
   
     elif it.gtype == "object pointer":
+      if notalways(prereq): cow.addln(varname+" = NULL;")
+      cow.begin_if(prereq)
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
         fpfx, it.getargs("cfg"))
       cow.die_if(s, r"failed to initialize %s\n" % varname)
+      cow.validate(valid, varname)
+      cow.end_if(prereq)
 
     elif it.gtype == "object array":
+      if notalways(prereq): cow.addln(varname+" = NULL;")
+      cow.begin_if(prereq)
       fpfx = it.get_obj_fprefix()
       etp = it.get_gtype(offset = 1)
       cow.alloc_darr(varname, etp, cnt)
@@ -477,10 +483,15 @@ class Item:
         fpfx, varname, it.getargs("cfg"))
       cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
       cow.addln("}\n")
+      cow.validate(valid, varname)
+      cow.end_if(prereq)
 
     elif it.gtype == "dynamic array":
+      if notalways(prereq): cow.addln(varname+" = NULL;")
+      cow.begin_if(prereq)
       cow.init_darr(varname, it.get_gtype(offset = 1),
-          defl, cnt, desc, pp)
+          defl, cnt, valid, desc, pp)
+      cow.end_if(prereq)
     
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
@@ -852,11 +863,11 @@ class Item:
   def mpitask_var(it, cow, tag, ptr):
     call = it.cmds[tag+"_call"]
     valid = it.cmds[tag+"_valid"]
+    cond="%s->mpi_rank == %s"%(ptr, MASTERID)
     if valid:
       cow.validate(valid)
       return
     if call:
-      cond="%s->mpi_rank == %s"%(ptr, MASTERID)
       cow.begin_if(cond)
       cow.addln(call+";"); 
       cow.end_if(cond)
@@ -899,7 +910,6 @@ class Item:
           print "need temporary array for reduce, use $redtmp:"
           raise Exception
         cow.mpisum(varname, redtmp, cnt, etype, MASTERID, comm)
-        cond = "%s->mpi_rank == %s"%(ptr, MASTERID)
         cow.begin_if(cond)
         # add synchonized variable on the master
         cow.declare_var("int i")

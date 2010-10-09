@@ -11,7 +11,7 @@
 /* randomly pick a site and flip it */
 static void mc(is_t *is, double steps, double beta, int ncheck)
 {
-  UINT32 proba[5] = {0};
+  uint32_t proba[5] = {0};
   double t, acc, tot;
   double e, s1, se, se2, eav, cv;
   double eref, cvref, lnzref;
@@ -32,7 +32,7 @@ static void mc(is_t *is, double steps, double beta, int ncheck)
     if (h <= 0 || mtrand() < proba[h]) {
       IS2_FLIP(is, id, h);
     }
-    if (nt-- > 0) {
+    if (nt-- == 0) {
       nt = ncheck;
       s1 += 1.0;
       se += e = is->E;

@@ -1,3 +1,4 @@
+#include "rng.h"
 #ifndef IS2_H__
 #define IS2_H__
 
@@ -25,8 +26,8 @@ void    is2_close(is_t *is);
 /* set transition probability */
 #define is2_setproba(p, bet) { \
   double x_ = exp(-4. * bet); \
-  p[2] = (UINT32) (4294967295. * x_); \
-  p[4] = (UINT32) (4294967295. * x_*x_); }
+  p[2] = (uint32_t) (4294967295. * x_); \
+  p[4] = (uint32_t) (4294967295. * x_*x_); }
 
 /* faster macro version */
 #ifdef  IS2_LB  /* L = 2^LB, N = L*L */

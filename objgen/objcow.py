@@ -194,13 +194,14 @@ class CCodeWriter:
     msg = r"no memory! var: %s, type: %s" % (var, type)
     self.die_if(cond, msg)
 
-  def init_darr(self, var, type, default, cnt, desc, pp = None):
+  def init_darr(self, var, type, default, cnt, valid, desc, pp = None):
     ''' write code for initializing a dynamic array '''
     # since we allocate array space by default (as long as $cnt exists
     # assign cnt to 0 is the trick to avoid dynamic allocation
     if cnt.strip() != "0":  
       self.alloc_darr(var, type, cnt)
       self.init_sarr(var, default, cnt, pp)
+      self.validate(valid, var)
     else:
       self.addln(var+" = NULL;")
 
@@ -276,14 +277,20 @@ class CCodeWriter:
 
   def cfgget_var(self, var, key, type, fmt, default,
       must, prereq, tfirst, valid, desc):
-    # if prereq is missing, it defaults to 1 
+    
+    # char * is to be allocated dynamically, so be careful
+    if (not tfirst and notalways(prereq)
+        and type == "char *" and default != "NULL"):
+      self.assign(var, "NULL", type)
+      tfirst = 1  # force test first
+
     if not tfirst: self.assign(var, default, type)
-    self.begin_if(prereq)    
+    self.begin_if(prereq) # not effective if prereq == None
     if tfirst: self.assign(var, default, type)
     
     self.cfgget_var_low(var, key, type, fmt, default,
         must, valid, desc)
-    
+   
     self.end_if(prereq)
     self.addln()
 

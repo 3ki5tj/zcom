@@ -12,12 +12,12 @@ int main(void)
   double t;
   int E, h;
   unsigned id = 0, ix, iy;
-  UINT32 proba[5] = {0};
+  uint32_t proba[5] = {0};
 
   for (id = 0; id < N; id++) s[id] = -1; /* initialize a spin configuration */
   E = -2*N;
-  proba[2] = (UINT32) (4294967295. * exp(-4.*BETA));
-  proba[4] = (UINT32) (4294967295. * exp(-8.*BETA));
+  proba[2] = (uint32_t) (4294967295. * exp(-4.*BETA));
+  proba[4] = (uint32_t) (4294967295. * exp(-8.*BETA));
   for (t = 0; t < 1e9; t++) {
     /* id = mtrand() >> (32-2*LB); */
     id = (id + 1) % N;

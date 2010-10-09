@@ -5,9 +5,23 @@
 #include <string.h>
 #include <math.h>
 
-#ifndef UINT32  /* 32-bit unsigned int */
-#define UINT32  unsigned
-#define UI32FMT "%u"
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+  #include <inttypes.h>
+#elif defined(_MSC_VER) || defined(__BORLANDC__)
+  typedef unsigned uint32_t;
+  typedef unsigned __int64 uint64_t;
+#else
+  #include <inttypes.h>
+#endif
+
+#ifndef PRIu64
+  #if defined(_MSC_VER) || defined(__BORLANDC__)
+    #define PRIu32 "I32u"
+    #define PRIu64 "I64u"
+  #else
+    #define PRIu32 "u"
+    #define PRIu64 "llu"
+  #endif
 #endif
 
 #define rand32()  mtrand()
@@ -16,8 +30,8 @@
 #define MTFILE    "MTSEED"  /* default file */
 #define MTSEED    5489UL    /* default seed */
 int mtsave(const char *fname);
-int mtload(const char *fname, UINT32 seed);
-UINT32 mtrand(void);
+int mtload(const char *fname, uint32_t seed);
+uint32_t mtrand(void);
 double grand0(void);
 
 #endif
