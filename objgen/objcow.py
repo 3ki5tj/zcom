@@ -644,6 +644,7 @@ class CCodeWriter:
     ''' match: read to temporary space '''
     tpint = ("int", "unsigned", "unsigned int")
     tpdbl = ("double",)
+    #if match: print "var = %s, match = %s, tag = %s, type = %s" % (var, match, tag, type(match))
     if tag == "w": match = 0
     if match: onerr = 0 # default: onerr = goto ERR;
     if tp not in (tpint + tpdbl):
@@ -656,6 +657,7 @@ class CCodeWriter:
       if match: 
         self.declare_var("%s %s" % (tp, tmp)) # declare tmp var
         if type(match) == str: # nasty, start an branch
+          #print "start if for %s" % match
           self.begin_if(match)
     else: rvar = var
 
@@ -671,7 +673,7 @@ class CCodeWriter:
           self.end_if(match)
       self.validate(valid, var)
   
-  def rb_arr1d(self, arr, cnt, tp, match = None):
+  def rb_arr1d(self, arr, cnt, tp, match = None, valid = None):
     if tp not in ("int", "double"):
       print "don't know how to write type %s for %s" % (tp, arr)
       raise Exception
@@ -683,9 +685,11 @@ class CCodeWriter:
       self.addln("}")
       self.begin_else()
       self.rwb_atom("r", arr, cnt = cnt)
+      self.validate(valid)
       self.end_if(match)
     else:
       self.rwb_atom("r", arr, cnt = cnt)
+      self.validate(valid)
 
   def rb_arr2d(self, arr, dim, tp, trim):
     '''
@@ -735,18 +739,20 @@ class CCodeWriter:
 
     self.addln("}") # end of the loop
 
-  def rwb_arr(self, rw, arr, dim, tp, trim = 1, match = None):
+  def rwb_arr(self, rw, arr, dim, tp, trim = 1, 
+      match = None, valid = None):
     ndim = len(dim)
     if ndim == 2:
       if rw == "w":
         self.wb_arr2d(arr, dim, tp, trim)
       else:
         self.rb_arr2d(arr, dim, tp, trim)
+        self.validate(valid)
     elif ndim == 1:
       if rw == "w":
         self.wb_arr1d(arr, dim[0], tp)
       else:
-        self.rb_arr1d(arr, dim[0], tp, match)
+        self.rb_arr1d(arr, dim[0], tp, match, valid)
     else: raise Exception
 
   def rb_checkbytes(self):

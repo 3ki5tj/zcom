@@ -327,9 +327,9 @@ class Item:
     '''
     flag = it.cmds["flag"]
     if not flag: return
-    # attach flag_prefix
-    if "flag_prefix" in it.cmds:
-      prefix = it.cmds["flag_prefix"]
+    # attach flag prefix
+    if it.cmds["flagprefix"]:
+      prefix = it.cmds["flagprefix"]
       if not flag.startswith(prefix):
         flag = prefix + flag
     it.cmds["flag"] = flag
@@ -349,7 +349,7 @@ class Item:
     if not it.cmds["obj"]:
       print "item is not an object %s" % it
       raise Exception
-    pfx = it.cmds["obj_fprefix"]
+    pfx = it.cmds["objfprefix"]
     if pfx == None: # make a guess
       tp = it.decl.datatype
       if tp.endswith("_t"): tp = tp[:-2]
@@ -428,7 +428,7 @@ class Item:
     valid   = it.cmds["cfgvalid"]
     if valid == None: valid = it.cmds["valid"]
     must    = it.cmds["must"]
-    cnt = it.cmds["cfg_cnt"]
+    cnt = it.cmds["cfgcnt"]
     if cnt == None: cnt = it.cmds["cnt"]
     desc    = it.cmds["desc"]
     flag    = it.cmds["flag"]
@@ -525,8 +525,8 @@ class Item:
   def rwb_var(it, cow, rw, varname):
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    bincnt = it.cmds[rw+"b_cnt"]
-    if bincnt == None: bincnt = it.cmds["bin_cnt"]
+    bincnt = it.cmds[rw+"bcnt"]
+    if bincnt == None: bincnt = it.cmds["bincnt"]
     cond = it.cmds["binprereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
@@ -564,10 +564,11 @@ class Item:
     if passme:
       pass
     elif it.gtype == "dynamic array":
-      # support nasty flag $bin_cnt
+      # support nasty flag $bincnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cow.rwb_arr(rw, varname, dim, it.decl.datatype, trim = 1, match = verify)
+      cow.rwb_arr(rw, varname, dim, it.decl.datatype, trim = 1, 
+          match = verify, valid = valid)
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       extra = ", endn" if rw == "r" else ""
@@ -786,7 +787,7 @@ class Item:
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     desc = it.cmds["desc"]
-    mpicnt = it.cmds["mpi_cnt"]
+    mpicnt = it.cmds["mpicnt"]
     if mpicnt: cnt = mpicnt;
     prereq = it.cmds["prereq"]
     mpi = it.cmds["mpi"]
@@ -861,8 +862,8 @@ class Item:
     if pp: cow.addln("#endif")
 
   def mpitask_var(it, cow, tag, ptr):
-    call = it.cmds[tag+"_call"]
-    valid = it.cmds[tag+"_valid"]
+    call = it.cmds[tag+"call"]
+    valid = it.cmds[tag+"valid"]
     cond="%s->mpi_rank == %s"%(ptr, MASTERID)
     if valid:
       cow.validate(valid)

@@ -553,7 +553,7 @@ class Object:
     sort items according to ordering tags 
     `tag' can be bin or cfg
     '''
-    sprev = "%s_prev" % tag
+    sprev = "%sprev" % tag
     nitems = len(items)
     ideps = [None] * nitems
     # for each item build a dependency list
