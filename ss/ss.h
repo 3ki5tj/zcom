@@ -19,7 +19,7 @@ enum { SSCAT = 1, SSDELETE = 2, SSSHRINK = 3, SSSINGLE = 0x1000 };
 #define ssfgets(s, pn, fp)    ssfgetx(&(s), (pn), '\n', (fp))
 #define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
 
-void  ssmanage(char *, unsigned);
+int   ssmanage(char *, unsigned);
 char *sscpycatx(char **, const char *, size_t, unsigned);
 char *ssfgetx(char **, size_t *, int, FILE *fp);
 

@@ -13,7 +13,7 @@
 #define SSOVERALLOC 1
 #define sscalcsize_(n) (((n)/SSMINSIZ + 1) * SSMINSIZ) /* size for n nonblank characters */
 
-struct ssheader{
+struct ssheader {
   size_t size;
   size_t hashval;
   struct ssheader *next;
@@ -33,13 +33,14 @@ static size_t sshashval_(const char *p)
  * return the *previous* header to the one that associates with s
  * first locate the list from the Hash value, then enumerate the linked list.
  * */
-static struct ssheader *sslistfind_(char *s)
+static struct ssheader *sslistfind_(const char *s)
 {
-  struct ssheader *hp;
+  struct ssheader *hp, *head;
 
-  if (s == NULL)
-    return NULL;
-  for (hp = ssbase_ + sshashval_(s); hp->next != ssbase_; hp = hp->next)
+  if (s == NULL) return NULL;
+  head = ssbase_ + sshashval_(s);
+  if (head->next == NULL) return NULL; /* uninitialized head node */
+  for (hp = head; hp->next != head; hp = hp->next)
     if ((char *)(hp->next + 1) == s)
       return hp;
   return NULL;
@@ -117,15 +118,17 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
 }
 
 /* delete a string, shrink memory, etc ... */
-void ssmanage(char *s, unsigned flags)
+int ssmanage(char *s, unsigned flags)
 {
   struct ssheader *hp, *head;
   unsigned opt = flags & 0xFF;
   size_t i;
 
   if (flags & SSSINGLE) {
-    if (s == NULL || (hp = sslistfind_(s)) == NULL)
-      return;
+    if (s == NULL || (hp = sslistfind_(s)) == NULL) {
+      if (s) fprintf(stderr, "ssmanage: unknown address %p (%s)\n",  s, s);
+      return -1;
+    }
     ssmanage_low_(hp, opt);
   } else {
     for (i = 0; i < SSHASHSIZ; i++)
@@ -133,6 +136,7 @@ void ssmanage(char *s, unsigned flags)
         /* we must not operate on h itself, which renders the iterator h invalid */
         ssmanage_low_(hp, opt);
   }
+  return 0;
 }
 
 /*
@@ -157,7 +161,7 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
 
   /* both ps and *ps can be NULL, in which cases we leave hp as NULL */
   if (ps != NULL && (s = *ps) != NULL && (hp = sslistfind_(s)) == NULL) {
-    fprintf(stderr, "sscpycatx: string is not previously registered!\n");
+    fprintf(stderr, "sscpycatx: unknown address %p (%s)\n", s, s);
     return NULL;
   }
   if (t != NULL)
@@ -199,8 +203,10 @@ char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   if ((s = *ps) == NULL) /* allocate an initial buffer if *ps is NULL */
     if ((s = sscpycatx(ps, NULL, 0, 0u)) == NULL)
       return NULL;
-  if ((hp = sslistfind_(s)) == NULL)
+  if ((hp = sslistfind_(s)) == NULL) {
+    fprintf(stderr, "ssfgetx: unknown address %p (%s)\n", s, s);
     return NULL;
+  }
   max = hp->next->size-1;
   for (n = 0; (c = fgetc(fp)) != EOF; ) {
     if (n+1 > max) { /* request space for n+1 nonblank characters */
