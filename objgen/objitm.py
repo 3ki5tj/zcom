@@ -519,7 +519,6 @@ class Item:
           defl, must, prereq, tfirst, valid, desc)
 
     if pp: cow.addln("#endif")
-    ###raw_input("endif pp=[%s], item=%s"%(pp, it))
     
 
   def rwb_var(it, cow, rw, varname):
@@ -527,7 +526,8 @@ class Item:
     cnt = it.cmds["cnt"]
     bincnt = it.cmds[rw+"bcnt"]
     if bincnt == None: bincnt = it.cmds["bincnt"]
-    cond = it.cmds["binprereq"]
+    prereq = it.cmds[rw+"bprereq"]
+    if prereq == None: prereq = it.cmds["binprereq"]
     defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     if rw == "r":
@@ -542,7 +542,7 @@ class Item:
       valid = None
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
-    if notalways(cond): cow.begin_if(cond)
+    if notalways(prereq): cow.begin_if(prereq)
 
     if not it.decl:
       print "no declaration gtype = %s" % it.gtype
@@ -591,7 +591,7 @@ class Item:
     else:
       cow.rwb_var(rw, varname, it.gtype, verify, valid = valid)
 
-    if notalways(cond): cow.end_if(cond)
+    if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
 
    
