@@ -495,7 +495,7 @@ class Object:
 
     # $ismaster  --> ptr->mpi_rank == %s
     pattern = "\$ismaster"
-    val = re.sub(pattern, "(%s->mpi_rank == %s)" % (ptr, MASTERID), val)
+    val = re.sub(pattern, "%s->mpi_rank == %s" % (ptr, MASTERID), val)
 
     # @var
     pattern = r"(?<![\@\\])\@([a-zA-Z_]\w*)" # exclude @@, \@
@@ -598,7 +598,8 @@ class Object:
     if not disabled(self.cmds["manifest"]):
       funclist += [self.gen_func_manifest()]
     if not disabled(self.cmds["mpi"]):
-      funclist += [self.gen_func_initmpi()]
+      if not disabled(self.cmds["initmpi"]):
+        funclist += [self.gen_func_initmpi()]
       if not disabled(self.cmds["reduce"]):
         funclist += [self.gen_func_mpitask("reduce")]
       if not disabled(self.cmds["bcast"]):

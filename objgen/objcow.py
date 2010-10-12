@@ -507,9 +507,9 @@ class CCodeWriter:
   def wb_checkbytes(self):
     ''' write some checking bytes '''
     self.declare_var("int size");
-    self.addln("size = sizeof(int);")
+    self.addln("size = (int) sizeof(int);")
     self.wb_var("size", "int")
-    self.addln("size = sizeof(double);")
+    self.addln("size = (int) sizeof(double);")
     self.wb_var("size", "int")
 
   def wb_arr2d(self, arr, dim, tp, trim):
@@ -768,38 +768,44 @@ class CCodeWriter:
         "(unsigned) %s, (unsigned) %s" % (tmp, ref), 
         onerr = "goto ERR;")
     self.rb_var(tmp, "int")
-    self.match_var(tmp, "sizeof(double)")
+    self.match_var(tmp, "(int) sizeof(double)")
 
-  def test_arrempty(self, var, cnt, type, isobj = 0):
+  def test_arrempty(self, var, cnt, tp, isobj = 0):
     ''' test if an array is empty '''
 
-    if type in ("double", "float"):
+    if tp in ("double", "float"):
       test = "fabs(%s[i]) > 1e-30" % var
-    elif type in ("int", "unsigned", "long"):
+    elif tp in ("int", "unsigned", "long"):
       test = var + "[i]"
     elif isobj:
       test = "*((char *)%s + i)" % var
-      cnt = "%s*sizeof(%s)" % (cnt, type)
+      cnt = "%s*sizeof(%s)" % (cnt, tp)
     else: return None
     self.declare_var("int i")
     self.addln("for (i = %s-1; i >= 0; i--) if (%s) break;", cnt, test)
     return "i >= 0"
 
-  def manifest(self, var, type):
-    fmt = type2fmt(type)
+  def manifest(self, var, tp):
+    fmt = type2fmt(tp)
     self.addln('printf("%s", %s);\n', fmt, var)
 
-  def mpibcast(self, var, cnt, type, master, comm):
-    self.addln("MPI_Bcast(%s, %s*sizeof(%s), MPI_BYTE, %s, %s);",
-            var, cnt, type, master, comm)
+  def mpibcast(self, var, cnt, tp, master, comm, onerr = "exit(1);"):
+    ''' bcast from master to others '''
+    self.die_if("MPI_SUCCESS != MPI_Bcast(%s, (%s)*sizeof(%s), MPI_BYTE, %s, %s)"
+        % (var, cnt, tp, master, comm), 
+        "failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        % (var, tp, cnt),  # msg
+        "%s, %s, (int) %s" % (var, cnt, comm), # args
+        onerr = onerr)
 
-  def mpisum(self, var, tmp, cnt, type, master, comm):
-    '''
-    sum local array to temporary array
-    '''
-    self.addln("MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s);", 
-        var, tmp, cnt, mpitype(type), master, comm)
+  def mpisum(self, var, tmp, cnt, tp, master, comm, onerr = "exit(1)"):
+    ''' sum local array to temporary array '''
+    self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)" 
+        % (var, tmp, cnt, mpitype(tp), master, comm), # cond 
+        "failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        % (var, tmp, tp, cnt),  # msg
+        "%s, %s, (int) %s" % (var, cnt, comm), # args
+        onerr = onerr)
     self.declare_var("int i")
     # clear the local variable
-    self.addln("for (i = 0; i < %s; i++) %s[i] = 0.0;",
-        cnt, var)
+    self.addln("for (i = 0; i < %s; i++) %s[i] = 0.0;", cnt, var)
