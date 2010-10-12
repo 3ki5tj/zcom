@@ -635,7 +635,7 @@ class Object:
     cow.dump_block(block, tab, offset)
     block = []
     if not disabled(self.cmds["mpi"]):
-      cow.addln("int mpi_rank;")
+      cow.addln("int mpi_rank, mpi_size;")
       cow.addln("#ifdef %s\nMPI_Comm mpi_comm;\n#endif\n", USE_MPI)
     cow.addln("} " + self.name + ";")
     
@@ -959,12 +959,29 @@ class Object:
 
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
         onerr = "return -1;")
-    cow.addln("MPI_Bcast(%s, sizeof(*%s), MPI_BYTE, %s, comm);\n",
-        ptr, ptr, MASTERID);
+    
+    cow.declare_var("int size = 0;")
+    cow.declare_var("int rank = 0;")
+    
+    cow.addln("%s->mpi_comm = comm;", ptr)
+    # get size first
+    cond = "comm != MPI_COMM_NULL"
+    cow.begin_if(cond)
+    cow.die_if("MPI_SUCCESS != MPI_Comm_size(comm, &size)", 
+        "cannot even get mpi size")
+    cow.end_if(cond)
+    
+    cond = "size > 1"
+    cow.begin_if(cond)
+    cow.die_if("MPI_SUCCESS != MPI_Comm_rank(comm, &rank)",
+        "cannot get mpi rank");
+    # bcast the structure, no need to do so if only one node
+    cow.mpibcast("rank", "size", ptr, 1, "*"+ptr, MASTERID, "comm")
+    cow.end_if(cond)
+    
     # assign rank and communicator
     # must be done after Bcast to avoid being overwritten 
-    cow.addln("%s->mpi_comm = comm;", ptr)
-    cow.addln("MPI_Comm_rank(%s->mpi_comm, &%s->mpi_rank);", ptr, ptr)
+    cow.addln("%s->mpi_size = size;\n%s->mpi_rank = rank;", ptr, ptr)
 
     for it in self.items:
       it.initmpi_var(cow, self.ptrname)
@@ -988,7 +1005,7 @@ class Object:
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
         onerr = "return -1;")
     cow.die_if("%s->mpi_comm == %s"%(ptr, type2zero("MPI_Comm")), 
-        "null communicator: %s of %s" % (ptr, obj), 
+        "null communicator: %s->mpi_comm" % (ptr), 
         onerr = "return -1;")
     
     items = self.sort_items(self.items, tag)

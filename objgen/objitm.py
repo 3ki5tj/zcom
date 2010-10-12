@@ -784,6 +784,8 @@ class Item:
 
     varnm = it.decl.name
     varname = ptr + "->" + varnm
+    rank = ptr + "->mpi_rank"
+    size = ptr + "->mpi_size"
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     desc = it.cmds["desc"]
@@ -807,18 +809,18 @@ class Item:
       cow.alloc_darr(varname, etype, cnt)
       cow.end_if(notmaster)
     
-    elif mpi in (1, "1", "bcast"):  # allocate and bcast
+    # an array to be bcasted, allocate space on nonmasters
+    elif mpi in (1, "1", "bcast"):
+      cow.add_comment(desc)
       if it.gtype == "dynamic array":
-        cow.add_comment(desc)
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, etype, cnt)
         cow.end_if(notmaster)
-        cow.mpibcast(varname, cnt, etype, MASTERID, "comm")
+        cow.mpibcast(rank, size, varname, cnt, etype, MASTERID, "comm")
         cow.addln()
       elif it.gtype in ("object array", "object pointer"):
         isarr = (it.gtype == "object array")
         if not isarr: cnt = "1"
-        cow.add_comment(desc)
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, it.decl.datatype, cnt)
         cow.end_if(notmaster)
@@ -830,13 +832,12 @@ class Item:
         if isarr: cow.addln('}\n')
       elif it.gtype == "char *":
         cow.declare_var("int i", pp=pp)
-        cow.add_comment(desc)
         cow.addln("i = strlen(%s);", varname)
-        cow.mpibcast("&i", 1, "int", MASTERID, "comm")
+        cow.mpibcast(rank, size, "&i", 1, "int", MASTERID, "comm")
         cow.begin_if(notmaster)
         cow.addln("%s = ssnew(i);" % varname)
         cow.end_if(notmaster)
-        cow.mpibcast(varname, "i", "char", MASTERID, "comm")
+        cow.mpibcast(rank, size, varname, "i", "char", MASTERID, "comm")
         cow.addln()
       else:
         print "cannot bcast %s of type %s" % (it.decl.name, it.gtype)
@@ -878,6 +879,8 @@ class Item:
 
     varnm = it.decl.name
     varname = ptr + "->" + varnm
+    rank = ptr + "->mpi_rank"
+    size = ptr + "->mpi_size"
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     desc = it.cmds["desc"]
@@ -910,7 +913,7 @@ class Item:
         if not redtmp:
           print "need temporary array for reduce, use $redtmp:"
           raise Exception
-        cow.mpisum(varname, redtmp, cnt, etype, MASTERID, comm)
+        cow.mpisum(rank, size, varname, redtmp, cnt, etype, MASTERID, comm)
         cow.begin_if(cond)
         # add synchonized variable on the master
         cow.declare_var("int i")
@@ -918,7 +921,7 @@ class Item:
           cnt, task, redtmp)
         cow.end_if(cond)
       elif tag == "bcast":
-        cow.mpibcast(varname, cnt, etype, MASTERID, comm)
+        cow.mpibcast(rank, size, varname, cnt, etype, MASTERID, comm)
       
       cow.addln()
     else:

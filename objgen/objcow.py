@@ -205,12 +205,15 @@ class CCodeWriter:
     else:
       self.addln(var+" = NULL;")
 
-  def assign(self, var, value, type):
+  def assign(self, var, val, type, strspec = 0):
     ''' assignment (for simple types) '''
-    if type == "char *" and value != "NULL":
-      self.addln('%s = ssdup("%s");', var, value)
+    callcmd = "$>"
+    if val.startswith(callcmd):
+      self.addln(val[len(callcmd):].lstrip() + ";")
     else:
-      self.addln("%s = %s;", var, value)
+      if strspec and type == "char *" and re.match(r'".*"$', val):
+        val = "ssdup(%s)" % val # apply ssdup for a bare string 
+      self.addln("%s = %s;", var, val)
 
   def checktp(self, var, type):
     # add type checking
@@ -271,7 +274,7 @@ class CCodeWriter:
       cond = "cfg == NULL || " + cond
       self.msg_if(cond, 
         'assuming default: %s = %s, key: %s' 
-        % (var_, default, dm(key)))
+        % (var_, escape(default), dm(key)))
   
     self.validate(valid, var_)
 
@@ -284,9 +287,9 @@ class CCodeWriter:
       self.assign(var, "NULL", type)
       tfirst = 1  # force test first
 
-    if not tfirst: self.assign(var, default, type)
+    if not tfirst: self.assign(var, default, type, 1)
     self.begin_if(prereq) # not effective if prereq == None
-    if tfirst: self.assign(var, default, type)
+    if tfirst: self.assign(var, default, type, 1)
     
     self.cfgget_var_low(var, key, type, fmt, default,
         must, valid, desc)
@@ -789,23 +792,29 @@ class CCodeWriter:
     fmt = type2fmt(tp)
     self.addln('printf("%s", %s);\n', fmt, var)
 
-  def mpibcast(self, var, cnt, tp, master, comm, onerr = "exit(1);"):
+  def mpibcast(self, mpirank, mpisize, var, cnt, tp, master, comm, onerr = "exit(1);"):
     ''' bcast from master to others '''
+    cond = "%s > 1" % mpisize
+    self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Bcast(%s, (%s)*sizeof(%s), MPI_BYTE, %s, %s)"
         % (var, cnt, tp, master, comm), 
-        "failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
         % (var, tp, cnt),  # msg
-        "%s, %s, (int) %s" % (var, cnt, comm), # args
+        "%s, %s, %s, %s, (int) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
+    self.end_if(cond)
 
-  def mpisum(self, var, tmp, cnt, tp, master, comm, onerr = "exit(1)"):
+  def mpisum(self, mpirank, mpisize, var, tmp, cnt, tp, master, comm, onerr = "exit(1);"):
     ''' sum local array to temporary array '''
+    cond = "%s > 1" % mpisize
+    self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)" 
         % (var, tmp, cnt, mpitype(tp), master, comm), # cond 
-        "failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        "%%3d/%%3d: failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
         % (var, tmp, tp, cnt),  # msg
-        "%s, %s, (int) %s" % (var, cnt, comm), # args
+        "%s, %s, %s, %s, (int) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
     self.declare_var("int i")
+    self.end_if(cond)
     # clear the local variable
     self.addln("for (i = 0; i < %s; i++) %s[i] = 0.0;", cnt, var)
