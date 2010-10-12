@@ -80,7 +80,7 @@ class CComment:
     s = self.begin.gettext(src, self.end).strip()
     if s.startswith(cmt0) and s.endswith(cmt1):
       s = s[len(cmt0) : len(s) - len(cmt1)]
-    #print "comment text is [%s] from %s to %s" % (s, self.begin, self.end)
+    #  print "comment text is [%s] from %s to %s" % (s, self.begin, self.end)
     return s
 
   def checkbe(self):

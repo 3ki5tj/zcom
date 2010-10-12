@@ -380,7 +380,9 @@ class Item:
       return block
     
     # 2. handle declaration
-    if it.cmds["usr"] not in (None, 1, "cfg"):
+    usr = it.cmds["usr"]
+    # we need to declare $usr:cfg (and possibly $usr:xxxdup) 
+    if usr != None and usr != 1 and usr != "cfg":
       return block
     if it.decl:
       decl0 = it.decl.datatype
@@ -507,7 +509,7 @@ class Item:
     else: # regular variable
       usrval = it.cmds["usr"]
       if usrval:
-        if usrval in ("cfg", 1): # usr variables
+        if usrval in ("cfg", "cfgdup", 1): # usr variables
           cow.assign(varname, varnm, it.gtype)
         else: pass # ignore other usr variables
       elif not it.cmds["io_cfg"]: # assign default value
@@ -633,12 +635,16 @@ class Item:
   def close_var(it, cow, ptrname, maxwid):
     ''' free a pointer / close an object '''
     if not it.decl or it.isdummy: return
-    if it.cmds["usr"] == "parent": return
+    usr = it.cmds["usr"]
+    if usr == "parent": return
+    if type(usr) == str and usr.endswith("ref"): return
     if it.gtype not in ("char *", "dynamic array",
         "object array", "object pointer"): return
 
     call = it.cmds["closecall"]
     varnm = it.decl.name;
+    if varnm == "iopref":
+      print "usr : %s" % usr; raw_input
     varname = "%s->%s" % (ptrname, varnm)
 
     pp = it.cmds["#if"]

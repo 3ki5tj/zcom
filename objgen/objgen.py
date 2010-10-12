@@ -98,7 +98,10 @@ Commands of an item:
                 similar $usr:rb; $usr:wb; $usr:close;
               $usr:rbtmp; temporary variable to be used in readbin()
                 no corresponding declaration in the struct
-                similar variable: wbtmp, bintmp;
+                similar variable: wbtmp, bintmp, cfgtmp;
+              $usr:cfgref; parameter of cfgopen(), 
+                buf not a member of the struct
+              probably support dup suffix, like bindup 
 
   * $cfgargs: additional args for cfgopen() objects
               similarly $rbargs, $wbargs;
@@ -314,6 +317,7 @@ class Object:
     for it in self.items:
       if it.cmt:
         cmds = Commands(it.cmt.raw)
+        #print "cmds.raw=%s\ncmt.raw=%s"%(cmds.raw, it.cmt.raw); raw_input()
         if it.pre and it.pre.flag:
           cmds["flag"] = it.pre.flag
           cmds["flagval"] = it.pre.flagval
@@ -677,7 +681,8 @@ class Object:
         # replace the name by the proper usr_name in the declarator
         if usrval == "parent" and tag == "cfg":
           pass
-        elif usrval == tag:
+        elif usrval in (tag, tag+"ref", tag+"dup"):
+          # if we specific a fold and it mismatches
           if f and it not in self.folds[f].items:
             continue  # wrong fold
         else:

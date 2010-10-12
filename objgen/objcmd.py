@@ -15,7 +15,8 @@ class Commands:
     # do symbol substitution first
     self.cmds = {}
     self.persist = {}
-    self.raw = self.subst_symbols(s)
+    # shouldn't subst symbols before parse commands
+    self.raw = s;  # self.subst_symbols(s)
     self.parse_commands()
 
   # make the object looks like a dictionary
@@ -99,9 +100,11 @@ class Commands:
             #print "turning off an persistent command, raw=[%s]" % s; raw_input()
             self.persist[cmd] = -1
             goodcmd = 0
-          else:  
+          else: 
             #print "set an persistent command, raw=[%s] args=[%s]" % (s, args); raw_input()
             self.persist[cmd] = 1
+        #print "multiple %s]\ns=%s\nm0=%s\nself.raw=%s" % (args, s, m.group(0),repr(self.raw))
+        #raw_input()
       else:
         if s.find("$") < 0: break
         # print "look for a lazy command, $cmd with no ; s = [%s]" % s
@@ -122,7 +125,7 @@ class Commands:
           #print "a comment is found [%s]" % m.group(0)
 
       if goodcmd:
-        self.cmds[cmd] = args # add to dictionary
+        self.cmds[cmd] = self.subst_symbols(args) # add to dictionary
       s = s[:m.start(1)] + s[m.end(0):] # remove the command from comment
       #print "a pattern is found [%s]: [%s], rest: %s" % (
       #    cmd, param, s)
@@ -136,15 +139,16 @@ class Commands:
       s = ' '.join(sa).strip().rstrip(",;.")
       self.cmds["desc"] = s 
 
-  def subst_symbols(self, s, do_at = 0):
+  def subst_symbols(self, s):
     ''' 
     $$ or \$  =>  $ 
     \;        =>  ;
     '''
+    if s in (None, 1): return s
     if len(s) == 0: return ""
     # merge the remaining string to description
     s = re.sub(r"[\$\\]\$", "$", s) # literal $
-    s = re.sub(r"\\;", ";", s) # literal ;
+    s = re.sub(r"\\;\s*", ";\n", s) # literal ;
     return s
 
   def addpre(self, pif, pelse, pendif):
