@@ -968,7 +968,6 @@ class Object:
     cow.declare_var("int size = 0;")
     cow.declare_var("int rank = 0;")
     
-    cow.addln("%s->mpi_comm = comm;", ptr)
     # get size first
     cond = "comm != MPI_COMM_NULL"
     cow.begin_if(cond)
@@ -986,6 +985,7 @@ class Object:
     
     # assign rank and communicator
     # must be done after Bcast to avoid being overwritten 
+    cow.addln("%s->mpi_comm = comm;", ptr)
     cow.addln("%s->mpi_size = size;\n%s->mpi_rank = rank;", ptr, ptr)
 
     for it in self.items:

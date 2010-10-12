@@ -804,8 +804,9 @@ class CCodeWriter:
         onerr = onerr)
     self.end_if(cond)
 
-  def mpisum(self, mpirank, mpisize, var, tmp, cnt, tp, master, comm, onerr = "exit(1);"):
+  def mpireduce(self, mpirank, mpisize, var, tmp, cnt, tp, master, comm, onerr = "exit(1);"):
     ''' sum local array to temporary array '''
+    self.declare_var("int i")
     cond = "%s > 1" % mpisize
     self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)" 
@@ -814,7 +815,9 @@ class CCodeWriter:
         % (var, tmp, tp, cnt),  # msg
         "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
-    self.declare_var("int i")
+    self.begin_else()
+    self.addln("for (i = 0; i < %s; i++) %s[i] = %s[i];", cnt, tmp, var)
     self.end_if(cond)
     # clear the local variable
     self.addln("for (i = 0; i < %s; i++) %s[i] = 0.0;", cnt, var)
+

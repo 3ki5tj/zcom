@@ -919,7 +919,7 @@ class Item:
         if not redtmp:
           print "need temporary array for reduce, use $redtmp:"
           raise Exception
-        cow.mpisum(rank, size, varname, redtmp, cnt, etype, MASTERID, comm)
+        cow.mpireduce(rank, size, varname, redtmp, cnt, etype, MASTERID, comm)
         cow.begin_if(cond)
         # add synchonized variable on the master
         cow.declare_var("int i")
