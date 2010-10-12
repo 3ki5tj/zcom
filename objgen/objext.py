@@ -73,6 +73,8 @@ def type2fmt_p(tp, var):
     fmt = "%g"
   elif tp == "char *":
     fmt = "%s"
+  elif tp.endswith("pointer"):
+    fmt = "%p"
   else:
     #print "no printf format string for type [%s]%s" % (tp,
     #    " item: "+var if var else "")

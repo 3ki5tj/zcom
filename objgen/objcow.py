@@ -798,9 +798,9 @@ class CCodeWriter:
     self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Bcast(%s, (%s)*sizeof(%s), MPI_BYTE, %s, %s)"
         % (var, cnt, tp, master, comm), 
-        "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX" 
         % (var, tp, cnt),  # msg
-        "%s, %s, %s, %s, (int) %s" % (mpirank, mpisize, var, cnt, comm), # args
+        "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
     self.end_if(cond)
 
@@ -810,9 +810,9 @@ class CCodeWriter:
     self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)" 
         % (var, tmp, cnt, mpitype(tp), master, comm), # cond 
-        "%%3d/%%3d: failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = %%d" 
+        "%%3d/%%3d: failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX" 
         % (var, tmp, tp, cnt),  # msg
-        "%s, %s, %s, %s, (int) %s" % (mpirank, mpisize, var, cnt, comm), # args
+        "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
     self.declare_var("int i")
     self.end_if(cond)
