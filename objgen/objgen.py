@@ -789,18 +789,23 @@ class Object:
     '''
     readwrite = "read" if rw == "r" else "write"
     fprefix = self.folds[f].fprefix
+    ptr = self.ptrname
     cow = CCodeWriter()
     funcnm = "%s%sbin_low" % (fprefix, readwrite)
     usrs = self.get_usrvars("bin", f)[0]+self.get_usrvars(rw+"b", f)[0]
     #print "low %s rw=%s usrs: %s" % (self, rw, usrs); raw_input()    
     fdecl = "int %s(%s *%s, FILE *fp, int ver%s%s)" % (
-        funcnm, self.name, self.ptrname, 
+        funcnm, self.name, ptr, 
         ", int endn" if rw == "r" else "", usrs)
     title = self.name + (("/%s" % f) if len(f) else "")
     cow.begin_function(funcnm, fdecl, 
         "%s %s data as binary" % (readwrite, title))
     callclear = "%sclear(%s);" % (fprefix, self.ptrname)
 
+    cow.die_if("%s == NULL" % ptr,
+        "passing null pointer to %s" % funcnm,
+        onerr = "return -1;")
+    
     if rw == "r":
       cow.add_comment("clear data before reading")
       cow.addln(callclear)

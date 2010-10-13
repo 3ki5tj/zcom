@@ -18,7 +18,7 @@
 
 /* handle a trace command inside a format string 
  * return nonzero to quit and enter the normal mode */
-static int trace_cmd_(const char *cmd, va_list args, int once, 
+static int tracecmd_(const char *cmd, va_list args, int once, 
     char **pfname, int *freq, int *verbose)
 {
   const char *p;
@@ -110,17 +110,19 @@ static int wtrace_buf_low_(int cnt, int freq,
     sscat(buf, msg);
   }
 
-  /* flush buffered contents to file, and possibly finish up */
+  /* flush buffered content to file, and possibly finish up */
   if ((cnt + 1) % freq == 0 || fmt == NULL) {
     FILE *fp;
 
-    if ((fp = fopen(fname, mode)) == NULL ) {
-      fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
-      return 1;
+    if (buf[0] != '\0') { /* in case nothing was written */
+      if ((fp = fopen(fname, mode)) == NULL ) {
+        fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
+        return 1;
+      }
+      fputs(buf, fp);
+      buf[0] = '\0';
+      fclose(fp);
     }
-    fputs(buf, fp);
-    buf[0] = '\0';
-    fclose(fp);
 
     if (fmt == NULL) { /* finishing up */
       if (msg != NULL) ssdelete(msg); 
@@ -164,7 +166,7 @@ int wtrace_buf(const char *fmt, ...)
    * the command mode allows setting parameters */
   if (fmt != NULL && fmt[0] == '%' && fmt[1] == '@') {
     va_start(args, fmt);
-    i = trace_cmd_(fmt + 2, args, once, &fname, &freq, &verbose);
+    i = tracecmd_(fmt + 2, args, once, &fname, &freq, &verbose);
     va_end(args);
     if (i == 0) return 0;
   }
