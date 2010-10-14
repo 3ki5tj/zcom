@@ -810,13 +810,15 @@ class Object:
       cow.add_comment("clear data before reading")
       cow.addln(callclear)
       cow.addln()
-    
+   
+    # sort item according to $binprev
     items = self.sort_items(self.folds[f].items, "bin")
     for it in items:
       if it.pre: continue
       if it.cmds["fold"] != f: continue
       #print "%s" % it.cmds; raw_input()
      
+      # additional variables to read/write
       xvars = it.cmds["fold_bin_add"]
       if xvars: # additional vars to the fold variables
         xvl = [s.strip() for s in xvars.split(",")]
@@ -825,11 +827,11 @@ class Object:
           if not xit: raise Exception
           xit.rwb_var(cow, rw, xv)
         continue
+
       if not it.decl or it.isdummy:
         call = it.cmds[rw + "b_call"]
         if call: cow.addln(call)
         continue
-      if not it.cmds["io_bin"]: continue
 
       usr = it.cmds["usr"]
       varname = ("" if (usr != None and usr.endswith("tmp"))

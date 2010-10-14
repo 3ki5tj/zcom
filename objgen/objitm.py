@@ -295,19 +295,23 @@ class Item:
       iodef = ""
 
     # assume iodef if necessary
-    io = it.cmds["io"]
+    io0 = io = it.cmds["io"]
     io = io if io != None else iodef
     io = io.strip()
 
     # a human shortcut
-    if io in ("no", "none"): io = ""
+    if io.startswith("no"): io = ""
     elif io in ("all", "everything"): io = "cbt"
 
+    usr = it.cmds["usr"]
+
     # create itemized io
-    it.cmds["io_cfg"] = 1 if "c" in io else 0
-    it.cmds["io_bin"] = 1 if ("b" in io or it.cmds["usr"] in (
-      "bintmp", "rbtmp", "wbtmp")) else 0
-    it.cmds["io_txt"] = 1 if "t" in io else 0
+    it.cmds["io_cfg"] = ("c" in io)
+    if usr == None or io0 != None: # normal var or user var with explicit $io command
+      it.cmds["io_bin"] = ("b" in io)
+    else:
+      it.cmds["io_bin"] = (usr in ("bintmp", "rbtmp", "wbtmp"))
+    it.cmds["io_txt"] = ("t" in io)
 
   def fill_test(it):
     ''' 
@@ -530,7 +534,8 @@ class Item:
     if bincnt == None: bincnt = it.cmds["bincnt"]
     prereq = it.cmds[rw+"bprereq"]
     if prereq == None: prereq = it.cmds["binprereq"]
-    defl = it.cmds["def"]
+    defl = it.cmds[rw+"bdef"] # try rbdef and rwbdef first
+    if defl == None: defl = it.cmds["def"]
     usrval = it.cmds["usr"]
     if rw == "r":
       readwrite = "read"
@@ -542,6 +547,11 @@ class Item:
       readwrite = "write"
       verify = 0
       valid = None
+    iobin = it.cmds["io_bin"]
+
+    # skip normal non-io variables
+    if not iobin and not usrval: return
+
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)
@@ -554,7 +564,8 @@ class Item:
     passme = 0
     if usrval in ("bintmp", rw+"btmp"): 
       cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
-      if defl and rw == "w": 
+      # we always assign default values before reading / writing 
+      if defl: 
         if it.gtype == "static array":
           cow.init_sarr(varname, defl, cnt)
         else:
@@ -562,6 +573,8 @@ class Item:
       #print "varname = %s" % varname; raw_input()
     elif usrval != None and usrval.endswith("tmp"):
       passme = 1
+    
+    if not iobin: passme = 1
     
     if passme:
       pass
