@@ -681,15 +681,18 @@ class CCodeWriter:
       print "don't know how to write type %s for %s" % (tp, arr)
       raise Exception
     if match:
-      self.begin_if(match)
+      if match != 1:
+        self.begin_if(match)
       self.declare_var("int i")
       self.addln("for (i = 0; i < %s; i++) {", cnt)
       self.rb_var(arr+"[i]", tp, match=1)
       self.addln("}")
-      if match != 1:
+      if match != 1: # conditional match
         self.begin_else()
         self.rwb_atom("r", arr, cnt = cnt)
         self.validate(valid) # only validate if we don't want to match
+        self.errmsg("rb: update array %s, %%d of %s"%(arr,tp),
+            "%s"%cnt )
         self.end_if(match)
     else:
       self.rwb_atom("r", arr, cnt = cnt)
