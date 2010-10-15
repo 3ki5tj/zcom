@@ -867,8 +867,10 @@ class Object:
 
     cow.declare_var("FILE *fp")
     condf = '(fp = fopen(fname, "%sb")) == NULL' % rw
-    cow.die_if(condf, r"cannot %s binary file [%%s]." % readwrite, 
-      "fname", onerr = "goto ERR;")
+    cow.die_if(condf,
+        r"cannot %s binary file [%%s]." % readwrite, 
+        "fname", 
+        onerr = "return -1;")  # can only return -1 since fp == NULL
     cow.addln()
 
     # add checking bytes

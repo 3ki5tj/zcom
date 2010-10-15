@@ -686,10 +686,11 @@ class CCodeWriter:
       self.addln("for (i = 0; i < %s; i++) {", cnt)
       self.rb_var(arr+"[i]", tp, match=1)
       self.addln("}")
-      self.begin_else()
-      self.rwb_atom("r", arr, cnt = cnt)
-      self.validate(valid)
-      self.end_if(match)
+      if match != 1:
+        self.begin_else()
+        self.rwb_atom("r", arr, cnt = cnt)
+        self.validate(valid) # only validate if we don't want to match
+        self.end_if(match)
     else:
       self.rwb_atom("r", arr, cnt = cnt)
       self.validate(valid)
