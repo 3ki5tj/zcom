@@ -148,7 +148,8 @@ class Commands:
     if len(s) == 0: return ""
     # merge the remaining string to description
     s = re.sub(r"[\$\\]\$", "$", s) # literal $
-    s = re.sub(r"\\;\s*", ";\n", s) # literal ;
+    s = re.sub(r"\\;", ";", s) # literal ;
+    s = re.sub(r"\\n", "\n", s) # literal ;
     return s
 
   def addpre(self, pif, pelse, pendif):

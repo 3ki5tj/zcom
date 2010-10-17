@@ -829,7 +829,7 @@ class Object:
         continue
 
       if not it.decl or it.isdummy:
-        call = it.cmds[rw + "b_call"]
+        call = it.cmds[rw + "bcall"]
         if call: cow.addln(call)
         continue
 
