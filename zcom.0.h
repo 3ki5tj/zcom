@@ -1,5 +1,5 @@
 /*
-  A set of common (but not so optimized) routines.
+  common routines
 
   Copyright (c) 2006-2010 Cheng Zhang
 
@@ -37,10 +37,7 @@
       define ZCOM_PICK and ZCOM_xxx before inclusion, e.g.
         #define ZCOM_PICK
         #define ZCOM_RNG
-        #include "name_of_this_file"
-
-      One can probably save some compiling time and avoid some warnings
-      in this way. It also makes more sense.
+        #include "this_file"
 
   6.  Define ZCHAVEVAM if the compiler supports variable-argument macros.
 
@@ -49,16 +46,11 @@
 
   -------------------------------------------------------------------------------
 
-  8.  By very careful about the RV3/RV2 module, because it will typedef `real',
-      and by default to double.
-      If you want to change it define ZCREAL as float.
-      If you already defined real somewhere else (as float or double),
-      you must
-        #define ZCHAVEREAL
-      before including this file.
-      Further, to be compatible with GROMACS, you can define HAVE_REAL to achive
-      the same effect.
-      The same applies to the two-dimensional version RV2
+  8.  By careful about the RV3/RV2 module, because it will typedef `real'
+      to double, to override: 
+        typedef float/double real;
+        #define ZCHAVEREAL 1
+      before including this file (or equivalently HAVE_REAL)
 
   9.  When using RV2/RV3 module, you can further use
         #define ZCOM_RVDIM_BINDING 2
@@ -70,14 +62,11 @@
       + only applies to routines common to 2d and 3d.
 */
 
-
-/* A few macros to allow user to selectively include functions.
-   It helps
-   1. to reduce the # of warnings for unused functions
-   2. to accelerate the compiling
-   3. avoid multiple inclusions
-   By default (ZCOM_PICK not defined), we use everything old
- */
+/* macros for selectively including functions, advantages: 
+ * 1. reduces the # of warnings for unused functions
+ * 2. accelerates the compiling
+ * 3. avoids multiple inclusions
+ * By default (ZCOM_PICK not defined), everything is used */
 #ifdef ZCOM_NONE  /* equivalent to ZCOM_PICK */
 #define ZCOM_PICK
 #endif
@@ -119,8 +108,8 @@
   #ifndef ZCOM_RV2
   #define ZCOM_RV2
   #endif
-  #ifndef ZCOM_DIHCALC
-  #define ZCOM_DIHCALC
+  #ifndef ZCOM_DIH
+  #define ZCOM_DIH
   #endif
   #ifndef ZCOM_ENDN
   #define ZCOM_ENDN
@@ -139,7 +128,7 @@
   #define ZCOM_SS  /* needs file name support */
 #endif
 
-#ifdef ZCOM_DIHCALC
+#ifdef ZCOM_DIH
   #define ZCOM_RV3
 #endif
 
@@ -147,7 +136,7 @@
   #define ZCOM_ENDN
 #endif
 
-/* manage storage class: static is still the safer choice
+/* manage storage class: static is the safer choice
    to avoid naming conclict.  Example:
    both m.c and n.c include this file,
    m.c --> m.o, n.c --> n.o, m.o+n.o --> a.out
@@ -155,8 +144,7 @@
 
    In case that this file is included multiple times,
    ZCOM_XFUNCS should be defined before the first inclusion,
-   otherwise it won't be effective in deciding storage class.
- */
+   otherwise it won't be effective in deciding storage class. */
 #ifndef ZCOM_XFUNCS
   #ifndef ZCSTRCLS
     #define ZCSTRCLS static
@@ -203,14 +191,12 @@
 #endif /* ZCOM_DIE__ */
 #endif /* ZCOM_DIE */
 
-
 #ifdef  ZCOM_SS
 #ifndef ZCOM_SS__
 #define ZCOM_SS__
 
 #endif /* ZCOM_SS__ */
 #endif /* ZCOM_SS */
-
 
 #ifdef  ZCOM_RNG
 #ifndef ZCOM_RNG__
@@ -229,9 +215,9 @@
 #ifdef  ZCOM_TRACE
 #ifndef ZCOM_TRACE__
 #define ZCOM_TRACE__
+
 #endif /* ZCOM_TRACE__ */
 #endif /* ZCOM_TRACE */
-
 
 #ifdef  ZCOM_DIST
 #ifndef ZCOM_DIST__
@@ -240,14 +226,12 @@
 #endif /* ZCOM_DIST__ */
 #endif /* ZCOM_DIST */
 
-
 #ifdef  ZCOM_LOG
 #ifndef ZCOM_LOG__
 #define ZCOM_LOG__
 
 #endif /* ZCOM_LOG__ */
 #endif /* ZCOM_LOG */
-
 
 #ifdef  ZCOM_LU
 #ifndef ZCOM_LU__
@@ -297,10 +281,10 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
   size_t i, j;
   int cs, ct, docase, doupper;
 
-  docase = (flags&ZCOM_DOCASE); /* do case conversion */
-  doupper = (flags&ZCOM_UPPER);
+  docase  = flags & ZCOM_DOCASE; /* do case conversion */
+  doupper = flags & ZCOM_UPPER;
 
-  if (flags&ZCOM_STRCMP) { /* comparison, size_s is ignored */
+  if (flags & ZCOM_STRCMP) { /* comparison, size_s is ignored */
     if (s == NULL || t == NULL) return 0;
     for (i = 0; ; i++) {
       cs = s[i];
@@ -316,7 +300,7 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
     if (size_s == 0 || s == NULL || t == NULL) return 1;
     /* t[size_s-1] should be '\0' */
     i = 0;
-    if (flags&ZCOM_STRCAT) while(s[i]) i++;
+    if (flags & ZCOM_STRCAT) while(s[i]) i++;
     for (j = 0; i < size_s-1; i++, j++) {
       ct = t[j];
       if (docase && (ct != 0)) {
@@ -343,7 +327,6 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 #endif /* ZCOM_STR__ */
 #endif /* ZCOM_STR */
 
-
 #ifdef  ZCOM_ZT
 #ifndef ZCOM_ZT__
 #define ZCOM_ZT__
@@ -355,287 +338,22 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 #ifndef ZCOM_RV3__
 #define ZCOM_RV3__
 
-#ifdef HAVE_REAL
-  #ifndef ZCHAVEREAL
-  #define ZCHAVEREAL HAVE_REAL
-  #endif
-#endif
-
-/* Usage: if you already typedef'ed real, then define ZCHAVEREAL
-   before including this file to avoid a conflict.
-   Otherwise define ZCREAL as float or double */
-#ifndef ZCHAVEREAL
-  #define ZCHAVEREAL 1
-  #ifndef ZCREAL
-    #define ZCREAL double
-  #endif
-  typedef ZCREAL real;
-#endif
-
-#include <math.h>
-
-/* due to that pointer may overlap with each other,
- * be careful when using the const modifier */
-
-ZCINLINE void rv3_zero(real *x) { x[0] = 0.0f; x[1] = 0.0f; x[2] = 0.0f; }
-ZCINLINE void rv3_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; }
-
-ZCINLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
-ZCINLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
-
-ZCINLINE real *rv3_normalize(real *x)
-{
-  real r = rv3_norm(x);
-  if (r > 0.0) {
-    r = 1.0f/r;
-    x[0] *= r;
-    x[1] *= r;
-    x[2] *= r;
-  }
-  return x;
-}
-
-/* if x == y, try to use sqr */
-ZCINLINE real rv3_dot(const real *x, const real *y)
-{
-  return x[0]*y[0]+x[1]*y[1]+x[2]*y[2];
-}
-
-ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y)
-{
-  z[0] = x[1]*y[2]-x[2]*y[1];
-  z[1] = x[2]*y[0]-x[0]*y[2];
-  z[2] = x[0]*y[1]-x[1]*y[0];
-  return z;
-}
-
-ZCINLINE real *rv3_neg(real *x)
-{
-  x[0] -= x[0];
-  x[1] -= x[1];
-  x[2] -= x[2];
-  return x;
-}
-
-ZCINLINE real *rv3_neg2(real *nx, const real *x)
-{
-  nx[0] = -x[0];
-  nx[1] = -x[1];
-  nx[2] = -x[2];
-  return nx;
-}
-
-ZCINLINE real *rv3_inc(real *x, const real *dx)
-{
-  x[0] += dx[0];
-  x[1] += dx[1];
-  x[2] += dx[2];
-  return x;
-}
-ZCINLINE real *rv3_dec(real *x, const real *dx)
-{
-  x[0] -= dx[0];
-  x[1] -= dx[1];
-  x[2] -= dx[2];
-  return x;
-}
-ZCINLINE real *rv3_sinc(real *x, real *dx, real s)
-{
-  x[0] += s*dx[0];
-  x[1] += s*dx[1];
-  x[2] += s*dx[2];
-  return x;
-}
-ZCINLINE real *rv3_smul(real *x, real s)
-{
-  x[0] *= s;
-  x[1] *= s;
-  x[2] *= s;
-  return x;
-}
-
-/* if y == x, just use smul */
-ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s)
-{
-  y[0] = x[0]*s;
-  y[1] = x[1]*s;
-  y[2] = x[2]*s;
-  return y;
-}
-
-/* for in-place difference use rv3_dec */
-ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b)
-{
-  diff[0] = a[0]-b[0];
-  diff[1] = a[1]-b[1];
-  diff[2] = a[2]-b[2];
-  return diff;
-}
-
-/* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b)
-{
-  sum[0] = a[0]+b[0];
-  sum[1] = a[1]+b[1];
-  sum[2] = a[2]+b[2];
-  return sum;
-}
-
-/* sum = -a-b */
-ZCINLINE real *rv3_nsum2(real *sum, const real *a, const real *b)
-{
-  sum[0] = -a[0]-b[0];
-  sum[1] = -a[1]-b[1];
-  sum[2] = -a[2]-b[2];
-  return sum;
-}
-
-ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, real s2)
-{
-  sum[0] = a[0]*s1+b[0]*s2;
-  sum[1] = a[1]*s1+b[1]*s2;
-  sum[2] = a[2]*s1+b[2]*s2;
-  return sum;
-}
 #endif /* ZCOM_RV3__ */
 #endif /* ZCOM_RV3 */
 
-#ifdef  ZCOM_DIHCALC
-#ifndef ZCOM_DIHCALC__
-#define ZCOM_DIHCALC__
+#ifdef  ZCOM_DIH
+#ifndef ZCOM_DIH__
+#define ZCOM_DIH__
 
-#endif /* ZCOM_CALCDIH__ */
-#endif /* ZCOM_CALCDIH */
+#endif /* ZCOM_DIH__ */
+#endif /* ZCOM_DIH */
 
 #ifdef ZCOM_RV2
 #ifndef ZCOM_RV2__
 #define ZCOM_RV2__
 
-#ifdef HAVE_REAL
-  #ifndef ZCHAVEREAL
-  #define ZCHAVEREAL HAVE_REAL
-  #endif
-#endif
-
-/* Usage: if you already typedef'ed real, then define ZCHAVEREAL
-   before including this file to avoid a conflict.
-   Otherwise define ZCREAL as float or double */
-#ifndef ZCHAVEREAL
-  #define ZCHAVEREAL 1
-  #ifndef ZCREAL
-    #define ZCREAL double
-  #endif
-  typedef ZCREAL real;
-#endif
-
-#include <math.h>
-
-/* due to that pointer may overlap with each other,
- * be careful when using the const modifier */
-
-ZCINLINE void rv2_zero(real *x) { x[0] = 0; x[1] = 0; }
-ZCINLINE void rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; }
-
-ZCINLINE real rv2_sqr(const real *x) { return x[0]*x[0]+x[1]*x[1]; }
-ZCINLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); }
-
-ZCINLINE real *rv2_normalize(real *x)
-{
-  real r = rv2_norm(x);
-  if (r > 0.0) {
-    r = 1.0/r;
-    x[0] *= r;
-    x[1] *= r;
-  }
-  return x;
-}
-
-ZCINLINE real rv2_dot(const real *x, const real *y) { return x[0]*y[0]+x[1]*y[1]; }
-
-ZCINLINE real rv2_cross(const real *x, const real *y)
-{
-  return x[0]*y[1]-x[1]*y[0];
-}
-
-ZCINLINE real *rv2_neg(real *x)
-{
-  x[0] -= x[0];
-  x[1] -= x[1];
-  return x;
-}
-
-ZCINLINE real *rv2_neg2(real *nx, const real *x)
-{
-  nx[0] = -x[0];
-  nx[1] = -x[1];
-  return nx;
-}
-
-ZCINLINE real *rv2_inc(real *x, const real *dx)
-{
-  x[0] += dx[0];
-  x[1] += dx[1];
-  return x;
-}
-ZCINLINE real *rv2_dec(real *x, const real *dx)
-{
-  x[0] -= dx[0];
-  x[1] -= dx[1];
-  return x;
-}
-ZCINLINE real *rv2_sinc(real *x, real *dx, real s)
-{
-  x[0] += s*dx[0];
-  x[1] += s*dx[1];
-  return x;
-}
-ZCINLINE real *rv2_smul(real *x, real s)
-{
-  x[0] *= s;
-  x[1] *= s;
-  return x;
-}
-ZCINLINE real *rv2_smul2(real *y, const real *x, real s)
-{
-  y[0] = x[0]*s;
-  y[1] = x[1]*s;
-  return y;
-}
-
-/* for in-place difference use rv3_dec */
-ZCINLINE real *rv2_diff(real *diff, const real *a, const real *b)
-{
-  diff[0] = a[0]-b[0];
-  diff[1] = a[1]-b[1];
-  return diff;
-}
-
-/* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b)
-{
-  sum[0] = a[0]+b[0];
-  sum[1] = a[1]+b[1];
-  return sum;
-}
-
-/* sum = -a-b */
-ZCINLINE real *rv2_nsum2(real *sum, const real *a, const real *b)
-{
-  sum[0] = -a[0]-b[0];
-  sum[1] = -a[1]-b[1];
-  return sum;
-}
-
-ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, real s2)
-{
-  sum[0] = a[0]*s1+b[0]*s2;
-  sum[1] = a[1]*s1+b[1]*s2;
-  return sum;
-}
-
 #endif /* ZCOM_RV2__ */
 #endif /* ZCOM_RV2 */
-
 
 #if (defined(ZCOM_RVDIM_BINDING) && !defined(ZCOM_RVDIM_BINDING_DEFINED))
 /* these binding macros reside outside both RV2 and RV3
