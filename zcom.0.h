@@ -145,38 +145,43 @@
    In case that this file is included multiple times,
    ZCOM_XFUNCS should be defined before the first inclusion,
    otherwise it won't be effective in deciding storage class. */
-#ifndef ZCOM_XFUNCS
-  #ifndef ZCSTRCLS
+#ifndef ZCSTRCLS
+  #ifndef ZCOM_XFUNCS
     #define ZCSTRCLS static
-  #endif
-  #ifndef ZCINLINE
-    #define ZCINLINE static __inline
-  #endif
-#else
-  #ifndef ZCSTRCLS
+  #else
     #define ZCSTRCLS
-  #endif
-  #ifndef ZCINLINE
-    /* should be `inline' according to C99,
-       but gcc, vc++, intel support `__inline' by default */
-    #define ZCINLINE __inline
   #endif
 #endif
 
-/* try to use restrict if possible */
+/* inline keyword */
+#ifndef ZCINLINE
+  #if defined(__GNUC__) || defined(__xlC__)
+    #define ZCINLINE ZCSTRCLS __inline__
+  #elif defined(_MSC_VER) || defined(__BORLANDC__)
+    #define ZCINLINE __inline ZCSTRCLS
+  #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
+    #define ZCINLINE ZCSTRCLS inline
+  #else
+    #define ZCINLINE ZCSTRCLS
+  #endif
+#endif
+
+/* restrict keyword */
 #ifndef ZCRESTRICT
   #if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__))
-    /* should be `restrict' according to C99,
-       but compilers, e.g., gcc and icc, support `__restrict' by default */
     #define ZCRESTRICT __restrict
+  #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
+    #define ZCRESTRICT restrict
   #else
     #define ZCRESTRICT
   #endif
 #endif
 
-/* newer compilers should support macros with variable-length arguments */
+/* macros with variable-length arguments */
 #ifndef ZCHAVEVAM
-  #if ( (defined(__GNUC__)&&(__GNUC__>=3)) || (defined(__xlC__)&&(__xlC__>=0x0700)) || (defined(_MSC_VER)&&(_MSC_VER>=1400)) )
+  #if (  (defined(__GNUC__) && (__GNUC__ >= 3))   \
+      || (defined(__xlC__)  && (__xlC__ >= 0x0700)) \
+      || (defined(_MSC_VER) && (_MSC_VER >= 1400)) ) 
     #define ZCHAVEVAM 1
   #endif
 #endif
