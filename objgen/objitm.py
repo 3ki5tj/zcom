@@ -599,7 +599,7 @@ class Item:
     elif it.decl.datatype == "char" and it.gtype in ("char *", "static array"):
       if bincnt: 
         cnt = bincnt
-      cow.die_if ("%s != f%s(%s, 1, %s, fp)" % (cnt, readwrite, varname, cnt),
+      cow.die_if ("(size_t) (%s) != f%s(%s, 1, %s, fp)" % (cnt, readwrite, varname, cnt),
         "cannot "+readwrite+" string of %d for "+varname, cnt, 
         onerr = "goto ERR;");
       cow.validate(valid);

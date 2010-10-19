@@ -5,7 +5,7 @@ dep=$(src) $(hdr) Makefile
 
 all: $(bin)
 
-CC = gcc -O0 -g3 -Wall -pedantic
+CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 
 test: test.c $(dep)
 	$(CC) -o $@ $< $(src) -lm

@@ -7,7 +7,7 @@
 #include <ctype.h>
 
 typedef struct {
-  int    n;           /* number of lines */
+  size_t n;           /* number of lines */
   int    canfree;     /* whether the struct is dynamically allocated */
   char **key,**value; /* key[i] = value[i] */
   char  *buf;         /* the whole configuration file */

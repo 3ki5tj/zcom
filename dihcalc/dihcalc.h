@@ -25,7 +25,7 @@
 typedef struct {
   real phi; /* cis is zero, clockwise positive */
   real cosphi; /* cos(m, n) */
-  real sign; /* (0, pi) is 1.0, otherwise -1.0 */
+  real sgn; /* (0, pi) is 1.0, otherwise -1.0 */
 
   real grad2;
   real grad[4][3]; /* gradient for each particle */
@@ -35,7 +35,7 @@ typedef struct {
 
   unsigned int flags; /* a copy of flags used */
   int t1, t2, t3; /* gromacs shift indices */
-  void *pbc; /* periodic boundary condition descriptor */
+  const void *pbc; /* periodic boundary condition descriptor */
   int (*pbc_rv3_diff)(const void *, const real *xi, const real *xj, real *xij); /* a function to handle pbc */
     /* parameter order follows from the gromacs convention: the last is the difference
      * between the first two */

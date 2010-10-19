@@ -26,8 +26,7 @@
 static int cfgload_(cfgdata_t *cfg, const char *filenm)
 {
   FILE *fp;
-  long i, j;
-  size_t size = 0;
+  size_t i, j, size = 0;
   char *p, *q, *lin;
 
   if ((fp = fopen(filenm, "r")) == NULL) {
@@ -183,7 +182,7 @@ void cfgclose(cfgdata_t *cfg)
  * */
 int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 {
-  int j;
+  size_t j;
 
   if (cfg == NULL) return 1;
 

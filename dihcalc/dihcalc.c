@@ -49,7 +49,7 @@ real rv3_calcdih(dihcalc_t *dc,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags)
 {
-  real dot, scl, tol, vol, phi, sign, cosphi;
+  real dot, scl, tol, vol, phi, sgn, cosphi;
   real nxkj, nxkj2, m2, n2;
   real xij[3], xkj[3], xkl[3];
   real m[3], n[3]; /* the planar vector of xij x xkj,  and xkj x xkj */
@@ -82,11 +82,11 @@ real rv3_calcdih(dihcalc_t *dc,
   }
   phi = (real)acos(cosphi);
   vol = rv3_dot(n, xij);
-  sign = ((vol > 0.0f) ? 1.0f : (-1.0f));
-  phi *= sign;
+  sgn = ((vol > 0.0f) ? 1.0f : (-1.0f));
+  phi *= sgn;
   if (dc != NULL) {
     dc->phi = phi;
-    dc->sign = sign;
+    dc->sgn = sgn;
     dc->cosphi = cosphi;
     dc->flags = flags;
   }
@@ -101,41 +101,41 @@ real rv3_calcdih(dihcalc_t *dc,
      */
 
     if (m2 > tol && n2 > tol) {
-      real gi[3], gj[3], gk[3], gl[3];
+      real vgi[3], vgj[3], vgk[3], vgl[3];
       real uvec[3], vvec[3], svec[3], p, q;
       real gi2, gj2, gk2, gl2, g2all, invg2;
       unsigned doi, doj, dok, dol;
 
-      doi = (flags&DIHCALC_I);
-      doj = (flags&DIHCALC_J);
-      dok = (flags&DIHCALC_K);
-      dol = (flags&DIHCALC_L);
+      doi = (flags & DIHCALC_I);
+      doj = (flags & DIHCALC_J);
+      dok = (flags & DIHCALC_K);
+      dol = (flags & DIHCALC_L);
 
       scl = nxkj/m2;
-      rv3_smul2(gi, m, scl);
+      rv3_smul2(vgi, m, scl);
       scl = -nxkj/n2;
-      rv3_smul2(gl, n, scl);
+      rv3_smul2(vgl, n, scl);
 
       p = rv3_dot(xij, xkj);
       p /= nxkj2;
-      rv3_smul2(uvec, gi, p);
+      rv3_smul2(uvec, vgi, p);
       q = rv3_dot(xkl, xkj);
       q /= nxkj2;
-      rv3_smul2(vvec, gl, q);
+      rv3_smul2(vvec, vgl, q);
       rv3_diff(svec, uvec, vvec);
 
-      rv3_diff(gj, svec, gi);
-      rv3_nsum2(gk, gl, svec);
+      rv3_diff(vgj, svec, vgi);
+      rv3_nsum2(vgk, vgl, svec);
 
-      rv3_copy(dc->grad[0], gi);
-      rv3_copy(dc->grad[1], gj);
-      rv3_copy(dc->grad[2], gk);
-      rv3_copy(dc->grad[3], gl);
+      rv3_copy(dc->grad[0], vgi);
+      rv3_copy(dc->grad[1], vgj);
+      rv3_copy(dc->grad[2], vgk);
+      rv3_copy(dc->grad[3], vgl);
 
-      gi2 = rv3_sqr(gi);
-      gj2 = rv3_sqr(gj);
-      gk2 = rv3_sqr(gk);
-      gl2 = rv3_sqr(gl);
+      gi2 = rv3_sqr(vgi);
+      gj2 = rv3_sqr(vgj);
+      gk2 = rv3_sqr(vgk);
+      gl2 = rv3_sqr(vgl);
       g2all = 0.0f;
       if (doi) g2all += gi2;
       if (doj) g2all += gj2;
@@ -167,14 +167,14 @@ real rv3_calcdih(dihcalc_t *dc,
         ijlj = ijvkj*ljvkj;
         kikl = kivkj*klvkj;
 
-        gjxij = rv3_dot(gj, xij);
-        gjxkl = rv3_dot(gj, xkl);
-        gjmvv = rv3_dot(gj, mvv);
-        gjnvv = rv3_dot(gj, nvv);
-        gkxij = rv3_dot(gk, xij);
-        gkxkl = rv3_dot(gk, xkl);
-        gkmvv = rv3_dot(gk, mvv);
-        gknvv = rv3_dot(gk, nvv);
+        gjxij = rv3_dot(vgj, xij);
+        gjxkl = rv3_dot(vgj, xkl);
+        gjmvv = rv3_dot(vgj, mvv);
+        gjnvv = rv3_dot(vgj, nvv);
+        gkxij = rv3_dot(vgk, xij);
+        gkxkl = rv3_dot(vgk, xkl);
+        gkmvv = rv3_dot(vgk, mvv);
+        gknvv = rv3_dot(vgk, nvv);
 
         tmp1 = nxkj2*sinmn;
         tmp2 = tmp1/m2;

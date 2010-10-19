@@ -620,7 +620,8 @@ class CCodeWriter:
       cond = ""
     cond += "endn_f%s(%s, sizeof(%s), %s, fp, %s) != %s" % (
         ("read" if tag == "r" else "write"), ptr, val, cnt, 
-        ("endn" if tag == "r" else default_endian), cnt)
+        ("endn" if tag == "r" else default_endian), 
+        cnt if cnt == 1 else "(size_t) (%s) "%cnt)
     self.begin_if(cond)
     msg = "error in "+("reading" if tag == "r" else "writing")+" "+var
     if cnt == 1:

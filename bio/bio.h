@@ -50,11 +50,11 @@
   } }
 
 /* read an array of size n, set err, fix endian */
-#define BIO_RATOM_(arr, n)                                            \
-  if ((n) > 0 && endn_fread(arr, sizeof(*(arr)), n, fp, endn) != n) { \
-    fprintf(stderr, "error while reading %s, size %u, "               \
-        BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);     \
-    err = 1;                                                          \
+#define BIO_RATOM_(arr, n)                                                      \
+  if ((n) > 0 && endn_fread(arr, sizeof(*(arr)), n, fp, endn) != (size_t) n) {  \
+    fprintf(stderr, "error while reading %s, size %u, "                         \
+        BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);               \
+    err = 1;                                                                    \
   } else { err = 0; }
 
 /* read an array, set error */
@@ -97,8 +97,8 @@
 /* write an array of size n with endian being BIO_ENDNDEF
  * we do not set err, directly goto ERR */
 #define BIO_WATOM_(arr, n)                                            \
-  if ((n) > 0 &&                                                      \
-      endn_fwrite(arr, sizeof(*(arr)), n, fp, BIO_ENDNDEF) != n) {    \
+  if ((n) > 0 &&  (size_t) (n) !=                                     \
+      endn_fwrite(arr, sizeof(*(arr)), n, fp, BIO_ENDNDEF) ) {        \
     fprintf(stderr, "error while reading %s, size %u, "               \
         BIO_FLFMT_ "\n", #arr, (unsigned) n, __FILE__, __LINE__);     \
     goto ERR;                                                         \
