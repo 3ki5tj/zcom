@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
-#include "die.h"
+/*
+#define ZCHAVEVAM 1
+*/
+#include "die.c"
 
 int main(void)
 {
