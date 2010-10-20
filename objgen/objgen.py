@@ -1091,9 +1091,61 @@ class Parser:
     s = self.change_objs_decl()
     
     # append functions
+    t = ""
     for obj in self.objs:
-      s += obj.source
-    return s
+      t += obj.source
+    nlines = self.trim_code(t.splitlines())
+    return self.insert_code(s, nlines)
+
+  def trim_code(self, lines):
+    i = 0
+    while i < len(lines) - 1:
+      # remove blank line that preceeds a } line
+      if (lines[i].strip() == "" and 
+          lines[i+1].strip() == "}"):
+        lines = lines[:i] + lines[i+1:]
+      i += 1
+    return lines
+
+  def insert_code(self, s, nlines):
+    ''' 
+    insert nlines to the end of s, and try to avoid the
+    #ifndef  THISFILE
+    #define  THISFILE
+    #endif
+    '''
+    lines = s.splitlines()
+    n = len(lines)
+    
+    # see if the last nonblank line is #endif
+    hasend = 0
+    iend = n-1
+    while iend >= 2:
+      lin = lines[iend].strip()
+      if lin.startswith("#endif"):
+        hasend = 1
+        break
+      elif lin != "":
+        break
+      iend -= 1
+
+    if hasend: # search the beginning
+      hasbegin = 0
+      for i in range(iend-1):
+        lin = lines[i].strip()
+        if (lin.startswith("#ifndef") and 
+            lines[i+1].startswith("#define")):
+          hasbegin = 1
+          break
+        elif lin.startswith("#"):
+          break
+      if not hasbegin: hasend = 0
+
+    if hasend:
+      lines = lines[:iend] + nlines + lines[iend:]
+    else:
+      lines += nlines
+    return '\n'.join(lines) + '\n'
 
   def change_objs_decl(self):
     '''
