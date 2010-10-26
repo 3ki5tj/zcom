@@ -1,7 +1,7 @@
 #include "rv3.h"
 
-#ifndef DIH_H__
-#define DIH_H__
+#ifndef DIHC_H__
+#define DIHC_H__
 
 #ifdef HAVE_REAL
   #ifndef ZCHAVEREAL
@@ -37,7 +37,7 @@ typedef struct {
   const void *pbcdata; /* periodic boundary condition descriptor */
   int (*pbcdiff)(const void *, const real *xi, const real *xj, real *xij); 
     /* function to handle pbc, use GROMACS convention: the last is the difference */
-} dih_t;
+} dihcalc_t;
 
 #define DIH_GRAD  0x0001
 #define DIH_DIV   0x0002
@@ -54,8 +54,8 @@ typedef struct {
 #define DIH_ENDS  (DIH_GRAD|DIH_I|DIH_L)
 
 #define rv3_calcdihv(dih, x, idx, flags) \
-  rv3_calcdih(dih, x[idx[0]], x[idx[1]], x[idx[2]], x[idx[3]], flags)
-real rv3_calcdih(dih_t *dih,
+  rv3_calcdih(dih, x[*(idx)], x[*(idx+1)], x[*(idx+2)], x[*(idx+3)], flags)
+real rv3_calcdih(dihcalc_t *dih,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags);
 

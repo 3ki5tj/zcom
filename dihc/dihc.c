@@ -1,7 +1,7 @@
-#ifndef DIH_C__
-#define DIH_C__
+#ifndef DIHC_C__
+#define DIHC_C__
 
-#include "dih.h"
+#include "dihc.h"
 
 /* compute the dihedral angle, gradient g and divegence
  * of the field v conjugate to gradient (v.g = 1)
@@ -26,7 +26,7 @@
  * by passing `flags' a combination of DIH_I, DIH_J, DIH_K and DIH_L
  * however, *all* moments d4ij, d4ik, ... , d4kl are always calculated
  * though only the involved ones are used to produce the divergence. */
-real rv3_calcdih(dih_t *dih,
+real rv3_calcdih(dihcalc_t *dih,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags)
 {

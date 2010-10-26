@@ -108,8 +108,8 @@
   #ifndef ZCOM_RV2
   #define ZCOM_RV2
   #endif
-  #ifndef ZCOM_DIH
-  #define ZCOM_DIH
+  #ifndef ZCOM_DIHC
+  #define ZCOM_DIHC
   #endif
   #ifndef ZCOM_ENDN
   #define ZCOM_ENDN
@@ -128,7 +128,7 @@
   #define ZCOM_SS  /* needs file name support */
 #endif
 
-#ifdef ZCOM_DIH
+#ifdef ZCOM_DIHC
   #define ZCOM_RV3
 #endif
 
@@ -346,12 +346,12 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 #endif /* ZCOM_RV3__ */
 #endif /* ZCOM_RV3 */
 
-#ifdef  ZCOM_DIH
-#ifndef ZCOM_DIH__
-#define ZCOM_DIH__
+#ifdef  ZCOM_DIHC
+#ifndef ZCOM_DIHC__
+#define ZCOM_DIHC__
 
-#endif /* ZCOM_DIH__ */
-#endif /* ZCOM_DIH */
+#endif /* ZCOM_DIHC__ */
+#endif /* ZCOM_DIHC */
 
 #ifdef ZCOM_RV2
 #ifndef ZCOM_RV2__
