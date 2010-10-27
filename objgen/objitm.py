@@ -528,6 +528,7 @@ class Item:
     
 
   def rwb_var(it, cow, rw, varname):
+    desc = it.cmds["desc"]
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds[rw+"bcnt"]
@@ -558,6 +559,7 @@ class Item:
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)
 
+    if desc: cow.add_comment(desc);
     if rw == "w" and prep: # preparation step
       cow.addln(prep + ";")
 
