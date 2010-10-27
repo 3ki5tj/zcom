@@ -10,12 +10,12 @@
  *
  * =====================================================================
  *
- * First, use cfgopen() to open a configuration file
- *
- * To load a parameter,
- *   cfgget(fp, &var, "var_name", scanf_fmt);
- *
- * Finally, use cfgclose() to finish up
+ * to open a configuration file:
+ *    cfg = cfgopen("your.cfg"); 
+ * to load a parameter,
+ *    cfgget(cfg, &var, "var_name", scanf_fmt);
+ * to finish up:
+ *    cfgclose(cfg); 
  */
 #include "cfg.h"
 

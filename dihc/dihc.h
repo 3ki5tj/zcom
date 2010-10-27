@@ -35,7 +35,7 @@ typedef struct {
   unsigned int flags; /* a copy of flags used */
   int t1, t2, t3; /* gromacs shift indices */
   const void *pbcdata; /* periodic boundary condition descriptor */
-  int (*pbcdiff)(const void *, const real *xi, const real *xj, real *xij); 
+  int (*pbcdiff)(real *xij, const real *xi, const real *xj, const void *); 
     /* function to handle pbc, use GROMACS convention: the last is the difference */
 } dihcalc_t;
 

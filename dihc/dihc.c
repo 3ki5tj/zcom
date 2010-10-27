@@ -42,9 +42,9 @@ real rv3_calcdih(dihcalc_t *dih,
     exit(1);
   }
   if (dih != NULL && dih->pbcdiff != NULL) { /* handle pbc */
-    dih->t1 = (*dih->pbcdiff)(dih->pbcdata, xi, xj, xij);
-    dih->t2 = (*dih->pbcdiff)(dih->pbcdata, xk, xj, xkj);
-    dih->t3 = (*dih->pbcdiff)(dih->pbcdata, xk, xl, xkl);
+    dih->t1 = (*dih->pbcdiff)(xij, xi, xj, dih->pbcdata);
+    dih->t2 = (*dih->pbcdiff)(xkj, xk, xj, dih->pbcdata);
+    dih->t3 = (*dih->pbcdiff)(xkl, xk, xl, dih->pbcdata);
   } else {
     rv3_diff(xij, xi, xj);
     rv3_diff(xkj, xk, xj);

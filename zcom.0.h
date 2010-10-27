@@ -136,6 +136,10 @@
   #define ZCOM_ENDN
 #endif
 
+#ifdef ZCOM_IS2
+  #define ZCOM_RNG
+#endif
+
 /* manage storage class: static is the safer choice
    to avoid naming conclict.  Example:
    both m.c and n.c include this file,
