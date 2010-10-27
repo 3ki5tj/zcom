@@ -543,10 +543,12 @@ class Item:
       valid = it.cmds["rbvalid"]
       if not valid:
         valid = it.cmds["valid"]
+      prep = None
     else:
       readwrite = "write"
       verify = 0
       valid = None
+      prep = it.cmds["rbprep"]
     iobin = it.cmds["io_bin"]
 
     # skip normal non-io variables
@@ -556,11 +558,14 @@ class Item:
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)
 
+    if rw == "w" and prep: # preparation step
+      cow.addln(prep + ";")
+
     if not it.decl:
       print "no declaration gtype = %s" % it.gtype
       raise Exception
 
-    # init. temp. var. before writing
+    # init. temporary variables before writing
     passme = 0
     if usrval in ("bintmp", rw+"btmp"): 
       cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
