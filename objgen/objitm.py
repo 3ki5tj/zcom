@@ -558,30 +558,36 @@ class Item:
     if pp: cow.addln("#if %s", pp)
     if notalways(prereq): cow.begin_if(prereq)
 
-    if desc: cow.add_comment(desc);
-    if prep: # preparation step
-      cow.addln(prep + ";")
-
     if not it.decl:
       print "no declaration gtype = %s" % it.gtype
       raise Exception
 
     # init. temporary variables before writing
     passme = 0
-    if usrval in ("bintmp", rw+"btmp"): 
+    usrinit = 0
+    if usrval in ("bintmp", rw+"btmp"):
       cow.declare_var(it.decl.datatype+" "+it.decl.raw, it.decl.name)
-      # we always assign default values before reading / writing 
-      if defl: 
-        if it.gtype == "static array":
-          cow.init_sarr(varname, defl, cnt)
-        else:
-          cow.addln("%s = %s;", varname, defl)
-      #print "varname = %s" % varname; raw_input()
+      usrinit = 1
     elif usrval != None and usrval.endswith("tmp"):
       passme = 1
-    
+    elif usrval == "cfg":
+      #print "usrval %s, %s" % (it.decl.name, usrval); raw_input()
+      passme = 1
+
     if not iobin: passme = 1
-    
+
+    if not passme:
+      if desc: cow.add_comment(desc);
+      if prep: cow.addln(prep + ";")
+
+    if usrinit and defl: 
+      # we always assign default values before reading / writing 
+      if it.gtype == "static array":
+        cow.init_sarr(varname, defl, cnt)
+      else:
+        cow.addln("%s = %s;", varname, defl)
+      #print "varname = %s" % varname; raw_input()
+
     if passme:
       pass
     elif it.gtype == "dynamic array":
