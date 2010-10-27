@@ -73,7 +73,8 @@ Commands of an item:
   * $binprereq: a prerequisite that applies to reading/writing binary files
                 it can contain a variable `ver', a version number of
                 binary data.
-                readbin()/writebin() rely on the this condition.
+                readbin()/writebin() rely on the this condition
+  * $wbprep:    preparation call during writebin(), after testing $prereq 
 
   * $valid:     a condition to be tested for validity *after* reading
                 a variable from configuration file

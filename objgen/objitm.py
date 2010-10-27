@@ -544,12 +544,11 @@ class Item:
       valid = it.cmds["rbvalid"]
       if not valid:
         valid = it.cmds["valid"]
-      prep = None
     else:
       readwrite = "write"
       verify = 0
       valid = None
-      prep = it.cmds["rbprep"]
+    prep = it.cmds[rw+"bprep"]
     iobin = it.cmds["io_bin"]
 
     # skip normal non-io variables
@@ -560,7 +559,7 @@ class Item:
     if notalways(prereq): cow.begin_if(prereq)
 
     if desc: cow.add_comment(desc);
-    if rw == "w" and prep: # preparation step
+    if prep: # preparation step
       cow.addln(prep + ";")
 
     if not it.decl:
