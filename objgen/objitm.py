@@ -814,8 +814,9 @@ class Item:
 
     elif flag:
       flag = it.getflag()
-      cow.addln(r'fprintf(fp, "%s & %s (%s): 0x%%X\n", (%s & %s));',
-        varname, flag, escape(key), varname, flag)
+      cow.addln('fprintf(fp, "%s & %s (0x%%X, %s): %%s\\n",\n'
+          + '\t%s, (%s & %s) ? "on" : "off");',
+        varname, flag, escape(key), flag, varname, flag)
 
     elif it.gtype in ("pointer",):
       print "skip var. [%s] of type [%s]" % (varname, it.gtype); raw_input()

@@ -24,7 +24,7 @@ def handle(file, template = ""):
 
   if os.path.exists(ref):
     if not filecmp.cmp(tmpfile, ref):
-      print "File %s is different from the reference %s" % (file, ref)
+      print "%s differs from %s" % (file, ref)
 
   if os.path.exists(file):
     if not filecmp.cmp(tmpfile, file): # different files
@@ -36,7 +36,7 @@ def handle(file, template = ""):
         i += 1
       shutil.copy2(file, fn)
     else:
-      print "no change is needed to %s" % file
+      print "keep %s" % file
       os.remove(tmpfile)
       return
 

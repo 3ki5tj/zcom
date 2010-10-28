@@ -1091,8 +1091,9 @@ class Parser:
       if obj.empty == 1: break
       if obj.empty == -1: continue  # skip
 
-      print "found a new object '%s' with %d items, from %s to %s" % (
-          obj.name, len(obj.items), obj.begin, obj.end)
+      print "%-12s %3d, L: %s - %s" % (
+          obj.name+":", len(obj.items), 
+          obj.begin.row+1, obj.end.row+1)
       objs += [obj]
     #print "I got %d objects" % (len(objs))
 
@@ -1195,7 +1196,7 @@ class Parser:
       if not m: continue
       # found a match
       USE_MPI = m.group(1).strip()
-      print "USE_MPI is now %s" % (USE_MPI)
+      #print "USE_MPI -> %s" % (USE_MPI)
       self.src[i] = "/* %s */\n" % line.strip()
       idef = i
       break
