@@ -476,7 +476,8 @@ class Item:
       fpfx = it.get_obj_fprefix()
       s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
         fpfx, it.getargs("cfg"))
-      cow.die_if(s, r"failed to initialize %s\n" % varname)
+      cow.die_if(s, r"failed to initialize %s\n" % varname, 
+          onerr = "goto ERR;")
       cow.validate(valid, varname)
       cow.end_if(prereq)
 
@@ -490,7 +491,8 @@ class Item:
       cow.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
         fpfx, varname, it.getargs("cfg"))
-      cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i")
+      cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i", 
+          onerr = "goto ERR;")
       cow.addln("}\n")
       cow.validate(valid, varname)
       cow.end_if(prereq)
@@ -938,8 +940,11 @@ class Item:
         cow.declare_var("int i", pp=pp)
         cow.addln('for (i = 0; i < %s; i++) {' % cnt)
       fpfx = it.get_obj_fprefix()
-      cow.addln("%s%s(%s);", 
-          fpfx, tag, varname+("+i" if isarr else ""))
+      varnm1 = varname+("+i" if isarr else "")
+      cond = "%s%s(%s) != 0" % (fpfx, tag, varnm1)
+      cow.die_if(cond, "cannot %s %s" % (tag, varname + (" %d" if isarr else "")), 
+         args = "i" if isarr else None,
+         onerr = "goto ERR;")
       if isarr: cow.addln('}\n') 
     
     elif it.gtype == "dynamic array":

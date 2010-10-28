@@ -260,7 +260,7 @@ class CCodeWriter:
       self.insist(valid, msg, args, onerr)
 
   def cfgget_var_low(self, var, key, type, fmt, default, 
-      must, valid, desc, var_ = None):
+      must, valid, desc, var_ = None, onerr = "exit(1);"):
     ''' 
     get a variable and make a validation 
     var_ is the actual variable, used for printing
@@ -274,7 +274,8 @@ class CCodeWriter:
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond 
       self.die_if(cond, 
-        "missing var: %s, key: %s, fmt: %%%s" % (var_, dm(key), fmt))
+        "missing var: %s, key: %s, fmt: %%%s" % (var_, dm(key), fmt),
+        onerr = onerr)
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
@@ -282,10 +283,10 @@ class CCodeWriter:
         'assuming default: %s = %s, key: %s' 
         % (var_, escape(default), dm(key)))
   
-    self.validate(valid, var_)
+    self.validate(valid, var_, onerr = onerr)
 
   def cfgget_var(self, var, key, type, fmt, default,
-      must, prereq, tfirst, valid, desc):
+      must, prereq, tfirst, valid, desc, onerr = "goto ERR;"):
     
     # char * is to be allocated dynamically, so be careful
     if (not tfirst and notalways(prereq)
@@ -298,7 +299,7 @@ class CCodeWriter:
     if tfirst: self.assign(var, default, type, 1)
     
     self.cfgget_var_low(var, key, type, fmt, default,
-        must, valid, desc)
+        must, valid, desc, onerr = onerr)
    
     self.end_if(prereq)
     self.addln()
@@ -347,7 +348,7 @@ class CCodeWriter:
     self.addln("ssdelete(%s);", sbuf)
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
-      prereq, desc):
+      prereq, desc, onerr = "goto ERR;"):
     ''' 
     assign a flag to var if prereq is true
     '''
@@ -362,7 +363,7 @@ class CCodeWriter:
     self.assign(ivar, default, type)
     self.cfgget_var_low(ivar, key, "int", fmt, default, 
         "FALSE", # flag is usually optional
-        "%s == 0 || %s == 1" % (ivar, ivar), desc, var_ = flag)
+        "%s == 0 || %s == 1" % (ivar, ivar), desc, var_ = flag, onerr = onerr)
     self.begin_if(ivar)
     self.addln("%s |= %s;", var, flag)
     self.begin_else()

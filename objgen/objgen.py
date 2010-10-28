@@ -713,16 +713,19 @@ class Object:
     
     cfgdecl = "cfgdata_t *cfg"
     usrvars = obj.get_usrvars("cfg")
-    fdecl = "int *%s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
+    fdecl = "int %s(%s *%s, %s%s)" % (fread, objtp, objptr, cfgdecl, usrvars[0])
     cow = CCodeWriter()
     cow.begin_function(fread, fdecl, fdesc)
 
+    cow.die_if("%s == NULL" % objptr, 
+        "null pointer to %s" % objtp, 
+        onerr = "goto ERR;")
     # read configuration file
     items = obj.sort_items(obj.items, "cfg")
     for it in items:
       it.cfgget_var(cow, obj.ptrname)
 
-    cow.end_function("return 0;", silence = ["cfg"])
+    cow.end_function("return 0;\nERR:\nreturn -1;", silence = ["cfg"])
     return cow.prototype, cow.function
 
   def gen_func_cfgopen(obj):
@@ -1036,8 +1039,7 @@ class Object:
     items = self.sort_items(self.items, tag)
     for it in items:
       it.mpitask_var(cow, tag, self.ptrname)
-    cow.addln("return 0;")
-    cow.end_function("")
+    cow.end_function("return 0;\nERR:\nreturn -1;")
     return cow.prototype, cow.function
 
 class Fold:
