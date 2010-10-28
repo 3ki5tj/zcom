@@ -982,28 +982,28 @@ class Object:
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
         onerr = "return -1;")
     
-    cow.declare_var("int size = 0;")
-    cow.declare_var("int rank = 0;")
+    cow.declare_var("int mpisize = 0;")
+    cow.declare_var("int mpirank = 0;")
     
     # get size first
     cond = "comm != MPI_COMM_NULL"
     cow.begin_if(cond)
-    cow.die_if("MPI_SUCCESS != MPI_Comm_size(comm, &size)", 
-        "cannot even get mpi size")
+    cow.die_if("MPI_SUCCESS != MPI_Comm_size(comm, &mpisize)", 
+        "cannot even get MPI size")
     cow.end_if(cond)
     
-    cond = "size > 1"
+    cond = "mpisize > 1"
     cow.begin_if(cond)
-    cow.die_if("MPI_SUCCESS != MPI_Comm_rank(comm, &rank)",
-        "cannot get mpi rank");
+    cow.die_if("MPI_SUCCESS != MPI_Comm_rank(comm, &mpirank)",
+        "cannot get MPI rank");
     cow.end_if(cond)
     # bcast the structure
-    cow.mpibcast("rank", "size", ptr, 1, "*"+ptr, MASTERID, "comm")
+    cow.mpibcast("mpirank", "mpisize", ptr, 1, "*"+ptr, MASTERID, "comm")
     
-    # assign rank and communicator
+    # assign MPI-rank and communicator
     # must be done after Bcast to avoid being overwritten 
     cow.addln("%s->mpi_comm = comm;", ptr)
-    cow.addln("%s->mpi_size = size;\n%s->mpi_rank = rank;", ptr, ptr)
+    cow.addln("%s->mpi_size = mpisize;\n%s->mpi_rank = mpirank;", ptr, ptr)
 
     for it in self.items:
       it.initmpi_var(cow, self.ptrname)
