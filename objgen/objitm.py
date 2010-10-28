@@ -819,7 +819,7 @@ class Item:
     size = ptr + "->mpi_size"
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    desc = it.cmds["desc"]
+    desc = it.mkdesc()
     mpicnt = it.cmds["mpicnt"]
     if mpicnt: cnt = mpicnt;
     prereq = it.cmds["prereq"]
@@ -917,7 +917,7 @@ class Item:
     size = ptr + "->mpi_size"
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    desc = it.cmds["desc"]
+    desc = it.mkdesc(1)
     prereq = it.cmds["prereq"]
     etype = it.get_elegtype()
     task = it.cmds[tag]
@@ -941,6 +941,7 @@ class Item:
       cow.addln("%s%s(%s);", 
           fpfx, tag, varname+("+i" if isarr else ""))
       if isarr: cow.addln('}\n') 
+    
     elif it.gtype == "dynamic array":
       cow.add_comment(desc)
       if tag == "reduce":
@@ -963,4 +964,15 @@ class Item:
       raise Exception
 
     if pp: cow.addln("#endif")
+
+  def mkdesc(it, force = 0):
+    ''' friendly description of a variable '''
+    if not it.decl: return None
+    name = it.decl.name
+    desc = it.cmds["desc"]
+    if desc:
+      desc = "%s: %s" % (name, desc)
+    elif force:
+      desc = name
+    return desc
 

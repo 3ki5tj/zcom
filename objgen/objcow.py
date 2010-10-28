@@ -39,8 +39,11 @@ class CCodeWriter:
         not t.lstrip().startswith("#") and   # preprocessor
         not t.strip().endswith(":")):        # label
       who.s += who.sindent * who.nindents
-      while t.startswith(r"\t"):
+      while t.startswith("\\t"):
         t = t[2:]
+        who.s += who.sindent
+      while t.startswith("\t"):
+        t = t[1:]
         who.s += who.sindent
     who.s += t
     if t.rstrip().endswith("{"): who.inc()

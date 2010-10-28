@@ -1029,6 +1029,7 @@ class Object:
     cow.die_if("%s->mpi_comm == %s"%(ptr, type2zero("MPI_Comm")), 
         "null communicator: %s->mpi_comm" % (ptr), 
         onerr = "return -1;")
+    cow.addln()
     
     items = self.sort_items(self.items, tag)
     for it in items:
