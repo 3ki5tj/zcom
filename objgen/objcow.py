@@ -608,20 +608,31 @@ class CCodeWriter:
     ''' read a variable or array '''
     default_endian = 1 # big endian
     
+    if type(cnt) == int and cnt <= 0: raise Exception
+
     # endian checked reading
+    cond1 = None
     if cnt: # array
       ptr = var
       val = "*(%s)" % var
-      cond = cnt+">0 && "
+      if isint(cnt):
+        icnt = int(cnt)
+        if icnt <= 0: raise Exception
+      else:
+        cond1 = "%s > 0" % cnt
     else: # single variable
       cnt = 1
       ptr = "&"+var
       val = var
-      cond = ""
-    cond += "endn_f%s(%s, sizeof(%s), %s, fp, %s) != %s" % (
+      cond1 = None
+    cond2 = "endn_f%s(%s, sizeof(%s), %s, fp, %s) != %s" % (
         ("read" if tag == "r" else "write"), ptr, val, cnt, 
         ("endn" if tag == "r" else default_endian), 
-        cnt if (type(cnt) != str or cnt.isdigit()) else "(size_t) (%s) "%cnt)
+        cnt if (type(cnt) != str or cnt.isdigit()) else "(size_t) (%s)" % cnt)
+    if cond1:
+      cond = "(%s)\n  && (%s)" % (cond1, cond2)
+    else:
+      cond = cond2
     self.begin_if(cond)
     msg = "error in "+("reading" if tag == "r" else "writing")+" "+var
     if cnt == 1:

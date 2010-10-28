@@ -6,6 +6,16 @@ import re
 
 MASTERID = "0"       # master rank in MPI
 
+def isint(s):
+  ''' judge if a string is integer '''
+  if type(s) == int:
+    return 1
+  try:
+    i = int(s)
+  except ValueError:
+    return 0
+  return 1
+
 def notalways(cond):
   ''' test if a condition is missing or always true '''
   return cond not in (None, 1, "1", "TRUE")
