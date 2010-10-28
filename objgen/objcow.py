@@ -803,9 +803,13 @@ class CCodeWriter:
   def mpibcast(self, mpirank, mpisize, var, cnt, tp, master, comm, onerr = "exit(1);"):
     ''' bcast from master to others '''
     cond = "%s > 1" % mpisize
+    if cnt in (1, "1"):
+      bytecnt = "sizeof(%s)" % tp
+    else:
+      bytecnt = "(%s)*sizeof(%s)" % (cnt, tp)
     self.begin_if(cond)
-    self.die_if("MPI_SUCCESS != MPI_Bcast(%s, (%s)*sizeof(%s), MPI_BYTE, %s, %s)"
-        % (var, cnt, tp, master, comm), 
+    self.die_if("MPI_SUCCESS != MPI_Bcast(%s, %s, MPI_BYTE, %s, %s)"
+        % (var, bytecnt, master, comm), 
         "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX" 
         % (var, tp, cnt),  # msg
         "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args

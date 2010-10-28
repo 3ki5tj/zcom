@@ -835,15 +835,16 @@ class Item:
       if it.gtype not in ("dynamic array",):
         print "cannot just allocate space for %s (%s)" % (it.decl.name, it.gtype)
         raise Exception
-      cow.add_comment(desc)
       cow.begin_if(notmaster)
+      cow.add_comment(desc)
       cow.alloc_darr(varname, etype, cnt)
       cow.end_if(notmaster)
     
     # an array to be bcasted, allocate space on nonmasters
+    # receive from master
     elif mpi in (1, "1", "bcast"):
-      cow.add_comment(desc)
       if it.gtype == "dynamic array":
+        cow.add_comment(desc)
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, etype, cnt)
         cow.end_if(notmaster)
@@ -853,6 +854,7 @@ class Item:
         isarr = (it.gtype == "object array")
         if not isarr: cnt = "1"
         cow.begin_if(notmaster)
+        cow.add_comment(desc)
         cow.alloc_darr(varname, it.decl.datatype, cnt)
         cow.end_if(notmaster)
         if isarr: 
@@ -862,6 +864,7 @@ class Item:
         cow.addln("%sinitmpi(%s, comm);", fpfx, varname+("+i" if isarr else ""))
         if isarr: cow.addln('}\n')
       elif it.gtype == "char *":
+        cow.add_comment(desc)
         cow.declare_var("int i", pp=pp)
         cow.addln("i = strlen(%s);", varname)
         cow.mpibcast(rank, size, "&i", 1, "int", MASTERID, "comm")

@@ -107,6 +107,13 @@ Commands of an item:
   * $cfgargs: additional args for cfgopen() objects
               similarly $rbargs, $wbargs;
 
+  * $mpi:     MPI variable, every node has this variable,
+              $mpi; if it's a dynamic array, space is allocated for non-masters
+              during initmpi(), then array on the master is broadcast
+              if it's an object pointer/array, the initmpi() function of 
+              the variable is recursively applied
+              $mpi:alloc; space is allocated for non-masters
+
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier
   * $fold_bin_add:  add some variables (separated by ,) during writing binary
@@ -989,9 +996,9 @@ class Object:
     cow.begin_if(cond)
     cow.die_if("MPI_SUCCESS != MPI_Comm_rank(comm, &rank)",
         "cannot get mpi rank");
-    # bcast the structure, no need to do so if only one node
-    cow.mpibcast("rank", "size", ptr, 1, "*"+ptr, MASTERID, "comm")
     cow.end_if(cond)
+    # bcast the structure
+    cow.mpibcast("rank", "size", ptr, 1, "*"+ptr, MASTERID, "comm")
     
     # assign rank and communicator
     # must be done after Bcast to avoid being overwritten 
