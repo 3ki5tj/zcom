@@ -1003,7 +1003,9 @@ class Object:
     # assign MPI-rank and communicator
     # must be done after Bcast to avoid being overwritten 
     cow.addln("%s->mpi_comm = comm;", ptr)
-    cow.addln("%s->mpi_size = mpisize;\n%s->mpi_rank = mpirank;", ptr, ptr)
+    cow.addln("%s->mpi_size = mpisize;", ptr)
+    cow.addln("%s->mpi_rank = mpirank;", ptr)
+    cow.addln()
 
     for it in self.items:
       it.initmpi_var(cow, self.ptrname)

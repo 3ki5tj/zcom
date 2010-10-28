@@ -344,7 +344,7 @@ class Item:
     #print "%s %s" % (it.cmds["flag"], it.cmds["flagval"])
     #raw_input()
     
-  def get_flag(it):
+  def getflag(it):
     if "flag" not in it.cmds: return None
     return it.cmds["flag"]
 
@@ -436,8 +436,9 @@ class Item:
     must    = it.cmds["must"]
     cnt = it.cmds["cfgcnt"]
     if cnt == None: cnt = it.cmds["cnt"]
-    desc    = it.cmds["desc"]
+    desc    = it.mkdesc(1)
     flag    = it.cmds["flag"]
+    usrval  = it.cmds["usr"]
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
     ###raw_input("if pp=[%s], item=%s"%(pp, it))
@@ -445,13 +446,15 @@ class Item:
     passme = 0
     if not it.decl: # stand-alone comment
       cow.add_comment(desc)
-      cow.insist(it.cmds["assert"], desc)
+      cow.insist(it.cmds["assert"], it.cmds["desc"])
       call = it.cmds["call"]
       if call: cow.addln(call + ";")
       passme = 1
     if flag and (not key or key == "flags"):
-      passme =1
-    
+      passme = 1
+    if usrval and usrval not in ("cfg", "cfgdup", 1): # usr variables 
+      passme = 1
+
     if not passme: 
       varnm = it.decl.name
       varname = ptrname + "->" + varnm
@@ -462,7 +465,7 @@ class Item:
       pass
     elif flag: # input flag
       #raw_input("flag with key %s" % key)
-      flag = it.get_flag()
+      flag = it.getflag()
       fmt = type2fmt_s(it.gtype)
       cow.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
@@ -511,11 +514,8 @@ class Item:
             must, valid, cmpl, desc)
 
     else: # regular variable
-      usrval = it.cmds["usr"]
       if usrval:
-        if usrval in ("cfg", "cfgdup", 1): # usr variables
-          cow.assign(varname, varnm, it.gtype)
-        else: pass # ignore other usr variables
+        cow.assign(varname, varnm, it.gtype)
       elif not it.cmds["io_cfg"]: # assign default value
         if defl and len(defl): 
           cow.assign(varname, defl, it.gtype);
@@ -721,7 +721,7 @@ class Item:
     varname = ptr + "->" + varnm
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
-    desc = it.cmds["desc"]
+    desc = it.mkdesc(1)
     prereq = it.cmds["prereq"]
 
     pp = it.cmds["#if"]
@@ -967,11 +967,17 @@ class Item:
 
   def mkdesc(it, force = 0):
     ''' friendly description of a variable '''
-    if not it.decl: return None
-    name = it.decl.name
+    if not it.decl:
+      name = None
+    elif it.cmds["flag"]:
+      name = it.getflag()
+    else:
+      name = it.decl.name
+
     desc = it.cmds["desc"]
     if desc:
-      desc = "%s: %s" % (name, desc)
+      if name:
+        desc = "%s: %s" % (name, desc)
     elif force:
       desc = name
     return desc
