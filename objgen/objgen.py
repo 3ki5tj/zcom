@@ -960,12 +960,12 @@ class Object:
     ''' write a function to present current data '''
     cow = CCodeWriter()
     funcnm = "%smanifest" % (self.fprefix)
-    fdecl = "void %s(%s *%s, FILE *fp)" % (funcnm, self.name, self.ptrname)
+    fdecl = "void %s(%s *%s, FILE *fp, int arrmax)" % (funcnm, self.name, self.ptrname)
     cow.begin_function(funcnm, fdecl, "clear %s data" % self.name)
 
     for it in self.items:
       it.manifest_var(cow, self.ptrname)
-    cow.end_function("")
+    cow.end_function("", silence = "arrmax")
     return cow.prototype, cow.function
 
   def gen_func_initmpi(self):
@@ -1030,10 +1030,10 @@ class Object:
         pp = "#ifdef %s" % USE_MPI)
 
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
-        onerr = "return -1;")
+        onerr = "goto ERR;")
     cow.die_if("%s->mpi_comm == %s"%(ptr, type2zero("MPI_Comm")), 
         "null communicator: %s->mpi_comm" % (ptr), 
-        onerr = "return -1;")
+        onerr = "goto ERR;")
     cow.addln()
     
     items = self.sort_items(self.items, tag)

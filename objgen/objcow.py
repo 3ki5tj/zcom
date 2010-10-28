@@ -200,14 +200,14 @@ class CCodeWriter:
     msg = r"no memory! var: %s, type: %s" % (var, type)
     self.die_if(cond, msg)
 
-  def init_darr(self, var, type, default, cnt, valid, desc, pp = None):
+  def init_darr(self, var, type, default, cnt, valid, desc, pp = None, onerr = "goto ERR;"):
     ''' write code for initializing a dynamic array '''
     # since we allocate array space by default (as long as $cnt exists
     # assign cnt to 0 is the trick to avoid dynamic allocation
     if cnt.strip() != "0":  
       self.alloc_darr(var, type, cnt)
       self.init_sarr(var, default, cnt, pp)
-      self.validate(valid, var)
+      self.validate(valid, var, onerr = onerr)
     else:
       self.addln(var+" = NULL;")
 
@@ -305,7 +305,7 @@ class CCodeWriter:
     self.addln()
 
   def str_to_arr(self, sbuf, var, type, fmt, cnt, 
-      valid, cmpl, desc):
+      valid, cmpl, desc, onerr = "exit(1);"):
     ''' parse a string to array item '''
     ps = "ps"
 
@@ -320,18 +320,18 @@ class CCodeWriter:
     self.addln("for (i = 0; i < %s; i++) {" % cnt)
     s = r'1 != sscanf(ps, "%s%%n", %s+i, &nps)' % (fmt, var)
     if cmpl:  # allow incomplete
-      self.die_if(s, "incomplete array %s at i = %%d" % var, "i")
+      self.die_if(s, "incomplete array %s at i = %%d" % var, "i", onerr = onerr)
     else:
       self.begin_if(s)
       self.addln("break;")
       self.end_if(s)
-    self.validate(valid, var, fmt = "i = %d", args = "i")
+    self.validate(valid, var, fmt = "i = %d", args = "i", onerr = onerr)
     self.addln("ps += nps;")
     self.addln("}")
     self.end_if(sbufgood)
 
   def cfgget_sarr(self, var, key, type, fmt, default, cnt, 
-      must, valid, cmpl, desc):
+      must, valid, cmpl, desc, onerr = "goto ERR;"):
     # make initial assignment first 
     self.init_sarr(var, default, cnt)
 
@@ -341,10 +341,11 @@ class CCodeWriter:
 
     self.addln("%s = NULL;", sbuf)
     self.cfgget_var_low(sbuf, key, type, "%s", default,
-        must, 1, desc)
+        must, 1, desc, onerr = onerr)
 
     # parse the string to get individual items
-    self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, desc)
+    self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, 
+        desc, onerr = onerr)
     self.addln("ssdelete(%s);", sbuf)
 
   def cfgget_flag(self, var, key, flag, type, fmt, default, 
@@ -693,9 +694,9 @@ class CCodeWriter:
           self.begin_else()
           self.rwb_atom(tag, var, onerr = 0)
           self.end_if(match)
-      self.validate(valid, var)
+      self.validate(valid, var, onerr = "goto ERR;")
   
-  def rb_arr1d(self, arr, cnt, tp, match = None, valid = None):
+  def rb_arr1d(self, arr, cnt, tp, match = None, valid = None, onerr = "goto ERR;"):
     if tp not in ("int", "double"):
       print "don't know how to write type %s for %s" % (tp, arr)
       raise Exception
@@ -709,13 +710,13 @@ class CCodeWriter:
       if match != 1: # conditional match
         self.begin_else()
         self.rwb_atom("r", arr, cnt = cnt)
-        self.validate(valid) # only validate if we don't want to match
+        self.validate(valid, onerr = onerr) # only validate if we don't want to match
         self.errmsg("rb: update array %s, %%d of %s"%(arr,tp),
             "%s"%cnt )
         self.end_if(match)
     else:
       self.rwb_atom("r", arr, cnt = cnt)
-      self.validate(valid)
+      self.validate(valid, onerr = onerr)
 
   def rb_arr2d(self, arr, dim, tp, trim):
     '''
@@ -766,14 +767,14 @@ class CCodeWriter:
     self.addln("}") # end of the loop
 
   def rwb_arr(self, rw, arr, dim, tp, trim = 1, 
-      match = None, valid = None):
+      match = None, valid = None, onerr = "goto ERR;"):
     ndim = len(dim)
     if ndim == 2:
       if rw == "w":
         self.wb_arr2d(arr, dim, tp, trim)
       else:
         self.rb_arr2d(arr, dim, tp, trim)
-        self.validate(valid)
+        self.validate(valid, onerr = onerr)
     elif ndim == 1:
       if rw == "w":
         self.wb_arr1d(arr, dim[0], tp)
@@ -810,10 +811,6 @@ class CCodeWriter:
     self.declare_var("int i")
     self.addln("for (i = %s-1; i >= 0; i--) if (%s) break;", cnt, test)
     return "i >= 0"
-
-  def manifest(self, var, tp):
-    fmt = type2fmt(tp)
-    self.addln('printf("%s", %s);\n', fmt, var)
 
   def mpibcast(self, mpirank, mpisize, var, cnt, tp, master, comm, onerr = "exit(1);"):
     ''' bcast from master to others '''

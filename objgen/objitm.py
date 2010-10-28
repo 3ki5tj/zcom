@@ -445,10 +445,12 @@ class Item:
 
     passme = 0
     if not it.decl: # stand-alone comment
-      cow.add_comment(desc)
-      cow.insist(it.cmds["assert"], it.cmds["desc"])
+      insist = it.cmds["assert"]
       call = it.cmds["call"]
-      if call: cow.addln(call + ";")
+      if insist or call:
+        cow.add_comment(desc)
+        cow.insist(insist, it.cmds["desc"])
+        if call: cow.addln(call + ";")
       passme = 1
     if flag and (not key or key == "flags"):
       passme = 1
@@ -530,7 +532,7 @@ class Item:
     
 
   def rwb_var(it, cow, rw, varname):
-    desc = it.cmds["desc"]
+    desc = it.mkdesc(1)
     dim = it.cmds["dim"]
     cnt = it.cmds["cnt"]
     bincnt = it.cmds[rw+"bcnt"]
@@ -716,7 +718,9 @@ class Item:
     
 
   def manifest_var(it, cow, ptr):
-    if not it.decl or it.isdummy: return
+    arrnum = 5 # elements for printing arrays
+
+    if not it.decl: return
     if it.cmds["usr"] not in (None, 1): return
 
     varnm = it.decl.name
@@ -725,6 +729,9 @@ class Item:
     cnt = it.cmds["cnt"]
     desc = it.mkdesc(1)
     prereq = it.cmds["prereq"]
+    flag = it.cmds["flag"]
+    key  = it.cmds["key"]
+    if not flag and it.isdummy: return
 
     pp = it.cmds["#if"]
     if pp: cow.addln("#if %s", pp)
@@ -736,24 +743,34 @@ class Item:
       etype = it.get_elegtype()
       try:
         fmt = type2fmt_p(etype, varname)
-        cow.addln(r'fprintf(fp, "%s: %s of %s:");', 
+        cow.addln(r'fprintf(fp, "%s: %s of %s: ");', 
           varname, it.gtype, cnt)
       except TypeError:
-        cow.addln(r'fprintf(fp, "%s: %s of %s %%p\n", %s);',
-          varname, it.gtype, cnt, varname)
+        cow.addln(r'fprintf(fp, "%s: %s of %s %%p (unknown type: %s)", %s);',
+          varname, it.gtype, cnt, etype, varname)
         isarr = 0
       if cnt == "0": isarr = 0
       if isarr:
         emptest = cow.test_arrempty(varname, cnt, etype)
         if emptest: 
           cow.begin_if(emptest)
-          cow.addln(r'fprintf(fp, "\n");')
+          cow.addln('if ((arrmax < 0 || arrmax > 3) && %s > 6)\n\tfprintf(fp, "\\n");',
+              cnt)
         cow.declare_var("int i", pp = pp) # declare index i
-        cow.addln("for (i = 0; i < %s; i++) {", cnt)
+        cow.declare_var("int pacnt", pp = pp)
+        
+        cow.addln("for (pacnt = 0, i = 0; i < %s; i++) {", cnt)
+        cond = 'i == arrmax && i < %s-arrmax' % cnt
+        cow.begin_if(cond)
+        cow.addln(r'if (arrmax > 3 && pacnt %% 10 != 0) fprintf(fp, "\n");')
+        cow.addln(r'fprintf(fp, "..., ");')
+        cow.addln(r'if (arrmax > 3) fprintf(fp, "\n");');
+        cow.end_if(cond)
+        cow.addln(r'if (arrmax >= 0 && i >= arrmax && i < (%s-arrmax)) continue;', cnt)
         cow.addln('fprintf(fp, "%s, ", %s);', fmt, varname + "[i]")
-        cow.addln(r'if ((i+1) %% 10 == 0) printf("\n");')
+        cow.addln(r'if (++pacnt %% 10 == 0) fprintf(fp, "\n");')
         cow.addln("}")
-        cow.addln(r'if ((%s) %% 10 != 0) fprintf(fp, "\n");', cnt)
+        cow.addln(r'if (pacnt %% 10 != 0) fprintf(fp, "\n");')
         if emptest:
           cow.begin_else()
           cow.addln(r'fprintf(fp, " {0}\n");')
@@ -765,7 +782,7 @@ class Item:
       fpfx = it.get_obj_fprefix();
       cond = "%s != NULL" % varname
       cow.begin_if(cond)      
-      funcall = "%smanifest(%%s, fp)" % fpfx      
+      funcall = "%smanifest(%%s, fp, arrmax)" % fpfx
       if it.gtype == "object array":
         cow.addln(r'fprintf(fp, "%s: %s array of %s:");', 
           varname, it.decl.datatype, cnt)
@@ -775,8 +792,16 @@ class Item:
           cow.begin_if(emptest)
           cow.addln(r'fprintf(fp, "\n");')
         cow.declare_var("int i", pp = pp) # declare index i
-        cow.addln("for (i = 0; i < %s; i++)", cnt)
-        cow.addln(cow.sindent + funcall % (varname+"+i") + ";")
+
+        cow.addln("for (i = 0; i < %s; i++) {", cnt)
+        cond = 'i == arrmax && i < %s-arrmax' % cnt
+        cow.begin_if(cond)
+        cow.addln(r'fprintf(fp, "\n...\n");')
+        cow.end_if(cond)
+        cow.addln(r'if (arrmax >= 0 && i >= arrmax && i < (%s-arrmax)) continue;', cnt)
+        cow.addln(r'fprintf(fp, "%s[%%d]:\n", i);', varname)
+        cow.addln(funcall % (varname+"+i") + ";")
+        cow.addln("}")
         if emptest:
           cow.begin_else()
           cow.addln(r'fprintf(fp, " {0}\n");')
@@ -787,9 +812,14 @@ class Item:
         cow.addln(funcall % varname + ";")
       cow.end_if(cond)
 
+    elif flag:
+      flag = it.getflag()
+      cow.addln(r'fprintf(fp, "%s & %s (%s): 0x%%X\n", (%s & %s));',
+        varname, flag, escape(key), varname, flag)
+
     elif it.gtype in ("pointer",):
       print "skip var. [%s] of type [%s]" % (varname, it.gtype); raw_input()
-      pass # fall through
+    
     else:
       try:
         fmt = type2fmt_p(it.gtype, varname)
