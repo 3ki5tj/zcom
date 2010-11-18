@@ -62,7 +62,8 @@ real rv3_calcdih(dihcalc_t *dih,
     scl = (real) sqrt(m2*n2);
     dot = rv3_dot(m, n);
     cosphi = dot/scl;
-    if (cosphi > cosmax) cosphi = cosmax; else if (cosphi < -cosmax) cosphi = -cosmax;
+    if (cosphi > cosmax) cosphi = cosmax; 
+    else if (cosphi < -cosmax) cosphi = -cosmax;
   } else {
     cosphi = cosmax;
   }

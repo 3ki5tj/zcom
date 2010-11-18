@@ -876,7 +876,9 @@ class Item:
     # an array to be bcasted, allocate space on nonmasters
     # receive from master
     elif mpi in (1, "1", "bcast"):
-      if it.gtype == "dynamic array":
+      if it.gtype == "static array":
+        pass  # no need to do anything
+      elif it.gtype == "dynamic array":
         cow.add_comment(desc)
         cow.begin_if(notmaster)
         cow.alloc_darr(varname, etype, cnt)
