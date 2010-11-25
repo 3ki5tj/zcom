@@ -34,7 +34,6 @@ real rv3_calcdih(dihcalc_t *dih,
   real nxkj, nxkj2, m2, n2;
   real xij[3], xkj[3], xkl[3];
   real m[3], n[3]; /* the planar vector of xij x xkj,  and xkj x xkj */
-  const real cosmax = (real)(1.0-6e-8);
 
   if (dih != NULL && sizeof(real) != dih->szreal) {
     fprintf(stderr, "size real should be %d instead of %d\n",
@@ -52,7 +51,10 @@ real rv3_calcdih(dihcalc_t *dih,
   }
   nxkj2 = rv3_sqr(xkj);
   nxkj = (real) sqrt(nxkj2);
-  tol = nxkj2 * 6e-8f;
+  if (sizeof(real) <= 4)
+    tol = nxkj2 * 6e-8f;
+  else
+    tol = nxkj2 * 1e-16f;
 
   rv3_cross(m, xij, xkj);
   m2 = rv3_sqr(m);
@@ -62,10 +64,10 @@ real rv3_calcdih(dihcalc_t *dih,
     scl = (real) sqrt(m2*n2);
     dot = rv3_dot(m, n);
     cosphi = dot/scl;
-    if (cosphi > cosmax) cosphi = cosmax; 
-    else if (cosphi < -cosmax) cosphi = -cosmax;
+    if (cosphi >= (real) 1.) cosphi = 1.f; 
+    else if (cosphi < (real)(-1.)) cosphi = -1.f;
   } else {
-    cosphi = cosmax;
+    cosphi = 1.f;
   }
   phi = (real) acos(cosphi);
   vol = rv3_dot(n, xij);

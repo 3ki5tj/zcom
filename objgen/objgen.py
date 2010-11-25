@@ -985,7 +985,7 @@ class Object:
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
         onerr = "return -1;")
     
-    cow.declare_var("int mpisize = 0;")
+    cow.declare_var("int mpisize = 1;")
     cow.declare_var("int mpirank = 0;")
     
     # get size first
@@ -1031,7 +1031,7 @@ class Object:
 
     cow.die_if(ptr+" == NULL", "null pointer %s to %s" % (ptr, obj), 
         onerr = "goto ERR;")
-    cow.die_if("%s->mpi_comm == %s"%(ptr, type2zero("MPI_Comm")), 
+    cow.die_if("%s->mpi_comm == %s && %s->mpi_size > 1" % (ptr, type2zero("MPI_Comm"), ptr), 
         "null communicator: %s->mpi_comm" % (ptr), 
         onerr = "goto ERR;")
     cow.addln()
