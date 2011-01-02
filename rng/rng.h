@@ -14,12 +14,18 @@
   #include <inttypes.h>
 #endif
 
-#ifndef PRIu64
-  #if defined(_MSC_VER) || defined(__BORLANDC__)
+#ifndef PRIu32
+  #if (defined(_MSC_VER) && (_MSC_VER >= 1300)) || defined(__BORLANDC__)
     #define PRIu32 "I32u"
-    #define PRIu64 "I64u"
   #else
     #define PRIu32 "u"
+  #endif
+#endif
+
+#ifndef PRIu64
+  #if defined(_MSC_VER) || defined(__BORLANDC__)
+    #define PRIu64 "I64u"
+  #else
     #define PRIu64 "llu"
   #endif
 #endif
