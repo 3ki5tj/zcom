@@ -18,20 +18,13 @@
 
 /* handle a trace command inside a format string 
  * return nonzero to quit and enter the normal mode */
-static int tracecmd_(const char *cmd, va_list args, int once, 
+static int tracecmd_(const char *cmd, va_list args,
     char **pfname, int *freq, int *verbose)
 {
   const char *p;
 
   if ((p = strchr(cmd, '=')) == NULL)
     return 1;
-  
-  if (once) {
-    fprintf(stderr, "trace: changing setting after something "
-        "has already been written to file is invalid\n");
-    return 0;
-  }
-  
   if (strncmp(cmd, "filename", 8) == 0) {
     p = va_arg(args, const char *);
     if (p != NULL) {
@@ -55,30 +48,27 @@ static int tracecmd_(const char *cmd, va_list args, int once,
 /* write trace in unbuffered mode
  * note: system may have provided certain buffer */
 static int wtrace_unbuf_low_(int cnt, int freq, 
-    const char *fname, const char *mode, const char *fmt, va_list args)
+    const char *fname, const char *fmt, va_list args)
 {
   static FILE *fp = NULL;
+  static const char *mode = NULL;
 
   if (cnt == 0) {
-    if ((fp = fopen(fname, mode)) == NULL) {
-      fprintf(stderr, "cannot write file %s with mode %s\n", 
-          fname, mode);
+    if ((fp = fopen(fname, mode = (mode ? "a" : "w"))) == NULL) {
+      fprintf(stderr, "cannot write file %s, mode %s\n", fname, mode);
       return 1;
     }
   }
-
   if (fmt != NULL) 
     vfprintf(fp, fmt, args);
-
-  if ((cnt + 1) == freq || fmt == NULL) {
+  if ((cnt + 1) == freq || fmt == NULL)
     fclose(fp);
-  }
   return 0;
 }
 
 /* write trace in memory-buffered mode */
 static int wtrace_buf_low_(int cnt, int freq,
-    char *fname, const char *mode, const char *fmt, va_list args)
+    const char *fname, const char *fmt, va_list args)
 {
   const  int   maxmsg = 1024;
   static char *msg = NULL, *buf = NULL;
@@ -113,17 +103,17 @@ static int wtrace_buf_low_(int cnt, int freq,
   /* flush buffered content to file, and possibly finish up */
   if ((cnt + 1) % freq == 0 || fmt == NULL) {
     FILE *fp;
+    static const char *mode = NULL;
 
     if (buf[0] != '\0') { /* in case nothing was written */
-      if ((fp = fopen(fname, mode)) == NULL ) {
-        fprintf(stderr, "cannot write file %s with mode %s\n", fname, mode);
+      if ((fp = fopen(fname, mode = (mode ? "a" : "w"))) == NULL) {
+        fprintf(stderr, "cannot write file %s, mode %s\n", fname, mode);
         return 1;
       }
       fputs(buf, fp);
       buf[0] = '\0';
       fclose(fp);
     }
-
     if (fmt == NULL) { /* finishing up */
       if (msg != NULL) ssdelete(msg); 
       if (buf != NULL) ssdelete(buf);
@@ -154,8 +144,8 @@ int wtrace_buf(const char *fmt, ...)
 {
   static int   verbose = 1;
   static int   freq = 1000;
-  static int   cnt = 0, once = 0;
-  static char *fname = NULL, mode[8] = "w";
+  static int   cnt = 0;
+  static char *fname = NULL;
   va_list args;
   int i;
 
@@ -165,31 +155,31 @@ int wtrace_buf(const char *fmt, ...)
   /* start the command mode if the format string start with "%@"
    * the command mode allows setting parameters */
   if (fmt != NULL && fmt[0] == '%' && fmt[1] == '@') {
+    if (cnt > 0) {
+      fprintf(stderr, "trace: changing setting after something\n");
+      return -1;
+    }
     va_start(args, fmt);
-    i = tracecmd_(fmt + 2, args, once, &fname, &freq, &verbose);
+    i = tracecmd_(fmt + 2, args, &fname, &freq, &verbose);
     va_end(args);
     if (i == 0) return 0;
   }
 
   va_start(args, fmt);
-  mode[0] = (char)(once ? 'a' : 'w');
   if (wtrace_flags_ == 0) { /* unbuffered version */
-    i = wtrace_unbuf_low_(cnt, freq, fname, mode, fmt, args);
+    i = wtrace_unbuf_low_(cnt, freq, fname, fmt, args);
   } else { /* buffered version */
-    i = wtrace_buf_low_(cnt, freq, fname, mode, fmt, args);
+    i = wtrace_buf_low_(cnt, freq, fname, fmt, args);
   }
   va_end(args);
 
   /* fmt == NULL means finishing up, once = 0 for a fresh start */
   if (fmt == NULL) { /* finishing up */
-    once = 0; /* once = 0 for a fresh start */
     cnt  = 0;
     if (fname) ssdelete(fname);
   } else {
-    once = 1;
     cnt++;
   }
-
   return i;
 }
 

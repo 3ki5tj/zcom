@@ -1,7 +1,7 @@
 all: test
 
 test: test.c trace.c ss.c
-	$(CC) -o $@ $^ 
+	$(CC) -Wall -o $@ $^ 
 
 clean:
 	rm -f test *~ *.o TRACE
