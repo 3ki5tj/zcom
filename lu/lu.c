@@ -1,0 +1,113 @@
+#ifndef LU_C__
+#define LU_C__
+
+/* LU decomposition part  */
+#include "lu.h"
+
+/*
+  LU decomposition of an n x n matrix 'a',
+  The diagonal belongs to U, the diagonal of L is 1's
+  idx[] as output can have duplicated indices, but this is readable by
+*/
+int ludcmp(double *a, int *idx, int n)
+{
+  int i, j, k, imax;
+  double x, max, sum, *scal;
+  const double mintol = 1e-16; /* absolute minimal value for a pivot */
+
+  if ((scal = malloc(sizeof(double)*n)) == NULL) {
+    fprintf(stderr, "cannot allocate scal\n");
+    return -1;
+  }
+
+  for (i = 0; i < n; i++) {  /* normalize each row */
+    for (max = 0, j = 0; j < n; j++)
+      if ((x = fabs(a[i*n+j])) > max) max = x;
+    if (max < mintol) {
+      free(scal);
+      return 1;
+    }
+    scal[i] = 1.0/max;
+  }
+
+  /* decompose  A = L U, column by column, first U, next L */
+  for (j = 0; j < n; j++) {
+    /* matrix U */
+    for (i = 0; i < j; i++) {
+      sum = a[i*n+j];
+      for (k = 0; k < i; k++) sum -= a[i*n+k]*a[k*n+j];
+      a[i*n+j] = sum;
+    }
+
+    /* matrix L, diagonal of L are 1 */
+    max = 0.0; imax = j;
+    for (i = j; i < n; i++) {
+      sum = a[i*n+j];
+      for (k = 0; k < j; k++) sum -= a[i*n+k]*a[k*n+j];
+      a[i*n+j] = sum;
+      /* choosing the biggest element as the pivot */
+      if ((x = scal[i]*fabs(sum)) >= 1.001*max) { max = x; imax = i; }
+    }
+    if (j != imax) { /* swap the pivot row and the jth row */
+      for (k = 0; k < n; k++) { 
+        x = a[imax*n+k]; a[imax*n+k] = a[j*n+k]; a[j*n+k] = x; 
+      }
+      scal[imax] = scal[j]; /* don't care scal[j], no use in the future */
+    }
+    idx[j] = imax;
+    if (fabs(a[j*n+j]) < mintol) {
+      free(scal);
+      return 2;
+    }
+    /* divide by the pivot element, for the L matrix */
+    if (j != n-1) for (x = 1.0/a[j*n+j], i = j+1; i < n; i++) a[i*n+j] *= x;
+  }
+  free(scal);
+  return 0;
+}
+
+/* backward substitution for L U x = b */
+int lubksb(double *a, double *b, int *idx, int n)
+{
+  int i, j, id;
+  double x;
+
+  for (i = 0; i < n; i++) /* unscramble indices */
+    if ((id = idx[i]) != i) {
+      x = b[id]; b[id] = b[i]; b[i] = x;
+    }
+  for (i = 0; i < n; i++) { /* L y = b */
+    for (x = b[i], j = 0; j < i; j++)
+      x -= a[i*n+j] * b[j];
+    b[i] = x;
+  }
+  for (i = n - 1; i >= 0; i--) { /* U x = y */
+    x = b[i];
+    for (j = i + 1; j < n; j++)
+      x -= a[i*n+j] * b[j];
+    b[i] = x / a[i*n+i];
+  }
+  return 0;
+}
+
+/* solve A x = b by L U decomposition */
+int lusolve(double *a, double *b, int n)
+{
+  int *idx, ret;
+
+  if ((idx = calloc(0, sizeof(int))) == NULL) {
+    fprintf(stderr, "cannot allocate idx\n");
+    return -1;
+  }
+  ret = ludcmp(a, idx, n);
+  if (ret != 0) {
+    free(idx);
+    return ret;
+  }
+  lubksb(a, b, idx, n);
+  free(idx);
+  return 0;
+}
+
+#endif
+
