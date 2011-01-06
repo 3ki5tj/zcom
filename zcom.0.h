@@ -367,7 +367,7 @@
 #ifndef ZCOM_PDB__
 #define ZCOM_PDB__
 
-#endif /* ZCOM_IS2__ */
-#endif /* ZCOM_IS2 */
+#endif /* ZCOM_PDB__ */
+#endif /* ZCOM_PDB */
 
 
