@@ -120,6 +120,9 @@
   #ifndef ZCOM_IS2
   #define ZCOM_IS2
   #endif
+  #ifndef ZCOM_PDB
+  #define ZCOM_PDB
+  #endif
 #endif
 
 /* build dependencies */
@@ -253,88 +256,15 @@
 #ifndef ZCOM_STR__
 #define ZCOM_STR__
 
-#include <ctype.h>
-#include <stdio.h>
-
-#define ZCOM_STRCMP  0x0001
-#define ZCOM_STRCPY  0x0002
-#define ZCOM_STRCAT  0x0004
-
-#define ZCOM_DOCASE  0x0100
-#define ZCOM_UPPER   0x0200
-
-/* copy the string and convert it to upper/lower case */
-#define strconv2upper(s,t,size_s) zcom_strconv(s,t,size_s,ZCOM_STRCPY|ZCOM_DOCASE|ZCOM_UPPER)
-#define strconv2lower(s,t,size_s) zcom_strconv(s,t,size_s,ZCOM_STRCPY|ZCOM_DOCASE)
-#define strcpy_safe(s,t,size_s)   zcom_strconv(s,t,size_s,ZCOM_STRCPY)
-/* concatenate strings, the last parameter is the buffer size of s,
- * unlike strncat(), in which it's the number of characters from *t* to be copied.  */
-#define strcat_safe(s,t,size_s)   zcom_strconv(s,t,size_s,ZCOM_STRCAT)
-/* compare strings, ignore case differences, stricmp */
-#define strcmp_igncase(s,t)       zcom_strconv((char *)s,t,0,ZCOM_STRCMP|ZCOM_DOCASE)
-
-/* A combination of string comparison and conversion.
- * It can compare strings with or without cases,
- * and it can convert strings to different cases.
- *
- * To balance the string comparison and copying,
- * we make the return value int, instead of char *.
- *
- * In case of string-copying, it returns
- * 0 for success,
- * 1 for lack of space, or NULL pointers.
- * Unlike the case of strncpy(), s is always null-terminated.
- * */
-int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
-{
-  size_t i, j;
-  int cs, ct, docase, doupper;
-
-  docase  = flags & ZCOM_DOCASE; /* do case conversion */
-  doupper = flags & ZCOM_UPPER;
-
-  if (flags & ZCOM_STRCMP) { /* comparison, size_s is ignored */
-    if (s == NULL || t == NULL) return 0;
-    for (i = 0; ; i++) {
-      cs = s[i];
-      ct = t[i];
-      if (docase) {
-        cs = tolower((unsigned char)cs);
-        ct = tolower((unsigned char)ct);
-      }
-      if (cs == 0 || ct == 0 || cs != ct) break;
-    }
-    return cs-ct;
-  } else if (flags & (ZCOM_STRCPY|ZCOM_STRCAT)) { /* copying and */
-    if (size_s == 0 || s == NULL || t == NULL) return 1;
-    /* t[size_s-1] should be '\0' */
-    i = 0;
-    if (flags & ZCOM_STRCAT) while(s[i]) i++;
-    for (j = 0; i < size_s-1; i++, j++) {
-      ct = t[j];
-      if (docase && (ct != 0)) {
-        ct = (unsigned char)(char)ct;
-        if (doupper) {
-          cs = toupper(ct);
-        } else {
-          cs = tolower(ct);
-        }
-      } else {
-        cs = ct;
-      }
-      s[i] = (char)cs;
-      if (ct == 0) break;
-    }
-    if (i == size_s-1) s[i] = '\0';
-    return (t[j] != '\0');
-  } else { /* unknown flag */
-    fprintf(stderr, "zcom_strconv: invalid flags=%#x.\n", flags);
-    return 0;
-  }
-}
-
 #endif /* ZCOM_STR__ */
 #endif /* ZCOM_STR */
+
+#ifdef  ZCOM_UTIL
+#ifndef ZCOM_UTIL__
+#define ZCOM_UTIL__
+
+#endif /* ZCOM_UTIL__ */
+#endif /* ZCOM_UTIL */
 
 #ifdef  ZCOM_ZT
 #ifndef ZCOM_ZT__
@@ -432,4 +362,12 @@ int zcom_strconv(char *s, const char *t, size_t size_s, unsigned flags)
 
 #endif /* ZCOM_IS2__ */
 #endif /* ZCOM_IS2 */
+
+#ifdef  ZCOM_PDB
+#ifndef ZCOM_PDB__
+#define ZCOM_PDB__
+
+#endif /* ZCOM_IS2__ */
+#endif /* ZCOM_IS2 */
+
 
