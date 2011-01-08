@@ -123,6 +123,9 @@
   #ifndef ZCOM_PDB
   #define ZCOM_PDB
   #endif
+  #ifndef ZCOM_SAVGOL
+  #define ZCOM_SAVGOL
+  #endif
 #endif
 
 /* build dependencies */
@@ -141,6 +144,10 @@
 
 #ifdef ZCOM_IS2
   #define ZCOM_RNG
+#endif
+
+#ifdef ZCOM_SAVGOL
+  #define ZCOM_LU
 #endif
 
 /* manage storage class: static is the safer choice
@@ -370,4 +377,10 @@
 #endif /* ZCOM_PDB__ */
 #endif /* ZCOM_PDB */
 
+#ifdef ZCOM_SAVGOL
+#ifndef ZCOM_SAVGOL__
+#define ZCOM_SAVGOL__
+
+#endif /* ZCOM_SAVGOL__ */
+#endif /* ZCOM_SAVGOL */
 

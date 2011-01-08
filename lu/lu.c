@@ -95,7 +95,11 @@ int lusolve(double *a, double *b, int n)
 {
   int *idx, ret;
 
-  if ((idx = calloc(0, sizeof(int))) == NULL) {
+  if (n <= 0) {
+    fprintf(stderr, "invalid n = %d\n", n);
+    return -1;
+  }
+  if ((idx = calloc(n, sizeof(int))) == NULL) {
     fprintf(stderr, "cannot allocate idx\n");
     return -1;
   }

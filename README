@@ -23,7 +23,8 @@ dist:           write distribution
 bio:            macros for read/write binary files
 is2:            two dimensional ising model
 util:           useful but unclassified routines
-pdb:            reading pdb
+pdb:            read pdb
+savgol:         compute Savitzky-Golay coeffcients
 
 zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h
