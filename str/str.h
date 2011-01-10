@@ -19,12 +19,13 @@
 /* concatenate strings, the last parameter is the buffer size of s,
  * unlike strncat(), in which it's the number of characters from *t* to be copied.  */
 #define strcat_safe(s, t, size_s)   strcnv(s, t, size_s, ZSTR_CAT)
+#define strcmpnc(s, t) strncmpnc(s, t, -1)
 #define strip(s)  stripx(s, ZSTR_LEFT|ZSTR_RIGHT)
 #define lstrip(s) stripx(s, ZSTR_LEFT)
 #define rstrip(s) stripx(s, ZSTR_RIGHT)
 
 char *strcnv(char *s, const char *t, size_t size_s, unsigned flags);
-int strcmpnc(const char *s, const char *t);
+int strncmpnc(const char *s, const char *t, int n);
 char *stripx(char *s, unsigned flags);
 
 #endif

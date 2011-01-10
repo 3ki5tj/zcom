@@ -3,11 +3,15 @@
 static void test_strcmpnc(void)
 {
   const char *s = "Hello", *t = "HELLo";
+  const char *s2 = "Abcd", *t2 = "aBCdF";
 
   printf("\nTesting strcmpnc...\n");
   printf("s = [%s], t = [%s]\n", s, t);
   printf("strcmp(s,t) = %d, strcmpnc(s,t)=%d\n",
       strcmp(s,t), strcmpnc(s,t));
+  printf("s2 = [%s], t2 = [%s]\n", s2, t2);
+  printf("strncmp(s2,t2,4) = %d, strncmpnc(s2,t2,4) = %d\n",
+      strncmp(s2,t2,4), strncmpnc(s2,t2,4));
   printf("\n");
 }
 

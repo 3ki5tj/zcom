@@ -40,15 +40,19 @@ char *strcnv(char *s, const char *t, size_t size_s, unsigned flags)
 }
 
 /* compare strings ignoring cases */
-int strcmpnc(const char *s, const char *t)
+int strncmpnc(const char *s, const char *t, int n)
 {
   int i, cs, ct;
 
   if (s == NULL || t == NULL) return 0;
   for (i = 0; ; i++) {
-    cs = tolower( (unsigned char) (int) s[i] );
-    ct = tolower( (unsigned char) (int) t[i] );
-    if (cs == 0 || ct == 0 || cs != ct) break;
+    if (i >= n) return 0;
+    cs = s[i];
+    ct = t[i];
+    if (cs == 0 || ct == 0) break;
+    cs = tolower( (unsigned char) (int) cs );
+    ct = tolower( (unsigned char) (int) ct );
+    if (cs != ct) break;
   }
   return cs-ct;
 }
