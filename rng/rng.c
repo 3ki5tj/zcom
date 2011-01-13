@@ -105,24 +105,16 @@ uint32_t mtrand(void)
 /* Gaussian distribution with zero mean and unit variance */
 double grand0(void)
 {
-  const double tol = 1e-15; /* 1e-13 allows fac of 1.0/(6e-8) */
-  static double save = 0.0;
-  static int stock = 0;
-  double fac, r2, x, y;
-
-  if (stock) { stock = 0; return save; }
-  for (;;) {
-    x = 2.0 * rnd0()-1.0;
-    y = 2.0 * rnd0()-1.0;
-    r2 = x * x + y * y;
-    /* to make sure it's inside a unit circle, and
-       r2 can be a denominator */
-    if (r2 < 1.0 && r2 > tol) break;
-  }
-  fac   = sqrt(-2.0*log(r2)/r2);
-  stock = 1;
-  save  = y * fac;
-  return x * fac;
+  double x, y, u, v, q;
+  do {
+    u = 1 - rnd0();
+    v = 1.7156*(rnd0() - .5);  /* >= 2*sqrt(2/e) */
+    x = u - 0.449871;
+    y = fabs(v) + 0.386595;
+    q = x*x  + y*(0.196*y - 0.25472*x);
+    if (q < 0.27597) break;
+  } while (q > 0.27846 || v*v > -4*u*u*log(u));
+  return v/u;
 }
 
 #endif

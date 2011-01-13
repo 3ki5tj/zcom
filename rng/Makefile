@@ -35,6 +35,9 @@ testsv: testsv.c $(dep)
 testsp: testsv.c $(dep) 
 	$(CX) -DTESTSP -DN=2000000000 -o $@ $< -lm
 
+testgr: testgr.c $(dep)
+	$(CX) -o $@ $< -lm
+
 clean:
 	rm -f test testsv testsp testref out* MTSEED mt.dat *~
 
