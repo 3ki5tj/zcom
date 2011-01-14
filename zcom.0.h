@@ -259,6 +259,13 @@
 #endif /* ZCOM_LU__ */
 #endif /* ZCOM_LU */
 
+#ifdef  ZCOM_SVD
+#ifndef ZCOM_SVD__
+#define ZCOM_SVD__
+
+#endif /* ZCOM_SVD__ */
+#endif /* ZCOM_SVD */
+
 #ifdef  ZCOM_STR
 #ifndef ZCOM_STR__
 #define ZCOM_STR__
