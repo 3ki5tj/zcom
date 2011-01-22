@@ -126,6 +126,9 @@
   #ifndef ZCOM_SAVGOL
   #define ZCOM_SAVGOL
   #endif
+  #ifndef ZCOM_SPECFUNC
+  #define ZCOM_SPECFUNC
+  #endif
 #endif
 
 /* build dependencies */
@@ -390,4 +393,12 @@
 
 #endif /* ZCOM_SAVGOL__ */
 #endif /* ZCOM_SAVGOL */
+
+#ifdef ZCOM_SPECFUNC
+#ifndef ZCOM_SPECFUNC__
+#define ZCOM_SPECFUNC__
+
+#endif /* ZCOM_SPECFUNC__ */
+#endif /* ZCOM_SPECFUNC__ */
+
 
