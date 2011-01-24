@@ -26,6 +26,7 @@ is2:            two dimensional ising model
 util:           useful but unclassified routines
 pdb:            read pdb
 savgol:         compute Savitzky-Golay coeffcients
+specfunc:       special functions
 
 zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h

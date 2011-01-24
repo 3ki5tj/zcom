@@ -6,6 +6,7 @@
 #include <math.h>
 
 double lngam(double z);
+double ksq(double x);
 
 #endif
 
