@@ -4,12 +4,13 @@
 
 #include "savgol.h"
 
-/* compute 1d Savitzky-Golay coefficients */
-double *savgol(int w, int ord, int h, int verbose)
+/* compute 1d Savitzky-Golay coefficients 
+ * der == 0 for function itself, 1 for first-order derivative */
+double *savgol(int w, int ord, int der, int h, int verbose)
 {
   int i, i0, i1, ox, oy, nop, orm, npt;
   double x, xk, y;
-  double *mmt, *a, *mat, *x2m, *c;
+  double *mmt, *b, *mat, *x2m, *c;
 
   nop = ord+1;
   orm = 2*ord+1;
@@ -18,28 +19,34 @@ double *savgol(int w, int ord, int h, int verbose)
   i1 = h ? w : (w+1);
   if ((c = calloc(npt, sizeof(double))) == NULL) 
     return NULL;
-  if ((a = calloc(nop, sizeof(double))) == NULL) {
+  if ((b = calloc(nop, sizeof(double))) == NULL) {
     free(c);
     return NULL;
   }
   if ((mat = calloc(nop*nop, sizeof(double))) == NULL) {
-    free(a); free(c);
+    free(b); free(c);
     return NULL;
   }
   if ((mmt = calloc(orm, sizeof(double))) == NULL) {
-    free(mat); free(a); free(c);
+    free(mat); free(b); free(c);
     return NULL;
   }
   if ((x2m = calloc(nop*npt, sizeof(double))) == NULL) {
-    free(mmt); free(mat); free(a); free(c);
+    free(mmt); free(mat); free(b); free(c);
+    return NULL;
+  }
+  if (der > ord) {
+    fprintf(stderr, "no %dth order of derivative, order = %d\n", der, ord);
     return NULL;
   }
 
   for (i = 0; i < orm; i++) mmt[i] = 0.;
   for (i = i0; i < i1; i++) {
     x = h ? (i + .5) : i;
+    /* mmt[k] = < x^k > */
     for (xk = 1., ox = 0; ox < orm; ox++, xk *= x)
       mmt[ox] += xk;
+    /* x2m[k*npt + x] = x^k */
     for (xk = 1., ox = 0; ox <= ord; ox++, xk *= x)
       x2m[ox*npt + (i - i0)] = xk;
   }
@@ -48,23 +55,28 @@ double *savgol(int w, int ord, int h, int verbose)
   for (ox = 0; ox < nop; ox++)
     for (oy = 0; oy < nop; oy++)
       mat[ox*nop + oy] = mmt[ox+oy];
-  
-  for (i = 0; i < nop; i++) a[i] = 0;
-  a[0] = 1.;
-  i = lusolve(mat, a, nop);
+ 
+  /* we approximate y(x) = a0 + a1 x + a2 x^2 + ...
+   * mat.a = b = x2m.y, or a = mat^(-1).b
+   * since mat is symmetrical, rows == columns,
+   * we thus extract the first row by solving b = {1, 0, 0, ...} */ 
+  for (i = 0; i < nop; i++) b[i] = 0;
+  b[der] = 1.;
+  i = lusolve(mat, b, nop);
   if (i != 0) {
     fprintf(stderr, "unable to inverse matrix!\n");
     return NULL;
   }
+  /* c = mat^(-1).x2m */
   for (i = 0; i < npt; i++) {
     for (y = 0, ox = 0; ox < nop; ox++)
-      y += a[ox]*x2m[ox*npt + i];
+      y += b[ox]*x2m[ox*npt + i];
     c[i] = y;
   }
   free(x2m);
   free(mmt);
   free(mat);
-  free(a);
+  free(b);
   if (verbose) {
     for (i = 0; i < npt; i++)
       printf("%g\t", c[i]);
@@ -79,7 +91,7 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
   int i, j, i0, i1, j0, j1, id, nop, orm, npt;
   int io, iq, ox, oy, o1, o2, o3, o4;
   double x, y, xk, xyk;
-  double *mmt, *a, *mat, *x2m, *c;
+  double *mmt, *b, *mat, *x2m, *c;
 
   nop = (ord+1)*(ord+2)/2;
   orm = 2*ord+1;
@@ -96,20 +108,20 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
   }
   if ((c = calloc(npt, sizeof(double))) == NULL) 
     return NULL;
-  if ((a = calloc(nop, sizeof(double))) == NULL) {
+  if ((b = calloc(nop, sizeof(double))) == NULL) {
     free(c);
     return NULL;
   }
   if ((mat = calloc(nop*nop, sizeof(double))) == NULL) {
-    free(a); free(c);
+    free(b); free(c);
     return NULL;
   }
   if ((mmt = calloc(orm*orm, sizeof(double))) == NULL) {
-    free(mat); free(a); free(c);
+    free(mat); free(b); free(c);
     return NULL;
   }
   if ((x2m = calloc(nop*npt, sizeof(double))) == NULL) {
-    free(mmt); free(mat); free(a); free(c);
+    free(mmt); free(mat); free(b); free(c);
     return NULL;
   }
 
@@ -155,22 +167,22 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
     }
   } 
   
-  for (i = 0; i < nop; i++) a[i] = 0.;
-  a[0] = 1.;
-  i = lusolve(mat, a, nop);
+  for (i = 0; i < nop; i++) b[i] = 0.;
+  b[0] = 1.;
+  i = lusolve(mat, b, nop);
   if (i != 0) {
     fprintf(stderr, "unable to inverse matrix!\n");
     return NULL;
   }
   for (i = 0; i < npt; i++) {
     for (y = 0, io = 0; io < nop; io++)
-      y += a[io]*x2m[io*npt + i];
+      y += b[io]*x2m[io*npt + i];
     c[i] = y;
   }
   free(x2m);
   free(mmt);
   free(mat);
-  free(a);
+  free(b);
   if (verbose) {
     for (i = i0; i < i1; i++) {
       for (j = j0; j < j1; j++) {
