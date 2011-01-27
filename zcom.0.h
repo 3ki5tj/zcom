@@ -72,9 +72,6 @@
 #endif
 
 #ifndef ZCOM_PICK
-  #ifndef ZCOM_DIE
-  #define ZCOM_DIE
-  #endif
   #ifndef ZCOM_SS
   #define ZCOM_SS
   #endif
@@ -206,13 +203,6 @@
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
  * in order to avoid multiple inclusion a single ZCOM_ABC__ won't do,
  * because different module-set may be selected */
-#ifdef  ZCOM_DIE
-#ifndef ZCOM_DIE__
-#define ZCOM_DIE__
-
-#endif /* ZCOM_DIE__ */
-#endif /* ZCOM_DIE */
-
 #ifdef  ZCOM_SS
 #ifndef ZCOM_SS__
 #define ZCOM_SS__
