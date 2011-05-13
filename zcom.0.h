@@ -324,6 +324,7 @@
     #define rv_smul       rv2_smul
     #define rv_smul2      rv2_smul2
     #define rv_diff       rv2_diff
+    #define rv_dist       rv2_dist
     #define rv_sum2       rv2_sum2
     #define rv_nsum2      rv2_nsum2
     #define rv_lincomb2   rv2_lincomb2
@@ -343,6 +344,7 @@
     #define rv_smul       rv3_smul
     #define rv_smul2      rv3_smul2
     #define rv_diff       rv3_diff
+    #define rv_dist       rv3_dist
     #define rv_sum2       rv3_sum2
     #define rv_nsum2      rv3_nsum2
     #define rv_lincomb2   rv3_lincomb2

@@ -94,6 +94,13 @@ ZCINLINE real *rv2_diff(real *diff, const real *a, const real *b)
   return diff;
 }
 
+/* distance between a and b */
+ZCINLINE real rv2_dist(const real *a, const real *b) 
+{
+  real d[2]; 
+  return rv2_norm(rv2_diff(d, a, b));
+}
+
 /* sum = a+b, for in-place addition use rv3_inc */
 ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b)
 {
@@ -116,5 +123,18 @@ ZCINLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, re
   sum[1] = a[1]*s1+b[1]*s2;
   return sum;
 }
+
+/* vertical distance from x to line a-b */
+ZCINLINE real rv2_vdist(const real *x, const real *a, const real *b)
+{
+  real nm[2], d[2], dot;
+
+  rv2_diff(d, x, a);
+  rv2_normalize(rv2_diff(nm, a, b));
+  dot = rv2_dot(d, nm);
+  return rv2_norm(rv2_sinc(d, nm, -dot));
+}
+
+
 #endif /* RV2_H__ */
 

@@ -115,6 +115,13 @@ ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b)
   return diff;
 }
 
+/* distance between a and b */
+ZCINLINE real rv3_dist(const real *a, const real *b) 
+{
+  real d[3]; 
+  return rv3_norm(rv3_diff(d, a, b));
+}
+
 /* sum = a+b, for in-place addition use rv3_inc */
 ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b)
 {
@@ -139,6 +146,29 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
   sum[1] = a[1]*s1+b[1]*s2;
   sum[2] = a[2]*s1+b[2]*s2;
   return sum;
+}
+
+/* vertical distance from x to line a-b */
+ZCINLINE real rv3_vdist(const real *x, const real *a, const real *b)
+{
+  real nm[3], d[3], dot;
+
+  rv3_diff(d, x, a);
+  rv3_normalize(rv3_diff(nm, a, b));
+  dot = rv3_dot(d, nm);
+  return rv3_norm(rv3_sinc(d, nm, -dot));
+}
+
+/* signed distance from x to the plane extended by a, b, c */
+real rv3_vpdist(const real *x, const real *a, const real *b, const real *c)
+{
+  real u[3], v[3], m[3];
+
+  rv3_diff(u, b, a);
+  rv3_diff(v, c, b);
+  rv3_normalize(rv3_cross(m, u, v));
+  rv3_diff(u, x, a);
+  return rv3_dot(u, m);
 }
 
 #endif /* RV3_H__ */

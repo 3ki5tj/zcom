@@ -85,12 +85,13 @@ double *savgol(int w, int ord, int der, int h, int verbose)
   return c;
 }
 
-/* compute 2d Savitzky-Golay coefficients */
+/* compute 2d Savitzky-Golay coefficients
+ * h means if it is a histogram */
 double *savgol2d(int iw, int jw, int ord, int h, int verbose)
 {
   int i, j, i0, i1, j0, j1, id, nop, orm, npt;
   int io, iq, ox, oy, o1, o2, o3, o4;
-  double x, y, xk, xyk;
+  double w, x, y, xk, xyk;
   double *mmt, *b, *mat, *x2m, *c;
 
   nop = (ord+1)*(ord+2)/2;
@@ -130,8 +131,10 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
     x = h ? (i + .5) : i;
     for (j = j0; j < j1; j++) {
       y = h ? (j + .5) : j;
+      //r = x*x/(1.*iw*iw) + y*y/(1.*jw*jw);
+      w = 1.;
       /* moment matrix */
-      xk = 1.0;
+      xk = w;
       for (ox = 0; ox < orm; ox++) {
         xyk = xk;
         for (oy = 0; oy < orm-ox; oy++) {
@@ -141,11 +144,10 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
         xk *= x;
       }
       /* position to z-moment matrix */
-      io = 0;
       id = (i - i0)*(j1 - j0) + (j - j0);
-      for (o1 = 0; o1 <= ord; o1++) {
+      for (io = 0, o1 = 0; o1 <= ord; o1++) {
         for (o2 = 0; o2 <= o1; o2++, io++) {
-          xyk = 1.;
+          xyk = w;
           for (ox = 0; ox < o1 - o2; ox++) xyk *= x;
           for (oy = 0; oy < o2; oy++) xyk *= y; 
           x2m[io*npt + id] = xyk;
@@ -186,7 +188,7 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
   if (verbose) {
     for (i = i0; i < i1; i++) {
       for (j = j0; j < j1; j++) {
-        printf("%g\t", c[(i-i0)*(j1 - j0)+(j-j0)]);
+        printf("%7.4f ", c[(i-i0)*(j1 - j0)+(j-j0)]);
       }
       printf("\n");
     }
