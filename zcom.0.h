@@ -93,9 +93,6 @@
   #ifndef ZCOM_STR
   #define ZCOM_STR
   #endif
-  #ifndef ZCOM_LU
-  #define ZCOM_LU
-  #endif
   #ifndef ZCOM_ZT
   #define ZCOM_ZT
   #endif
@@ -126,6 +123,18 @@
   #ifndef ZCOM_SPECFUNC
   #define ZCOM_SPECFUNC
   #endif
+  #ifndef ZCOM_LU
+  #define ZCOM_LU
+  #endif
+  #ifndef ZCOM_SVD
+  #define ZCOM_SVD
+  #endif
+  #ifndef ZCOM_EIG
+  #define ZCOM_EIG
+  #endif
+  #ifndef ZCOM_MDS
+  #define ZCOM_MDS
+  #endif
 #endif
 
 /* build dependencies */
@@ -148,6 +157,14 @@
 
 #ifdef ZCOM_SAVGOL
   #define ZCOM_LU
+#endif
+
+#ifdef ZCOM_MDS
+  #define ZCOM_EIG
+#endif
+
+#if (defined(ZCOM_EIG) || defined(ZCOM_SVD))
+  #define ZCOM_UTIL
 #endif
 
 /* manage storage class: static is the safer choice
@@ -244,20 +261,6 @@
 
 #endif /* ZCOM_LOG__ */
 #endif /* ZCOM_LOG */
-
-#ifdef  ZCOM_LU
-#ifndef ZCOM_LU__
-#define ZCOM_LU__
-
-#endif /* ZCOM_LU__ */
-#endif /* ZCOM_LU */
-
-#ifdef  ZCOM_SVD
-#ifndef ZCOM_SVD__
-#define ZCOM_SVD__
-
-#endif /* ZCOM_SVD__ */
-#endif /* ZCOM_SVD */
 
 #ifdef  ZCOM_STR
 #ifndef ZCOM_STR__
@@ -393,4 +396,31 @@
 #endif /* ZCOM_SPECFUNC__ */
 #endif /* ZCOM_SPECFUNC__ */
 
+#ifdef  ZCOM_LU
+#ifndef ZCOM_LU__
+#define ZCOM_LU__
+
+#endif /* ZCOM_LU__ */
+#endif /* ZCOM_LU */
+
+#ifdef  ZCOM_SVD
+#ifndef ZCOM_SVD__
+#define ZCOM_SVD__
+
+#endif /* ZCOM_SVD__ */
+#endif /* ZCOM_SVD */
+
+#ifdef  ZCOM_EIG
+#ifndef ZCOM_EIG__
+#define ZCOM_EIG__
+
+#endif /* ZCOM_EIG__ */
+#endif /* ZCOM_EIG */
+
+#ifdef  ZCOM_MDS
+#ifndef ZCOM_MDS__
+#define ZCOM_MDS__
+
+#endif /* ZCOM_MDS__ */
+#endif /* ZCOM_MDS */
 

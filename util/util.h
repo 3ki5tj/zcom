@@ -81,7 +81,7 @@ ZCINLINE int fexists(const char *fn)
   else { fclose(fp); return 1; }
 } 
 
-ZCINLINE double pythag(double x, double y)
+ZCINLINE double hypotn(double x, double y)
 {
   double t;
   x = fabs(x);

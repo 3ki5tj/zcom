@@ -1,15 +1,8 @@
+#include "util.c"
 #ifndef SVD_C__
 #define SVD_C__
 
 #include "svd.h"
-
-static double hypot_(double a, double b)
-{
-  double a1 = fabs(a), b1 = fabs(b), r;
-  if (a1 > b1) { r = b1 / a1; return a1 * sqrt(1.0 + r*r); }
-  else if (b1 > 0.0) { r = a1 / b1; return b1 * sqrt(1.0 + r*r); }
-  else return 0.;
-}
 
 /* singular value decomposition of mxn matrix `a' 
  * a[m*n] (or u[m*n] on return), w[n], v[n*n] */
@@ -161,7 +154,7 @@ int svd(double *a, double *w, double *v, int m, int n)
           f = s * rv1[i];
           if (fabs(f) + anorm == anorm) continue;
           g = w[i];
-          h = hypot_(f, g);
+          h = hypotn(f, g);
           w[i] = h; 
           h = 1.0 / h;
           c = g * h;
@@ -196,7 +189,7 @@ int svd(double *a, double *w, double *v, int m, int n)
       g = rv1[nm];
       h = rv1[k];
       f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-      g = hypot_(f, 1.0);
+      g = hypotn(f, 1.0);
       if (f < 0.) g = -g;
       f = ((x - z) * (x + z) + h * (y/(f + g) - h)) / x;
     
@@ -208,7 +201,7 @@ int svd(double *a, double *w, double *v, int m, int n)
         y = w[i];
         h = s * g;
         g = c * g;
-        z = hypot_(f, h);
+        z = hypotn(f, h);
         rv1[j] = z;
         c = f / z;
         s = h / z;
@@ -222,7 +215,7 @@ int svd(double *a, double *w, double *v, int m, int n)
           v[jj*n+j] = x * c + z * s;
           v[jj*n+i] = z * c - x * s;
         }
-        w[j] = z = hypot_(f, h);
+        w[j] = z = hypotn(f, h);
         if (z > 0.) { c = f/z; s = h/z; }
         f = c * g + s * y;
         x = c * y - s * g;
