@@ -1,13 +1,18 @@
-all: test testrdf
+all: test testrdf test2
 
-test: test.c
-	$(CC) -o $@ $^ 
+src=hist.c hist.h
 
-testrdf: testrdf.c
-	$(CC) -o $@ $^ 
+test: test.c $(src)
+	$(CC) -o $@ $< 
+
+testrdf: testrdf.c $(src)
+	$(CC) -o $@ $< 
+
+test2: test2.c $(src)
+	$(CC) -o $@ $< 
 
 clean:
-	rm -f test testrdf a.out *~ *.o *.log HIST* RDF* rdf*.dat
+	rm -f test testrdf test2 a.out *~ *.o *.log HIST* RDF* rdf*.dat
 
 .PHONY: all clean
 

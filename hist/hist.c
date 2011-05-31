@@ -8,34 +8,34 @@
     fprintf(stderr, "no memory for %s n = %d\n", #arr, (n)); \
     exit(1); }
 
-static double *gethistsums_(const double *h, int rows, int xcnt)
+static double *gethistsums_(const double *h, int rows, int n)
 {
   double *sums;
-  int i, j;
+  int i, r;
   
   nalloc_(sums, rows);
-  for (j = 0; j < rows; j++) 
-    for (sums[j] = 0., i = 0; i < xcnt; i++)
-      sums[j] += h[j*xcnt + i];
+  for (r = 0; r < rows; r++) 
+    for (sums[r] = 0., i = 0; i < n; i++)
+      sums[r] += h[r*n + i];
   return sums;
 }
 
 /* write histograms to file
  * histogram 'h' contains 'rows' histograms,
- * each contains 'xcnt' entries, from 'xmin' to 'xmin+dx*xcnt'
+ * each contains 'n' entries, from 'xmin' to 'xmin+dx*n'
  * (*fwheader) is function to print additional information
  * (*fnorm) is advanced normalization function */
-int histsavex(const double *h, int rows, int xcnt, double xmin, double dx,
+int histsavex(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, 
     int (*fwheader)(FILE *fp, void *data), 
-    double (*fnorm)(int j, int ix, double xmin, double dx, void *data),
+    double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata,
     const char *fname)
 {
   const int version = 0;
   const char *filename;
   FILE *fp;
-  int i, j, imax, imin;
+  int i, r, imax, imin;
   const double *p;
   double *sums, fac, delta;
 
@@ -46,25 +46,25 @@ int histsavex(const double *h, int rows, int xcnt, double xmin, double dx,
     return 1;
   }
   
-  sums = gethistsums_(h, rows, xcnt);
+  sums = gethistsums_(h, rows, n);
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
-      version, flags, rows, xcnt, xmin, dx);
-  for (j = 0; j < rows; j++)
-    fprintf(fp, "%g ", sums[j]);
+      version, flags, rows, n, xmin, dx);
+  for (r = 0; r < rows; r++)
+    fprintf(fp, "%g ", sums[r]);
   fprintf(fp, "| ");
   if (fwheader != NULL) (*fwheader)(fp, pdata);
   fprintf(fp, "\n");
 
   delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;
 
-  for (j = 0; j < rows; j++) {
-    p = h+j*xcnt;
+  for (r = 0; r < rows; r++) {
+    p = h+r*n;
 
     if (flags & HIST_KEEPRIGHT) {
-      imax = xcnt;
+      imax = n;
     } else { /* trim the right edge */
-      for (i = xcnt-1; i >= 0; i--)
+      for (i = n-1; i >= 0; i--)
         if (p[i] > 0)
           break;
       imax = i+1;
@@ -81,9 +81,8 @@ int histsavex(const double *h, int rows, int xcnt, double xmin, double dx,
       imin = i;
     }
 
-    if (fabs(sums[j]) < 1e-6)
-      fac = 1.;
-    else fac = 1.0/(sums[j]*dx);
+    if (fabs(sums[r]) < 1e-6) fac = 1.;
+    else fac = 1.0/(sums[r]*dx);
 
     for (i = imin; i < imax; i++) {
       if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
@@ -92,8 +91,8 @@ int histsavex(const double *h, int rows, int xcnt, double xmin, double dx,
       if (flags & HIST_KEEPHIST) 
         fprintf(fp, "%20.14E ", p[i]);
       if (fnorm != NULL) /* advanced normalization */
-        fac = (*fnorm)(j, i, xmin, dx, pdata);
-      fprintf(fp,"%20.14E %d\n", p[i]*fac, j);
+        fac = (*fnorm)(r, i, xmin, dx, pdata);
+      fprintf(fp,"%20.14E %d\n", p[i]*fac, r);
     }
     fprintf(fp,"\n");
   }
@@ -105,10 +104,10 @@ int histsavex(const double *h, int rows, int xcnt, double xmin, double dx,
 /* load a previous histogram
  * (*frheader) function to read additional header info.
  * (*fnorm) normalization factor */
-int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
+int histloadx(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, 
     int (*frheader)(const char *s, void *data), 
-    double (*fnorm)(int j, int ix, double xmin, double dx, void *data),
+    double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata,
     const char *fn)
 {
@@ -117,7 +116,7 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;
-  int i, i1, j, j1, nlin = 0;
+  int i, i1, r, r1, nlin = 0;
   unsigned fflags;
   double x, y, y2, fac, delta, *arr, *sums = NULL;
     
@@ -125,6 +124,7 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
     fprintf(stderr, "cannot read %s\n", fn);
     return -1;
   }
+  
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
     fprintf(stderr, "%s: missing the first line\n", fn);
@@ -132,11 +132,10 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
     return -1;
   }
   nlin++;
-
-  if (6 != sscanf(s, " # %d 0x %X | %d%d%lf%lf | %n", &ver, &fflags, &j, &i, &y, &x, &next)
-      || i < xcnt || j != rows || fabs(x - dx) > 1e-5) {
+  if (6 != sscanf(s, " # %d 0x %X | %d%d%lf%lf | %n", &ver, &fflags, &r, &i, &y, &x, &next)
+      || i < n || r != rows || fabs(x - dx) > 1e-5) {
     fprintf(stderr, "Error: bins = %d, %d, ng = %d, %d; dx = %g, %g\n", 
-        i, xcnt, j, rows, x, dx);
+        i, n, r, rows, x, dx);
     fclose(fp);
     return -1;
   }
@@ -144,9 +143,9 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
   hashist =  (fflags & HIST_KEEPHIST);
   /* scan sums */
   nalloc_(sums, rows);
-  for (p = s+next, j = 0; j < rows; j++) {
-    if (1 != sscanf(p, "%lf%n", sums + j, &next)) {
-      fprintf(stderr, "cannot read sums from at %d/%d, s:\n%s\np:\n%s\n", j, rows, s, p);
+  for (p = s+next, r = 0; r < rows; r++) {
+    if (1 != sscanf(p, "%lf%n", sums + r, &next)) {
+      fprintf(stderr, "cannot read sums from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
       goto EXIT;
     }
     p += next;
@@ -155,7 +154,7 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
   next = -1;
   sscanf(p, " | %n", &next);
   if (next == -1) {
-    fprintf(stderr, "line %d: cannot read finishing |, s:%s\np:%s\n", j, s, p);
+    fprintf(stderr, "line %d: cannot read finishing |, s:%s\np:%s\n", r, s, p);
     goto EXIT;
   }
   p += next;
@@ -166,43 +165,43 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
 
 
   if (!add) { /* clear histogram */
-    for (i = 0; i < rows*xcnt; i++) hist[i] = 0.;
+    for (i = 0; i < rows*n; i++) hist[i] = 0.;
   }
   
-  /* loop over j = 0..rows-1 */
-  for (j = 0; j < rows; j++) {
-    arr = hist + j*xcnt;
-    fac = sums[j]*dx;
+  /* loop over r = 0..rows-1 */
+  for (r = 0; r < rows; r++) {
+    arr = hist + r*n;
+    fac = sums[r]*dx;
     while (fgets(s, sizeof s, fp)) {
       nlin++;
       for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--) 
         *p = '\0'; /* trim ending */
       if (s[0] == '#' || s[0] == '\0') break;
       if (hashist) {
-        if (4 != sscanf(s, "%lf%lf%lf%d", &x, &y, &y2, &j1)) {
+        if (4 != sscanf(s, "%lf%lf%lf%d", &x, &y, &y2, &r1)) {
           fprintf(stderr, "error on line %d\n", nlin);
           goto EXIT;
         }
       } else { /* simple */
-        if (3 != sscanf(s, "%lf%lf%d", &x, &y2, &j1)) {
+        if (3 != sscanf(s, "%lf%lf%d", &x, &y2, &r1)) {
           fprintf(stderr, "error on line %d\n", nlin);
           goto EXIT;
         }
       }
-      if (j1 != j) {
+      if (r1 != r) {
         fprintf(stderr, "wrong column index %d vs. %d on line %d, s=[%s]\n",
-            j1, j, nlin, s);
+            r1, r, nlin, s);
         goto EXIT;
       }
       i1 = (int)((x - xmin)/dx - delta + .5);
-      if (i1 < 0 || i1 >= xcnt) {
+      if (i1 < 0 || i1 >= n) {
         fprintf(stderr, "cannot find index for x = %g, delta = %g, i = %d/%d, on line %d\n", 
-            x, delta, i1, xcnt, nlin);
+            x, delta, i1, n, nlin);
         goto EXIT;
       }
       if (!hashist) {
         if (fnorm != NULL) {
-          fac = (*fnorm)(j, i1, xmin, dx, pdata);
+          fac = (*fnorm)(r, i1, xmin, dx, pdata);
           fac = ((fabs(fac) < 1e-8) ? 1. : 1./fac);
         }
         y = y2*fac;
@@ -219,38 +218,50 @@ int histloadx(double *hist, int rows, int xcnt, double xmin, double dx,
 EXIT:
   if (sums) free(sums);
   /* we always clear histogram on error */
-  for (i = 0; i < rows*xcnt; i++) hist[i] = 0.;
+  for (i = 0; i < rows*n; i++) hist[i] = 0.;
   return -1;
 }
 
 /* add x of weight w, into histogram h
  * return number of success */
 int histadd(const double *xarr, double w, double *h, int rows, 
-    int xcnt, double xmin, double dx, unsigned flags)
+    int n, double xmin, double dx, unsigned flags)
 {
-  int j, ix, good = 0, verbose = flags & HIST_VERBOSE;
+  int r, ix, good = 0, verbose = flags & HIST_VERBOSE;
   double x;
 
-  for (j = 0; j < rows; j++) {
-    x = xarr[j];
+  for (r = 0; r < rows; r++) {
+    x = xarr[r];
     if (x < xmin) {
       if (verbose)
-       fprintf(stderr, "histadd underflows %d: %g < %g\n", j, x, xmin);
+       fprintf(stderr, "histadd underflows %d: %g < %g\n", r, x, xmin);
       continue;
     }
     ix = (int)((x - xmin)/dx);
-    if (ix >= xcnt) {
+    if (ix >= n) {
       if (verbose)
-        fprintf(stderr, "histadd overflows %d: %g > %g\n", j, x, xmin+dx*xcnt);
+        fprintf(stderr, "histadd overflows %d: %g > %g\n", r, x, xmin+dx*n);
       continue;
     }
-    h[j*xcnt + ix] += w;
+    h[r*n + ix] += w;
     good++;
   }
   return good;
 }
 
 /* OO wrappers */
+static void hs_check(const hist_t *hs)
+{
+  if (hs == NULL) {
+    fprintf(stderr, "hist is NULL\n");
+    exit(1);
+  }
+  if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
+    fprintf(stderr, "hist: arr %p rows %d n %d\n", hs->arr, hs->rows, hs->n);
+    exit(1);
+  }
+}
+
 hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
     int (*fwh)(FILE *, void *), int (*frh)(const char*, void *),
     double (*fnorm)(int, int, double, double, void *))
@@ -261,8 +272,8 @@ hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
   hs->rows = rows;
   hs->xmin = xmin;
   hs->dx   = dx;
-  hs->xcnt = (int)((xmax - xmin)/dx + 0.99999999);
-  nalloc_(hs->arr, hs->xcnt*hs->rows);
+  hs->n = (int)((xmax - xmin)/dx + 0.99999999);
+  nalloc_(hs->arr, hs->n*hs->rows);
   hs->fwheader = fwh;
   hs->frheader = frh;
   hs->fnorm = fnorm;
@@ -271,33 +282,331 @@ hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
 
 void hs_free(hist_t *hs)
 {
-  free(hs->arr);
-  memset(hs, 0, sizeof(*hs));
-  free(hs);
+  if (hs) {
+    if (hs->arr) free(hs->arr);
+    memset(hs, 0, sizeof(*hs));
+    free(hs);
+  }
 }
 
 int hs_savex(const hist_t *hs, const char *fname, void *pdata, unsigned flags)
 {
-  return histsavex(hs->arr, hs->rows, hs->xcnt, hs->xmin, hs->dx, flags, 
+  hs_check(hs);
+  return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags, 
       hs->fwheader, hs->fnorm, pdata, fname);
 }
 
 int hs_loadx(hist_t *hs, const char *fname, void *pdata, unsigned flags)
 {
-  return histloadx(hs->arr, hs->rows, hs->xcnt, hs->xmin, hs->dx, flags,
+  hs_check(hs);
+  return histloadx(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags,
       hs->frheader, hs->fnorm, pdata, fname);
 }
 
 int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
 {
-  return histadd(x, w, hs->arr, hs->rows, hs->xcnt, hs->xmin, hs->dx, flags);
+  hs_check(hs);
+  return histadd(x, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
 }
 
-int hs_add1(hist_t *hs, int j, double x, double w, unsigned flags)
+int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 {
-  return histadd(&x, w, hs->arr + j*hs->xcnt, 1, hs->xcnt, hs->xmin, hs->dx, flags);
+  hs_check(hs);
+  return histadd(&x, w, hs->arr + r*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
 }
 
+
+/* write 'rows' 2d n^2 histograms to file */
+int hist2save(const double *h, int rows, int n, double xmin, double dx,
+    unsigned flags, const char *fname)
+{
+  const int version = 0;
+  const char *filename;
+  FILE *fp;
+  int i, j, r, imax, imin, jmax, jmin, n2;
+  const double *p;
+  double *sums, fac, delta;
+
+  filename = (fname != NULL) ? fname : "HIST2";
+
+  if ((fp = fopen(filename, "w")) == NULL) {
+    printf("cannot write history file [%s].\n", filename);
+    return 1;
+  }
+  
+  n2 = n*n;
+  sums = gethistsums_(h, rows, n2);
+  /* print basic information */
+  fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
+      version, flags, rows, n, xmin, dx);
+  for (r = 0; r < rows; r++)
+    fprintf(fp, "%g ", sums[r]);
+  fprintf(fp, "\n");
+
+  delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;
+
+  for (r = 0; r < rows; r++) {
+    p = h+r*n2;
+
+    if (flags & HIST_KEEPRIGHT) {
+      imax = n;
+    } else { /* trim the right edge of i */
+      for (i = n-1; i >= 0; i--) {
+        for (j = 0; j < n; j++)
+          if (p[i*n + j] > 0) break;
+        if (j < n) break;
+      }
+      imax = i+1;
+      if (imax == 0)
+        continue;
+    }
+
+    if (flags & HIST_KEEPLEFT) {
+      imin = 0;
+    } else { /* trim the left edge of i */
+      for (i = 0; i < imax; i++) {
+        for (j = 0; j < n; j++)
+          if (p[i*n + j] > 0) break;
+        if (j < n) break;
+      }
+      imin = i;
+    }
+
+    if (flags & HIST_KEEPRIGHT2) {
+      jmax = n;
+    } else { /* trim the right edge of j */
+      for (j = n-1; j >= 0; j--) {
+        for (i = imin; i < imax; i++)
+          if (p[i*n + j] > 0) break;
+        if (i < imax) break;
+      }
+      jmax = j+1;
+    }
+    
+    if (flags & HIST_KEEPLEFT2) {
+      jmin = 0;
+    } else { /* trim the left edge of j */
+      for (j = 0; j < jmax; j++) {
+        for (i = imin; i < imax; i++)
+          if (p[i*n + j] > 0) break;
+        if (i < imax) break;
+      }
+      jmin = j;
+    }
+
+    if (fabs(sums[r]) < 1e-6) fac = 1.;
+    else fac = 1.0/(sums[r]*dx*dx);
+
+    for (i = imin; i < imax; i++) { 
+      for (j = jmin; j < jmax; j++) {
+        double x, y;
+        if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
+          continue;
+        x = xmin + (i+delta)*dx;
+        y = xmin + (j+delta)*dx;
+        fprintf(fp,"%g %g ", x, y);
+        if (flags & HIST_KEEPHIST) 
+          fprintf(fp, "%20.14E ", p[i*n+j]);
+        fprintf(fp,"%20.14E %d\n", p[i*n+j]*fac, r);
+      }
+      fprintf(fp,"\n");
+    }
+    fprintf(fp, "\n#\n");
+  }
+  fclose(fp);
+  free(sums);
+  return 0;
+}
+
+int hist2load(double *hist, int rows, int n, double xmin, double dx,
+    unsigned flags, const char *fname)
+{
+  FILE *fp;
+  static char s[4096], *p;
+  int verbose = (flags & HIST_VERBOSE);
+  int add = (flags & HIST_ADDITION);
+  int ver, next, hashist;
+  int i, j, r, r1, n2, nlin = 0;
+  unsigned fflags;
+  double x, y, g, g2, fac, delta, *arr, *sums = NULL;
+    
+  if ((fp = fopen(fname, "r")) == NULL) {
+    fprintf(stderr, "cannot read %s\n", fname);
+    return -1;
+  }
+  
+  n2 = n*n;
+  /* check the first line */
+  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
+    fprintf(stderr, "%s: missing the first line\n", fname);
+    fclose(fp);
+    return -1;
+  }
+  nlin++;
+  if (6 != sscanf(s, " # %d 0x %X | %d%d%lf%lf | %n", &ver, &fflags, &r, &i, &y, &x, &next)
+      || i < n || r != rows || fabs(x - dx) > 1e-5) {
+    fprintf(stderr, "Error: bins = %d, %d, ng = %d, %d; dx = %g, %g\n", 
+        i, n, r, rows, x, dx);
+    fclose(fp);
+    return -1;
+  }
+  delta   = ((fflags & HIST_ADDAHALF) ? .5 : 0.);
+  hashist =  (fflags & HIST_KEEPHIST);
+  /* scan sums */
+  nalloc_(sums, rows);
+  for (p = s+next, r = 0; r < rows; r++) {
+    if (1 != sscanf(p, "%lf%n", sums + r, &next)) {
+      fprintf(stderr, "cannot read sums from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
+      goto EXIT;
+    }
+    p += next;
+  }
+  
+  if (!add) { /* clear histogram */
+    for (i = 0; i < rows*n2; i++) hist[i] = 0.;
+  }
+  
+  /* loop over r = 0..rows-1 */
+  for (r = 0; r < rows; r++) {
+    arr = hist + r*n2;
+    fac = sums[r]*(dx*dx);
+    while (fgets(s, sizeof s, fp)) {
+      nlin++;
+      for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--) 
+        *p = '\0'; /* trim ending */
+      if (s[0] == '#') break;
+      if (s[0] == '\0') continue;
+      
+      if (hashist) {
+        if (5 != sscanf(s, "%lf%lf%lf%lf%d", &x, &y, &g, &g2, &r1)) {
+          fprintf(stderr, "error on line %d\n", nlin);
+          goto EXIT;
+        }
+      } else {
+        if (4 != sscanf(s, "%lf%lf%lf%d", &x, &y, &g2, &r1)) {
+          fprintf(stderr, "error on line %d\n", nlin);
+          goto EXIT;
+        }
+      }
+      if (r1 != r) {
+        fprintf(stderr, "wrong column index %d vs. %d on line %d\n",
+          r1, r, nlin);
+        goto EXIT;
+      }
+      i = (int)((x - xmin)/dx - delta + .5);
+      if (i < 0 || i >= n) {
+        fprintf(stderr, "cannot find index for x = %g\n", x);
+        goto EXIT;
+      }
+      j = (int)((y - xmin)/dx - delta + .5);
+      if (j < 0 || j >= n) {
+        fprintf(stderr, "cannot find index for y = %g\n", y);
+        return -1;
+      }
+      if (!hashist) {
+        g = g2*fac;
+      }
+      if (add) arr[i*n+j] += g;
+      else arr[i*n+j] = g;
+    }
+  }
+  if (verbose) fprintf(stderr, "%s loaded successfully\n", fname);
+  return 0;
+EXIT:
+  if (sums) free(sums);
+  for (i = 0; i < rows*n2; i++) hist[i] = 0.;
+  return -1;
+}
+
+/* add (xarr[skip*r], yarr[skip*r]) of weight w, into histogram h
+ * return number of success */
+int hist2add(const double *xarr, const double *yarr, int skip,
+    double w, double *h, int rows, 
+    int n, double xmin, double dx, unsigned flags)
+{
+  int r, ix, iy, good = 0, verbose = flags & HIST_VERBOSE;
+  double x, y;
+
+  for (r = 0; r < rows; r++) {
+    x = xarr[skip*r];
+    y = yarr[skip*r];
+    if (x < xmin || y < xmin) {
+      if (verbose)
+       fprintf(stderr, "histadd underflows %d: %g or %g < %g\n", r, x, y, xmin);
+      continue;
+    }
+    ix = (int)((x - xmin)/dx);
+    iy = (int)((y - xmin)/dx);
+    if (ix >= n || iy >= n) {
+      if (verbose)
+        fprintf(stderr, "histadd overflows %d: %g or %g > %g\n", r, x, y, xmin+dx*n);
+      continue;
+    }
+    h[r*n*n + ix*n+iy] += w;
+    good++;
+  }
+  return good;
+}
+
+static void hs2_check(const hist2_t *hs)
+{
+  if (hs == NULL) {
+    fprintf(stderr, "hist2 is NULL\n");
+    exit(1);
+  }
+  if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
+    fprintf(stderr, "hist2: arr %p rows %d n %d\n", hs->arr, hs->rows, hs->n);
+    exit(1);
+  }
+}
+
+hist2_t *hs2_init(int rows, double xmin, double xmax, double dx)
+{
+  hist2_t *hs2;
+
+  nalloc_(hs2, 1);
+  hs2->rows = rows;
+  hs2->xmin = xmin;
+  hs2->dx   = dx;
+  hs2->n = (int)((xmax - xmin)/dx + 0.99999999);
+  nalloc_(hs2->arr, hs2->n*hs2->n*hs2->rows);
+  return hs2;
+}
+
+void hs2_free(hist2_t *hs2)
+{
+  if (hs2) {
+    if (hs2->arr) free(hs2->arr);
+    memset(hs2, 0, sizeof(*hs2));
+    free(hs2);
+  }
+}
+
+int hs2_save(const hist2_t *hs, const char *fname, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+      flags, fname);
+}
+
+int hs2_load(hist2_t *hs, const char *fname, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+      flags, fname);
+}
+
+int hs2_add(hist2_t *hs, const double *x, const double *y, int skip, double w, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
+}
+
+int hs2_add1(hist2_t *hs, int r, double x, double y, double w, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2add(&x, &y, 1, w, hs->arr+r*hs->n*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
+}
 
 #undef nalloc_
 #endif /* ZCOM_HIST__ */
