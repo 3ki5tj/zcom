@@ -234,6 +234,8 @@ def integrate(srclist):
     print "no need to update", fn_host
   os.remove(fn_host_tmp)
 
+  os.system('wc ' + fn_host);
+
 def get_defmodules(root):
   '''
   obtain a list of C modules under `root'

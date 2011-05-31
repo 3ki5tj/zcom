@@ -84,8 +84,8 @@
   #ifndef ZCOM_TRACE
   #define ZCOM_TRACE
   #endif
-  #ifndef ZCOM_DIST
-  #define ZCOM_DIST
+  #ifndef ZCOM_HIST
+  #define ZCOM_HIST
   #endif
   #ifndef ZCOM_LOG
   #define ZCOM_LOG
@@ -248,12 +248,12 @@
 #endif /* ZCOM_TRACE__ */
 #endif /* ZCOM_TRACE */
 
-#ifdef  ZCOM_DIST
-#ifndef ZCOM_DIST__
-#define ZCOM_DIST__
+#ifdef  ZCOM_HIST
+#ifndef ZCOM_HIST__
+#define ZCOM_HIST__
 
-#endif /* ZCOM_DIST__ */
-#endif /* ZCOM_DIST */
+#endif /* ZCOM_HIST__ */
+#endif /* ZCOM_HIST */
 
 #ifdef  ZCOM_LOG
 #ifndef ZCOM_LOG__

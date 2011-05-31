@@ -20,7 +20,7 @@ svd:            singular value decomposition
 log:            log file
 zt:             Z-algorithm related
 trace:          write trace
-dist:           write distribution
+hist:           collect and write simple histogram 
 bio:            macros for read/write binary files
 is2:            two dimensional ising model
 util:           useful but unclassified routines

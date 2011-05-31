@@ -160,7 +160,7 @@ ZCINLINE real rv3_vdist(const real *x, const real *a, const real *b)
 }
 
 /* signed distance from x to the plane extended by a, b, c */
-real rv3_vpdist(const real *x, const real *a, const real *b, const real *c)
+ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real *c)
 {
   real u[3], v[3], m[3];
 
