@@ -91,6 +91,7 @@ int main(void)
   /* write again */
   hs_savex(hs, "RDF2", den, HIST_ADDAHALF|HIST_KEEPHIST);
   hs_savex(hs, "rdf2.dat", den, HIST_ADDAHALF);
+  hs_free(hs);
   return 0; 
 }
 

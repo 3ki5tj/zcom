@@ -9,7 +9,7 @@
 int main(void)
 {
   int i, j, n = 1000000;
-  unsigned wflags = HIST_ADDAHALF | HIST_KEEPHIST;
+  unsigned wflags = HIST_VERBOSE | HIST_ADDAHALF | HIST_KEEPHIST;
   double x[LCNT] = {0.51, 0.51, 0.51}, 
          y[LCNT] = {0., 0., 0.}, 
          lam[LCNT] = {3.8, 3.9, 3.999999};
@@ -34,7 +34,7 @@ int main(void)
   }
   /* write again */
   hs2_save(hs, "HIST2", wflags);
-
+  hs2_free(hs);
   return 0; 
 }
 

@@ -262,7 +262,7 @@ int svdback(double *u, double *w, double *v, int m, int n, double *x, double *b)
 int svdsolve(double *a, double *x, double *b, int n, double rerr)
 {
   int i;
-  double *u, *v, *w, *b1, wmax, wmin;
+  double *u, *v, *w, wmax, wmin;
 
   if ((w = calloc(n, sizeof(double))) == NULL) {
     fprintf(stderr, "no memory for w\n");

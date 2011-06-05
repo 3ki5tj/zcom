@@ -1,4 +1,6 @@
 #include "rng.h"
+#include "util.c"
+
 #ifndef IS2_C__
 #define IS2_C__
 
@@ -151,26 +153,6 @@ void is2_close(is_t *is)
   }
 }
 
-#define LN_BIG 50.0
-/* c = log(exp(a) + exp(b)) */
-static double lnadd_(double a, double b)
-{
-  double c;
-  if (a < b) { c = a; a = b; b = c; } /* ensure a >= b */
-  return ((c = a-b) > LN_BIG) ? a : a + log(1 + exp(-c));
-}
-/* c = log(exp(a)-exp(b)), only works for a>b */
-static double lnmin_(double a, double b)
-{
-  double c;
-  assert(a >= b);
-  return ((c = a-b) > LN_BIG) ? a : a + log(1 - exp(-c));
-}
-/* c = log(exp(a)+b) */
-static double lnaddn_(double a, double b)
-{
-  return (a > LN_BIG) ? a : a + log(1 + b*exp(-a));
-}
 /* exact solution of ising model */
 double is2_exact(is_t *is, double beta, double *eav, double *cv)
 {
@@ -194,14 +176,14 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
   if (lx == 2 && ly == 2) { /* 2x2 system */
     double lnc, lnd;
     x = 8.*beta;
-    lnc = lnadd_(x, -x);
-    lnd = lnaddn_(lnc, 6.);
+    lnc = lnadd(x, -x);
+    lnd = lnaddn(lnc, 6.);
     lnz = lnd + log2;
-    *eav = -8.*exp(lnmin_(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
-    *cv = bsqr * 384. * exp(lnaddn_(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
+    *eav = -8.*exp(lnmin(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
+    *cv = bsqr * 384. * exp(lnaddn(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
     return lnz;
   } else if (fabs(beta) < 1e-6) { /* high T approx. normal branch unstable if beta < 1e-6 */
-    lnz = n * (2.*lnadd_(beta, -beta) - log2);
+    lnz = n * (2.*lnadd(beta, -beta) - log2);
     x = 1. + xn2b;
     *eav = -2. * n * (1. - xn2b)/x;
     *cv = bsqr * 8.*n*xn2b/(x*x);
@@ -211,7 +193,7 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
   lnz1 = lnz2 = lnz3 = lnz4 = 0;
   dr1 = dr2 = dr3 = dr4 = 0;
   ddr1 = ddr2 = ddr3 = ddr4 = 0;
-  lnch2b = lnadd_(bet2, -bet2) - log2;
+  lnch2b = lnadd(bet2, -bet2) - log2;
   coth2b = 2./(1. - xn2b*xn2b) - 1.;
   lncc2b = lnch2b + log(coth2b); /* ln[ cosh(2b) * coth(2b) ] */
   g0 = bet2 + log(2./(1. + xn2b) - 1.);
@@ -222,15 +204,15 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
   x = sh2b*sh2b;
   cd = 2. - 2./x; /* cl' = cd * cosh(2b) */
   cdsqr = cd*cd;
-  lnddcl = lnaddn_(lncc2b, 2.0/(x * sh2b)) + 2.*log2; /* log(cl'') */
+  lnddcl = lnaddn(lncc2b, 2.0/(x * sh2b)) + 2.*log2; /* log(cl'') */
 
   for (r = 0; r < ly; r++) { /* for odd number */
-    lncl = lnaddn_(lncc2b, -cos((2.*r + 1.)*M_PI/ly));
+    lncl = lnaddn(lncc2b, -cos((2.*r + 1.)*M_PI/ly));
     lnsl = lncl + 0.5*log(1. - exp(-2.*lncl));
-    g = lnadd_(lncl, lnsl);
+    g = lnadd(lncl, lnsl);
     f = lxh*g;
-    lnz1 += lnadd_(f, -f);
-    lnz2 += lnmin_(f, -f);
+    lnz1 += lnadd(f, -f);
+    lnz2 += lnmin(f, -f);
 
     dg = exp(lnch2b - lnsl)*cd; /* g' = cl'/sl; */
     ex = exp(-f);
@@ -250,14 +232,14 @@ double is2_exact(is_t *is, double beta, double *eav, double *cv)
     if (r == 0) {
       g = g0;
     } else {
-      lncl = lnaddn_(lncc2b, -cos(2.0*M_PI*r/ly));
+      lncl = lnaddn(lncc2b, -cos(2.0*M_PI*r/ly));
       lnsl = lncl+0.5*log(1-exp(-2*lncl));
-      g = lnadd_(lncl, lnsl);
-      assert(g > 0);
+      g = lnadd(lncl, lnsl);
+      die_if (g < 0.0, "g = %g < 0.\n", g);;
     }
     f = lxh*g;
-    lnz3 += lnadd_(f, -f); /* log [2 cosh(f)] */
-    lnz4 += (f < 0) ? lnmin_(-f, f) : lnmin_(f, -f); /* avoid neg. g0 */
+    lnz3 += lnadd(f, -f); /* log [2 cosh(f)] */
+    lnz4 += (f < 0) ? lnmin(-f, f) : lnmin(f, -f); /* avoid neg. g0 */
    
     ex = exp(-f);
     th = 2./(1. + ex*ex) - 1.;

@@ -117,9 +117,6 @@
   #ifndef ZCOM_PDB
   #define ZCOM_PDB
   #endif
-  #ifndef ZCOM_SAVGOL
-  #define ZCOM_SAVGOL
-  #endif
   #ifndef ZCOM_SPECFUNC
   #define ZCOM_SPECFUNC
   #endif
@@ -131,6 +128,9 @@
   #endif
   #ifndef ZCOM_EIG
   #define ZCOM_EIG
+  #endif
+  #ifndef ZCOM_SAVGOL
+  #define ZCOM_SAVGOL
   #endif
   #ifndef ZCOM_MDS
   #define ZCOM_MDS
@@ -163,7 +163,8 @@
   #define ZCOM_EIG
 #endif
 
-#if (defined(ZCOM_EIG) || defined(ZCOM_SVD))
+#if (defined(ZCOM_EIG) || defined(ZCOM_SVD) || defined(ZCOM_IS2) || \
+     defined (ZCOM_ZT))
   #define ZCOM_UTIL
 #endif
 
@@ -382,13 +383,6 @@
 #endif /* ZCOM_PDB__ */
 #endif /* ZCOM_PDB */
 
-#ifdef ZCOM_SAVGOL
-#ifndef ZCOM_SAVGOL__
-#define ZCOM_SAVGOL__
-
-#endif /* ZCOM_SAVGOL__ */
-#endif /* ZCOM_SAVGOL */
-
 #ifdef ZCOM_SPECFUNC
 #ifndef ZCOM_SPECFUNC__
 #define ZCOM_SPECFUNC__
@@ -416,6 +410,13 @@
 
 #endif /* ZCOM_EIG__ */
 #endif /* ZCOM_EIG */
+
+#ifdef ZCOM_SAVGOL
+#ifndef ZCOM_SAVGOL__
+#define ZCOM_SAVGOL__
+
+#endif /* ZCOM_SAVGOL__ */
+#endif /* ZCOM_SAVGOL */
 
 #ifdef  ZCOM_MDS
 #ifndef ZCOM_MDS__

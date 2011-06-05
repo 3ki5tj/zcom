@@ -8,17 +8,68 @@
     fprintf(stderr, "no memory for %s n = %d\n", #arr, (n)); \
     exit(1); }
 
-static double *gethistsums_(const double *h, int rows, int n)
+/* compute sum, average and standard deviation*/
+static double *gethistsums_(const double *h, int rows, int n, 
+    double xmin, double dx)
 {
-  double *sums;
+  double *sums, *xav, *xdv, x, w;
   int i, r;
   
-  nalloc_(sums, rows);
-  for (r = 0; r < rows; r++) 
-    for (sums[r] = 0., i = 0; i < n; i++)
-      sums[r] += h[r*n + i];
+  nalloc_(sums, 3*rows);
+  xav = sums + rows;
+  xdv = xav  + rows;
+  for (r = 0; r < rows; r++) {
+    sums[r] = xav[r] = xdv[r] = 0.; 
+    for (i = 0; i < n; i++) {
+      x = xmin + (i+.5)*dx;
+      w = h[r*n + i];
+      sums[r] += w;
+      xav[r]  += w*x;
+      xdv[r]  += w*x*x;
+    }
+    if (sums[r] > 1e-5) {
+      xav[r] /= sums[r];
+      xdv[r] = sqrt(xdv[r]/sums[r] - xav[r]*xav[r]);
+    }
+  }
   return sums;
 }
+
+static double *gethist2sums_(const double *h, int rows, int n, 
+    double xmin, double dx)
+{
+  double *sums, *xav, *yav, *xdv, *ydv, x, y, w;
+  int i, j, r;
+  
+  nalloc_(sums, 5*rows);
+  xav = sums + rows;
+  xdv = sums + rows*2;
+  yav = sums + rows*3;
+  ydv = sums + rows*4;
+  for (r = 0; r < rows; r++) {
+    sums[r] = xav[r] = xdv[r] = yav[r] = ydv[r] = 0.;
+    for (i = 0; i < n; i++) {
+      x = xmin + (i+.5)*dx;
+      for (j = 0; j < n; j++) {
+        y = xmin + (j+.5)*dx;
+        w = h[r*n*n + i*n + j];
+        sums[r] += w;
+        xav[r]  += w*x;
+        xdv[r]  += w*x*x;
+        yav[r]  += w*y;
+        ydv[r]  += w*y*y;
+      }
+    }
+    if (sums[r] > 1e-5) {
+      xav[r] /= sums[r];
+      xdv[r] = sqrt(xdv[r]/sums[r] - xav[r]*xav[r]);
+      yav[r] /= sums[r];
+      ydv[r] = sqrt(ydv[r]/sums[r] - yav[r]*yav[r]);
+    }
+  }
+  return sums;
+}
+
 
 /* write histograms to file
  * histogram 'h' contains 'rows' histograms,
@@ -30,7 +81,7 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
     int (*fwheader)(FILE *fp, void *data), 
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata,
-    const char *fname)
+    const char *fn)
 {
   const int version = 0;
   const char *filename;
@@ -39,19 +90,22 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
   const double *p;
   double *sums, fac, delta;
 
-  filename = (fname != NULL) ? fname : "HIST";
+  filename = (fn != NULL) ? fn : "HIST";
 
   if ((fp = fopen(filename, "w")) == NULL) {
     printf("cannot write history file [%s].\n", filename);
     return 1;
   }
   
-  sums = gethistsums_(h, rows, n);
+  sums = gethistsums_(h, rows, n, xmin, dx);
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
       version, flags, rows, n, xmin, dx);
-  for (r = 0; r < rows; r++)
+  for (r = 0; r < rows; r++) /* number of visits */
     fprintf(fp, "%g ", sums[r]);
+  fprintf(fp, "| ");
+  for (r = 0; r < rows; r++) /* average, standard deviation */
+    fprintf(fp, "%g %g ", sums[r+rows], sums[r+rows*2]);
   fprintf(fp, "| ");
   if (fwheader != NULL) (*fwheader)(fp, pdata);
   fprintf(fp, "\n");
@@ -97,8 +151,22 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
     fprintf(fp,"\n");
   }
   fclose(fp);
+  if (flags & HIST_VERBOSE) {
+    fprintf(stderr, "successful wrote %s\n", fn);
+    for (r = 0; r < rows; r++)
+      fprintf(stderr, "%2d cnt: %20.4f av: %10.4f(%10.4f)\n", 
+          r, sums[r], sums[r+rows], sums[r+rows*2]);
+  }
   free(sums);
   return 0;
+}
+
+/* skip a | */
+static char *skipabar_(char *p)
+{
+  int next = -1;
+  sscanf(p, " | %n", &next);
+  return (next < 0) ? NULL : (p + next);
 }
 
 /* load a previous histogram
@@ -150,14 +218,15 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
     }
     p += next;
   }
-  /* read the final | */
-  next = -1;
-  sscanf(p, " | %n", &next);
-  if (next == -1) {
-    fprintf(stderr, "line %d: cannot read finishing |, s:%s\np:%s\n", r, s, p);
-    goto EXIT;
+  if ((p = skipabar_(p)) == NULL) goto EXIT;
+  for (r = 0; r < rows; r++) {
+    if (2 != sscanf(p, "%lf%lf%n", &y, &y2, &next)) {
+      fprintf(stderr, "cannot read average/stddev from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
+      goto EXIT;
+    }
+    p += next;
   }
-  p += next;
+  if ((p = skipabar_(p)) == NULL) goto EXIT;
   if (frheader != NULL) {
     if (0 != frheader(p, pdata))
       goto EXIT;
@@ -216,6 +285,7 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
   if (sums) free(sums);
   return 0;
 EXIT:
+  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
   if (sums) free(sums);
   /* we always clear histogram on error */
   for (i = 0; i < rows*n; i++) hist[i] = 0.;
@@ -289,18 +359,18 @@ void hs_free(hist_t *hs)
   }
 }
 
-int hs_savex(const hist_t *hs, const char *fname, void *pdata, unsigned flags)
+int hs_savex(const hist_t *hs, const char *fn, void *pdata, unsigned flags)
 {
   hs_check(hs);
   return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags, 
-      hs->fwheader, hs->fnorm, pdata, fname);
+      hs->fwheader, hs->fnorm, pdata, fn);
 }
 
-int hs_loadx(hist_t *hs, const char *fname, void *pdata, unsigned flags)
+int hs_loadx(hist_t *hs, const char *fn, void *pdata, unsigned flags)
 {
   hs_check(hs);
   return histloadx(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags,
-      hs->frheader, hs->fnorm, pdata, fname);
+      hs->frheader, hs->fnorm, pdata, fn);
 }
 
 int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
@@ -318,7 +388,7 @@ int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 
 /* write 'rows' 2d n^2 histograms to file */
 int hist2save(const double *h, int rows, int n, double xmin, double dx,
-    unsigned flags, const char *fname)
+    unsigned flags, const char *fn)
 {
   const int version = 0;
   const char *filename;
@@ -327,7 +397,7 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
   const double *p;
   double *sums, fac, delta;
 
-  filename = (fname != NULL) ? fname : "HIST2";
+  filename = (fn != NULL) ? fn : "HIST2";
 
   if ((fp = fopen(filename, "w")) == NULL) {
     printf("cannot write history file [%s].\n", filename);
@@ -335,13 +405,17 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
   }
   
   n2 = n*n;
-  sums = gethistsums_(h, rows, n2);
+  sums = gethist2sums_(h, rows, n, xmin, dx);
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
       version, flags, rows, n, xmin, dx);
-  for (r = 0; r < rows; r++)
+  for (r = 0; r < rows; r++) /* number of visits */
     fprintf(fp, "%g ", sums[r]);
-  fprintf(fp, "\n");
+  fprintf(fp, " | ");
+  for (r = 0; r < rows; r++) /* averages and standard deviations */
+    fprintf(fp, "%g %g %g %g ", sums[r+rows], sums[r+rows*2],
+        sums[r+rows*3], sums[r+rows*4]);
+  fprintf(fp, "| \n");
 
   delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;
 
@@ -414,12 +488,18 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
     fprintf(fp, "\n#\n");
   }
   fclose(fp);
+  if (flags & HIST_VERBOSE) {
+    fprintf(stderr, "successful wrote %s\n", fn);
+    for (r = 0; r < rows; r++)
+      fprintf(stderr, "%2d cnt: %20.4f xav: %10.4f(%10.4f) yav: %10.4f(%10.4f)\n", 
+          r, sums[r], sums[r+rows], sums[r+rows*2], sums[r+rows*3], sums[r+rows*4]);
+  }
   free(sums);
   return 0;
 }
 
 int hist2load(double *hist, int rows, int n, double xmin, double dx,
-    unsigned flags, const char *fname)
+    unsigned flags, const char *fn)
 {
   FILE *fp;
   static char s[4096], *p;
@@ -430,15 +510,15 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
   unsigned fflags;
   double x, y, g, g2, fac, delta, *arr, *sums = NULL;
     
-  if ((fp = fopen(fname, "r")) == NULL) {
-    fprintf(stderr, "cannot read %s\n", fname);
+  if ((fp = fopen(fn, "r")) == NULL) {
+    fprintf(stderr, "cannot read %s\n", fn);
     return -1;
   }
   
   n2 = n*n;
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
-    fprintf(stderr, "%s: missing the first line\n", fname);
+    fprintf(stderr, "%s: missing the first line\n", fn);
     fclose(fp);
     return -1;
   }
@@ -461,7 +541,16 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
     }
     p += next;
   }
-  
+  if ((p = skipabar_(p)) == NULL) goto EXIT;
+  for (r = 0; r < rows; r++) {
+    if (4 != sscanf(p, "%lf%lf%lf%lf%n", &x, &y, &g, &g2, &next)) {
+      fprintf(stderr, "cannot read average/stddev from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
+      goto EXIT;
+    }
+    p += next;
+  }
+  if ((p = skipabar_(p)) == NULL) goto EXIT;
+
   if (!add) { /* clear histogram */
     for (i = 0; i < rows*n2; i++) hist[i] = 0.;
   }
@@ -510,9 +599,10 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
       else arr[i*n+j] = g;
     }
   }
-  if (verbose) fprintf(stderr, "%s loaded successfully\n", fname);
+  if (verbose) fprintf(stderr, "%s loaded successfully\n", fn);
   return 0;
 EXIT:
+  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);  
   if (sums) free(sums);
   for (i = 0; i < rows*n2; i++) hist[i] = 0.;
   return -1;
@@ -582,18 +672,18 @@ void hs2_free(hist2_t *hs2)
   }
 }
 
-int hs2_save(const hist2_t *hs, const char *fname, unsigned flags)
+int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)
 {
   hs2_check(hs);
   return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
-      flags, fname);
+      flags, fn);
 }
 
-int hs2_load(hist2_t *hs, const char *fname, unsigned flags)
+int hs2_load(hist2_t *hs, const char *fn, unsigned flags)
 {
   hs2_check(hs);
   return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
-      flags, fname);
+      flags, fn);
 }
 
 int hs2_add(hist2_t *hs, const double *x, const double *y, int skip, double w, unsigned flags)

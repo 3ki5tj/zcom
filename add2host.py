@@ -74,7 +74,9 @@ def add_storage_class(hdr, prefix):
     
     #  NOTE: we cannot handle more complex cases
     if first_word in ("void", "char", "int", "unsigned", "long", 
-        "real", "float", "double", "cfgdata_t", "logfile_t", "is_t"):
+        "real", "float", "double", "const", 
+        "cfgdata_t", "logfile_t", "is_t", "hist_t",
+        ) or first_word.endswith("_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 
@@ -287,7 +289,7 @@ def handle_params():
   global fn_host, fn_source, strcls, host_prefix, verbose, mod_name
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "h:v:o:c:p:i:m:a", 
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "h:v:o:c:p:i:m:a", 
          ["help", "prefix=", "strcls=", "host=", "src=", "all", 
            "verbose=", "module="])
   except getopt.GetoptError, err:

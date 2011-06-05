@@ -6,7 +6,7 @@
 #include "mds.h"
 
 /* compute force and energy */
-double mds_force(double *f, double *x, double *dm, int n, int dim)
+static double mds_force(double *f, double *x, double *dm, int n, int dim)
 {
   const double dmin = 1e-6;
   int i, j, k;
