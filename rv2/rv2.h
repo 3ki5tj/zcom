@@ -102,7 +102,7 @@ ZCINLINE real rv2_dist(const real *a, const real *b)
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b)
+ZCINLINE real *rv2_add(real *sum, const real *a, const real *b)
 {
   sum[0] = a[0]+b[0];
   sum[1] = a[1]+b[1];
@@ -110,7 +110,7 @@ ZCINLINE real *rv2_sum2(real *sum, const real *a, const real *b)
 }
 
 /* sum = -a-b */
-ZCINLINE real *rv2_nsum2(real *sum, const real *a, const real *b)
+ZCINLINE real *rv2_nadd(real *sum, const real *a, const real *b)
 {
   sum[0] = -a[0]-b[0];
   sum[1] = -a[1]-b[1];

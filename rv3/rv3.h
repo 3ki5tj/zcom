@@ -123,7 +123,7 @@ ZCINLINE real rv3_dist(const real *a, const real *b)
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b)
+ZCINLINE real *rv3_add(real * ZCRESTRICT sum, const real *a, const real *b)
 {
   sum[0] = a[0]+b[0];
   sum[1] = a[1]+b[1];
@@ -132,7 +132,7 @@ ZCINLINE real *rv3_sum2(real * ZCRESTRICT sum, const real *a, const real *b)
 }
 
 /* sum = -a-b */
-ZCINLINE real *rv3_nsum2(real *sum, const real *a, const real *b)
+ZCINLINE real *rv3_nadd(real *sum, const real *a, const real *b)
 {
   sum[0] = -a[0]-b[0];
   sum[1] = -a[1]-b[1];
@@ -169,6 +169,79 @@ ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real
   rv3_normalize(rv3_cross(m, u, v));
   rv3_diff(u, x, a);
   return rv3_dot(u, m);
+}
+
+/* determinant of a 3x3 matrix */
+ZCINLINE real mat3_det(real a[3][3])
+{
+  return a[0][0]*a[1][1]*a[2][2]+2.f*a[0][1]*a[0][2]*a[1][2]
+    - (a[0][0]*a[1][2]*a[1][2]+a[1][1]*a[0][2]*a[0][2]+a[2][2]*a[0][1]*a[0][1]);
+}
+
+/* eigenvalues of a 3x3 matrix */
+ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
+{
+  real m, p, q, cphi, sphi, pr, pr3;
+
+  m = (real)((a[0][0]+a[1][1]+a[2][2])/3.);
+  a[0][0] -= m;
+  a[1][1] -= m;
+  a[2][2] -= m;
+  q = .5f*mat3_det(a);
+  p = ((a[0][0]*a[0][0]+a[1][1]*a[1][1]+a[2][2]*a[2][2]) +
+    2.f*(a[0][1]*a[0][1]+a[0][2]*a[0][2]+a[1][2]*a[1][2]))/6.f;
+  pr = (real)sqrt(p);
+  pr3 = p*pr;
+  if (pr3 <= fabs(q)) {
+    if (q < 0.) { /* choose phi = pi/3 */
+      v[1] = v[0] = m + pr;
+      v[2] = m - 2.f*pr;
+    } else { /* phi = 0 */
+      v[0] = m + 2.f*pr;
+      v[2] = v[1] = m - pr;
+    }
+  } else {
+    double phi = acos(q/pr3)/3.f; /* 0 < phi < pi/3 */
+    cphi = (real)cos(phi);
+    sphi = (real)(sin(phi)*sqrt(3));
+    v[0] = m + 2.f*pr*cphi;  /* cos(phi), largest */
+    v[1] = m - pr*(cphi-sphi); /* cos(phi-2*pi/3), second largest */
+    v[2] = m - pr*(cphi+sphi); /* cos(phi+2*pi/3), smallest */
+  }
+  a[0][0] += m;
+  a[1][1] += m;
+  a[2][2] += m;  
+  return v;
+}
+
+/* given matrix a and eigenvalue lm, return eigenvector */
+ZCINLINE real *mat3_eigvec(real vec[3], real m[3][3], real val)
+{
+  double a = m[0][0]-val, b = m[1][1]-val, c, d = m[0][1], e = m[0][2], f = m[1][2];
+  double det, tol = 1e-15f;
+
+  vec[2] = 1.f;
+  if (fabs(det = a*b - d*d) > tol) { /* use row 0 and 1 */
+    vec[0] = (real)((d*f-b*e)/det);
+    vec[1] = (real)((e*d-a*f)/det);
+    return rv3_normalize(vec);
+  }
+  c = m[2][2] - val;
+  if (fabs(det = a*f - e*d) > tol) { /* row 1 and 2 */
+    vec[0] = (real)((d*c-e*f)/det);
+    vec[1] = (real)((e*e-a*c)/det);
+    return rv3_normalize(vec);
+  }
+  if ((det = sqrt(a*a+d*d)) > tol) { /* three-row-degenerate */
+    vec[0] = (real)(d/det);
+    vec[1] = (real)(-a/det);
+    vec[2] = 0.f;
+  } else {
+    vec[0] = 1.f;
+    vec[1] = 0.f;
+    vec[2] = 0.f;
+  }
+  return vec;
 }
 
 #endif /* RV3_H__ */

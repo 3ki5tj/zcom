@@ -2,6 +2,8 @@ all: test testrdf test2
 
 src=hist.c hist.h
 
+CC=gcc -Wall -lm
+
 test: test.c $(src)
 	$(CC) -o $@ $< 
 

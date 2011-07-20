@@ -111,7 +111,7 @@ real rv3_calcdih(dihcalc_t *dih,
       rv3_diff(svec, uvec, vvec);
 
       rv3_diff(vgj, svec, vgi);
-      rv3_nsum2(vgk, vgl, svec);
+      rv3_nadd(vgk, vgl, svec);
 
       rv3_copy(dih->g[0], vgi);
       rv3_copy(dih->g[1], vgj);

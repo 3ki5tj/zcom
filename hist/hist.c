@@ -257,10 +257,15 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
           goto EXIT;
         }
       }
-      if (r1 != r) {
+      if (r1 < r) {
         fprintf(stderr, "wrong column index %d vs. %d on line %d, s=[%s]\n",
             r1, r, nlin, s);
         goto EXIT;
+      } else if (r1 > r) {
+        //fprintf(stderr, "jump from column index %d --> %d\n", r, r1);
+        r = r1;
+        arr = hist + r*n;
+        fac = sums[r]*dx;
       }
       i1 = (int)((x - xmin)/dx - delta + .5);
       if (i1 < 0 || i1 >= n) {
@@ -382,6 +387,10 @@ int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
 int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 {
   hs_check(hs);
+  if (r >= hs->rows || r < 0) {
+    fprintf(stderr, "bad row index %d\n", r);
+    exit(1);
+  }
   return histadd(&x, w, hs->arr + r*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
 }
 
