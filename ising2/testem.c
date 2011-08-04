@@ -6,7 +6,7 @@
 /*
 #define IS2_LB 5
 */
-#include "is2.h"
+#include "ising2.h"
 
 /* randomly pick a site and flip it */
 static void randflip(is_t *is)

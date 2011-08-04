@@ -3,10 +3,15 @@
 
 #include "hist.h"
 
-#define nalloc_(arr, n) \
-  if ((arr = calloc((n), sizeof(*arr))) == NULL) { \
-    fprintf(stderr, "no memory for %s n = %d\n", #arr, (n)); \
-    exit(1); }
+#ifndef xnew
+#define xnew(x, n) \
+  if ((n) <= 0) { \
+    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) (n), #x); \
+    exit(1); \
+  } else if ((x = calloc(n, sizeof(*(x)))) == NULL) { \
+    fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
+    exit(1); } 
+#endif
 
 /* compute sum, average and standard deviation*/
 static double *gethistsums_(const double *h, int rows, int n, 
@@ -15,7 +20,7 @@ static double *gethistsums_(const double *h, int rows, int n,
   double *sums, *xav, *xdv, x, w;
   int i, r;
   
-  nalloc_(sums, 3*rows);
+  xnew(sums, 3*rows);
   xav = sums + rows;
   xdv = xav  + rows;
   for (r = 0; r < rows; r++) {
@@ -41,7 +46,7 @@ static double *gethist2sums_(const double *h, int rows, int n,
   double *sums, *xav, *yav, *xdv, *ydv, x, y, w;
   int i, j, r;
   
-  nalloc_(sums, 5*rows);
+  xnew(sums, 5*rows);
   xav = sums + rows;
   xdv = sums + rows*2;
   yav = sums + rows*3;
@@ -180,7 +185,7 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
     const char *fn)
 {
   FILE *fp;
-  static char s[4096], *p;
+  static char s[40960] = "", *p;
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;
@@ -210,7 +215,7 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
   delta   = ((fflags & HIST_ADDAHALF) ? .5 : 0.);
   hashist =  (fflags & HIST_KEEPHIST);
   /* scan sums */
-  nalloc_(sums, rows);
+  xnew(sums, rows);
   for (p = s+next, r = 0; r < rows; r++) {
     if (1 != sscanf(p, "%lf%n", sums + r, &next)) {
       fprintf(stderr, "cannot read sums from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
@@ -343,12 +348,12 @@ hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
 {
   hist_t *hs;
 
-  nalloc_(hs, 1);
+  xnew(hs, 1);
   hs->rows = rows;
   hs->xmin = xmin;
   hs->dx   = dx;
   hs->n = (int)((xmax - xmin)/dx + 0.99999999);
-  nalloc_(hs->arr, hs->n*hs->rows);
+  xnew(hs->arr, hs->n*hs->rows);
   hs->fwheader = fwh;
   hs->frheader = frh;
   hs->fnorm = fnorm;
@@ -511,7 +516,7 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fn)
 {
   FILE *fp;
-  static char s[4096], *p;
+  static char s[40960] = "", *p;
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;
@@ -542,7 +547,7 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
   delta   = ((fflags & HIST_ADDAHALF) ? .5 : 0.);
   hashist =  (fflags & HIST_KEEPHIST);
   /* scan sums */
-  nalloc_(sums, rows);
+  xnew(sums, rows);
   for (p = s+next, r = 0; r < rows; r++) {
     if (1 != sscanf(p, "%lf%n", sums + r, &next)) {
       fprintf(stderr, "cannot read sums from at %d/%d, s:\n%s\np:\n%s\n", r, rows, s, p);
@@ -663,12 +668,12 @@ hist2_t *hs2_init(int rows, double xmin, double xmax, double dx)
 {
   hist2_t *hs2;
 
-  nalloc_(hs2, 1);
+  xnew(hs2, 1);
   hs2->rows = rows;
   hs2->xmin = xmin;
   hs2->dx   = dx;
   hs2->n = (int)((xmax - xmin)/dx + 0.99999999);
-  nalloc_(hs2->arr, hs2->n*hs2->n*hs2->rows);
+  xnew(hs2->arr, hs2->n*hs2->n*hs2->rows);
   return hs2;
 }
 
@@ -707,6 +712,5 @@ int hs2_add1(hist2_t *hs, int r, double x, double y, double w, unsigned flags)
   return hist2add(&x, &y, 1, w, hs->arr+r*hs->n*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
 }
 
-#undef nalloc_
 #endif /* ZCOM_HIST__ */
 

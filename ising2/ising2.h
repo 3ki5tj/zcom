@@ -1,6 +1,6 @@
 #include "rng.h"
-#ifndef IS2_H__
-#define IS2_H__
+#ifndef ISING2_H__
+#define ISING2_H__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +29,7 @@ void    is2_close(is_t *is);
   p[2] = (uint32_t) (4294967295. * x_); \
   p[4] = (uint32_t) (4294967295. * x_*x_); }
 
-/* faster macro version */
+/* faster macro version for systems with fixed (upon compiling) size */
 #ifdef  IS2_LB  /* L = 2^LB, N = L*L */
 #define LB_     IS2_LB
 #define L_      (1 << LB_)

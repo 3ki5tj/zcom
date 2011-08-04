@@ -1,10 +1,10 @@
 #include "rng.h"
 #include "util.c"
 
-#ifndef IS2_C__
-#define IS2_C__
+#ifndef ISING2_C__
+#define ISING2_C__
 
-#include "is2.h"
+#include "ising2.h"
 
 /* compute total energy and magnetization */
 int is2_em(is_t *is)
