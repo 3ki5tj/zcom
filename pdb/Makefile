@@ -1,6 +1,6 @@
 bin=test 
-hdr=savgol.h lu.h
-src=savgol.c lu.c
+hdr=pdb.h
+src=pdb.c
 dep=$(src) $(hdr) Makefile
 
 all: $(bin)
@@ -11,7 +11,7 @@ test: test.c $(dep)
 	$(CC) -o $@ $< $(src) -lm
 
 clean:
-	rm -f $(bin) *~ savgol[12]d.dat
+	rm -f $(bin) *~
 
 .PHONY: all clean
 
