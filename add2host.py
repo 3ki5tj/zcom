@@ -171,6 +171,8 @@ def integrate(srclist):
   print "Host: %s, template: %s" % (fn_host, fn_host_t)
   host_src = open(fn_host_t, 'r').readlines()
 
+  modcnt = 0
+
   for fn_source, mod_name in srclist:
     if fn_source.find(os.sep) < 0:
       # make abc --> abc/abc
@@ -187,7 +189,7 @@ def integrate(srclist):
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("integrating module %-12s (%-18s, %-18s) to %s" 
+    print ("add module %-13s (%-19s, %-19s) to %s" 
         % (mod_name, fn_source_c, fn_source_h, fn_host_t))
     if verbose:
       raw_input("press Enter to continue...")
@@ -225,6 +227,9 @@ def integrate(srclist):
     # 5. insert the source code into the host
     host_src = insert_module(host_src, mod_name, src)
 
+    modcnt += 1
+  print "%d modules, " % modcnt,
+  
   # 6. save it back to fn_host
   # save first to a temporary file,
   # overwrite the original if necessary

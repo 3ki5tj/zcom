@@ -9,7 +9,7 @@
 #include "ising2.h"
 
 /* randomly pick a site and flip it */
-static void randflip(is_t *is)
+static void randflip(ising_t *is)
 {
   int id, h, E, M, E2, M2;
 /*
@@ -29,7 +29,7 @@ static void randflip(is_t *is)
 
 int main(void)
 {
-  is_t *is;
+  ising_t *is;
   int i;
 
   if ((is = is2_open(L)) == NULL) {

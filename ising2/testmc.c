@@ -9,7 +9,7 @@
 #include "ising2.h"  /* swap with the #define LB line to test two different versions */
 
 /* randomly pick a site and flip it */
-static void mc(is_t *is, double steps, double beta, int ncheck)
+static void mc(ising_t *is, double steps, double beta, int ncheck)
 {
   uint32_t proba[5] = {0};
   double t, acc, tot;
@@ -20,15 +20,16 @@ static void mc(is_t *is, double steps, double beta, int ncheck)
 
   if (0 != is2_load(is, DATAFILE))
     fprintf(stderr, "cannot load previous %s\n", DATAFILE);
-  is2_setproba(proba, beta);
+  IS2_SETPROBA(proba, beta);
   acc = tot = 1e-8;
   s1 = se = se2 = 0.0;
   nt = ncheck;
   for (t = 1.0; t <= steps; t += 1.0) {
-    IS2_PSEQ(is, id, h);
 /*    
+    IS2_PSEQ(is, id, h);
+*/
     IS2_PICK(is, id, h);
-*/    
+    
     if (h <= 0 || mtrand() < proba[h]) {
       IS2_FLIP(is, id, h);
     }
@@ -50,13 +51,13 @@ static void mc(is_t *is, double steps, double beta, int ncheck)
 
 int main(void)
 {
-  is_t *is;
+  ising_t *is;
 
   if ((is = is2_open(L)) == NULL) {
     fprintf(stderr, "cannot init\n");
     return -1;
   }
-  mc(is, 1e9, 0.4, 10);
+  mc(is, 1e8, 0.4, 10);
   printf("E = %d, M = %d\n", is->E, is->M);
   is2_close(is);
   return 0;

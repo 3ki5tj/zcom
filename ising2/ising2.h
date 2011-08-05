@@ -11,39 +11,43 @@ typedef struct {
   int d, l, n;
   int M, E;
   int *s; /* 0 or 1 */
-} is_t;
+} ising_t;
 
-int     is2_em(is_t *is);
-int     is2_check(is_t *is);
-int     is2_load(is_t *is, const char *fname);
-int     is2_save(const is_t *is, const char *fname);
-double  is2_exact(is_t *is, double beta, double *eav, double *cv);
-int     is2_pick(const is_t *is, int *h);
-int     is2_flip(is_t *is, int id, int h);
-is_t   *is2_open(int l);
-void    is2_close(is_t *is);
+int     is2_em(ising_t *is);
+int     is2_check(ising_t *is);
+int     is2_load(ising_t *is, const char *fname);
+int     is2_save(const ising_t *is, const char *fname);
+double  is2_exact(ising_t *is, double beta, double *eav, double *cv);
+int     is2_pick(const ising_t *is, int *h);
+int     is2_flip(ising_t *is, int id, int h);
+ising_t*is2_open(int l);
+void    is2_close(ising_t *is);
 
 /* set transition probability */
-#define is2_setproba(p, bet) { \
+#define IS2_SETPROBA(p, bet) { \
   double x_ = exp(-4. * bet); \
   p[2] = (uint32_t) (4294967295. * x_); \
   p[4] = (uint32_t) (4294967295. * x_*x_); }
 
-/* faster macro version for systems with fixed (upon compiling) size */
+/* faster macros for systems with fixed (upon compiling) size
+ * to use them one must define IS2_LB before including 
+ * IS2_PICK()/IS2_PSEQ() and IS2_FLIP() */
 #ifdef  IS2_LB  /* L = 2^LB, N = L*L */
-#define LB_     IS2_LB
-#define L_      (1 << LB_)
-#define N_      (L_ * L_)
-#define LOWB_   (32 - 2*LB_)
+#define IS2_L   (1 << IS2_LB)
+#define IS2_N   (IS2_L * IS2_L)
 
 #define IS2_GETH(is, id, h) { \
   unsigned ix, iy; \
-  iy = id / L_, ix = id % L_; \
-  h = is->s[id]*(is->s[iy*L_ + (ix+1)%L_] + is->s[iy*L_ + (ix+L_-1)%L_] \
-               + is->s[(iy+1)%L_*L_ + ix] + is->s[(iy-1+L_)%L_*L_ + ix]); }
-#define IS2_IRND(is, id)  id = rand32() >> LOWB_;
+  iy = id / IS2_L, ix = id % IS2_L; \
+  h = is->s[id]*(is->s[iy*IS2_L + (ix+1)%IS2_L] \
+               + is->s[iy*IS2_L + (ix+IS2_L-1)%IS2_L] \
+               + is->s[(iy+1)%IS2_L*IS2_L + ix] \
+               + is->s[(iy-1+IS2_L)%IS2_L*IS2_L + ix]); }
+#define IS2_IRND(is, id)  id = rand32() >> (32 - 2*IS2_LB);
+/* random picking */
 #define IS2_PICK(is, id, h) { IS2_IRND(is, id); IS2_GETH(is, id, h); }
-#define IS2_ISEQ(is, id)  id = (id + 1) % N_;
+#define IS2_ISEQ(is, id)  id = (id + 1) % IS2_N;
+/* sequential picking */
 #define IS2_PSEQ(is, id, h) { IS2_ISEQ(is, id); IS2_GETH(is, id, h); }
 
 #define IS2_FLIP(is, id, h) { \

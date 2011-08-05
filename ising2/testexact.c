@@ -4,7 +4,7 @@
 
 int main(void)
 {
-  is_t *is;
+  ising_t *is;
   double beta = 1e-6, eav, cv, lnz;
 
   if ((is = is2_open(5)) == NULL) {

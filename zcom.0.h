@@ -111,8 +111,11 @@
   #ifndef ZCOM_BIO
   #define ZCOM_BIO
   #endif
-  #ifndef ZCOM_IS2
-  #define ZCOM_IS2
+  #ifndef ZCOM_ISING2
+  #define ZCOM_ISING2
+  #endif
+  #ifndef ZCOM_POTTS2
+  #define ZCOM_POTTS2
   #endif
   #ifndef ZCOM_PDB
   #define ZCOM_PDB
@@ -151,7 +154,7 @@
   #define ZCOM_ENDN
 #endif
 
-#ifdef ZCOM_IS2
+#if (defined(ZCOM_ISING2) || defined(ZCOM_POTTS2))
   #define ZCOM_RNG
 #endif
 
@@ -163,8 +166,9 @@
   #define ZCOM_EIG
 #endif
 
-#if (defined(ZCOM_EIG) || defined(ZCOM_SVD) || defined(ZCOM_IS2) || \
-     defined (ZCOM_ZT))
+#if (defined(ZCOM_EIG) || defined(ZCOM_SVD) || \
+     defined(ZCOM_ISING2) || defined(ZCOM_POTTS2) || \
+     defined(ZCOM_ZT))
   #define ZCOM_UTIL
 #endif
 
@@ -369,12 +373,19 @@
 #endif /* ZCOM_BIO__ */
 #endif /* ZCOM_BIO */
 
-#ifdef  ZCOM_IS2
-#ifndef ZCOM_IS2__
-#define ZCOM_IS2__
+#ifdef  ZCOM_ISING2
+#ifndef ZCOM_ISING2__
+#define ZCOM_ISING2__
 
-#endif /* ZCOM_IS2__ */
-#endif /* ZCOM_IS2 */
+#endif /* ZCOM_ISING2__ */
+#endif /* ZCOM_ISING2 */
+
+#ifdef  ZCOM_POTTS2
+#ifndef ZCOM_POTTS2__
+#define ZCOM_POTTS2__
+
+#endif /* ZCOM_POTTS2__ */
+#endif /* ZCOM_POTTS2 */
 
 #ifdef  ZCOM_PDB
 #ifndef ZCOM_PDB__
