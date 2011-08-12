@@ -82,7 +82,7 @@ ZCINLINE real *rv3_dec(real *x, const real *dx)
   x[2] -= dx[2];
   return x;
 }
-ZCINLINE real *rv3_sinc(real *x, real *dx, real s)
+ZCINLINE real *rv3_sinc(real *x, const real *dx, real s)
 {
   x[0] += s*dx[0];
   x[1] += s*dx[1];
@@ -203,7 +203,7 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
   } else {
     double phi = acos(q/pr3)/3.f; /* 0 < phi < pi/3 */
     cphi = (real)cos(phi);
-    sphi = (real)(sin(phi)*sqrt(3));
+    sphi = (real)(sin(phi)*1.7320508075688772);
     v[0] = m + 2.f*pr*cphi;  /* cos(phi), largest */
     v[1] = m - pr*(cphi-sphi); /* cos(phi-2*pi/3), second largest */
     v[2] = m - pr*(cphi+sphi); /* cos(phi+2*pi/3), smallest */

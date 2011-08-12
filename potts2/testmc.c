@@ -16,34 +16,34 @@ static void mc(potts_t *pt, double steps, double beta, int ncheck)
 {
   double t, acc, tot;
   double e, s1, se, se2, eav, cv;
-  int h[Q], dh, nt, os, ns;
+  int nb[Q], de, nt, so, sn;
   unsigned id = 0;
 
   if (0 != pt2_load(pt, DATAFILE))
     fprintf(stderr, "cannot load previous %s\n", DATAFILE);
-  PT2_SETPROBA(pt, beta, Q);
+  PT2_SETPROBA(pt, beta);
   acc = tot = 1e-8;
   s1 = se = se2 = 0.0;
   nt = ncheck;
   for (t = 1.0; t <= steps; t += 1.0) {
     /* regular metropolis */
 /*
-    PT2_PSEQ(pt, id, h);
-    //PT2_PICK(pt, id, h);
-    PT2_NEWFACE(pt, id, os, ns);
-    dh = h[os] - h[ns];
-    if (dh <= 0 || mtrand() <= pt->uproba[dh]) {
-      PT2_FLIP(pt, id, os, ns, h);
+    PT2_PSEQ(pt, id, nb);
+    //PT2_PICK(pt, id, nb);
+    PT2_NEWFACE(pt, id, so, sn);
+    de = nb[so] - nb[sn];
+    if (de <= 0 || mtrand() <= pt->uproba[de]) {
+      PT2_FLIP(pt, id, so, sn, nb);
     }
 */
 
     /* heat bath */
 
-    //PT2_PSEQ(pt, id, h);
-    PT2_PICK(pt, id, h);
-    PT2_HEATBATH(pt, id, os, ns, h);
-    if (os != ns) {
-      PT2_FLIP(pt, id, os, ns, h);
+    //PT2_PSEQ(pt, id, nb);
+    PT2_PICK(pt, id, nb);
+    PT2_HEATBATH(pt, id, so, sn, nb);
+    if (so != sn) {
+      PT2_FLIP(pt, id, so, sn, nb);
     }
 
 

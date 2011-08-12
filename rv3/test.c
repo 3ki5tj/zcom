@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "rv3.h"
 
 int main(void)

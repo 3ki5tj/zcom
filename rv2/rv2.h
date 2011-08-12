@@ -26,8 +26,8 @@ ZCINLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); 
 ZCINLINE real *rv2_normalize(real *x)
 {
   real r = rv2_norm(x);
-  if (r > 0.0) {
-    r = 1.0/r;
+  if (r > 0.f) {
+    r = 1.f/r;
     x[0] *= r;
     x[1] *= r;
   }
@@ -67,7 +67,7 @@ ZCINLINE real *rv2_dec(real *x, const real *dx)
   x[1] -= dx[1];
   return x;
 }
-ZCINLINE real *rv2_sinc(real *x, real *dx, real s)
+ZCINLINE real *rv2_sinc(real *x, const real *dx, real s)
 {
   x[0] += s*dx[0];
   x[1] += s*dx[1];

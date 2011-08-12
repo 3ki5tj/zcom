@@ -79,33 +79,33 @@ int pt2_pick(const potts_t *pt, int h[])
   return id;
 }
 
-int pt2_heatbath(potts_t *pt, int id, int *os, int *ns, 
+int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
     const int h[]) 
 {
   double rs_;
   int i, mx_ = 4;
-  *os = pt->s[id];
+  *so = pt->s[id];
   //for (mx_ = 1, i = 0; i < pt->q; i++) if (h[i] > mx_) mx_ = h[i];
   for (i = 0; i < pt->q; i++) 
     pt->accprb[i+1] = pt->accprb[i] + pt->dproba[mx_-h[i]];
   for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++) 
     if (pt->accprb[i+1] > rs_) break;
   die_if (i >= pt->q, "no suitable selection, i = %d\n", i);
-  *ns = i;
+  *sn = i;
   return 0;
 }
 
 
-/* flip site `id' to `ns', with h different neighbors */
-int pt2_flip(potts_t *pt, int id, int ns, const int h[])
+/* flip site `id' to `sn', with h different neighbors */
+int pt2_flip(potts_t *pt, int id, int sn, const int h[])
 {
-  int os = pt->s[id];
+  int so = pt->s[id];
   die_if(id >= pt->n, "id %d >= n %d\n", id, pt->n);
-  die_if(ns >= pt->q || ns < 0, "invalid ns %d (q = %d)\n", ns, pt->q);
-  pt->s[id] = ns;
-  pt->M[os]--;
-  pt->M[ns]++;
-  return pt->E += h[os] - h[ns];
+  die_if(sn >= pt->q || sn < 0, "invalid sn %d (q = %d)\n", sn, pt->q);
+  pt->s[id] = sn;
+  pt->M[so]--;
+  pt->M[sn]++;
+  return pt->E += h[so] - h[sn];
 }
 
 /* load spin configuration */
@@ -190,7 +190,7 @@ potts_t *pt2_open(int l, int q)
   pt->accprb[0] = 0.;
   /* dynamic array of uproba/dproba seems to be faster */
   xnew(pt->uproba, 2*pt->d+1);
-  pt->uproba[0] = 4294967295u;
+  pt->uproba[0] = 0xffffffffu;
   xnew(pt->dproba, 2*pt->d+1);
   pt->dproba[0] = 1.;
   return pt;

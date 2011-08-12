@@ -11,6 +11,8 @@ typedef struct {
   int d, l, n;
   int M, E;
   int *s; /* 0 or 1 */
+  /* helper vars */
+  uint32_t *uproba; /* temporary probability for MC transitions */ 
 } ising_t;
 
 int     is2_em(ising_t *is);
@@ -24,10 +26,10 @@ ising_t*is2_open(int l);
 void    is2_close(ising_t *is);
 
 /* set transition probability */
-#define IS2_SETPROBA(p, bet) { \
+#define IS2_SETPROBA(is, bet) { \
   double x_ = exp(-4. * bet); \
-  p[2] = (uint32_t) (4294967295. * x_); \
-  p[4] = (uint32_t) (4294967295. * x_*x_); }
+  is->uproba[2] = (uint32_t) ((double)(0xffffffff) * x_); \
+  is->uproba[4] = (uint32_t) ((double)(0xffffffff) * x_*x_); }
 
 /* faster macros for systems with fixed (upon compiling) size
  * to use them one must define IS2_LB before including 

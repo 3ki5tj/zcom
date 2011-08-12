@@ -136,6 +136,8 @@ ising_t *is2_open(int l)
   for (i = 0; i < n; i++) is->s[i] = -1;
   is->M = -n;
   is->E = -2*n;
+  xnew(is->uproba, 2*is->d+1);
+  is->uproba[0] = 0xffffffff;
   return is;
 }
 
@@ -143,6 +145,7 @@ void is2_close(ising_t *is)
 {
   if (is != NULL) {
     free(is->s);
+    free(is->uproba);
     free(is);
   }
 }

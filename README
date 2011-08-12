@@ -24,6 +24,7 @@ hist:           collect and write simple histograms (1d/2d)
 bio:            macros for read/write binary files
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model
+abpro:          AB beads protein model
 util:           useful but unclassified routines
 pdb:            read pdb
 savgol:         compute Savitzky-Golay coeffcients

@@ -39,7 +39,7 @@ ZCINLINE void perrmsg_(const char *file, int line, const char *why,
     int cond, int err, const char *fmt, ...)
 {
   va_list args;
-  
+ 
   if (cond) {
     va_start(args, fmt);
     perrmsg__(file, line, why, err, fmt, args);
@@ -59,7 +59,7 @@ ZCINLINE void perrmsg_(const char *file, int line, const char *why,
   va_list args;                               \
   if ((#c[0] == '1' && #c[1] == '\0') || c) { \
     va_start(args, fmt);                      \
-    perrmsg__(NULL, -1, #c, x, fmt, args);    \
+    perrmsg__(NULL, -1, NULL, x, fmt, args);  \
     va_end(args);                             \
     if (#x[0] == '1') exit(1);                \
   } }

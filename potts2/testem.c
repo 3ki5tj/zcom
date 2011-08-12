@@ -11,16 +11,16 @@
 /* randomly pick a site and flip it */
 static void randflip(potts_t *pt)
 {
-  int id, os, ns, h[PT2_Q], E, M, E2, M2;
+  int id, so, sn, h[PT2_Q], E, M, E2, M2;
 /*
   id = pt2_pick(pt, h);
-  PT2_NEWFACE(pt, id, os, ns);
-  pt2_flip(pt, id, ns, h);
+  PT2_NEWFACE(pt, id, so, sn);
+  pt2_flip(pt, id, sn, h);
 */
 
   PT2_PICK(pt, id, h);
-  PT2_NEWFACE(pt, id, os, ns);
-  PT2_FLIP(pt, id, os, ns, h);
+  PT2_NEWFACE(pt, id, so, sn);
+  PT2_FLIP(pt, id, so, sn, h);
 
   E = pt->E;
   M = pt->M[0];

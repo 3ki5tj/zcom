@@ -117,6 +117,9 @@
   #ifndef ZCOM_POTTS2
   #define ZCOM_POTTS2
   #endif
+  #ifndef ZCOM_ABPRO
+  #define ZCOM_ABPRO
+  #endif
   #ifndef ZCOM_PDB
   #define ZCOM_PDB
   #endif
@@ -144,6 +147,12 @@
 #if (defined(ZCOM_CFG)   || defined(ZCOM_TRACE) || \
      defined(ZCOM_HIST)  || defined(ZCOM_LOG)   || defined(ZCOM_ZT))
   #define ZCOM_SS  /* needs file name support */
+#endif
+
+#ifdef ZCOM_ABPRO
+  #define ZCOM_RV2
+  #define ZCOM_RV3
+  #define ZCOM_UTIL
 #endif
 
 #ifdef ZCOM_DIHC
@@ -386,6 +395,13 @@
 
 #endif /* ZCOM_POTTS2__ */
 #endif /* ZCOM_POTTS2 */
+
+#ifdef  ZCOM_ABPRO
+#ifndef ZCOM_ABPRO__
+#define ZCOM_ABPRO__
+
+#endif /* ZCOM_ABPRO__ */
+#endif /* ZCOM_ABPRO */
 
 #ifdef  ZCOM_PDB
 #ifndef ZCOM_PDB__
