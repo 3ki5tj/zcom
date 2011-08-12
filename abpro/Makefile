@@ -12,7 +12,7 @@ testef: testef.c $(dep)
 	$(CC) -o $@ $< 
 
 testcn: testcn.c $(dep)
-	$(CC) -o $@ $< 
+	$(CX) -o $@ $< 
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin)

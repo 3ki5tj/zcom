@@ -72,7 +72,6 @@ abpro_t *ab_open(int seqid, int d, int model)
   xnew(ab->x, nd);
   xnew(ab->x1, nd);
   xnew(ab->dx, nd);
-  xnew(ab->dx1, nd);
   xnew(ab->v, nd);
   xnew(ab->f, nd);
   xnew(ab->lmx, nd);
@@ -89,7 +88,6 @@ void ab_close(abpro_t *ab)
     free(ab->x);
     free(ab->x1);
     free(ab->dx);
-    free(ab->dx1);
     free(ab->v);
     free(ab->f);
     free(ab->lmx);
@@ -99,19 +97,20 @@ void ab_close(abpro_t *ab)
 }
 
 /* check connectivity */
-int ab_checkconn(abpro_t *ab, const real *x)
+int ab_checkconn(abpro_t *ab, const real *x, double tol)
 {
   int i, d = ab->d;
-  double r;
+  real r;
 
+  if (tol <= 0.) tol = 1e-3;
   for (i = 0; i < ab->n-1; i++) {
     if (d == 3) {
       r = rv3_dist(x + i*3, x + (i+1)*3);
     } else {
       r = rv2_dist(x + i*2, x + (i+1)*2);
     }
-    if (fabs(r-1) > 1e-3) {
-      fprintf(stderr, "link (%d,%d) is broken.\n", i, i+1);
+    if (fabs(r-1) > tol) {
+      fprintf(stderr, "link (%d,%d) is broken, r = %g\n", i, i+1, r);
       return 1;
     }
   }
@@ -233,51 +232,55 @@ int ab_initpos(abpro_t *ab)
 
 static int ab_shake2d(abpro_t *ab, const real *x0, real *x1, int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
-  real dr[2], g, r2;
+  int i, again, it, n = ab->n;
+  real dx[2], *dxi, g, r2;
 
   for (i = 0; i < n-1; i++)
     rv2_diff(ab->dx + i*2, x0 + (i+1)*2, x0 + i*2);
 
-  for (trial = 0; trial < itmax; trial++) {
+  for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
-      r2 = rv2_sqr(rv2_diff(dr, x1 + (i+1)*2, x1 + i*2));
-      if (r2 > 10.0) return 1; /* too large, impossible to correct */
+      r2 = rv2_sqr(rv2_diff(dx, x1 + (i+1)*2, x1 + i*2));
+      if (r2 > 10.0) {
+        fprintf(stderr, "distance too long %d-%d, %g\n", i,i+1, sqrt(r2));
+        return 1;
+      }
 
       if (fabs(r2-1) > tol) {
         again = 1;
 
-        g = rv2_dot(dr, ab->dx + i*2);
+        g = rv2_dot(dx, ab->dx + i*2);
         if (fabs(g) < 0.1) return 2; /* inner product too small */
         g = (1-r2)/(4*g);
-        rv2_sinc(x1 + i*2,     ab->dx + i*2, -g);
-        rv2_sinc(x1 + (i+1)*2, ab->dx + i*2,  g);
+        dxi = ab->dx + i*2;
+        rv2_sinc(x1 + i*2,     dxi, -g);
+        rv2_sinc(x1 + (i+1)*2, dxi,  g);
       }
     }
     if (!again) break;
   }
 
-  if (trial == itmax) return 3;
+  if (it == itmax) return 3;
   return 0;
 }
 
 static int ab_shake3d(abpro_t *ab, const real *x0, real *x1, int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
-  real dr[3], g, r2;
+  int i, again, it, n = ab->n;
+  real dx[3], g, r2;
 
   for (i = 0; i < n-1; i++)
     rv3_diff(ab->dx + i*3, x0 + (i+1)*3, x0 + i*3);
 
-  for (trial = 0; trial < itmax; trial++) {
+  for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
-      r2 = rv3_sqr(rv3_diff(dr, x1 + (i+1)*3, x1 + i*3));
+      r2 = rv3_sqr(rv3_diff(dx, x1 + (i+1)*3, x1 + i*3));
       if (r2 > 10.0) return 1; /* too large, impossible to correct */
 
       if (fabs(r2-1) > tol) {
         again = 1;
 
-        g = rv3_dot(dr, ab->dx + i*3);
+        g = rv3_dot(dx, ab->dx + i*3);
         if (fabs(g) < 0.1) return 2; /* inner product too small */
         g = (1-r2)/(4*g);
         rv3_sinc(x1 + i*3,     ab->dx + i*3, -g);
@@ -286,7 +289,7 @@ static int ab_shake3d(abpro_t *ab, const real *x0, real *x1, int itmax, double t
     }
     if (!again) break;
   }
-  if (trial == itmax) return 3;
+  if (it == itmax) return 3;
   return 0;
 }
 
@@ -301,13 +304,13 @@ int ab_shake(abpro_t *ab, const real *x0, real *x1, int itmax, double tol)
 
 static int ab_rattle2d(abpro_t *ab, const real *x0, real *v, int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
+  int i, again, it, n = ab->n;
   real dv[2], g;
 
   for (i = 0; i < n-1; i++)
     rv2_diff(ab->dx + i*2, x0 + (i+1)*2, x0 + i*2);
 
-  for (trial = 0; trial < itmax; trial++) {
+  for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
       rv2_diff(dv, v + (i+1)*2, v + i*2);
       g = .5f * rv2_dot(ab->dx + i*2, dv);
@@ -319,19 +322,19 @@ static int ab_rattle2d(abpro_t *ab, const real *x0, real *v, int itmax, double t
     }
     if (!again) break;
   }
-  if (trial == itmax) return 1;
+  if (it == itmax) return 1;
   return 0;
 }
 
 static int ab_rattle3d(abpro_t *ab, const real *x0, real *v, int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
+  int i, again, it, n = ab->n;
   real dv[3], g;
 
   for (i = 0; i < n-1; i++)
     rv3_diff(ab->dx + i*3, x0 + (i+1)*3, x0 + i*3);
 
-  for (trial = 0; trial < itmax; trial++) {
+  for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
       rv3_diff(dv, v + (i+1)*3, v + i*3);
       g = .5f * rv3_dot(ab->dx + i*3, dv);
@@ -343,7 +346,7 @@ static int ab_rattle3d(abpro_t *ab, const real *x0, real *v, int itmax, double t
     }
     if (!again) break;
   }
-  if (trial == itmax) return 1;
+  if (it == itmax) return 1;
   return 0;
 }
 
@@ -359,63 +362,67 @@ int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol)
 static int ab_milcshake2d(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
-  static real *dl, *dm, *du, *lam, *sig, *x, dx[2];
-  register real y;
+  int i, again, it, n = ab->n, nl;
+  static real *dl, *dm, *du, *lam, *rhs, *x, *dx0, *dx1;
+  real *xi, *dx0i, dx[2], y;
 
   if (dl == NULL) {
     if (x0 == NULL) return 0;
     xnew(dl, n); xnew(dm, n); xnew(du, n);
-    xnew(lam, n); xnew(sig, n); xnew(x, n*2);
+    xnew(lam, n); xnew(rhs, n); 
+    xnew(dx0, n*2); xnew(dx1, n*2); xnew(x, n*2);
   } else if (x0 == NULL) {
     free(dl); free(dm); free(du);
-    free(lam); free(sig); free(x);
+    free(lam); free(rhs);
+    free(dx0); free(dx1); free(x);
     return 0;
   }
 
-  for (i = 0; i < n-1; i++) {
-    rv2_diff(ab->dx1 + i*2, x1 + i*2, x1 + (i+1)*2);
-    rv2_diff(ab->dx  + i*2, x0 + i*2, x0 + (i+1)*2);
+  nl = n - 1;
+  for (i = 0; i < nl; i++) {
+    rv2_diff(dx1 + i*2, x1 + i*2, x1 + (i+1)*2);
+    rv2_diff(dx0 + i*2, x0 + i*2, x0 + (i+1)*2);
   }
 
-  dm[0] = 2*rv2_dot(ab->dx1, ab->dx);
-  du[0] = -rv2_dot(ab->dx1, ab->dx + 2);
-  for (i = 1; i < n-1; i++) {
-    dl[i] = -rv2_dot(ab->dx1 + i*2, ab->dx + (i-1)*2);
-    dm[i] = 2*rv2_dot(ab->dx1 + i*2, ab->dx + i*2);
-    du[i] = -rv2_dot(ab->dx1 + i*2, ab->dx + (i+1)*2); /* wrong for i==N-2, but it doesn't hurt */
+  dm[0] =  4*rv2_dot(dx1, dx0);
+  du[0] = -2*rv2_dot(dx1, dx0 + 2);
+  for (i = 1; i < nl; i++) {
+    dl[i] = -2*rv2_dot(dx1 + i*2, dx0 + (i-1)*2);
+    dm[i] =  4*rv2_dot(dx1 + i*2, dx0 + i*2);
+    du[i] = -2*rv2_dot(dx1 + i*2, dx0 + (i+1)*2); /* wrong for i==N-2, but it doesn't hurt */
   }
-  for (i = 0; i < n-1; i++)
-    sig[i] = 0.5f*(1 - rv2_sqr(ab->dx1 + i*2));
+  for (i = 0; i < nl; i++)
+    rhs[i] = 1 - rv2_sqr(dx1 + i*2);
 
   /* LU decompose D matrix */
-  if (fabs(dm[0]) <= 0.) return 1;
-  for (i = 1; i < n-1; i++) {
+  if (fabs(dm[0]) < 1e-6) return 1;
+  for (i = 1; i < nl; i++) {
     dm[i] -= dl[i] * (du[i-1] /= dm[i-1]);
-    if (fabs(dm[i]) <= 0.) return i+1;
+    if (fabs(dm[i]) < 1e-6) return i+1;
   }
 
-  for (trial = 1; trial <= itmax; trial++) {
-    lam[0] = sig[0]/dm[0];
-    for (i = 1; i < n-1; i++) /* solving L v = sig */
-      lam[i] = (sig[i]-dl[i]*lam[i-1])/dm[i];
-    for (i = n-2; i > 0; i--) /* solving U lam = v */
+  for (it = 1; it <= itmax; it++) {
+    lam[0] = rhs[0]/dm[0];
+    for (i = 1; i < nl; i++) /* solving L v = rhs */
+      lam[i] = (rhs[i] - dl[i]*lam[i-1])/dm[i];
+    for (i = nl-1; i > 0; i--) /* solving U lam = v */
       lam[i-1] -= du[i-1]*lam[i];
 
-    /* if(tridag(n-1, dl,dm,du, lam, sig) != 0) return 1; */
+    /* if(tridag(n-1, dl,dm,du, lam, rhs) != 0) return 1; */
     memcpy(x, x1, 2*n*sizeof(real));
     /* update the new position */
-    for (i = 0; i < n-1; i++) {
-      rv2_sinc(x + 2*i,     x0 + i*2,  lam[i]);
-      rv2_sinc(x + 2*(i+1), x0 + i*2, -lam[i]);
+    for (i = 0; i < nl; i++) {
+      xi = x + i*2;
+      dx0i = dx0 + i*2;
+      rv2_sinc(xi,   dx0i,  lam[i]);
+      rv2_sinc(xi+2, dx0i, -lam[i]);
     }
 
     /* calcualte the maximal error */
-    for (again = 0, i = 0; i < n-1; i++) {
-      rv2_diff(dx, x + i*2, x + (i+1)*2);
-      y = 1 - rv2_sqr(dx);
+    for (again = 0, i = 0; i < nl; i++) {
+      y = 1 - rv2_sqr( rv2_diff(dx, x + i*2, x + (i+1)*2) );
       if (fabs(y) > tol) again = 1;
-      sig[i] += y*.5f;
+      rhs[i] += y;
     }
     if (!again) break;
   }
@@ -423,73 +430,81 @@ static int ab_milcshake2d(abpro_t *ab, const real *x0, real *x1, real *v, real d
   memcpy(x1, x, 2*n*sizeof(real));
   if (v != NULL) { /* correct velocities */
     for (i = 0; i < n-1; i++) {
-      rv2_sinc(v + 2*i,     x0 + i*2,  lam[i]/dt);
-      rv2_sinc(v + 2*(i+1), x0 + i*2, -lam[i]/dt);
+      rv2_sinc(v + 2*i,     dx0 + i*2,  lam[i]/dt);
+      rv2_sinc(v + 2*(i+1), dx0 + i*2, -lam[i]/dt);
     }
   }
 
-  return (trial == itmax);
+  return (it == itmax);
 }
 
 static int ab_milcshake3d(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol)
 {
-  int i, again, trial, n = ab->n;
-  static real *dl, *dm, *du, *lam, *sig, *x, dx[3];
-  register real y;
+  int i, again, it, n = ab->n, nl;
+  static real *dl, *dm, *du, *lam, *rhs, *x, *dx0, *dx1;
+  real *xi, *dx0i, dx[3], y;
 
   if (dl == NULL) {
     if (x0 == NULL) return 0;
     xnew(dl, n); xnew(dm, n); xnew(du, n);
-    xnew(lam, n); xnew(sig, n); xnew(x, n*3);
+    xnew(lam, n); xnew(rhs, n); 
+    xnew(dx0, n*3); xnew(dx1, n*3); xnew(x, n*3);
   } else if (x0 == NULL) {
     free(dl); free(dm); free(du);
-    free(lam); free(sig); free(x);
+    free(lam); free(rhs);
+    free(dx0); free(dx1); free(x);
     return 0;
   }
 
-  for (i = 0; i < n-1; i++) {
-    rv3_diff(ab->dx1 + i*3, x1 + i*3, x1 + (i+1)*3);
-    rv3_diff(ab->dx  + i*3, x0 + i*3, x0 + (i+1)*3);
+  nl = n - 1;
+  for (i = 0; i < nl; i++) {
+    rv3_diff(dx1 + i*3, x1 + i*3, x1 + (i+1)*3);
+    rv3_diff(dx0 + i*3, x0 + i*3, x0 + (i+1)*3);
   }
 
-  dm[0] = 2*rv3_dot(ab->dx1, ab->dx);
-  du[0] = -rv3_dot(ab->dx1, ab->dx + 3);
-  for (i = 1; i < n-1; i++) {
-    dl[i] = -rv3_dot(ab->dx1 + i*3, ab->dx + (i-1)*3);
-    dm[i] = 2*rv3_dot(ab->dx1 + i*3, ab->dx + i*3);
-    du[i] = -rv3_dot(ab->dx1 + i*3, ab->dx + (i+1)*3);
+  /* dm[0..nl-1], du[0..nl-2], dl[1..nl-1] */
+  dm[0] =  4*rv3_dot(dx0, dx1);
+  du[0] = -2*rv3_dot(dx0 + 3, dx1);
+  for (i = 1; i < nl; i++) {
+    dl[i] = -2*rv3_dot(dx1 + i*3, dx0 + (i-1)*3);
+    dm[i] =  4*rv3_dot(dx1 + i*3, dx0 + i*3);
+    du[i] = -2*rv3_dot(dx1 + i*3, dx0 + (i+1)*3); /* no dx0[nl], but doesn't matter */ 
   }
-  for (i = 0; i < n-1; i++)
-    sig[i] = 0.5f*(1 - rv3_sqr(ab->dx1 + i*3));
+  for (i = 0; i < nl; i++)
+    rhs[i] = 1 - rv3_sqr(dx1 + i*3);
 
-  /* LU decompose D matrix */
-  if (fabs(dm[0]) <= 0.) return 1;
-  for (i = 1; i < n-1; i++) {
+  /* solve matrix equation D lam = rhs
+   * first LU decompose D; 
+   * U --> du with diagonal being unity; 
+   * L --> dm and dl with dl unchanged */
+  if (fabs(dm[0]) < 1e-6) return 1;
+  for (i = 1; i < nl; i++) {
     dm[i] -= dl[i] * (du[i-1] /= dm[i-1]);
-    if (fabs(dm[i]) <= 0.) return i+1;
+    if (fabs(dm[i]) < 1e-6) return i+1;
   }
 
-  for (trial = 1; trial <= itmax; trial++) {
-    lam[0] = sig[0]/dm[0];
-    for (i = 1; i < n-1; i++) /* solving L v = sig */
-      lam[i] = (sig[i]-dl[i]*lam[i-1])/dm[i];
-    for (i = n-2; i > 0; i--) /* solving U lam = v */
+  for (it = 1; it <= itmax; it++) {
+    lam[0] = rhs[0]/dm[0];
+    for (i = 1; i < nl; i++) /* solving L v = rhs */
+      lam[i] = (rhs[i] - dl[i]*lam[i-1])/dm[i];
+    for (i = nl - 1; i > 0; i--) /* solving U lam = v */
       lam[i-1] -= du[i-1]*lam[i];
 
     memcpy(x, x1, 3*n*sizeof(real));
     /* update the new position */
-    for (i = 0; i < n-1; i++) {
-      rv3_sinc(x + 3*i,     x0 + i*3,  lam[i]);
-      rv3_sinc(x + 3*(i+1), x0 + i*3, -lam[i]);
+    for (i = 0; i < nl; i++) {
+      xi = x + i*3;
+      dx0i = dx0 + i*3;
+      rv3_sinc(xi,   dx0i,  lam[i]);
+      rv3_sinc(xi+3, dx0i, -lam[i]);
     }
 
     /* calcualte the maximal error */
-    for (again = 0, i = 0; i < n-1; i++) {
-      rv3_diff(dx, x + i*3, x + (i+1)*3);
-      y = 1 - rv3_sqr(dx);
+    for (again = 0, i = 0; i < nl; i++) {
+      y = 1 - rv3_sqr( rv3_diff(dx, x + i*3, x + (i+1)*3) );
       if (fabs(y) > tol) again = 1;
-      sig[i] += y*.5f;
+      rhs[i] += y;
     }
     if (!again) break;
   }
@@ -497,17 +512,20 @@ static int ab_milcshake3d(abpro_t *ab, const real *x0, real *x1, real *v, real d
   memcpy(x1, x, 3*n*sizeof(real));
   if (v != NULL) { /* correct velocities */
     for (i = 0; i < n-1; i++) {
-      rv3_sinc(v + 3*i,     x0 + i*3,  lam[i]/dt);
-      rv3_sinc(v + 3*(i+1), x0 + i*3, -lam[i]/dt);
+      rv3_sinc(v + 3*i,     dx0 + i*3,  lam[i]/dt);
+      rv3_sinc(v + 3*(i+1), dx0 + i*3, -lam[i]/dt);
     }
   }
 
-  return (trial == itmax);
+  return (it == itmax);
 }
 
+/* Note: this version is *slower* than shake n <= 89 */
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol)
 {
+  if (itmax <= 0) itmax = 10000;
+  if (tol <= 0.) tol = 1e-6;
   return (ab->d == 3) ?
     ab_milcshake3d(ab, x0, x1, v, dt, itmax, tol) :
     ab_milcshake2d(ab, x0, x1, v, dt, itmax, tol);
@@ -694,7 +712,6 @@ static real ab_force3dm1(abpro_t *ab, real *f, const real *r, int soft)
   }
   return U;
 }
-
 
 static real ab_force3dm2(abpro_t *ab, real *f, const real *r, int soft)
 {
