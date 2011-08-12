@@ -12,13 +12,22 @@
   typedef double real;
 #endif
 
+#ifndef RV2_T
+#define RV2_T rv2_t
+  typedef real rv2_t[2];
+  typedef const real crv2_t[2];
+#endif
+
 #include <math.h>
+#include <string.h>
 
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
 
 ZCINLINE void rv2_zero(real *x) { x[0] = 0; x[1] = 0; }
 ZCINLINE void rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; }
+/* use macro to avoid const qualifier of src */
+#define rv2_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
 
 ZCINLINE real rv2_sqr(const real *x) { return x[0]*x[0]+x[1]*x[1]; }
 ZCINLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); }
@@ -94,11 +103,17 @@ ZCINLINE real *rv2_diff(real *diff, const real *a, const real *b)
   return diff;
 }
 
+/* distance^2 between a and b */
+ZCINLINE real rv2_dist2(const real *a, const real *b) 
+{
+  real d[2]; 
+  return rv2_sqr(rv2_diff(d, a, b));
+}
+
 /* distance between a and b */
 ZCINLINE real rv2_dist(const real *a, const real *b) 
 {
-  real d[2]; 
-  return rv2_norm(rv2_diff(d, a, b));
+  return (real) sqrt(rv2_dist2(a, b));
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */

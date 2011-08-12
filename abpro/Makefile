@@ -14,8 +14,11 @@ testef: testef.c $(dep)
 testcn: testcn.c $(dep)
 	$(CX) -o $@ $< 
 
+abpro.c: abpro.0.c mk2d.py
+	./mk2d.py $@
+
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin)
+	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* ab.pos
 
 .PHONY: clean all
 

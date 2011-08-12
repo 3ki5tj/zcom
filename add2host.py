@@ -229,6 +229,9 @@ def integrate(srclist):
 
     modcnt += 1
   print "%d modules, " % modcnt,
+
+  for i in range(len(host_src)): # strip away trailing spaces
+    host_src[i] = host_src[i].rstrip() + '\n'
   
   # 6. save it back to fn_host
   # save first to a temporary file,

@@ -23,16 +23,18 @@ int ab_checkconn(abpro_t *ab, const real *x, double tol);
 void ab_shiftcom(abpro_t *ab, real *x);
 int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname);
 int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname);
-int ab_initpos(abpro_t *ab);
+int ab_initpos(abpro_t *ab, real *x, real randev);
 
-int ab_shake(abpro_t *ab, const real *x0, real *x1, int itmax, double tol);
-int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol);
+int ab_shake(abpro_t *ab, const real *x0, real *x1, 
+    int itmax, double tol, int verbose);
+int ab_rattle(abpro_t *ab, const real *x0, real *v, 
+    int itmax, double tol, int verbose);
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
-    int itmax, double tol);
+    int itmax, double tol, int verbose);
 
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol);
 real ab_energy(abpro_t *ab, const real *r, int soft);
-real ab_force(abpro_t *ab, real *f, real *r, int soft);
+real ab_force(abpro_t *ab, real *f, const real *r, int soft);
 
 #endif
 
