@@ -147,6 +147,30 @@ int ab_checkconn(abpro_t *ab, const real *x, double tol)
   return 0;
 }
 
+/* check v is othogonal to x */
+int ab_checkxv(abpro_t *ab, const real *x, const real *v, double tol)
+{
+  int i, nl = ab->n - 1, d = ab->d;
+  real xv, dx[3], dv[3];
+
+  for (i = 0; i < nl; i++) {
+    if (d == 3) {
+      rv3_diff(dx, x + i*d, x + (i+1)*d);
+      rv3_diff(dv, v + i*d, v + (i+1)*d);
+      xv = rv3_dot(dx, dv);
+    } else {
+      rv2_diff(dx, x + i*d, x + (i+1)*d);
+      rv2_diff(dv, v + i*d, v + (i+1)*d);
+      xv = rv2_dot(dx, dv);
+    }
+    if (fabs(xv) > tol) {
+      fprintf(stderr, "xv broken at i = %d, xv = %g\n", i, xv);
+      return -1;
+    }
+  }
+  return 0;
+}
+
 /* shift the center of mass to zero */
 void ab_shiftcom(abpro_t *ab, real *x)
 {
@@ -248,15 +272,16 @@ ERR:
   return 1;
 }
 
-static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, int itmax, double tol, int verbose)
+static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
+    int itmax, double tol, int verbose)
 {
   int i, again, it, n = ab->n;
   real dxi[3], g, r2, r2bad;
-  rv3_t *dx = (rv3_t *)ab->dx;
+  rv3_t *dx0 = (rv3_t *)ab->dx;
   const real glow = .5, r2max = 4.0;
 
   for (i = 0; i < n-1; i++)
-    rv3_diff(dx[i], x0[i+1], x0[i]);
+    rv3_diff(dx0[i], x0[i+1], x0[i]);
 
   for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
@@ -270,15 +295,19 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, int itmax, double tol,
       if (fabs(r2-1) > tol) {
         if (!again) { again = 1; r2bad = r2; }
 
-        g = rv3_dot(dxi, dx[i]);
+        g = rv3_dot(dxi, dx0[i]);
         if (fabs(g) < glow) { /* inner product too small */
           if (verbose)
             fprintf(stderr, "shake: bad alignment %d-%d, %g, dot = %g\n", i,i+1, sqrt(r2), g);
           g = (g > 0) ? glow : -glow;
         }
         g = (1-r2)/(4*g);
-        rv3_sinc(x1[i],   dx[i], -g);
-        rv3_sinc(x1[i+1], dx[i],  g);
+        rv3_sinc(x1[i],   dx0[i], -g);
+        rv3_sinc(x1[i+1], dx0[i],  g);
+        if (v) { /* add a force of dx/dt */
+          rv3_sinc(v[i],   dx0[i], -g/dt);
+          rv3_sinc(v[i+1], dx0[i],  g/dt);
+        }
       }
     }
     if (!again) break;
@@ -295,13 +324,14 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, int itmax, double tol,
 }
 
 /* shake x1 according to x0 */
-int ab_shake(abpro_t *ab, const real *x0, real *x1, int itmax, double tol, int verbose)
+int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
+    int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 1000;
   if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-5;
   return (ab->d == 3) ? 
-    ab_shake3d(ab, (crv3_t *)x0, (rv3_t *)x1, itmax, tol, verbose) :
-    ab_shake2d(ab, (crv2_t *)x0, (rv2_t *)x1, itmax, tol, verbose);
+    ab_shake3d(ab, (crv3_t *)x0, (rv3_t *)x1, (rv3_t *)v, dt, itmax, tol, verbose) :
+    ab_shake2d(ab, (crv2_t *)x0, (rv2_t *)x1, (rv2_t *)v, dt, itmax, tol, verbose);
 }
 
 static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v, 
@@ -341,7 +371,7 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
 int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 1000;
-  if (tol <= 0.) tol = 1e-4;
+  if (tol <= 0.) tol = 1e-5;
   return (ab->d == 3) ? 
     ab_rattle3d(ab, (crv3_t *)x0, (rv3_t *)v, itmax, tol, verbose) :
     ab_rattle2d(ab, (crv2_t *)x0, (rv2_t *)v, itmax, tol, verbose);
@@ -734,7 +764,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
         x[!id][i*d+j] = x[id][i*d+j]+del;
       }
 
-    if (ab_shake(ab, x[id], x[!id], 0, 0., 0) != 0) goto SHRINK;
+    if (ab_shake(ab, x[id], x[!id], NULL, 0., 0, 0., 0) != 0) goto SHRINK;
     u = ab_force(ab, f[!id], x[!id], 0);
     if (u > up) { mem = 0; goto SHRINK; }
 
@@ -785,14 +815,11 @@ static int ab_vv3d(abpro_t *ab, real dt, int soft, int milc)
     rv3_lincomb2(x1[i], x[i], v[i], 1, dt);
   }
   if (milc) {
-    die_if (0 != ab_milcshake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose),
-        "t=%g: failed milcshake\n", ab->t);
+    i = ab_milcshake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose);
   } else {
-    die_if (0 != ab_shake(ab, ab->x, ab->x1, 0, 0., verbose),
-        "t=%g: failed shake\n", ab->t);
-    die_if (0 != ab_rattle(ab, ab->x, ab->v, 0, 0., verbose),
-        "t=%g: failed rattle\n", ab->t);
+    i = ab_shake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose);
   }
+  die_if (i != 0, "t=%g: failed shake\n", ab->t);
   rv3_ncopy(x, x1, n);
 
   ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
@@ -830,12 +857,11 @@ int ab_brownian(abpro_t *ab, real T, real dt, int soft, int milc)
     ab->x1[i] = ab->x[i] + ab->f[i]*dt + (real)(grand0()*amp);
 
   if (milc) {
-    die_if (0 != ab_milcshake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose),
-        "t=%g: failed milcshake\n", ab->t);
+    i = ab_milcshake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose);
   } else {
-    die_if (0 != ab_shake(ab, ab->x, ab->x1, 0, 0., verbose),
-        "t=%g: failed shake\n", ab->t);
+    i = ab_shake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose);
   }
+  die_if (i != 0, "t=%g: failed shake\n", ab->t);
   memcpy(ab->x, ab->x1, nd*sizeof(real));
 
   ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
