@@ -153,6 +153,7 @@
   #define ZCOM_RV2
   #define ZCOM_RV3
   #define ZCOM_UTIL
+  #define ZCOM_RNG
 #endif
 
 #ifdef ZCOM_DIHC

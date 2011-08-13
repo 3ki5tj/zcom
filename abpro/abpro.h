@@ -14,7 +14,8 @@ typedef struct {
   real *v;
   real *f;
   real *lmx, *xmin;
-  real emin;
+  real emin, epot, ekin;
+  double t;
 } abpro_t;
 
 abpro_t *ab_open(int seqid, int d, int model);
@@ -31,10 +32,15 @@ int ab_rattle(abpro_t *ab, const real *x0, real *v,
     int itmax, double tol, int verbose);
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose);
+int ab_milcrattle(abpro_t *ab, const real *x0, real *v); 
 
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol);
 real ab_energy(abpro_t *ab, const real *r, int soft);
 real ab_force(abpro_t *ab, real *f, const real *r, int soft);
+
+real ab_ekin(abpro_t *ab);
+int ab_vv(abpro_t *ab, real dt, int soft, int milc);
+int ab_brownian(abpro_t *ab, real T, real dt, int soft, int milc);
 
 #endif
 

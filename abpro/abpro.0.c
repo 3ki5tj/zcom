@@ -1,4 +1,5 @@
 #include "util.c"
+#include "rng.c"
 
 #ifndef ABPRO_C__
 #define ABPRO_C__
@@ -111,6 +112,8 @@ void ab_close(abpro_t *ab)
 {
   if (ab) {
     ab_milcshake(ab, NULL, NULL, NULL, 0, 0, 0, 0);
+    ab_milcrattle(ab, NULL, NULL);
+    ab_localmin(ab, NULL, 0, 0.);
     free(ab->type);
     free(ab->x);
     free(ab->x1);
@@ -433,7 +436,7 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   return 0;
 }
 
-/* MILC shake
+/* MILC shake, make |dr| = 1
  * for a random config., about 30~40% faster than shake
  * but slower than shake for near-minimum config.  */
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
@@ -444,6 +447,73 @@ int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
   return (ab->d == 3) ?
     ab_milcshake3d(ab, (crv3_t *)x0, (rv3_t *)x1, (rv3_t *)v, dt, itmax, tol, verbose) :
     ab_milcshake2d(ab, (crv2_t *)x0, (rv2_t *)x1, (rv2_t *)v, dt, itmax, tol, verbose);
+}
+
+static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
+{
+  int i, n = ab->n, nl;
+  static real *dl, *dm, *du, *lam, *rhs;
+  static rv3_t *dx, *dv;
+
+  if (dl == NULL) {
+    if (x == NULL) return 0;
+    xnew(dl, n); xnew(dm, n); xnew(du, n);
+    xnew(lam, n); xnew(rhs, n); 
+    xnew(dx, n); xnew(dv, n);
+  } else if (x == NULL) {
+    free(dl); free(dm); free(du);
+    free(lam); free(rhs);
+    free(dx); free(dv);
+    return 0;
+  }
+
+  nl = n - 1;
+  for (i = 0; i < nl; i++) {
+    rv3_diff(dx[i], x[i], x[i+1]);
+    rv3_diff(dv[i], v[i], v[i+1]);
+  }
+
+  /* dm[0..nl-1], du[0..nl-2], dl[1..nl-1] */
+  dm[0] = 2*rv3_dot(dx[0], dx[0]);
+  du[0] =  -rv3_dot(dx[1], dx[0]);
+  for (i = 1; i < nl; i++) {
+    dl[i] =  -rv3_dot(dx[i], dx[i-1]);
+    dm[i] = 2*rv3_dot(dx[i], dx[i]);
+    du[i] =  -rv3_dot(dx[i], dx[i+1]); /* no dx[nl], but doesn't matter */ 
+  }
+  for (i = 0; i < nl; i++)
+    rhs[i] = -rv3_dot(dv[i], dx[i]);
+
+  /* solve matrix equation D lam = rhs
+   * first LU decompose D; 
+   * U --> du with diagonal being unity; 
+   * L --> dm and dl with dl unchanged */
+  if (fabs(dm[0]) < 1e-6) return 1;
+  for (i = 1; i < nl; i++) {
+    dm[i] -= dl[i] * (du[i-1] /= dm[i-1]);
+    if (fabs(dm[i]) < 1e-6) return i+1;
+  }
+
+  lam[0] = rhs[0]/dm[0];
+  for (i = 1; i < nl; i++) /* solving L v = rhs */
+    lam[i] = (rhs[i] - dl[i]*lam[i-1])/dm[i];
+  for (i = nl - 1; i > 0; i--) /* solving U lam = v */
+    lam[i-1] -= du[i-1]*lam[i];
+
+  /* update the new position */
+  for (i = 0; i < nl; i++) {
+    rv3_sinc(v[i],   dx[i],  lam[i]);
+    rv3_sinc(v[i+1], dx[i], -lam[i]);
+  }
+  return 0;
+}
+
+/* MILC rattle, make dr.v = 0 */
+int ab_milcrattle(abpro_t *ab, const real *x, real *v) 
+{
+  return (ab->d == 3) ?
+    ab_milcrattle3d(ab, (crv3_t *)x, (rv3_t *)v) :
+    ab_milcrattle2d(ab, (crv2_t *)x, (rv2_t *)v);
 }
 
 static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
@@ -631,27 +701,25 @@ real ab_force(abpro_t *ab, real *f, const real *r, int soft)
    saved to global variable ab->xmin, with ab->emin updated. */
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
 {
-  int t, i, j, id, n, d;
+  int t, i, j, id, n = ab->n, d = ab->d;
   real up, u0, u = 0, step = 0.02, del, mem = 1;
   static real *x[2], *f[2], *v;
   static double ncnt = 0, cnt = 0;
   const real DELMAX = 0.20f;
 
-  if (ab == NULL && v != NULL) {
-    free(x[0]); free(x[1]); free(f[0]); free(f[1]); free(v);
-    return 0;
-  }
-  if (itmax <= 0) itmax = 10000;
-  if (tol <= 0.) tol = 1e-12;
-  n = ab->n;
-  d = ab->d;
   if (v == NULL) {
+    if (r == NULL) return 0;
     xnew(x[0], n*d*sizeof(real));
     xnew(x[1], n*d*sizeof(real));
     xnew(f[0], n*d*sizeof(real));
     xnew(f[1], n*d*sizeof(real));
     xnew(v, n*d*sizeof(real));
+  } else if (r == NULL) {
+    free(x[0]); free(x[1]); free(f[0]); free(f[1]); free(v);
+    return 0;
   }
+  if (itmax <= 0) itmax = 10000;
+  if (tol <= 0.) tol = 1e-12;
   /* to make a working copy */
   memcpy(x[id = 0], r, n*d*sizeof(real));
   up = ab_force(ab, f[id], x[id], 0);
@@ -695,6 +763,85 @@ SHRINK:
 
   return u;
 }
+
+/* kinetic energy */
+real ab_ekin(abpro_t *ab)
+{
+  int i, nd = ab->n * ab->d;
+
+  for (ab->ekin = 0, i = 0; i < nd; i++) 
+    ab->ekin += ab->v[i]*ab->v[i];
+  return (ab->ekin *= .5f);
+}
+
+static int ab_vv3d(abpro_t *ab, real dt, int soft, int milc)
+{
+  int i, verbose = 1, n = ab->n;
+  real dth = .5f*dt;
+  rv3_t *v = (rv3_t *)ab->v, *x = (rv3_t *)ab->x, *x1 = (rv3_t *)ab->x1, *f = (rv3_t *)ab->f;
+
+  for (i = 0; i < n; i++) { /* vv part 1 */
+    rv3_sinc(v[i], f[i], dth);
+    rv3_lincomb2(x1[i], x[i], v[i], 1, dt);
+  }
+  if (milc) {
+    die_if (0 != ab_milcshake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose),
+        "t=%g: failed milcshake\n", ab->t);
+  } else {
+    die_if (0 != ab_shake(ab, ab->x, ab->x1, 0, 0., verbose),
+        "t=%g: failed shake\n", ab->t);
+    die_if (0 != ab_rattle(ab, ab->x, ab->v, 0, 0., verbose),
+        "t=%g: failed rattle\n", ab->t);
+  }
+  rv3_ncopy(x, x1, n);
+
+  ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
+  
+  for (i = 0; i < n; i++) { /* vv part 2 */
+    rv3_sinc(v[i], f[i], dth);
+  }
+  if (milc) {
+    i = ab_milcrattle(ab, ab->x, ab->v);
+  } else {
+    i = ab_rattle(ab, ab->x, ab->v, 0, 0., verbose);
+  }
+
+  ab_ekin(ab);
+  die_if (i != 0, "t=%g: failed rattle\n", ab->t);
+  ab->t += dt;
+  return 0;
+}
+
+/* one step of velocity verlet integrator */
+int ab_vv(abpro_t *ab, real dt, int soft, int milc)
+{
+  return (ab->d == 3) ?
+    ab_vv3d(ab, dt, soft, milc) :
+    ab_vv2d(ab, dt, soft, milc);
+}
+
+/* Brownian dynamics */
+int ab_brownian(abpro_t *ab, real T, real dt, int soft, int milc)
+{
+  int i, nd = ab->n * ab->d, verbose = 1;
+  real amp = (real) sqrt(2*dt*T);
+
+  for (i = 0; i < nd; i++) 
+    ab->x1[i] = ab->x[i] + ab->f[i]*dt + (real)(grand0()*amp);
+
+  if (milc) {
+    die_if (0 != ab_milcshake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose),
+        "t=%g: failed milcshake\n", ab->t);
+  } else {
+    die_if (0 != ab_shake(ab, ab->x, ab->x1, 0, 0., verbose),
+        "t=%g: failed shake\n", ab->t);
+  }
+  memcpy(ab->x, ab->x1, nd*sizeof(real));
+
+  ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
+  ab->t += dt;
+  return 0;
+} 
 
 #endif
 

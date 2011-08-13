@@ -45,7 +45,8 @@ if __name__ == "__main__":
   s = os.path.splitext(output)
   input = s[0] + ".0" + s[1]
   s = open(input, 'r').readlines()
-  for f in ["_shake3d", "_rattle3d", "_milcshake3d", "energy3dm1", "force3dm1"]:
+  for f in ["_shake3d", "_rattle3d", "milcshake3d", "milcrattle3d",
+      "energy3dm1", "force3dm1", "vv3d"]:
     s = add2d(s, f)
   s = ["/* Don't edit this file, edit %s instead. */\n" % input,] + s
   open(output, 'w').writelines(s)
