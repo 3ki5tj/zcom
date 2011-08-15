@@ -252,51 +252,48 @@ def trimcode(s):
   lines = merge_if_blocks(lines)
   return '\n'.join(lines) + endl
 
-# item sorting
-
-def checkcycl_i(deps, i0, n, checked):
-  ''' check cyclic dependencies starting from i0 '''
-  checked[i0] = 1
-  st = [0] * (n+1)
-  jt = [0] * (n+1)
-  top = 0
-  st[top] = i0
-  jt[top] = 0
-  while top >= 0:
-    i = st[top]
-    j = jt[top]
-    dl = deps[i] # list of i depends on
-    if j >= len(dl):
-      top -= 1
-      if top >= 0:
-        jt[top] += 1
-    else:
-      top += 1
-      x = dl[j]
-      if x in st[:top]:
-        print "cyclic dependence is detected from %s, stack %s" % (x, st[:top])
-        return -1
-      st[top] = x
-      jt[top] = 0
-      checked[x] = 1 # circular dependency from x will be checked as well
-    # print "i0: %d, top: %s, stack: %s, j: %s" % (i0, top, st[:top+1], jt[:top+1]); raw_input()
-  return 0
-
 def checkcycl(deps):
-  ''' check circular dependencies '''
+  ''' check cyclic dependencies starting from i0 '''
+
   n = len(deps)
-  checked = [0] * n;
-  for i in range(n):
-    if checked[i]: continue
-    if 0 != checkcycl_i(deps, i, n, checked):
-      return -1
+  good = [0]*n # no dependency problem
+  while 1:
+    # find an dep. node
+    for i in range(n):
+      if len(deps[i]) and not good[i]: break
+    else: return 0 # all nodes are indep.
+
+    # make a stack
+    st = [-1]*(n+1)
+    jt = [-1]*(n+1)
+    top = 0
+    st[top] = i
+    jt[top] = 0 # index of child nodes of st[top]
+    while top >= 0:
+      i = st[top]
+      j = jt[top]
+      dl = deps[i]
+      if j >= len(dl): # exhausted this level
+        # now anything depending on i is good
+        good[i] = 1
+        top -= 1
+        if top >= 0: jt[top] += 1
+      elif good[ dl[j] ]:
+        jt[top] += 1 # skip it
+      else: # go deep into a child (dependence)
+        top += 1
+        x = dl[j]
+        if x in st[:top]:
+          print "cyclic dependence is detected from %s, stack %s" % (x, st[:top])
+          return x + 1
+        st[top] = x
+        jt[top] = 0
   return 0
 
 def sortidx(deps, verbose = 0):
   ''' 
   return a sorted index array, depending on a dependency array
-  using a bubble sort
-  `deps' is not changed 
+  using a bubble sort, `deps' is not changed 
   '''
   n = len(deps)
   d = range(n)  # dictionary

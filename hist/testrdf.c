@@ -1,5 +1,5 @@
 #include "hist.c"
-#include "rv3.h"
+#include "test/rv3.h"
 
 #define XMIN 0.0
 #define XMAX 2.0

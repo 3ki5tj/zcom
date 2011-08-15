@@ -12,6 +12,7 @@ import rmdbg
 module attributes, set before use
 '''
 fn_host     = "zcom.h"
+fn_output   = None
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
 verbose     = 0
@@ -141,69 +142,194 @@ def strpbrk(s, char_set):
   except:
     return -1
 
-def get_mod_name(name):
-  '''
-  set the module name inside host
-  '''
-  global mod_name
+def checkcycl(deps):
+  ''' check cyclic dependencies starting from i0 '''
 
-  if name.startswith(host_prefix):
-    modname = name
-  else: 
-    # make a guess
-    shortnm = os.path.basename(name).upper()
-    pos = shortnm.find('.')
-    if pos >= 0:
-      shortnm = shortnm[:pos]
-    modname = host_prefix + shortnm
-  return modname
+  n = len(deps)
+  good = [0]*n # no dependency problem
+  while 1:
+    # find an dep. node
+    for i in range(n):
+      if len(deps[i]) and not good[i]: break
+    else: return 0 # all nodes are indep.
+
+    # make a stack
+    st = [-1]*(n+1)
+    jt = [-1]*(n+1)
+    top = 0
+    st[top] = i
+    jt[top] = 0 # index of child nodes of st[top]
+    # tree search using a stack 
+    while top >= 0:
+      i = st[top]
+      j = jt[top]
+      dl = deps[i]
+      #print "top %d: %d, deps %s, j = %d" % (top, i, dl, j); raw_input()
+      if j >= len(dl): # exhausted this level
+        # now anything depending on i is good
+        good[i] = 1 #print "checking %d" % i
+        top -= 1
+        if top >= 0:
+          jt[top] += 1
+      elif good[ dl[j] ]:
+        jt[top] += 1 # skip it
+      else: # go deep into a child (dependence)
+        top += 1
+        x = dl[j]
+        if x in st[:top]:
+          print "cyclic dependence is detected from %s, stack %s" % (x, st[:top])
+          return x + 1
+        st[top] = x
+        jt[top] = 0
+        #print "adding %d on level %d" % (x, top)
+  return 0
+
+def builddeps(srclist):
+  ''' build dependencies '''
+  n = len(srclist)
+  #for i in range(n): print "%d: %s" % (i, srclist[i][0])
+
+  # 1. build dependencies 
+  deps = [""]*n
+  depsX = [""]*n
+  for i in range(n):
+    mod = srclist[i][0]
+    deps[i] = []
+    depsX[i] = []
+    for j in range(n):
+      if j == i: continue
+      d = srclist[j][0]
+      file_h = os.path.join(mod, d+'.h')
+      if os.path.exists(file_h): 
+        deps[i] += [j,]
+      file1_h = os.path.join(mod, "_"+d+'.h') # virtual dependence
+      file1_c = os.path.join(mod, "_"+d+'.c') # virtual dependence
+      if os.path.exists(file_h) or os.path.exists(file1_h) or os.path.exists(file1_c): 
+        depsX[i] += [j,]
+    #if (len(deps[i])): print mod, deps[i]
+  i = checkcycl(depsX)
+  if i != 0:
+    print "Error due to cyclic dependence! at %d (%s)" % (i, srclist[i][0])
+    raise Exception
+
+  # 2. sort modules according to dependencies
+  d = range(n) # ordering modules
+  i = 0
+  while i < n:
+    #print "%d:%d(%s)  deps: %s\n%s" % (i, d[i], srclist[d[i]][0], depsX[d[i]], d)
+    if len(depsX[d[i]]) == 0: 
+      #print "%d:%d(%s) no more dependencies" % (i, d[i], srclist[d[i]][0]); raw_input()
+      i += 1
+      continue
+    mi = max( map(d.index, depsX[d[i]]) )
+    if mi <= i:
+      i += 1
+      continue
+    '''
+    idep = map(d.index, depsX[d[i]])
+    idep.sort()
+    mi = max(idep)
+    if mi <= i:
+      i += 1
+      continue
+    id = 0
+    while idep[id] < i: id += 1
+    mi = idep[id]
+    '''
+    #print "%d:%d(%s); %d:%d(%s)" % (i, d[i], srclist[d[i]][0], mi, d[mi], srclist[d[mi]][0]); raw_input()
+
+    # swap i with mi
+    d[i], d[mi] = d[mi], d[i]
+
+  newsrclist = []
+  for i in range(n):
+    id = d[i]
+    newsrclist += [srclist[id]]
+
+  sdep = []
+  for i in range(n-1, 0, -1):
+    id = d[i]
+    if len(deps[id]) > 0:
+      sdep += ["#ifdef %s\n" % srclist[id][1]]
+      for j in deps[id]:
+         sdep += ["  #define %s\n" % srclist[j][1]]
+      sdep += ["#endif\n", "\n"]
+  return newsrclist, sdep
+
+def mkanchors(shost, srclist):
+  ''' add anchor macros to host '''
+  
+  srclist, lsdeps = builddeps(srclist)
+  
+  # 1. find the location of ZCOM_PICK
+  for i in range(len(shost)):
+    if shost[i].startswith("#ifndef " + host_prefix + "PICK"):
+      a0 = i + 1
+      break
+  else:
+    print "cannot find PICK anchor"
+    raise Exception
+
+  # 2. find the location of dependence
+  for i in range(a0+1, len(shost)):
+    if shost[i].find("build dependencies") >= 0:
+      a1 = i+1
+      break
+  else:
+    print "cannot find dependencies"
+    raise Exception
+
+  ls1 = []
+  ls2 = []
+  for mod, macro in srclist:
+    ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]
+    ls2 += ["#ifdef  %s\n" % macro, "#ifndef %s__\n" % macro, "#define %s__\n" %macro,
+        "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro, "\n"]
+
+  return shost[:a0] + ls1 + shost[a0:a1] + lsdeps + shost[a1:] + ls2, srclist
 
 
-def integrate(srclist):
-  '''
-  integrate fn_source to fn_host (output)
-  according to a template fn_host_t (with .0 extension)
-  '''
+def integrate(srclist, host, output):
+  ''' integrate source code to output according to host '''
 
-  # 1. load the template fn_host_t 
-  fnr = os.path.splitext(fn_host)
-  fn_host_t  = fnr[0] + ".0" + fnr[1]
-  print "Host: %s, template: %s" % (fn_host, fn_host_t)
-  host_src = open(fn_host_t, 'r').readlines()
+  # 1. load the template host0
+  fnr = os.path.splitext(host)
+  host0  = fnr[0] + ".0" + fnr[1]
+  if not output: output = host
+  print "Output: %s, template: %s" % (output, host0)
+  host_src = open(host0, 'r').readlines()
+  host_src, srclist = mkanchors(host_src, srclist)
 
   modcnt = 0
 
-  for fn_source, mod_name in srclist:
-    if fn_source.find(os.sep) < 0:
-      # make abc --> abc/abc
-      fn_source = os.path.join(fn_source, fn_source)
+  for fn_src, mod_name in srclist:
+    if fn_src.find(os.sep) < 0: # make long name abc --> abc/abc
+      fnlsrc = os.path.join(fn_src, fn_src)
   
     # derive other file names
-    fn_source_c = fn_source + ".c"
-    fn_source_h = fn_source + ".h"
-    fn_host_bak = fn_host + ".bak"
+    fnlsrc_c = fnlsrc + ".c"
+    fnlsrc_h = fnlsrc + ".h"
     # short name
-    fn_src     = os.path.basename(fn_source)
+    fn_src     = os.path.basename(fn_src)
     fn_src_c   = fn_src + ".c"
     fn_src_h   = fn_src + ".h"
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
     print ("add module %-13s (%-19s, %-19s) to %s" 
-        % (mod_name, fn_source_c, fn_source_h, fn_host_t))
+        % (mod_name, fn_src_c, fn_src_h, host0))
     if verbose:
       raw_input("press Enter to continue...")
-  
-  
+ 
     # 2. read the source code
-    src = open(fn_source_c, 'r').readlines()
+    src = open(fnlsrc_c).readlines()
     # call rmdbg.py to remove debug/legacy code
     src = rmdbg.rmdbg(src, verbose=verbose)
     # strip away the outmost #ifndef, #define, #endif triplet
     src = strip_def(src)
   
     # 3. read the header
-    header = open(fn_source_h, 'r').readlines()
+    header = open(fnlsrc_h, 'r').readlines()
     header = rmdbg.rmdbg(header, verbose=verbose)
     header = strip_def(header)
     header = add_storage_class(header, strcls)
@@ -233,32 +359,38 @@ def integrate(srclist):
   for i in range(len(host_src)): # strip away trailing spaces
     host_src[i] = host_src[i].rstrip() + '\n'
   
-  # 6. save it back to fn_host
+  # 6. save it back to output
   # save first to a temporary file,
   # overwrite the original if necessary
-  fn_host_tmp = fn_host + ".tmp"
-  open(fn_host_tmp, 'w').write(''.join(host_src))
-  if os.system('cmp '+fn_host_tmp + ' '+ fn_host):
-    shutil.copy(fn_host_tmp, fn_host)
+  fn_outtmp = output + ".tmp"
+  open(fn_outtmp, 'w').write(''.join(host_src))
+  if os.system('cmp '+fn_outtmp + ' '+ output):
+    shutil.copy(fn_outtmp, output)
   else:
-    print "no need to update", fn_host
-  os.remove(fn_host_tmp)
+    print "no need to update", output
+  os.remove(fn_outtmp)
 
-  os.system('wc ' + fn_host);
+  os.system('wc ' + output);
 
-def get_defmodules(root):
-  '''
-  obtain a list of C modules under `root'
-  '''
+def getmodname(name):
+  ''' smodule name to macro name, e.g., util --> ZCOM_UTIL '''
+  shortnm = os.path.basename(name).upper()
+  pos = shortnm.find('.')
+  if pos >= 0:
+    shortnm = shortnm[:pos]
+  return host_prefix + shortnm
+
+def dirs2mods(root):
+  ''' get a list of modules from subdirectories of `root' '''
   # list all sub directories under defroot
   # skip modules starting with an underscore or a dot
   # also skip the test folder
-  defmodules = []
+  defmods = []
   for d in os.listdir(root):
     # skip regular files
     if not os.path.isdir(d): continue
     # skip folders start with special characters
-    if d[0:1] in ('.', '_'): continue
+    if d[0] in ('.', '_'): continue
     # skip test folder
     if d == "test": continue
     # see if a default C module exists
@@ -270,8 +402,9 @@ def get_defmodules(root):
     if not os.path.exists(file_c): 
       print "skip", d, "no", file_c
       continue
-    defmodules += [d]
-  return defmodules
+    defmods += [d]
+  #defmods.sort()
+  return defmods
 
 
 def usage():
@@ -280,40 +413,41 @@ def usage():
   """
   print sys.argv[0], "[Options] module(s)"
   print " Options:"
-  print " -a:  --all,     all default modules"
-  print " -o:  --host,    host file to absorb an addition"
-  print " -c:  --strcls,  storage class"
-  print " -p:  --prefix,  prefix of the host "
-  print " -v:  --verbose, verbose\n"
+  print " -a:  --all,      all default modules"
+  print " -t:  --template, host file to absorb an addition"
+  print " -o:  --output,   output file"
+  print " -c:  --strcls,   storage class"
+  print " -p:  --prefix,   prefix of the host "
+  print " -v:  --verbose,  verbose\n"
   print " Example:"
   print sys.argv[0], "ss rng cfg"
   exit(1)
 
-def handle_params():
+def doargs():
   '''
   Handle common parameters from command line options
   results saved to module attributes
   '''
-  global fn_host, fn_source, strcls, host_prefix, verbose, mod_name
+  global fn_host, fn_output, strcls, host_prefix, verbose 
 
   try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "h:v:o:c:p:i:m:a", 
-         ["help", "prefix=", "strcls=", "host=", "src=", "all", 
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hv:t:o:c:p:i:m:a", 
+         ["help", "prefix=", "strcls=", "template=", "output=", "src=", "all", 
            "verbose=", "module="])
   except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
     usage()
-  
-  defmodules = get_defmodules(".")
+ 
+  defmods = dirs2mods(".") # util, cfg, ...
   
   # for each directory, guess a module name 'modnm'
   # add the pair to deflist
   deflist = []
-  for fn in defmodules: 
-    modnm = get_mod_name(fn)
+  for fn in defmods: 
+    modnm = getmodname(fn) # util --> ZCOM_UTIL
     deflist += [(fn, modnm)]
-  
+
   srclist = []
 
   for o, a in opts:
@@ -321,19 +455,19 @@ def handle_params():
       verbose = int(a)
     elif o in ("-a", "--all"):
       srclist += deflist
-    elif o in ("-h", "--host", "-o"):
+    elif o in ("-t", "--template"):
       fn_host = a
+    elif o in ("-o", "--output"):
+      fn_output = a
     elif o in ("-c", "--strcls"):
       strcls = a
     elif o in ("-p", "--prefix"):
       host_prefix = a
-    elif o in ("-m", "--module"):
-      mod_name = a
     elif o in ("-h", "--help"):
       usage()
 
   for fn in args:
-    modnm = get_mod_name(fn)
+    modnm = getmodname(fn)
     srclist += [(fn, modnm)]
 
   if len(srclist) == 0:
@@ -341,15 +475,9 @@ def handle_params():
 
   return srclist
 
-def main():
-  '''
-  driver
-  '''
-  srclist = handle_params()
-  print "modules:", srclist
-  integrate(srclist)
-
 if __name__ == "__main__":
-  main()
+  srclist = doargs() # [ (util, ZCOM_UTIL), ..., ]
+  print "modules:", srclist
+  integrate(srclist, fn_host, fn_output)
 
 
