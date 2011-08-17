@@ -136,6 +136,7 @@
   #if (ZCOM_RVDIM_BINDING==2)
     #define rv_zero       rv2_zero
     #define rv_copy       rv2_copy
+    #define rv_ncopy      rv2_ncopy
     #define rv_sqr        rv2_sqr
     #define rv_norm       rv2_norm
     #define rv_normalize  rv2_normalize
@@ -150,12 +151,14 @@
     #define rv_smul2      rv2_smul2
     #define rv_diff       rv2_diff
     #define rv_dist       rv2_dist
+    #define rv_dist2      rv2_dist2
     #define rv_add        rv2_add
     #define rv_nadd       rv2_nadd
     #define rv_lincomb2   rv2_lincomb2
   #else
     #define rv_zero       rv3_zero
     #define rv_copy       rv3_copy
+    #define rv_ncopy      rv3_ncopy
     #define rv_sqr        rv3_sqr
     #define rv_norm       rv3_norm
     #define rv_normalize  rv3_normalize
@@ -170,6 +173,7 @@
     #define rv_smul2      rv3_smul2
     #define rv_diff       rv3_diff
     #define rv_dist       rv3_dist
+    #define rv_dist2      rv3_dist2
     #define rv_add        rv3_add
     #define rv_nadd       rv3_nadd
     #define rv_lincomb2   rv3_lincomb2

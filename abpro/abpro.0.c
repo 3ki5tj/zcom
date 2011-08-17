@@ -38,6 +38,7 @@ abpro_t *ab_open(int seqid, int d, int model)
     ab->sla = ab->slb = 24;
   }
 
+  ab->seqid = seqid;
   /* determine # of atoms */
   x = pow(.5*(sqrt(5.) + 1), seqid + 1);
   i = (seqid % 2) ? (-1) : 1;
@@ -66,7 +67,10 @@ abpro_t *ab_open(int seqid, int d, int model)
     free(s[0]);
     free(s[1]);
   }
-  printf("%d: ", ab->n);
+
+  /* number of degrees of freedom */
+  ab->dof = (ab->d == 2) ? (ab->n - 2) : (2*ab->n - 5);
+  printf("n = %3d, dof = %3d: ", ab->n, ab->dof);
   for (i = 0; i < ab->n; i++) printf("%c", ab->type[i]+'A'); printf("\n");
 
   nd = ab->n * ab->d;
@@ -78,7 +82,8 @@ abpro_t *ab_open(int seqid, int d, int model)
   xnew(ab->lmx, nd);
   xnew(ab->xmin, nd);
 
-  ab_initpos(ab, ab->x, 0);
+  ab_initpos(ab, ab->x, 0.1);
+  ab->emin = ab->epot = ab_force(ab, ab->f, ab->x, 0);
   return ab;
 }
 
@@ -185,6 +190,79 @@ void ab_shiftcom(abpro_t *ab, real *x)
   }
 }
 
+/* annihilate angular momentum 2d */
+static void ab_rmangular2d(abpro_t *ab, crv2_t *x, rv2_t *v)
+{
+  int i, n = ab->n;
+  real am, r2, rp[2];
+
+  for (am = r2 = 0.f, i = 0; i < n; i++) {
+    am += rv2_cross(x[i], v[i]);
+    r2 += rv2_sqr(x[i]);
+  }
+  am = -am/r2;
+  for (i = 0; i < n; i++) {
+    rp[0] = -am*x[i][1];
+    rp[1] =  am*x[i][0];
+    rv2_inc(v[i], rp);
+  }
+}
+
+/* annihilate angular momentum 3d
+ * solve
+ *   /  y^2 + z^2    -x y      -x y      \
+ *   |  -x y       X^2 + z^2   -y z      |  c  =  I
+ *   \  -x z         -y z     x^2 + y^2  / 
+ * use
+ *    v = c X r
+ *   */
+static void ab_rmangular3d(abpro_t *ab, crv3_t *x, rv3_t *v)
+{
+  int i, n = ab->n;
+  real ang[3], am[3], dv[3], mat[3][3], inv[3][3];
+  const real *xi;
+  real xx = 0.f, yy = 0.f, zz = 0.f, xy = 0.f, zx = 0.f, yz = 0.f;
+
+  rv3_zero(am);
+  for (i = 0; i < n; i++) {
+    rv3_cross(ang, x[i], v[i]);
+    rv3_inc(am, ang);
+    xi = x[i];
+    xx += xi[0]*xi[0];
+    yy += xi[1]*xi[1];
+    zz += xi[2]*xi[2];
+    xy += xi[0]*xi[1];
+    yz += xi[1]*xi[2];
+    zx += xi[2]*xi[0];
+  }
+  mat[0][0] = yy+zz;
+  mat[1][1] = xx+zz;
+  mat[2][2] = xx+yy;
+  mat[0][1] = mat[1][0] = -xy;
+  mat[1][2] = mat[2][1] = -yz;
+  mat[0][2] = mat[2][0] = -zx;
+  mat3_inv(inv, mat);
+  ang[0] = -rv3_dot(inv[0], am);
+  ang[1] = -rv3_dot(inv[1], am);
+  ang[2] = -rv3_dot(inv[2], am);
+  /* ang is the solution of M^(-1) * I */
+  for (i = 0; i < n; i++) {
+    rv3_cross(dv, ang, x[i]);
+    rv3_inc(v[i], dv);
+  }
+}
+
+/* shift center of x to the origin, 
+ * remove center velocity and angular momentum */
+void ab_rmcom(abpro_t *ab, real *x, real *v)
+{
+  ab_shiftcom(ab, x);
+  ab_shiftcom(ab, v);
+  /* remove angular momentum */
+  if (ab->d == 2) ab_rmangular2d(ab, (crv2_t *)x, (rv2_t *)v); 
+  else ab_rmangular3d(ab, (crv3_t *)x, (rv3_t *)v);
+}
+
 /* write position file (which may include velocity) */
 int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
 {
@@ -197,7 +275,7 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
     return 1;
   }
 
-  fprintf(fp, "# %d %d %d %d\n", d, n, ab->model, (v != NULL));
+  fprintf(fp, "# %d %d %d %d %d\n", d, ab->model, ab->seqid, ab->n, (v != NULL));
   for (i = 0; i < n; i++) {
     for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", x[i*d+j]);
     if (v)
@@ -215,7 +293,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
 {
   char s[1024], *p;
   FILE *fp;
-  int i, j, hasv = 0, next, d = ab->d, n = ab->n;
+  int i, j, seq, hasv = 0, next, d = ab->d, n = ab->n;
   const char *fmt;
   real vtmp[3], *vi;
 
@@ -229,8 +307,8 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
     fprintf(stderr, "Warning: %s has no information line\n", fname);
     rewind(fp);
   } else {
-    if (3 != sscanf(s+1, "%d%d%d%d", &i, &j, &next, &hasv)
-       || i != d || j != n || next != ab->model) {
+    if (5 != sscanf(s+1, "%d%d%d%d%d", &i, &j, &seq, &next, &hasv)
+       || i != d || j != ab->model || seq != ab->seqid || next != n) {
       fprintf(stderr, "first line is corrupted:\n%s", s);
       goto ERR;
     }
@@ -400,6 +478,8 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   nl = n - 1;
   for (i = 0; i < nl; i++) {
     rv3_diff(dx1[i], x1[i], x1[i+1]);
+  }
+  for (i = 0; i < nl; i++) {
     rv3_diff(dx0[i], x0[i], x0[i+1]);
   }
 
@@ -732,9 +812,8 @@ real ab_force(abpro_t *ab, real *f, const real *r, int soft)
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
 {
   int t, i, j, id, n = ab->n, d = ab->d;
-  real up, u0, u = 0, step = 0.02, del, mem = 1;
+  real up, u = 0, step = 0.02, del, mem = 1;
   static real *x[2], *f[2], *v;
-  static double ncnt = 0, cnt = 0;
   const real DELMAX = 0.20f;
 
   if (v == NULL) {
@@ -754,7 +833,6 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
   memcpy(x[id = 0], r, n*d*sizeof(real));
   up = ab_force(ab, f[id], x[id], 0);
   memset(v, 0, n*d*sizeof(real));
-  u0 = up;
 
   for (t = 1; t <= itmax; t++) {
     for (i = 0; i < n; i++)
@@ -778,11 +856,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
 SHRINK:
     step *= 0.5;
   }
-  if (t > itmax) fprintf(stderr, "local minimum failed to converge.\n");
-
-  cnt++, ncnt += t;
-  if (fmod(cnt, 100) < 0.1)
-    fprintf(stderr, "abmin: cnt=%g aver=%g u: %g => %g\n", cnt, 1.0*ncnt/cnt, u0, u);
+  if (t > itmax) fprintf(stderr, "localmin failed to converge, t = %d.\n", t);
 
   memcpy(ab->lmx, x[id], n*d*sizeof(real));
   if (u < ab->emin) {
@@ -794,6 +868,22 @@ SHRINK:
   return u;
 }
 
+/* velocity rescaling */
+void ab_vrescale(abpro_t *ab, real tp, real dt)
+{
+  int i;
+  real ekav = .5f*tp*ab->dof, ek1 = ab->ekin, ek2, s;
+  double amp;
+
+  amp = 2*sqrt(ek1*ekav*dt/ab->dof);
+  ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
+  s = (real)sqrt(ek2/ek1);
+  for (ab->ekin = 0.f, i = 0; i < ab->n*ab->d; i++)
+    ab->v[i] *= s;
+  ab->ekin = ek2;
+  ab->tkin *= s*s;
+}
+
 /* kinetic energy */
 real ab_ekin(abpro_t *ab)
 {
@@ -801,13 +891,14 @@ real ab_ekin(abpro_t *ab)
 
   for (ab->ekin = 0, i = 0; i < nd; i++) 
     ab->ekin += ab->v[i]*ab->v[i];
+  ab->tkin = ab->ekin/ab->dof;
   return (ab->ekin *= .5f);
 }
 
-static int ab_vv3d(abpro_t *ab, real dt, int soft, int milc)
+static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
 {
   int i, verbose = 1, n = ab->n;
-  real dth = .5f*dt;
+  real dth = .5f*dt*fscal;
   rv3_t *v = (rv3_t *)ab->v, *x = (rv3_t *)ab->x, *x1 = (rv3_t *)ab->x1, *f = (rv3_t *)ab->f;
 
   for (i = 0; i < n; i++) { /* vv part 1 */
@@ -834,27 +925,30 @@ static int ab_vv3d(abpro_t *ab, real dt, int soft, int milc)
   }
 
   ab_ekin(ab);
+
   die_if (i != 0, "t=%g: failed rattle\n", ab->t);
   ab->t += dt;
   return 0;
 }
 
 /* one step of velocity verlet integrator */
-int ab_vv(abpro_t *ab, real dt, int soft, int milc)
+int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags)
 {
+  int soft = (flags & AB_SOFTFORCE), milc = (flags & AB_MILCSHAKE);
   return (ab->d == 3) ?
-    ab_vv3d(ab, dt, soft, milc) :
-    ab_vv2d(ab, dt, soft, milc);
+    ab_vv3d(ab, fscal, dt, soft, milc) :
+    ab_vv2d(ab, fscal, dt, soft, milc);
 }
 
 /* Brownian dynamics */
-int ab_brownian(abpro_t *ab, real T, real dt, int soft, int milc)
+int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
 {
+  int soft = (flags & AB_SOFTFORCE), milc = (flags & AB_MILCSHAKE);
   int i, nd = ab->n * ab->d, verbose = 1;
   real amp = (real) sqrt(2*dt*T);
 
   for (i = 0; i < nd; i++) 
-    ab->x1[i] = ab->x[i] + ab->f[i]*dt + (real)(grand0()*amp);
+    ab->x1[i] = ab->x[i] + fscal*ab->f[i]*dt + (real)(grand0()*amp);
 
   if (milc) {
     i = ab_milcshake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose);

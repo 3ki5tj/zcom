@@ -1,1 +1,8 @@
 Don't edit abpro.c, edit abpro.0.c instead
+
+testef.c  check energy/force
+testcn.c  check connectivity
+testbr.c  Brownian dynamics
+testvv.c  Velocity Verlet
+abemin.c  Energy minimization
+

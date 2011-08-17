@@ -316,8 +316,8 @@ def integrate(srclist, host, output):
     if verbose:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("add module %-13s (%-19s, %-19s) to %s" 
-        % (mod_name, fn_src_c, fn_src_h, host0))
+    print ("add module %-8s %-13s to %s" 
+        % (fn_src, mod_name, host0))
     if verbose:
       raw_input("press Enter to continue...")
  
@@ -396,14 +396,13 @@ def dirs2mods(root):
     # see if a default C module exists
     file_h = os.path.join(d, d+'.h')
     if not os.path.exists(file_h): 
-      print "skip", d, "no", file_h
+      #print "skip %s no %s" % (d, file_h)
       continue
     file_c = os.path.join(d, d+'.c')
     if not os.path.exists(file_c): 
-      print "skip", d, "no", file_c
+      #print "skip %s no %s" % (d, file_c)
       continue
     defmods += [d]
-  #defmods.sort()
   return defmods
 
 
@@ -411,23 +410,24 @@ def usage():
   """
   print usage and die
   """
-  print sys.argv[0], "[Options] module(s)"
+  prog = sys.argv[0]
+  print "%s [Options] module(s)\n" % (prog)
   print " Options:"
-  print " -a:  --all,      all default modules"
-  print " -t:  --template, host file to absorb an addition"
-  print " -o:  --output,   output file"
-  print " -c:  --strcls,   storage class"
-  print " -p:  --prefix,   prefix of the host "
-  print " -v:  --verbose,  verbose\n"
+  print "   -a:  --all,      all default modules"
+  print "   -t:  --template, host file to absorb an addition"
+  print "   -o:  --output,   output file"
+  print "   -c:  --strcls,   storage class"
+  print "   -p:  --prefix,   prefix of the host "
+  print "   -v:  --verbose,  verbose"
+  print "   -h:  --help,     help\n"
   print " Example:"
-  print sys.argv[0], "ss rng cfg"
+  print "   %s -a" % (prog)
+  print "   %s ss rng cfg -o out.h" % (prog)
+  print ""
   exit(1)
 
 def doargs():
-  '''
-  Handle common parameters from command line options
-  results saved to module attributes
-  '''
+  ''' handle arguments '''
   global fn_host, fn_output, strcls, host_prefix, verbose 
 
   try:

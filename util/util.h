@@ -94,6 +94,15 @@ ZCINLINE double hypotn(double x, double y)
   return x*sqrt(1+t*t);
 }
 
+/* round x to a multiple dx  */
+ZCINLINE double dblround(double x, double dx)
+{
+  if (x > 0) return dx * (int)(x/dx+.5-1e-14);
+  else return -dx * (int)(-x/dx+.5-1e-14);
+}
+
+ZCINLINE double dblsqr(double x) { return x*x; }
+
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED
 #define LN_BIG 50.0
