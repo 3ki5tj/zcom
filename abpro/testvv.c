@@ -7,13 +7,12 @@ typedef double real;
 int main(void)
 {
   abpro_t *ab;
-  int id = 7, d = 3, model = 2;
+  int id = 10, d = 3, model = 2;
   int it, itmax = 1000000;
   real dt = 5e-3f, tp = 0.5f; 
   double smt = 0, sme = 0;
 
-  ab = ab_open(id, d, model);
-  ab_initpos(ab, ab->x, 1.0);
+  ab = ab_open(id, d, model, 0.1);
 
   for (it = 1; it <= itmax; it++) {
     ab_vv(ab, 1.f, dt, AB_SOFTFORCE|AB_MILCSHAKE);

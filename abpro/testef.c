@@ -13,7 +13,7 @@ int main(void)
 
   for (id = 6; id <= 10; id++)
   {
-    ab = ab_open(id, d, model);
+    ab = ab_open(id, d, model, 0.1);
     sprintf(fn, "data/%ddm%d/%dbest", d, model, ab->n);
     for (soft = 0; soft < 2; soft++) {
       if (rndcfg) {

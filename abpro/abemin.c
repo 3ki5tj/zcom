@@ -35,7 +35,7 @@ int main(int argc, const char **argv)
   fn = argv[1];
   if (getinfo(fn, &d, &model, &seqid) != 0) 
     return -1;
-  ab = ab_open(seqid, d, model);
+  ab = ab_open(seqid, d, model, 0.);
   fprintf(stderr, "load %s\n", fn);
   if (ab_readpos(ab, ab->x, NULL, fn) != 0) {
     fprintf(stderr, "cannot open %s\n", fn);

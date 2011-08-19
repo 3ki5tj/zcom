@@ -22,10 +22,6 @@ typedef struct {
 
 int pt2_em(potts_t *pt);
 int pt2_check(potts_t *pt);
-int pt2_pick(const potts_t *pt, int h[]);
-int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
-    const int h[]); 
-int pt2_flip(potts_t *pt, int id, int sn, const int h[]);
 int pt2_load(potts_t *pt, const char *fname);
 int pt2_save(const potts_t *pt, const char *fname);
 potts_t *pt2_open(int l, int q);
@@ -80,7 +76,7 @@ void pt2_close(potts_t *pt);
   pt->M[sn]++; \
   pt->E += h[so] - h[sn];  }
 
-#else
+#else  /* non-macro version */
 
 #define PT2_PICK(pt, id, h)  id = pt2_pick(pt, h)
 #define PT2_NEWFACE(pt, id, so, sn) { \
@@ -88,6 +84,53 @@ void pt2_close(potts_t *pt);
 #define PT2_HEATBATH(pt, id, so, sn, h) \
   pt2_heatbath(pt, id, &so, &sn, h)
 #define PT2_FLIP(pt, id, so, sn, h) {so = pt->s[id]; pt2_flip(pt, id, sn, h); }
+
+ZCINLINE int pt2_pick(const potts_t *pt, int h[])
+{
+  int i, id, ix, iy, l, lm, n, nm, *p;
+  int sl, sr, sd, su;
+
+  lm = (l = pt->l) - 1;
+  nm = (n = pt->n) - l;
+  id = (int)(rnd0() * n);
+  iy = id / l, ix = id % l;
+  p = pt->s + id;
+  for (i = 0; i < pt->q; i++) h[i] = 0;
+  sl = ((ix != 0 ) ? *(p-1) : *(p+lm)); h[sl]++;
+  sr = ((ix != lm) ? *(p+1) : *(p-lm)); h[sr]++;
+  sd = ((iy != 0 ) ? *(p-l) : *(p+nm)); h[sd]++;
+  su = ((iy != lm) ? *(p+l) : *(p-nm)); h[su]++;
+  return id;
+}
+
+ZCINLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
+    const int h[]) 
+{
+  double rs_;
+  int i, mx_ = 4;
+  *so = pt->s[id];
+  //for (mx_ = 1, i = 0; i < pt->q; i++) if (h[i] > mx_) mx_ = h[i];
+  for (i = 0; i < pt->q; i++) 
+    pt->accprb[i+1] = pt->accprb[i] + pt->dproba[mx_-h[i]];
+  for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++) 
+    if (pt->accprb[i+1] > rs_) break;
+  die_if (i >= pt->q, "no suitable selection, i = %d\n", i);
+  *sn = i;
+  return 0;
+}
+
+/* flip site `id' to `sn', with h different neighbors */
+ZCINLINE int pt2_flip(potts_t *pt, int id, int sn, const int h[])
+{
+  int so = pt->s[id];
+  die_if(id >= pt->n, "id %d >= n %d\n", id, pt->n);
+  die_if(sn >= pt->q || sn < 0, "invalid sn %d (q = %d)\n", sn, pt->q);
+  pt->s[id] = sn;
+  pt->M[so]--;
+  pt->M[sn]++;
+  return pt->E += h[so] - h[sn];
+}
+
 #endif /* PT2_LB */
 
 

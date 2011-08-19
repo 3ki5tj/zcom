@@ -23,7 +23,7 @@ typedef struct {
 #define AB_SOFTFORCE 0x0010
 #define AB_MILCSHAKE 0x0020
 
-abpro_t *ab_open(int seqid, int d, int model);
+abpro_t *ab_open(int seqid, int d, int model, real randdev);
 void ab_close(abpro_t *ab);
 
 int ab_checkconn(abpro_t *ab, const real *x, double tol);

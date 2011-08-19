@@ -11,8 +11,7 @@ int main(void)
   int it, itmax = 1000000, n;
   real dt = 1e-3f, T = .5f, sme = 0.;
 
-  ab = ab_open(id, d, model);
-  ab_initpos(ab, ab->x, 1.0);
+  ab = ab_open(id, d, model, 0.1);
   n = ab->n;
 
   for (it = 1; it <= itmax; it++) {

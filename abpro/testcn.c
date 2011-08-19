@@ -51,10 +51,8 @@ int main(void)
   char fn[FILENAME_MAX];
   real del = 0.1f;
 
-  ab = ab_open(id, d, model);
-  if (isrand) {
-    ab_initpos(ab, ab->x, 5.0);
-  } else { /* save init structure to ab->xmin */
+  ab = ab_open(id, d, model, 5.);
+  if (!isrand) { /* save init structure to ab->xmin */
     sprintf(fn, "data/%ddm%d/%dbest", d, model, ab->n);
     if (ab_readpos(ab, ab->x, NULL, fn) != 0) {
       fprintf(stderr, "Warning cannot open %s\n", fn);

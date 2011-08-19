@@ -15,7 +15,7 @@
 
 /* initialization
  * seqid: 8: 34, 9: 55, 10: 89*/
-abpro_t *ab_open(int seqid, int d, int model)
+abpro_t *ab_open(int seqid, int d, int model, real randdev)
 {
   abpro_t *ab;
   int i, nd;
@@ -82,7 +82,7 @@ abpro_t *ab_open(int seqid, int d, int model)
   xnew(ab->lmx, nd);
   xnew(ab->xmin, nd);
 
-  ab_initpos(ab, ab->x, 0.1);
+  ab_initpos(ab, ab->x, randdev);
   ab->emin = ab->epot = ab_force(ab, ab->f, ab->x, 0);
   return ab;
 }
@@ -287,7 +287,6 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
   return 0;
 }
 
-
 /* read position file (which may include velocity) */
 int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
 {
@@ -405,8 +404,8 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
 {
-  if (itmax <= 0) itmax = 1000;
-  if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-5;
+  if (itmax <= 0) itmax = 3000;
+  if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-4;
   return (ab->d == 3) ? 
     ab_shake3d(ab, (crv3_t *)x0, (rv3_t *)x1, (rv3_t *)v, dt, itmax, tol, verbose) :
     ab_shake2d(ab, (crv2_t *)x0, (rv2_t *)x1, (rv2_t *)v, dt, itmax, tol, verbose);
@@ -448,8 +447,8 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
 /* shake v according to x0 */
 int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int verbose)
 {
-  if (itmax <= 0) itmax = 1000;
-  if (tol <= 0.) tol = 1e-5;
+  if (itmax <= 0) itmax = 3000;
+  if (tol <= 0.) tol = 1e-4;
   return (ab->d == 3) ? 
     ab_rattle3d(ab, (crv3_t *)x0, (rv3_t *)v, itmax, tol, verbose) :
     ab_rattle2d(ab, (crv2_t *)x0, (rv2_t *)v, itmax, tol, verbose);
@@ -552,8 +551,8 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
 {
-  if (itmax <= 0) itmax = 1000;
-  if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-5;
+  if (itmax <= 0) itmax = 3000;
+  if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-4;
   return (ab->d == 3) ?
     ab_milcshake3d(ab, (crv3_t *)x0, (rv3_t *)x1, (rv3_t *)v, dt, itmax, tol, verbose) :
     ab_milcshake2d(ab, (crv2_t *)x0, (rv2_t *)x1, (rv2_t *)v, dt, itmax, tol, verbose);
@@ -910,7 +909,7 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
   } else {
     i = ab_shake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose);
   }
-  die_if (i != 0, "t=%g: failed shake\n", ab->t);
+  die_if (i != 0, "t=%g: shake failed\n", ab->t);
   rv3_ncopy(x, x1, n);
 
   ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */

@@ -150,6 +150,22 @@ ZCINLINE real rv2_vdist(const real *x, const real *a, const real *b)
   return rv2_norm(rv2_sinc(d, nm, -dot));
 }
 
+/* determinant of a 2x2 matrix */
+ZCINLINE real mat2_det(real a[2][2])
+{
+  return a[0][0]*a[1][1] - a[0][1]*a[1][0];
+}
+
+/* inverse matrix b = a^(-1) */
+ZCINLINE void mat2_inv(real b[2][2], real a[2][2])
+{
+  real det = mat2_det(a);
+  if (fabs(det) < 1e-30) det = (det < 0) ? -1e-30f: 1e-30f;
+  b[0][0] =  a[1][1]/det;
+  b[0][1] = -a[0][1]/det;
+  b[1][0] = -a[1][0]/det;
+  b[1][1] =  a[0][0]/det;
+}
 
 #endif /* RV2_H__ */
 

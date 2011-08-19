@@ -15,7 +15,7 @@ fn_host     = "zcom.h"
 fn_output   = None
 strcls      = "ZCSTRCLS"
 host_prefix = "ZCOM_"
-verbose     = 0
+verbose     = 1
 
 
 def strip_def(src):
@@ -30,7 +30,7 @@ def strip_def(src):
   for i in range(n):
     if src[i].lstrip().startswith("#ifndef"):
       start = i
-      if verbose: 
+      if verbose > 1: 
         print "#ifndef found in line", start
       break
   else:
@@ -40,7 +40,7 @@ def strip_def(src):
   start += 1
   if not src[start].lstrip().startswith("#define"):
     return src
-  if verbose: 
+  if verbose > 1: 
     print "#define found in line", start
 
   start += 1  # beginning of the main code
@@ -53,7 +53,7 @@ def strip_def(src):
   else:
     return src
   
-  if verbose: 
+  if verbose > 1: 
     print "#endif found in line", finish
 
   return src[start : finish]
@@ -108,7 +108,7 @@ def insert_module(src, name, module):
         src[i+2].startswith("#define") and
         src[i+2].find(namein) >= 0):
       bstart = i+3
-      if verbose:
+      if verbose > 1:
         print "out loop starts from:", i, "line:", src[i].rstrip()
 
     if (plevel == 2 and
@@ -116,7 +116,7 @@ def insert_module(src, name, module):
         src[i].startswith("#endif") and
         src[i+1].startswith("#endif") ):
       bend = i
-      if verbose:
+      if verbose > 1:
         print "out loop ends at:", i+1, "line:", src[i+1].rstrip()
       break
 
@@ -296,7 +296,8 @@ def integrate(srclist, host, output):
   fnr = os.path.splitext(host)
   host0  = fnr[0] + ".0" + fnr[1]
   if not output: output = host
-  print "Output: %s, template: %s" % (output, host0)
+  if verbose > 0:
+    print "Output: %s, template: %s" % (output, host0)
   host_src = open(host0, 'r').readlines()
   host_src, srclist = mkanchors(host_src, srclist)
 
@@ -313,12 +314,13 @@ def integrate(srclist, host, output):
     fn_src     = os.path.basename(fn_src)
     fn_src_c   = fn_src + ".c"
     fn_src_h   = fn_src + ".h"
-    if verbose:
+    if verbose > 1:
       print "short names are %s and %s" % (fn_src_c, fn_src_h)
   
-    print ("add module %-8s %-13s to %s" 
+    if verbose > 0:
+      print ("add module %-8s %-13s to %s" 
         % (fn_src, mod_name, host0))
-    if verbose:
+    if verbose > 1:
       raw_input("press Enter to continue...")
  
     # 2. read the source code
@@ -346,7 +348,7 @@ def integrate(srclist, host, output):
       raw_input("press Enter to see the current file")
       print ''.join( src )
       return 1
-    if verbose: 
+    if verbose > 1: 
       print "pivot is found at", pivot
     src = src[:pivot] + header + src[pivot + 1:]
     
@@ -354,7 +356,8 @@ def integrate(srclist, host, output):
     host_src = insert_module(host_src, mod_name, src)
 
     modcnt += 1
-  print "%d modules, " % modcnt,
+  if verbose > 0:
+    print "%d modules, " % modcnt,
 
   for i in range(len(host_src)): # strip away trailing spaces
     host_src[i] = host_src[i].rstrip() + '\n'
@@ -366,11 +369,11 @@ def integrate(srclist, host, output):
   open(fn_outtmp, 'w').write(''.join(host_src))
   if os.system('cmp '+fn_outtmp + ' '+ output):
     shutil.copy(fn_outtmp, output)
+    os.system('wc ' + output);
   else:
     print "no need to update", output
   os.remove(fn_outtmp)
 
-  os.system('wc ' + output);
 
 def getmodname(name):
   ''' smodule name to macro name, e.g., util --> ZCOM_UTIL '''
@@ -418,7 +421,7 @@ def usage():
   print "   -o:  --output,   output file"
   print "   -c:  --strcls,   storage class"
   print "   -p:  --prefix,   prefix of the host "
-  print "   -v:  --verbose,  verbose"
+  print "   -v:  --verbose,  verbose, (default = 1), 0 to silence"
   print "   -h:  --help,     help\n"
   print " Example:"
   print "   %s -a" % (prog)
@@ -477,7 +480,6 @@ def doargs():
 
 if __name__ == "__main__":
   srclist = doargs() # [ (util, ZCOM_UTIL), ..., ]
-  print "modules:", srclist
   integrate(srclist, fn_host, fn_output)
 
 

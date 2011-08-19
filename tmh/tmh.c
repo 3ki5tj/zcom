@@ -1,4 +1,6 @@
 #include "util.c"
+#include "hist.c"
+#include "rng.c"
 
 #ifndef TMH_C__
 #define TMH_C__
@@ -18,15 +20,11 @@ tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
   die_if(tp0 >= tp1, "Error: T0 %g >= T1 %g\n", tp0, tp1);
   tmh->tp0 = tp0;
   tmh->tp1 = tp1;
-  tmh->tpn = 100;
-  tmh->dtp = (tmh->tp1 - tmh->tp0)/tmh->tpn * 1.000001;
 
   tmh->de = de;
   tmh->emin = dblround(emin, de);
   tmh->emax = dblround(emax, de);
   tmh->en = (int)((tmh->emax - tmh->emin)/de + .5); /* number of energy bins */
-  /* set up the energy-to-beta ratio */
-  tmh->dedt = (tmh->emax - tmh->emin)/(tmh->tp1 - tmh->tp0)/tmh->de;
 
   /* the updating energy range */
   die_if(erg0 >= erg1, "Error: erg0 %g >= erg1 %g\n", erg0, erg1);
@@ -37,15 +35,18 @@ tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
   xnew(tmh->dhde, tmh->en + 1);
   for (i = 0; i <= tmh->en; i++)
     tmh->dhde[i] = 1.;
-  xnew(tmh->ehis, tmh->en);
-  xnew(tmh->tphis, tmh->tpn);
-  xnew(tmh->tpesm, tmh->tpn);
-  tmh->dtderg = (tmh->tp1 - tmh->tp0)/(tmh->erg1 - tmh->erg0);
+  tmh->dergdt = (tmh->erg1 - tmh->erg0)/(tmh->tp1 - tmh->tp0);
   tmh->ie0 = (int)((tmh->erg0 - tmh->emin)/de + .5);
   tmh->ie1 = (int)((tmh->erg1 - tmh->emin)/de + .5) - 1;
+
+  tmh->tpn = tmh->ie1 - tmh->ie0 + 1;
+  tmh->dtp = (tmh->tp1 - tmh->tp0)/tmh->tpn * (1. + 1e-12);
+  xnew(tmh->tpehis, tmh->tpn*tmh->en);
+
   if (tmh->dhdeorder > 0) tmh->ie1++; /* interpolation */  
 
   tmh->ensexp = ensexp;
+  tmh_settp(tmh, (tmh->tp0+tmh->tp1)*.5);
   return tmh;
 }
 
@@ -53,9 +54,7 @@ void tmh_close(tmh_t *tmh)
 {
   if (tmh != NULL) {
     free(tmh->dhde);
-    free(tmh->ehis);
-    free(tmh->tphis);
-    free(tmh->tpesm);
+    free(tmh->tpehis);
     free(tmh);
   }
 }
@@ -181,43 +180,164 @@ int tmh_tlgvmove(tmh_t *tmh, double enow, double lgvdt)
   return 0;
 }
 
-int tmh_writeerg(tmh_t *tmh, const char *fname)
+/* write dhde and overall energy distribution */
+int tmh_savedhde(tmh_t *tmh, const char *fn, double amp, double t)
 {
-  int ie; 
+  int ie, j; 
   FILE *fp;
+  double ehis;
 
-  if ((fp = fopen(fname, "w")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fname);
+  if ((fp = fopen(fn, "w")) == NULL) {
+    fprintf(stderr, "cannot write file %s\n", fn);
     return -1;
   }
   for (ie = 0; ie < tmh->ie0; ie++)
     tmh->dhde[ie] = tmh->dhde[tmh->ie0];
-  for (ie = tmh->ie1+1; ie < tmh->en; ie++) 
+  for (ie = tmh->ie1+1; ie <= tmh->en; ie++) 
     tmh->dhde[ie] = tmh->dhde[tmh->ie1];
+  fprintf(fp, "# %d %d %d %g %g %g %g %g\n", tmh->en, tmh->ie0, 
+      tmh->ie1 + ((tmh->dhdeorder == 0) ? 1 : 0), 
+      tmh->emin, tmh->de, amp, t, tmh->tp);
   for (ie = 0; ie < tmh->en; ie++) {
+    /* compute overall energy histogram */
+    for (ehis = 0., j = 0; j < tmh->tpn; j++) 
+      ehis += tmh->tpehis[j*tmh->en + ie];
     fprintf(fp, "%g %g %g\n", 
-        tmh->emin + ie*tmh->de, tmh->dhde[ie], tmh->ehis[ie]);
+        tmh->emin + ie*tmh->de, tmh->dhde[ie], ehis);
   }
   fclose(fp);
   return 0;
 }
 
-int tmh_writetp(tmh_t *tmh, const char *fname)
+/* read dhde and overall energy distribution */
+int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
 {
-  int i;
-  double eav;
+  int ie, en, ie0, ie1;
+  FILE *fp;
+  char s[1024];
+  double emin, de, erg, erg0, dhde;
+
+  if ((fp = fopen(fn, "r")) == NULL) {
+    fprintf(stderr, "cannot write file %s\n", fn);
+    return -1;
+  }
+  if (fgets(s, sizeof s, fp) == NULL) {
+    fprintf(stderr, "cannot read the first line %s\n", fn);
+    goto ERR;
+  }
+  if (8 != sscanf(s+1, "%d%d%d%lf%lf%lf%lf%lf", 
+        &en, &ie0, &ie1, &emin, &de, amp, t, &tmh->tp)) {
+    fprintf(stderr, "corrupted info line %s", s);
+    goto ERR;
+  }
+  if (tmh->dhdeorder == 0) ie1--;
+  if (en != tmh->en || ie0 != tmh->ie0 || ie1 != tmh->ie1
+   || fabs(emin - tmh->emin) > 1e-5 || fabs(de - tmh->de) > 1e-5) {
+    fprintf(stderr, "bad energy en %d %d, ie0 %d %d, ie1 %d %d, emin %g %g, de %g %g\n",
+        en, tmh->en, ie0, tmh->ie0, ie1, tmh->ie1, emin, tmh->emin, de, tmh->de);
+    goto ERR;
+  }
+
+  for (ie = 0; ie < tmh->en; ie++) {
+    if (fgets(s, sizeof s, fp) == NULL) {
+      fprintf(stderr, "cannot read line %d\n", ie);
+      goto ERR;
+    }
+    if (2 != sscanf(s, "%lf%lf", &erg, &dhde)) {
+      fprintf(stderr, "cannot read energy and dhde at %d\n, s = %s", ie, s);
+      goto ERR;
+    }
+    erg0 = tmh->emin + ie*tmh->de;
+    if (fabs(erg0 - erg) > tmh->de*.1) {
+      fprintf(stderr, "energy %g, should be %g\n", erg, erg0);
+      goto ERR;
+    }
+    tmh->dhde[ie] = dhde;
+  }
+  tmh->dhde[tmh->en] = tmh->dhde[tmh->en-1];
+  fclose(fp);
+  return 0;
+ERR:
+  fclose(fp);
+  return -1;
+}
+
+/* get energy range from dhde file */
+int tmh_loaderange(const char *fn, double *erg0, double *erg1, 
+    double *emin, double *emax, double *de)
+{
+  int en, ie0, ie1;
+  FILE *fp;
+  char s[1024];
+
+  if ((fp = fopen(fn, "r")) == NULL) {
+    fprintf(stderr, "cannot write file %s\n", fn);
+    return -1;
+  }
+  if (fgets(s, sizeof s, fp) == NULL) {
+    fprintf(stderr, "cannot read the first line %s\n", fn);
+    goto ERR;
+  }
+  if (5 != sscanf(s+1, "%d%d%d%lf%lf", &en, &ie0, &ie1, emin, de)) {
+    fprintf(stderr, "corrupted info line %s", s);
+    goto ERR;
+  }
+  *erg0 = *emin + ie0*(*de);
+  *erg1 = *emin + ie1*(*de);
+  *emax = *emin + en*(*de);
+  fclose(fp);
+  return 0;
+ERR:
+  fclose(fp);
+  return -1;
+}
+
+/* write temperature histogram */
+int tmh_savetp(tmh_t *tmh, const char *fn)
+{
+  int i, j;
+  double *eh, erg, cnt, esm, e2sm, eav, edv;
   FILE *fp;
 
-  if ((fp = fopen(fname, "w")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fname);
+  if ((fp = fopen(fn, "w")) == NULL) {
+    fprintf(stderr, "cannot write file %s\n", fn);
     return -1;
   }
   for (i = 0; i < tmh->tpn; i++) {
-    eav = (tmh->tphis[i] > 0) ? tmh->tpesm[i]/tmh->tphis[i] : 0.;
-    fprintf(fp, "%g %g %g\n", 
-        tmh->tp0 + i*tmh->dtp, tmh->tphis[i], eav);
+    eh = tmh->tpehis + i*tmh->en;
+    for (cnt = esm = 0., j = 0; j < tmh->en; j++) {
+      erg = tmh->emin + (j + .5) * tmh->de;
+      cnt += eh[j];
+      esm += eh[j]*erg;
+      e2sm += eh[j]*(erg*erg);
+    }
+    if (cnt > 1e-8) {
+      eav = esm/cnt;
+      edv = sqrt(e2sm/cnt - eav*eav);
+    } else {
+      eav = edv = 0.;
+    }
+    fprintf(fp, "%g %g %g %g\n", 
+        tmh->tp0 + (i+.5)*tmh->dtp, cnt, eav, edv);
   }
   fclose(fp);
+  return 0;
+}
+
+int tmh_save(tmh_t *tmh, const char *fntp, const char *fnehis, 
+    const char *fndhde, double amp, double t)
+{
+  tmh_savetp(tmh, fntp);
+  tmh_savedhde(tmh, fndhde, amp, t);
+  tmh_saveehis(tmh, fnehis);
+  return 0;
+}
+
+int tmh_load(tmh_t *tmh, const char *fnehis, 
+    const char *fndhde, double *amp, double *t)
+{
+  if (tmh_loaddhde(tmh, fndhde, amp, t) != 0) return -1;
+  if (tmh_loadehis(tmh, fnehis) != 0) return -1;
   return 0;
 }
 
