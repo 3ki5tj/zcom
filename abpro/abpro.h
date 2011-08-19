@@ -20,8 +20,10 @@ typedef struct {
   double t;
 } abpro_t;
 
-#define AB_SOFTFORCE 0x0010
-#define AB_MILCSHAKE 0x0020
+#define AB_SOFTFORCE  0x0010
+#define AB_MILCSHAKE  0x0020
+#define AB_LMREGISTER 0x0100
+#define AB_LMWRITE    0x0200
 
 abpro_t *ab_open(int seqid, int d, int model, real randdev);
 void ab_close(abpro_t *ab);
@@ -44,7 +46,8 @@ int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose);
 int ab_milcrattle(abpro_t *ab, const real *x0, real *v); 
 
-real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol);
+real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
+    unsigned flags);
 real ab_energy(abpro_t *ab, const real *r, int soft);
 real ab_force(abpro_t *ab, real *f, const real *r, int soft);
 

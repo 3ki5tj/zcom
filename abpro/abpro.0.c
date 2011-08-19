@@ -118,7 +118,7 @@ void ab_close(abpro_t *ab)
   if (ab) {
     ab_milcshake(ab, NULL, NULL, NULL, 0, 0, 0, 0);
     ab_milcrattle(ab, NULL, NULL);
-    ab_localmin(ab, NULL, 0, 0.);
+    ab_localmin(ab, NULL, 0, 0., 0);
     free(ab->type);
     free(ab->x);
     free(ab->x1);
@@ -808,7 +808,8 @@ real ab_force(abpro_t *ab, real *f, const real *r, int soft)
    The minimized configuration is saved in ab->lmx
    When a lowest energy configuration is found, the result is
    saved to global variable ab->xmin, with ab->emin updated. */
-real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol)
+real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
+    unsigned flags)
 {
   int t, i, j, id, n = ab->n, d = ab->d;
   real up, u = 0, step = 0.02, del, mem = 1;
@@ -858,10 +859,11 @@ SHRINK:
   if (t > itmax) fprintf(stderr, "localmin failed to converge, t = %d.\n", t);
 
   memcpy(ab->lmx, x[id], n*d*sizeof(real));
-  if (u < ab->emin) {
+  if (u < ab->emin && (flags & AB_LMREGISTER)) {
     ab->emin = u;
     memcpy(ab->xmin, x[id], n*d*sizeof(real));
-    ab_writepos(ab, ab->xmin, NULL, "abmin.pos");
+    if (flags & AB_LMWRITE)
+      ab_writepos(ab, ab->xmin, NULL, "abmin.pos");
   }
 
   return u;

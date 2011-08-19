@@ -137,7 +137,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
-      if (ab_localmin(ab, ab->x, 0, 0.) < em)
+      if (ab_localmin(ab, ab->x, 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
         printf("emin = %10.6f from %10.6f t %g tp %g.%30s\n", ab->emin, ab->epot, t, tmh->tp, "");
     }
     if (++it % 10 == 0) {
@@ -184,7 +184,7 @@ static void guess_erange(abpro_t *ab, double tp0, double tp1,
     ctrun(ab, x*tp0 + (1. - x)*tp1, NULL, teql, trun, trep);
   }
   *erg0 = ctrun(ab, tp0, &edv0, teql, trun, trep);
-  ab_localmin(ab, ab->x, 0, 0);
+  ab_localmin(ab, ab->x, 0, 0, AB_LMREGISTER|AB_LMWRITE);
 
   x = *erg1 - *erg0;
   *emin = *erg0 - x;
