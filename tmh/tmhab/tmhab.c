@@ -15,6 +15,7 @@ const char *fnpos = "ab.pos";
 const char *fncfg = "tmhab.cfg";
 double nsteps = 1000000*1000;
 int seqid = 10, d = 3, model = 2, tmh_dhdeorder = 1;
+double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
 double mddt = 5e-3;
 double thermdt = 5e-3;
 int usebrownian = 0;
@@ -74,6 +75,8 @@ static int loadcfg(const char *fn)
   CFGGETI(tmh_teql); CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
+  CFGGETD(tmh_dhdemin);
+  CFGGETD(tmh_dhdemax);
   CFGGETD(tmh_ensexp);
   CFGGETD(tmh_ampmax); CFGGETD(tmh_ampc);
   CFGGETD(tmh_lgvdt);
@@ -256,6 +259,8 @@ int main(int argc, const char **argv)
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
+  tmh->dhdemin = tmh_dhdemin;
+  tmh->dhdemax = tmh_dhdemax;
 
   if (isctn && tmh_load(tmh, fnehis, fndhde, &amp, &step0) != 0) {
     fprintf(stderr, "cannot load tmh\n");

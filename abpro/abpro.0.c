@@ -21,7 +21,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   int i, nd;
   double x;
 
-  die_if (d == 2 && model != 1, "2d only for model 1");
+  die_if (d == 2 && model != 1, "%dd only for model 1", d);
   die_if (seqid < 0, "bad seqid %d\n", seqid);
 
   xnew(ab, 1);
@@ -70,8 +70,8 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
 
   /* number of degrees of freedom */
   ab->dof = (ab->d == 2) ? (ab->n - 2) : (2*ab->n - 5);
-  printf("n = %3d, dof = %3d: ", ab->n, ab->dof);
-  for (i = 0; i < ab->n; i++) printf("%c", ab->type[i]+'A'); printf("\n");
+  //printf("n = %3d, dof = %3d: ", ab->n, ab->dof);
+  //for (i = 0; i < ab->n; i++) printf("%c", ab->type[i]+'A'); printf("\n");
 
   nd = ab->n * ab->d;
   xnew(ab->x, nd);
@@ -107,7 +107,7 @@ int ab_initpos(abpro_t *ab, real *x, real del)
       rv2_add(x + (i+1)*ab->d, x + i*ab->d, dx);
     }
   }
-  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed\n");
+  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed, with del = %g\n", del);
   ab_shiftcom(ab, x);
   return 0;
 }
@@ -856,7 +856,8 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
 SHRINK:
     step *= 0.5;
   }
-  if (t > itmax) fprintf(stderr, "localmin failed to converge, t = %d.\n", t);
+  if (t > itmax && (flags & AB_VERBOSE)) 
+    fprintf(stderr, "localmin failed to converge, t = %d.\n", t);
 
   memcpy(ab->lmx, x[id], n*d*sizeof(real));
   if (u < ab->emin && (flags & AB_LMREGISTER)) {

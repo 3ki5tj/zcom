@@ -11,6 +11,7 @@ const char *fn = NULL;
 int itmax = 1000000;
 double tol = 1e-10;
 int overwrite = 0;
+int verbose = 0;
 
 static int getinfo(const char *fn, int *d, int *model, int *seqid)
 {
@@ -64,6 +65,7 @@ static int doargs(int argc, const char **argv)
       tol = atof(val);
     }
     if (ch == 'w') overwrite = 1;
+    else if (ch == 'v') verbose = 1;
   }
   if (fn == NULL) help(argv[0]);
   return 0;
@@ -72,20 +74,21 @@ static int doargs(int argc, const char **argv)
 int main(int argc, const char **argv)
 {
   abpro_t *ab;
-  int seqid, d, model;
+  int seqid, d, model, flags;
   real Em, E;
 
   doargs(argc, argv);
   if (getinfo(fn, &d, &model, &seqid) != 0) 
     return -1;
   ab = ab_open(seqid, d, model, 0.);
-  fprintf(stderr, "load %s\n", fn);
+  if (verbose) fprintf(stderr, "load %s\n", fn);
   if (ab_readpos(ab, ab->x, NULL, fn) != 0) {
     fprintf(stderr, "cannot open %s\n", fn);
     return -1;
   }
   E = ab_energy(ab, ab->x, 0);
-  Em = ab_localmin(ab, ab->x, itmax, tol, AB_LMREGISTER);
+  flags = AB_LMREGISTER | (verbose ? AB_VERBOSE : 0);
+  Em = ab_localmin(ab, ab->x, itmax, tol, flags);
   fprintf(stderr, "E: %.8f -> %.8f\n", E, Em);
   if (fabs(E - Em) > 1e-6 && overwrite) {
     printf("update energy...\n");

@@ -16,6 +16,7 @@
 #define ZCOM_TRACE
 #define ZCOM_POTTS2
 #define ZCOM_TMH
+#define TMH_NOCHECK  /* dangerous macro */
 #include "zcom.h"
 
 const char *fntp = "tmhpt.t", *fndhde = "tmhpt.e", *fnehis = "tmhpt.ehis";
@@ -109,7 +110,7 @@ int main(void)
   potts_t *pt;
   tmh_t *tmh;
   double x, erg0, edev0, erg1, edev1, tp0 = 0.67, tp1 = 0.77;
-  double emin = EMIN, emax = EMAX, de = 16;
+  double emin = EMIN - 1e-8, emax = EMAX + 1e-8, de = 16;
   double amp, t0;
   int tequil = 200000, tmcrun = 2000000;
   double trun = 1000000*100;

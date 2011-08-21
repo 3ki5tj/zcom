@@ -32,6 +32,8 @@ tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
   tmh->erg1 = dblround(erg1, de);
  
   tmh->dhdeorder = dhdeorder; 
+  tmh->dhdemin = 0.1;
+  tmh->dhdemax = 10.0;
   xnew(tmh->dhde, tmh->en + 1);
   for (i = 0; i <= tmh->en; i++)
     tmh->dhde[i] = 1.;
@@ -47,6 +49,7 @@ tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
 
   tmh->ensexp = ensexp;
   tmh_settp(tmh, (tmh->tp0+tmh->tp1)*.5);
+
   return tmh;
 }
 
@@ -151,10 +154,6 @@ double tmh_hdif(tmh_t *tmh, double e1, double e0)
     sgn = -1;
     tmp = e1, e1 = e0, e0 = tmp;
   } else sgn = 1;
-
-  die_if (e0 < tmh->emin || e1 > tmh->emax, 
-      "energy (%g, %g) out of range (%g, %g) \n", 
-      e0, e1, tmh->emin, tmh->emax);
 
   return sgn * ((tmh->dhdeorder == 0) ?
     tmh_hdif0(tmh, e1, e0) : tmh_hdif1(tmh, e1, e0));

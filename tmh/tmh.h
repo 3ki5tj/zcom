@@ -12,6 +12,8 @@ typedef struct {
   int ie0, ie1; /* correspond to erg0 and erg1 */
   double dergdt; /* (erg1 - erg0)/(tp1 - tp0) */
   int dhdeorder; /* order of dhde interpolation */
+  double dhdemin; /* minimal of dhde */
+  double dhdemax; /* maximal of dhde */
   double *dhde; /* dH / dE - 1 */
   double *tpehis; /* multipl-temperature energy histogram */
   double ensexp; /* w(T) = 1/T^ensexp */
@@ -36,6 +38,9 @@ int tmh_loaderange(const char *fn, double *erg0, double *erg1,
 /* set the current temperature */
 ZCINLINE void tmh_settp(tmh_t *tmh, double tp)
 {
+#ifndef TMH_NOCHECK
+  die_if (tp > tmh->tp1 || tp < tmh->tp0, "temperature %g not in(%g, %g)", tp, tmh->tp0, tmh->tp1);
+#endif
   tmh->tp = tp;
   tmh->itp = (int)((tmh->tp - tmh->tp0)/tmh->dtp);
   tmh->ec = tmh->erg0 + (tmh->tp - tmh->tp0)*tmh->dergdt;
@@ -57,17 +62,38 @@ ZCINLINE double tmh_getdhde(tmh_t *tmh)
 ZCINLINE void tmh_dhdeupdate(tmh_t *tmh, double erg, double amp)
 {
   double del = amp * (erg - tmh->ec);
+
+#ifdef TMH_NOCHECK
+  #define TMH_UPDHDE(i, del) tmh->dhde[i] += del
+#else
+  #define TMH_UPDHDE(i, del) \
+  if ((tmh->dhde[i] += del) < tmh->dhdemin) \
+    tmh->dhde[i] = tmh->dhdemin; \
+  else if (tmh->dhde[i] > tmh->dhdemax) \
+    tmh->dhde[i] = tmh->dhdemax;
+#endif
+
   if (tmh->dhdeorder == 0) {
-    tmh->dhde[tmh->iec] += del;
+    TMH_UPDHDE(tmh->iec, del);
   } else {
-    tmh->dhde[tmh->iec] += .5*del;
-    tmh->dhde[tmh->iec+1] += .5*del;
+    del *= .5;
+    TMH_UPDHDE(tmh->iec, del);
+    TMH_UPDHDE(tmh->iec+1, del);
   }
 }
 
 ZCINLINE void tmh_eadd(tmh_t *tmh, double erg)
 {
-  int ie = (int)((erg - tmh->emin)/tmh->de);
+  int ie;
+#ifndef TMH_NOCHECK
+  if (erg < tmh->emin || erg > tmh->emax) return;
+#endif
+  ie = (int)((erg - tmh->emin)/tmh->de);
+#ifndef TMH_NOCHECK
+  die_if (ie < 0 || ie >= tmh->en, "ie = %d, erg = %g output range\n", ie, erg);
+  die_if (tmh->itp > tmh->tpn, "itp = %d, tpn = %d, tp = %g, dtp = %g\n", 
+      tmh->itp, tmh->tpn, tmh->tp, tmh->dtp);
+#endif
   tmh->tpehis[tmh->itp*tmh->en + ie] += 1.;
 }
 

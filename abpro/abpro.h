@@ -20,6 +20,7 @@ typedef struct {
   double t;
 } abpro_t;
 
+#define AB_VERBOSE    0x0001
 #define AB_SOFTFORCE  0x0010
 #define AB_MILCSHAKE  0x0020
 #define AB_LMREGISTER 0x0100

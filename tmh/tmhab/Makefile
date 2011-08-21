@@ -9,7 +9,7 @@ bin = tmhab
 all: $(bin)
 
 tmhab: tmhab.c $(dep)
-	$(CX) -o $@ $< 
+	$(CC) -o $@ $< 
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

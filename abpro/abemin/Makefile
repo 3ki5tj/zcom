@@ -14,6 +14,9 @@ abemin: abemin.c $(dep)
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
+install::
+	cp abemin ~/app/bin/
+
 clean:
 	rm -f *~ *.out MTSEED $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE ab.pos
 
