@@ -9,18 +9,17 @@
 #include "tmh.h"
 
 /* 0: cold; 1: hot */
-tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
-    double emin, double emax, double de, double ensexp,
-    int dhdeorder)
+tmh_t *tmh_open(double tp0, double tp1, 
+    double erg0, double erg1, double derg,
+    double emin, double emax, double de,
+    double ensexp, int dhdeorder)
 {
   tmh_t *tmh;
   int i;
 
   xnew(tmh, 1);
-  die_if(tp0 >= tp1, "Error: T0 %g >= T1 %g\n", tp0, tp1);
-  tmh->tp0 = tp0;
-  tmh->tp1 = tp1;
 
+  /* energy histogram range */
   tmh->de = de;
   tmh->emin = dblround(emin, de);
   tmh->emax = dblround(emax, de);
@@ -28,27 +27,29 @@ tmh_t *tmh_open(double tp0, double tp1, double erg0, double erg1,
 
   /* the updating energy range */
   die_if(erg0 >= erg1, "Error: erg0 %g >= erg1 %g\n", erg0, erg1);
-  tmh->erg0 = dblround(erg0, de);
-  tmh->erg1 = dblround(erg1, de);
- 
+  tmh->derg = derg;
+  tmh->erg0 = dblround(erg0, derg);
+  tmh->erg1 = dblround(erg1, derg);
+  tmh->ergn = (int)((tmh->erg1 - tmh->erg0)/tmh->derg + .5);
+
+  /* dhde parameters */ 
   tmh->dhdeorder = dhdeorder; 
   tmh->dhdemin = 0.1;
   tmh->dhdemax = 10.0;
-  xnew(tmh->dhde, tmh->en + 1);
-  for (i = 0; i <= tmh->en; i++)
+  xnew(tmh->dhde, tmh->ergn + 1);
+  for (i = 0; i <= tmh->ergn; i++)
     tmh->dhde[i] = 1.;
-  tmh->dergdt = (tmh->erg1 - tmh->erg0)/(tmh->tp1 - tmh->tp0);
-  tmh->ie0 = (int)((tmh->erg0 - tmh->emin)/de + .5);
-  tmh->ie1 = (int)((tmh->erg1 - tmh->emin)/de + .5) - 1;
 
-  tmh->tpn = tmh->ie1 - tmh->ie0 + 1;
+  die_if(tp0 >= tp1, "Error: T0 %g >= T1 %g\n", tp0, tp1);
+  tmh->tp0 = tp0;
+  tmh->tp1 = tp1;
+  tmh->tpn = tmh->ergn;
   tmh->dtp = (tmh->tp1 - tmh->tp0)/tmh->tpn * (1. + 1e-12);
   xnew(tmh->tpehis, tmh->tpn*tmh->en);
 
-  if (tmh->dhdeorder > 0) tmh->ie1++; /* interpolation */  
-
   tmh->ensexp = ensexp;
   tmh_settp(tmh, (tmh->tp0+tmh->tp1)*.5);
+  tmh->dergdt = (tmh->erg1 - tmh->erg0)/(tmh->tp1 - tmh->tp0);
 
   return tmh;
 }
@@ -68,32 +69,32 @@ static double tmh_hdif0(tmh_t *tmh, double eh, double el)
   double dh;
 
   if (eh < tmh->erg0) { /* first energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ie0];
+    dh = (eh - el)*tmh->dhde[0];
   } else if (el > tmh->erg1) { /* last energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ie1];
+    dh = (eh - el)*tmh->dhde[tmh->ergn];
   } else {
     dh = 0.;
     /* overhead index */
     if (el < tmh->erg0) {
-      dh += (tmh->erg0 - el)*tmh->dhde[tmh->ie0];
+      dh += (tmh->erg0 - el)*tmh->dhde[0];
       el = tmh->erg0 + 1e-8;
     }
     if (eh >= tmh->erg1) {
-      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ie1];
+      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ergn];
       eh = tmh->erg1 - 1e-8;
     }
     /* energy index */
-    iel = (int)((el - tmh->emin)/tmh->de);
-    ieh = (int)((eh - tmh->emin)/tmh->de);
+    iel = (int)((el - tmh->erg0)/tmh->derg);
+    ieh = (int)((eh - tmh->erg0)/tmh->derg);
     if (iel == ieh) {
       dh += (eh - el)*tmh->dhde[iel];
     } else if (iel < ieh) {
       /* dh at the two terminal energy bin */
-      dh += (tmh->emin + (iel+1)*tmh->de - el) * tmh->dhde[iel]
-          + (eh - (tmh->emin + tmh->de*ieh)) * tmh->dhde[ieh];
+      dh += (tmh->erg0 + (iel+1)*tmh->derg - el) * tmh->dhde[iel]
+          + (eh - (tmh->erg0 + tmh->derg*ieh)) * tmh->dhde[ieh];
       /* integrate dH/dE */
       for (ie = iel+1; ie < ieh; ie++)
-        dh += tmh->dhde[ie]*tmh->de;
+        dh += tmh->dhde[ie]*tmh->derg;
     }
   }
   return dh; 
@@ -105,39 +106,39 @@ static double tmh_hdif1(tmh_t *tmh, double eh, double el)
   double dh, de, k, el0, eh0;
 
   if (eh < tmh->erg0) { /* first energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ie0];
+    dh = (eh - el)*tmh->dhde[0];
   } else if (el > tmh->erg1) { /* last energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ie1];
+    dh = (eh - el)*tmh->dhde[tmh->ergn];
   } else {
     dh = 0.;
     if (el < tmh->erg0) {
-      dh += (tmh->erg0 - el)*tmh->dhde[tmh->ie0];
+      dh += (tmh->erg0 - el)*tmh->dhde[0];
       el = tmh->erg0 + 1e-8;
     }
     if (eh >= tmh->erg1) {
-      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ie1];
+      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ergn];
       eh = tmh->erg1 - 1e-8;
     }
     /* energy index */
-    iel = (int)((el - tmh->emin)/tmh->de);
-    ieh = (int)((eh - tmh->emin)/tmh->de);
+    iel = (int)((el - tmh->erg0)/tmh->derg);
+    ieh = (int)((eh - tmh->erg0)/tmh->derg);
     if (iel == ieh) {
-      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->de;
-      el0 = tmh->emin + iel*tmh->de;
+      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->derg;
+      el0 = tmh->erg0 + iel*tmh->derg;
       dh += (eh - el)*(tmh->dhde[iel] + k * (.5f*(el+eh) - el0));
     } else if (iel < ieh) {
       /* dh at the two terminal energy bin */
-      el0 = tmh->emin + (iel+1)*tmh->de; 
+      el0 = tmh->erg0 + (iel+1)*tmh->derg; 
       de = el0 - el;
-      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->de;
+      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->derg;
       dh += de * (tmh->dhde[iel+1] - k*.5*de);
-      eh0 = tmh->emin + tmh->de*ieh;
+      eh0 = tmh->erg0 + tmh->derg*ieh;
       de = eh - eh0;
-      k = (tmh->dhde[ieh+1] - tmh->dhde[ieh])/tmh->de;
+      k = (tmh->dhde[ieh+1] - tmh->dhde[ieh])/tmh->derg;
       dh += de * (tmh->dhde[ieh] + k*.5*de);
       /* integrate dH/dE */
       for (ie = iel+1; ie < ieh; ie++)
-        dh += .5*(tmh->dhde[ie] + tmh->dhde[ie+1])*tmh->de;
+        dh += .5*(tmh->dhde[ie] + tmh->dhde[ie+1])*tmh->derg;
     }
   }
   return dh; 
@@ -182,27 +183,19 @@ int tmh_tlgvmove(tmh_t *tmh, double enow, double lgvdt)
 /* write dhde and overall energy distribution */
 int tmh_savedhde(tmh_t *tmh, const char *fn, double amp, double t)
 {
-  int ie, j; 
+  int ie; 
   FILE *fp;
-  double ehis;
 
   if ((fp = fopen(fn, "w")) == NULL) {
     fprintf(stderr, "cannot write file %s\n", fn);
     return -1;
   }
-  for (ie = 0; ie < tmh->ie0; ie++)
-    tmh->dhde[ie] = tmh->dhde[tmh->ie0];
-  for (ie = tmh->ie1+1; ie <= tmh->en; ie++) 
-    tmh->dhde[ie] = tmh->dhde[tmh->ie1];
-  fprintf(fp, "# %d %d %d %g %g %g %g %g\n", tmh->en, tmh->ie0, 
-      tmh->ie1 + ((tmh->dhdeorder == 0) ? 1 : 0), 
-      tmh->emin, tmh->de, amp, t, tmh->tp);
-  for (ie = 0; ie < tmh->en; ie++) {
-    /* compute overall energy histogram */
-    for (ehis = 0., j = 0; j < tmh->tpn; j++) 
-      ehis += tmh->tpehis[j*tmh->en + ie];
-    fprintf(fp, "%g %g %g\n", 
-        tmh->emin + ie*tmh->de, tmh->dhde[ie], ehis);
+  fprintf(fp, "# 1 %g %g %d %g %g %d %g %g %g\n", 
+      tmh->erg0, tmh->derg, tmh->ergn,
+      tmh->emin, tmh->de,   tmh->en, 
+      amp, t, tmh->tp);
+  for (ie = 0; ie <= tmh->ergn; ie++) {
+    fprintf(fp, "%g %g\n", tmh->erg0 + ie*tmh->derg, tmh->dhde[ie]);
   }
   fclose(fp);
   return 0;
@@ -211,10 +204,10 @@ int tmh_savedhde(tmh_t *tmh, const char *fn, double amp, double t)
 /* read dhde and overall energy distribution */
 int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
 {
-  int ie, en, ie0, ie1;
+  int ie, ergn, en, ver;
   FILE *fp;
   char s[1024];
-  double emin, de, erg, erg0, dhde;
+  double emin, de, derg, erg, erg0, dhde;
 
   if ((fp = fopen(fn, "r")) == NULL) {
     fprintf(stderr, "cannot write file %s\n", fn);
@@ -224,20 +217,21 @@ int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
     fprintf(stderr, "cannot read the first line %s\n", fn);
     goto ERR;
   }
-  if (8 != sscanf(s+1, "%d%d%d%lf%lf%lf%lf%lf", 
-        &en, &ie0, &ie1, &emin, &de, amp, t, &tmh->tp)) {
+  if (10 != sscanf(s+1, "%d%lf%lf%d%lf%lf%d%lf%lf%lf", 
+        &ver, &erg0, &derg, &ergn, &emin, &de, &en, amp, t, &tmh->tp)) {
     fprintf(stderr, "corrupted info line %s", s);
     goto ERR;
   }
-  if (tmh->dhdeorder == 0) ie1--;
-  if (en != tmh->en || ie0 != tmh->ie0 || ie1 != tmh->ie1
-   || fabs(emin - tmh->emin) > 1e-5 || fabs(de - tmh->de) > 1e-5) {
-    fprintf(stderr, "bad energy en %d %d, ie0 %d %d, ie1 %d %d, emin %g %g, de %g %g\n",
-        en, tmh->en, ie0, tmh->ie0, ie1, tmh->ie1, emin, tmh->emin, de, tmh->de);
+  if (ver != 1 || 
+      ergn != tmh->ergn || fabs(derg - tmh->derg) > 1e-5 || fabs(erg0 - tmh->erg0) > 1e-5 ||
+      en != tmh->en || fabs(de - tmh->de) > 1e-5 || fabs(emin - tmh->emin) > 1e-5) {
+    fprintf(stderr, "bad energy ergn %d %d, erg0 %g %g, derg %g %g, en %d %d, emin %g %g, de %g %g\n",
+        ergn, tmh->ergn, erg0, tmh->erg0, derg, tmh->derg,
+        en, tmh->en, emin, tmh->emin, de, tmh->de);
     goto ERR;
   }
 
-  for (ie = 0; ie < tmh->en; ie++) {
+  for (ie = 0; ie < tmh->ergn; ie++) {
     if (fgets(s, sizeof s, fp) == NULL) {
       fprintf(stderr, "cannot read line %d\n", ie);
       goto ERR;
@@ -246,14 +240,13 @@ int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
       fprintf(stderr, "cannot read energy and dhde at %d\n, s = %s", ie, s);
       goto ERR;
     }
-    erg0 = tmh->emin + ie*tmh->de;
-    if (fabs(erg0 - erg) > tmh->de*.1) {
+    erg0 = tmh->erg0 + ie*tmh->derg;
+    if (fabs(erg0 - erg) > tmh->derg*.1) {
       fprintf(stderr, "energy %g, should be %g\n", erg, erg0);
       goto ERR;
     }
     tmh->dhde[ie] = dhde;
   }
-  tmh->dhde[tmh->en] = tmh->dhde[tmh->en-1];
   fclose(fp);
   return 0;
 ERR:
@@ -262,10 +255,11 @@ ERR:
 }
 
 /* get energy range from dhde file */
-int tmh_loaderange(const char *fn, double *erg0, double *erg1, 
+int tmh_loaderange(const char *fn, 
+    double *erg0, double *erg1, double *derg,
     double *emin, double *emax, double *de)
 {
-  int en, ie0, ie1;
+  int en, ergn, ver;
   FILE *fp;
   char s[1024];
 
@@ -277,12 +271,13 @@ int tmh_loaderange(const char *fn, double *erg0, double *erg1,
     fprintf(stderr, "cannot read the first line %s\n", fn);
     goto ERR;
   }
-  if (5 != sscanf(s+1, "%d%d%d%lf%lf", &en, &ie0, &ie1, emin, de)) {
+
+  if (7 != sscanf(s+1, "%d%lf%lf%d%lf%lf%d", 
+        &ver, erg0, derg, &ergn, emin, de, &en) || ver != 1) {
     fprintf(stderr, "corrupted info line %s", s);
     goto ERR;
   }
-  *erg0 = *emin + ie0*(*de);
-  *erg1 = *emin + ie1*(*de);
+  *erg1 = *erg0 + ergn*(*derg);
   *emax = *emin + en*(*de);
   fclose(fp);
   return 0;
@@ -304,7 +299,7 @@ int tmh_savetp(tmh_t *tmh, const char *fn)
   }
   for (i = 0; i < tmh->tpn; i++) {
     eh = tmh->tpehis + i*tmh->en;
-    for (cnt = esm = 0., j = 0; j < tmh->en; j++) {
+    for (cnt = esm = e2sm = 0., j = 0; j < tmh->en; j++) {
       erg = tmh->emin + (j + .5) * tmh->de;
       cnt += eh[j];
       esm += eh[j]*erg;

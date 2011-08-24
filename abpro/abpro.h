@@ -48,7 +48,7 @@ int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
 int ab_milcrattle(abpro_t *ab, const real *x0, real *v); 
 
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
-    unsigned flags);
+    int sh_itmax, double sh_tol, unsigned flags);
 real ab_energy(abpro_t *ab, const real *r, int soft);
 real ab_force(abpro_t *ab, real *f, const real *r, int soft);
 

@@ -8,8 +8,9 @@
 #define PT2_Q  10
 #define L (1<<PT2_LB)
 #define Q PT2_Q
-#define EMIN (-2*L*L)
-#define EMAX 0
+#define EMIN (-2*L*L - .5)
+#define EMAX (0.5)
+#define EDEL 1
 
 #define ZCOM_PICK
 #define ZCOM_RNG
@@ -78,7 +79,7 @@ static int tmhmove(tmh_t *tmh, potts_t *pt)
   }
 }
 
-int tmhrun(tmh_t *tmh, potts_t *pt, double trun, double t)
+static int tmhrun(tmh_t *tmh, potts_t *pt, double trun, double t)
 {
   int it;
   double amp; 
@@ -101,6 +102,7 @@ int tmhrun(tmh_t *tmh, potts_t *pt, double trun, double t)
     }
   }
   tmh_save(tmh, fntp, fnehis, fndhde, amp, t);
+  wtrace_buf(NULL); /* finish tracing */
   return 0;
 }
 
@@ -110,17 +112,17 @@ int main(void)
   potts_t *pt;
   tmh_t *tmh;
   double x, erg0, edev0, erg1, edev1, tp0 = 0.67, tp1 = 0.77;
-  double emin = EMIN - 1e-8, emax = EMAX + 1e-8, de = 16;
+  double emin = EMIN, emax = EMAX, de = EDEL, derg = 32;
   double amp, t0;
   int tequil = 200000, tmcrun = 2000000;
-  double trun = 1000000*100;
+  double trun = 1000000*200;
   int initload = 0, dhdeorder = 1;
 
   pt = pt2_open(L, Q);
   if (initload) {
     if (pt2_load(pt, CONFIG) != 0)
       return -1;
-    if (0 != tmh_loaderange(fndhde, &erg0, &erg1, &emin, &emax, &de))
+    if (0 != tmh_loaderange(fndhde, &erg0, &erg1, &derg, &emin, &emax, &de))
       return -1;
   } else {
     /* determine the energies at the two end temperatures */
@@ -136,7 +138,7 @@ int main(void)
     erg1 -= x;  
   }
 
-  tmh = tmh_open(tp0, tp1, erg0, erg1, EMIN, EMAX, de, 2.0, dhdeorder);
+  tmh = tmh_open(tp0, tp1, erg0, erg1, derg, EMIN, EMAX, EDEL, 2.0, dhdeorder);
 
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
@@ -155,7 +157,6 @@ int main(void)
 
   pt2_save(pt, CONFIG);
   pt2_close(pt);
-  wtrace_buf(NULL); /* finish tracing */
   tmh_close(tmh);
   mtsave(NULL);
   return 0;

@@ -14,7 +14,7 @@ abemin: abemin.c $(dep)
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
-install::
+install: $(bin)
 	cp abemin ~/app/bin/
 
 clean:

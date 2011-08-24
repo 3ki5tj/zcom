@@ -25,7 +25,7 @@ double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
 int tmh_guesserange = 0; /* guess energy range */
 double tmh_tps = 0.5; /* thermostat temperature */
-double tmh_tp0 = 0.05, tmh_tp1 = 1.0, tmh_erg0, tmh_erg1;
+double tmh_tp0 = 0.05, tmh_tp1 = 1.0, tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
 
 /* parameters for guess the erange */
@@ -62,6 +62,7 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_tp0);
   CFGGETD(tmh_tp1);
   CFGGETD(tmh_de);
+  CFGGETD(tmh_derg);
 
   CFGGETD(tmh_tps);
   
@@ -140,7 +141,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
-      if (ab_localmin(ab, ab->x, 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
+      if (ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
         printf("emin = %10.6f from %10.6f t %g tp %g.%30s\n", ab->emin, ab->epot, t, tmh->tp, "");
     }
     if (++it % 10 == 0) {
@@ -169,7 +170,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     if (stop) break;
   }
   /* finish */
-  wtrace_buf(NULL);
+  wtrace_buf(NULL, NULL);
   return 0;
 }
 
@@ -187,7 +188,7 @@ static void guess_erange(abpro_t *ab, double tp0, double tp1,
     ctrun(ab, x*tp0 + (1. - x)*tp1, NULL, teql, trun, trep);
   }
   *erg0 = ctrun(ab, tp0, &edv0, teql, trun, trep);
-  ab_localmin(ab, ab->x, 0, 0, AB_LMREGISTER|AB_LMWRITE);
+  ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE);
 
   x = *erg1 - *erg0;
   *emin = *erg0 - x;
@@ -242,7 +243,7 @@ int main(int argc, const char **argv)
   if (isctn) { /* load previous data */
     if (0 != ab_readpos(ab, ab->x, ab->v, fnpos))
       return -1;
-    if (0 != tmh_loaderange(fndhde, &tmh_erg0, &tmh_erg1, &tmh_emin, &tmh_emax, &tmh_de))
+    if (0 != tmh_loaderange(fndhde, &tmh_erg0, &tmh_erg1, &tmh_derg, &tmh_emin, &tmh_emax, &tmh_de))
       return -1;
   } else { /* fresh new run */
     if (tmh_guesserange) {
@@ -255,7 +256,7 @@ int main(int argc, const char **argv)
     printf("finish equilibration, epot %g, ekin %g\n", ab->epot, ab->ekin);
   }
 
-  tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_erg0, tmh_erg1, 
+  tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_erg0, tmh_erg1, tmh_derg, 
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);

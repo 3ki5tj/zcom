@@ -118,7 +118,7 @@ void ab_close(abpro_t *ab)
   if (ab) {
     ab_milcshake(ab, NULL, NULL, NULL, 0, 0, 0, 0);
     ab_milcrattle(ab, NULL, NULL);
-    ab_localmin(ab, NULL, 0, 0., 0);
+    ab_localmin(ab, NULL, 0, 0., 0, 0., 0);
     free(ab->type);
     free(ab->x);
     free(ab->x1);
@@ -809,7 +809,7 @@ real ab_force(abpro_t *ab, real *f, const real *r, int soft)
    When a lowest energy configuration is found, the result is
    saved to global variable ab->xmin, with ab->emin updated. */
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
-    unsigned flags)
+    int sh_itmax, double sh_tol, unsigned flags)
 {
   int t, i, j, id, n = ab->n, d = ab->d;
   real up, u = 0, step = 0.02, del, mem = 1;
@@ -842,7 +842,11 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
         x[!id][i*d+j] = x[id][i*d+j]+del;
       }
 
-    if (ab_shake(ab, x[id], x[!id], NULL, 0., 0, 0., 0) != 0) goto SHRINK;
+    if (flags & AB_MILCSHAKE) {
+      if (ab_milcshake(ab, x[id], x[!id], NULL, 0., sh_itmax, sh_tol, 0) != 0) goto SHRINK;
+    } else {
+      if (ab_shake(ab, x[id], x[!id], NULL, 0., sh_itmax, sh_tol, 0) != 0) goto SHRINK;
+    }
     u = ab_force(ab, f[!id], x[!id], 0);
     if (u > up) { mem = 0; goto SHRINK; }
 

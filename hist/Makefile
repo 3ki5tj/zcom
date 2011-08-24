@@ -1,10 +1,10 @@
-all: test testrdf test2
+all: test1 testrdf test2
 
 src=hist.c hist.h
 
 CC=gcc -Wall -lm
 
-test: test.c $(src)
+test1: test1.c $(src)
 	$(CC) -o $@ $< 
 
 testrdf: testrdf.c $(src)
@@ -14,7 +14,7 @@ test2: test2.c $(src)
 	$(CC) -o $@ $< 
 
 clean:
-	rm -f test testrdf test2 a.out *~ *.o *.log HIST* RDF* rdf*.dat
+	rm -f test1 testrdf test2 a.out *~ *.o *.log HIST* RDF* rdf*.dat
 
 .PHONY: all clean
 

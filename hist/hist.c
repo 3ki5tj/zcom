@@ -91,9 +91,10 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
   const int version = 0;
   const char *filename;
   FILE *fp;
-  int i, r, imax, imin;
+  int i, r, rp, rowp, imax, imin;
   const double *p;
-  double *sums, fac, delta;
+  double sm, *sums, fac, delta;
+  double *smtot, *htot = NULL;
 
   filename = (fn != NULL) ? fn : "HIST";
 
@@ -103,6 +104,21 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
   }
   
   sums = gethistsums_(h, rows, n, xmin, dx);
+ 
+  /* compute the overall histogram */
+  if (flags & HIST_OVERALL) {
+    xnew(htot, n);
+    for (i = 0; i < n; i++) htot[i] = 0.;
+    
+    for (r = 0; r < rows; r++) 
+      for (i = 0; i < n; i++)
+        htot[i] += h[r*n + i];
+    smtot = gethistsums_(htot, 1, n, xmin, dx);
+    rowp = rows + 1;
+  } else {
+    rowp = rows;
+  }
+
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
       version, flags, rows, n, xmin, dx);
@@ -117,8 +133,8 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
 
   delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;
 
-  for (r = 0; r < rows; r++) {
-    p = h+r*n;
+  for (r = 0; r < rowp; r++) {
+    p = (r == rows) ? htot : (h+r*n);
 
     if (flags & HIST_KEEPRIGHT) {
       imax = n;
@@ -140,8 +156,9 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
       imin = i;
     }
 
-    if (fabs(sums[r]) < 1e-6) fac = 1.;
-    else fac = 1.0/(sums[r]*dx);
+    sm = (r == rows) ? smtot[0] : sums[r];
+    if (fabs(sm) < 1e-6) fac = 1.;
+    else fac = 1.0/(sm*dx);
 
     for (i = imin; i < imax; i++) {
       if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
@@ -149,9 +166,10 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
       fprintf(fp,"%g ", xmin+(i+delta)*dx);
       if (flags & HIST_KEEPHIST) 
         fprintf(fp, "%20.14E ", p[i]);
-      if (fnorm != NULL) /* advanced normalization */
-        fac = (*fnorm)(r, i, xmin, dx, pdata);
-      fprintf(fp,"%20.14E %d\n", p[i]*fac, r);
+      rp = (r == rows) ? (-1) : r;
+      if (fnorm != NULL) /* advanced normalization, note the r = -1 case */
+        fac = (*fnorm)(rp, i, xmin, dx, pdata);
+      fprintf(fp,"%20.14E %d\n", p[i]*fac, rp);
     }
     fprintf(fp,"\n");
   }
@@ -163,6 +181,10 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
           r, sums[r], sums[r+rows], sums[r+rows*2]);
   }
   free(sums);
+  if (flags & HIST_OVERALL) {
+    free(htot);
+    free(smtot);
+  }
   return 0;
 }
 
@@ -262,6 +284,8 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
           goto EXIT;
         }
       }
+      if (r1 < 0) break; /* overall histogram */
+
       if (r1 < r) {
         fprintf(stderr, "wrong column index %d vs. %d on line %d, s=[%s]\n",
             r1, r, nlin, s);

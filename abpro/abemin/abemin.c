@@ -12,6 +12,9 @@ int itmax = 1000000;
 double tol = 1e-10;
 int overwrite = 0;
 int verbose = 0;
+int milcshake = 0;
+int sh_itmax = 100000;
+double sh_tol = 1e-10;
 
 static int getinfo(const char *fn, int *d, int *model, int *seqid)
 {
@@ -39,6 +42,11 @@ static void help(const char *prog)
   printf(" -n: followed by max. # of iterations, def %d\n", itmax);
   printf(" -t: followed by tolerance, def %g\n", tol);
   printf(" -w: overwrite the file, if significantly minimized\n");
+  printf(" -W: always overwrite the file\n");
+  printf(" -m: use MILC SHAKE instead of regular shake\n");
+  printf(" -N: followed by max # of iterations of SHAKE, def %d\n", sh_itmax);
+  printf(" -T: followed by SHAKE tolerance, def %g\n", sh_tol);
+  printf(" -h: print this message\n");
   exit(1);
 }
 
@@ -54,7 +62,7 @@ static int doargs(int argc, const char **argv)
       continue;
     }
     ch = argv[i][1];
-    if (strchr("nt", ch) != NULL) {
+    if (strchr("ntNT", ch) != NULL) {
       if (i == argc - 1) help(argv[0]);
       val = argv[++i];
     }
@@ -63,9 +71,16 @@ static int doargs(int argc, const char **argv)
       itmax = atoi(val);
     } else if (ch == 't') {
       tol = atof(val);
+    } else if (ch == 'N') {
+      sh_itmax = atoi(val);
+    } else if (ch == 'T') {
+      sh_tol = atof(val);
     }
     if (ch == 'w') overwrite = 1;
+    else if (ch == 'W') overwrite = 2;
     else if (ch == 'v') verbose = 1;
+    else if (ch == 'm') milcshake = 1;
+    else if (ch == 'h') help(argv[0]);
   }
   if (fn == NULL) help(argv[0]);
   return 0;
@@ -86,12 +101,18 @@ int main(int argc, const char **argv)
     fprintf(stderr, "cannot open %s\n", fn);
     return -1;
   }
+  memcpy(ab->x1, ab->x, ab->n*d*sizeof(real));
+  if (milcshake) 
+    ab_milcshake(ab, ab->x1, ab->x, NULL, 0., sh_itmax, sh_tol, 0);
+  else
+    ab_shake(ab, ab->x1, ab->x, NULL, 0., sh_itmax, sh_tol, 0);
+
   E = ab_energy(ab, ab->x, 0);
-  flags = AB_LMREGISTER | (verbose ? AB_VERBOSE : 0);
-  Em = ab_localmin(ab, ab->x, itmax, tol, flags);
+  flags = AB_LMREGISTER | (verbose ? AB_VERBOSE : 0) | (milcshake ? AB_MILCSHAKE : 0);
+  Em = ab_localmin(ab, ab->x, itmax, tol, sh_itmax, sh_tol, flags);
   fprintf(stderr, "E: %.8f -> %.8f\n", E, Em);
-  if (fabs(E - Em) > 1e-6 && overwrite) {
-    printf("update energy...\n");
+  if ((fabs(E - Em) > 1e-6 && overwrite) || overwrite > 1) {
+    printf("update configuration...\n");
     ab_writepos(ab, ab->lmx, NULL, fn);
   }
   ab_close(ab);

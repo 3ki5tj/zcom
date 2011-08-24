@@ -105,7 +105,7 @@ static int wtrace_buf_low_(int cnt, int freq,
     FILE *fp;
     static const char *mode = NULL;
 
-    if (buf[0] != '\0') { /* in case nothing was written */
+    if (buf && buf[0] != '\0') { /* in case nothing was written */
       if ((fp = fopen(fname, mode = (mode ? "a" : "w"))) == NULL) {
         fprintf(stderr, "cannot write file %s, mode %s\n", fname, mode);
         return 1;
