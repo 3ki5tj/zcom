@@ -19,9 +19,12 @@ typedef struct {
   double *dhde; /* dH / dE - 1 */
   double *tpehis; /* multipl-temperature energy histogram */
   double ensexp; /* w(T) = 1/T^ensexp */
+  double *lnz; /* partition function */
+  double *lng; /* density of states */
+  double *mh; /* modified Hamiltonian  */
 } tmh_t;
 
-tmh_t *tmh_open(double tp0, double tp1,
+tmh_t *tmh_open(double tp0, double tp1, double dtp,
     double erg0, double erg1, double derg,
     double emin, double emax, double de,
     double ensexp, int dhdeorder);
@@ -35,8 +38,13 @@ int tmh_save(tmh_t *tmh, const char *fntp, const char *fnehis,
     const char *fndhde, double amp, double t);
 int tmh_load(tmh_t *tmh, const char *fnehis, 
     const char *fndhde, double *amp, double *t);
-int tmh_loaderange(const char *fn, double *erg0, double *erg1, double *derg, 
-    double *emin, double *emax, double *de);
+int tmh_loaderange(const char *fn, 
+    double *tp0, double *tp1, double *dtp,
+    double *erg0, double *erg1, double *derg, 
+    double *emin, double *emax, double *de,
+    double *ensexp, int *dhdeorder);
+int tmh_calcdos(tmh_t *tmh, int itmax, double tol, 
+    const char *fndos, const char *fnlnz);
 
 /* set the current temperature */
 ZCINLINE void tmh_settp(tmh_t *tmh, double tp)
@@ -47,21 +55,25 @@ ZCINLINE void tmh_settp(tmh_t *tmh, double tp)
   tmh->tp = tp;
   tmh->itp = (int)((tmh->tp - tmh->tp0)/tmh->dtp);
   tmh->ec = tmh->erg0 + (tmh->tp - tmh->tp0)*tmh->dergdt;
-#ifndef TMH_NOCHECK
   tmh->iec = (int)((tmh->ec - tmh->erg0)/tmh->derg);
-#else
-  tmh->iec = tmh->itp;
-#endif
 }
 
 /* retrieve local dhde */
-ZCINLINE double tmh_getdhde(tmh_t *tmh)
+ZCINLINE double tmh_getdhde(tmh_t *tmh, double e, int ie)
 {
   if (tmh->dhdeorder == 0) {
-    return tmh->dhde[tmh->iec];
+#ifndef TMH_NOCHECK
+    die_if (ie < 0 || ie >= tmh->en, "overflow ie %d en %d\n", ie, tmh->en);
+#endif
+    return tmh->dhde[ie];
   } else {
-    double lam = (tmh->ec - (tmh->erg0 + tmh->iec*tmh->derg))/tmh->derg;
-    return tmh->dhde[tmh->iec]*(1-lam) + tmh->dhde[tmh->iec+1]*lam;
+    double lam = (e - (tmh->erg0 + ie*tmh->derg))/tmh->derg;
+#ifndef TMH_NOCHECK
+    die_if (lam < 0. || lam > 1., 
+        "cannot interpolate, e %g, %d, %g %g %g\n",
+        e, ie, tmh->erg0 + ie*tmh->derg, tmh->erg0, tmh->derg);
+#endif
+    return tmh->dhde[ie]*(1-lam) + tmh->dhde[ie+1]*lam;
   }
 }
 

@@ -41,11 +41,11 @@ static void help(const char *prog)
   printf("OPTIONS:\n");
   printf(" -n: followed by max. # of iterations, def %d\n", itmax);
   printf(" -t: followed by tolerance, def %g\n", tol);
+  printf(" -N: followed by max # of iterations of SHAKE, def %d\n", sh_itmax);
+  printf(" -T: followed by SHAKE tolerance, def %g\n", sh_tol);
   printf(" -w: overwrite the file, if significantly minimized\n");
   printf(" -W: always overwrite the file\n");
   printf(" -m: use MILC SHAKE instead of regular shake\n");
-  printf(" -N: followed by max # of iterations of SHAKE, def %d\n", sh_itmax);
-  printf(" -T: followed by SHAKE tolerance, def %g\n", sh_tol);
   printf(" -h: print this message\n");
   exit(1);
 }
@@ -53,7 +53,7 @@ static void help(const char *prog)
 /* handle arguments */
 static int doargs(int argc, const char **argv)
 {
-  int i, ch;
+  int i, j, ch;
   const char *val;
 
   for (i = 1; i < argc; i++) {
@@ -62,25 +62,35 @@ static int doargs(int argc, const char **argv)
       continue;
     }
     ch = argv[i][1];
-    if (strchr("ntNT", ch) != NULL) {
-      if (i == argc - 1) help(argv[0]);
-      val = argv[++i];
+    if (strchr("ntNT", ch) != NULL) { /* argument options */
+      val = argv[i] + 2;
+      if (*val == '\0') {
+        if (i == argc - 1) {
+          fprintf(stderr, "need arg. after %s\n", argv[i]);
+          help(argv[0]);
+        }
+        val = argv[++i];
+      }
+      if (ch == 'n') {
+        itmax = atoi(val);
+      } else if (ch == 't') {
+        tol = atof(val);
+      } else if (ch == 'N') {
+        sh_itmax = atoi(val);
+      } else if (ch == 'T') {
+        sh_tol = atof(val);
+      } else {
+        fprintf(stderr, "program error: -%c is not handled\n", ch);
+      }
+    } else { /* simple options */
+      for (j = 1; (ch = argv[i][j]) != '\0'; j++) {
+        if (ch == 'w') overwrite = 1;
+        else if (ch == 'W') overwrite = 2;
+        else if (ch == 'v') verbose = 1;
+        else if (ch == 'm') milcshake = 1;
+        else if (ch == 'h') help(argv[0]);
+      }
     }
-
-    if (ch == 'n') {
-      itmax = atoi(val);
-    } else if (ch == 't') {
-      tol = atof(val);
-    } else if (ch == 'N') {
-      sh_itmax = atoi(val);
-    } else if (ch == 'T') {
-      sh_tol = atof(val);
-    }
-    if (ch == 'w') overwrite = 1;
-    else if (ch == 'W') overwrite = 2;
-    else if (ch == 'v') verbose = 1;
-    else if (ch == 'm') milcshake = 1;
-    else if (ch == 'h') help(argv[0]);
   }
   if (fn == NULL) help(argv[0]);
   return 0;

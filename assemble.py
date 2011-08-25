@@ -320,19 +320,19 @@ def integrate(srclist, host, output):
     if verbose > 0:
       print ("add module %-8s %-13s to %s" 
         % (fn_src, mod_name, host0))
-    if verbose > 1:
+    if verbose > 2:
       raw_input("press Enter to continue...")
  
     # 2. read the source code
     src = open(fnlsrc_c).readlines()
     # call rmdbg.py to remove debug/legacy code
-    src = rmdbg.rmdbg(src, verbose=verbose)
+    src = rmdbg.rmdbg(src, verbose=verbose - 1)
     # strip away the outmost #ifndef, #define, #endif triplet
     src = strip_def(src)
   
     # 3. read the header
     header = open(fnlsrc_h, 'r').readlines()
-    header = rmdbg.rmdbg(header, verbose=verbose)
+    header = rmdbg.rmdbg(header, verbose=verbose - 1)
     header = strip_def(header)
     header = add_storage_class(header, strcls)
   
@@ -369,9 +369,10 @@ def integrate(srclist, host, output):
   open(fn_outtmp, 'w').write(''.join(host_src))
   if os.system('cmp '+fn_outtmp + ' '+ output):
     shutil.copy(fn_outtmp, output)
-    os.system('wc ' + output);
   else:
     print "no need to update", output
+  if verbose > 0:
+    os.system('wc ' + output);
   os.remove(fn_outtmp)
 
 

@@ -361,7 +361,7 @@ static void hs_check(const hist_t *hs)
     exit(1);
   }
   if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
-    fprintf(stderr, "hist: arr %p rows %d n %d\n", hs->arr, hs->rows, hs->n);
+    fprintf(stderr, "hist: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
     exit(1);
   }
 }
@@ -683,7 +683,7 @@ static void hs2_check(const hist2_t *hs)
     exit(1);
   }
   if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
-    fprintf(stderr, "hist2: arr %p rows %d n %d\n", hs->arr, hs->rows, hs->n);
+    fprintf(stderr, "hist2: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
     exit(1);
   }
 }

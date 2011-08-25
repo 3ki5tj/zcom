@@ -83,7 +83,7 @@ static int tmhrun(tmh_t *tmh, potts_t *pt, double trun, double t)
 {
   int it;
   double amp; 
-  const double ampmax = 2e-7, ampc = 0.1, lgvdt = 1e-5;
+  const double ampmax = 2e-7, ampc = 0.02, lgvdt = 1e-5;
 
   amp = ampmax;
   tmh_settp(tmh, tmh->tp1 - 1e-6);
@@ -111,18 +111,20 @@ int main(void)
 {
   potts_t *pt;
   tmh_t *tmh;
-  double x, erg0, edev0, erg1, edev1, tp0 = 0.67, tp1 = 0.77;
+  double x, erg0, edev0, erg1, edev1, tp0 = 0.67, tp1 = 0.77, dtp = 0.001;
   double emin = EMIN, emax = EMAX, de = EDEL, derg = 32;
-  double amp, t0;
+  double amp, t0, ensexp = 2.0;
   int tequil = 200000, tmcrun = 2000000;
   double trun = 1000000*200;
-  int initload = 0, dhdeorder = 1;
+  int initload = 0, dhdeorder = 0;
 
   pt = pt2_open(L, Q);
   if (initload) {
     if (pt2_load(pt, CONFIG) != 0)
       return -1;
-    if (0 != tmh_loaderange(fndhde, &erg0, &erg1, &derg, &emin, &emax, &de))
+    if (0 != tmh_loaderange(fndhde, &tp0, &tp1, &dtp, 
+          &erg0, &erg1, &derg, &emin, &emax, &de,
+          &ensexp, &dhdeorder))
       return -1;
   } else {
     /* determine the energies at the two end temperatures */
@@ -135,10 +137,10 @@ int main(void)
 
     x = (erg1 - erg0)*.10;
     erg0 += x;
-    erg1 -= x;  
+    erg1 -= x;
   }
 
-  tmh = tmh_open(tp0, tp1, erg0, erg1, derg, EMIN, EMAX, EDEL, 2.0, dhdeorder);
+  tmh = tmh_open(tp0, tp1, dtp, erg0, erg1, derg, EMIN, EMAX, EDEL, ensexp, dhdeorder);
 
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
