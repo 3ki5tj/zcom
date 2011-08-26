@@ -28,6 +28,7 @@ double tmh_tps = 0.5; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
+int tmh_dhdeupdeav = 0;
 
 /* parameters for guess the erange */
 int tmh_annealcnt = 1;
@@ -40,13 +41,14 @@ double nstsave = 1e6;
 double maxtime = 1e9;
 time_t time0, time1;
 
-#define CFGGETI(x) cfgget(cfg, &x, #x, "%d")
-#define CFGGETD(x) cfgget(cfg, &x, #x, "%lf")
+#define CFGGETI(x) { ret = cfgget(cfg, &x, #x, "%d");  printf("%s: %d\n", #x, x); }
+#define CFGGETD(x) { ret = cfgget(cfg, &x, #x, "%lf"); printf("%s: %g\n", #x, x); }
 
 /* load setting from configuration */
 static int loadcfg(const char *fn)
 {
   cfgdata_t *cfg;
+  int ret;
 
   die_if ((cfg = cfgopen(fn)) == NULL, "cannot open %s\n", fn);
 
@@ -57,7 +59,7 @@ static int loadcfg(const char *fn)
 
   CFGGETD(mddt);
   CFGGETD(thermdt);
-  CFGGETD(usebrownian);
+  CFGGETI(usebrownian);
   CFGGETD(brdt);
 
   CFGGETD(tmh_tp0);
@@ -70,19 +72,22 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_tps);
   
   /* if any of erg0, erg1, emin or emax is not given, guess energy range */
-  if (CFGGETD(tmh_emin) != 0 || CFGGETD(tmh_emax) != 0 ||
-      CFGGETD(tmh_erg0) != 0 || CFGGETD(tmh_erg1) != 0) {
-    tmh_guesserange = 1;
-  }
+  CFGGETD(tmh_emin); if (ret != 0) tmh_guesserange = 1;
+  CFGGETD(tmh_emax); if (ret != 0) tmh_guesserange = 1;
+  CFGGETD(tmh_erg0); if (ret != 0) tmh_guesserange = 1;
+  CFGGETD(tmh_erg1); if (ret != 0) tmh_guesserange = 1;
   CFGGETI(tmh_annealcnt);
-  CFGGETD(tmh_erg0margin); CFGGETD(tmh_erg1margin);
+  CFGGETD(tmh_erg0margin);
+  CFGGETD(tmh_erg1margin);
   CFGGETI(tmh_teql); CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
+  CFGGETI(tmh_dhdeupdeav);
   CFGGETD(tmh_dhdemin);
   CFGGETD(tmh_dhdemax);
   CFGGETD(tmh_ensexp);
-  CFGGETD(tmh_ampmax); CFGGETD(tmh_ampc);
+  CFGGETD(tmh_ampmax);
+  CFGGETD(tmh_ampc);
   CFGGETD(tmh_lgvdt);
 
   CFGGETD(nsttrace);
@@ -126,7 +131,7 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
 static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 {
   int it = 0, stop = 0;
-  double t, amp, dhde;
+  double t, amp, dhde, erg;
 
   amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
@@ -140,9 +145,12 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     }
     
     tmh_eadd(tmh, ab->epot);
-    tmh_dhdeupdate(tmh, ab->epot, amp);
-    /* update dhde curve */
-    tmh->dhde[tmh->iec] += amp * (ab->epot - tmh->ec);
+    if (tmh_dhdeupdeav) {
+      erg = tmh_tpadd(tmh, ab->epot);
+      tmh_dhdeupdate(tmh, erg, amp);
+    } else {
+      tmh_dhdeupdate(tmh, ab->epot, amp);
+    }
 
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
@@ -153,7 +161,8 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
       it = 0;
       tmh_tlgvmove(tmh, ab->epot, tmh_lgvdt);
       /* update amplitude */
-      if ((amp=tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
+      amp = tmh_dhdeupdeav ? (tmh_ampc/tmh->tpn) : (tmh_ampc/t);
+      if (amp > tmh_ampmax) amp = tmh_ampmax;
     }
   
     if ((int)fmod(t, nsttrace) == 0) {
@@ -233,7 +242,7 @@ int main(int argc, const char **argv)
 {
   abpro_t *ab;
   tmh_t *tmh;
-  double step0 = 0, amp;
+  double step0 = 0, amp, dtp;
   int isctn; 
 
   doargs(argc, argv);
@@ -248,7 +257,7 @@ int main(int argc, const char **argv)
   if (isctn) { /* load previous data */
     if (0 != ab_readpos(ab, ab->x, ab->v, fnpos))
       return -1;
-    if (0 != tmh_loaderange(fndhde, &tmh_tp0, &tmh_tp1, &tmh_dtp, 
+    if (0 != tmh_loaderange(fndhde, &tmh_tp0, &tmh_tp1, &dtp, 
           &tmh_erg0, &tmh_erg1, &tmh_derg, &tmh_emin, &tmh_emax, &tmh_de,
           &tmh_ensexp, &tmh_dhdeorder))
       return -1;
