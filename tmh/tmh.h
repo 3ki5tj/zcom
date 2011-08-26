@@ -18,8 +18,6 @@ typedef struct {
   double dhdemax; /* maximal of dhde */
   double *dhde; /* dH / dE - 1 */
   double *tpehis; /* multipl-temperature energy histogram */
-  double *tphis; /* temperature histogram */
-  double *tpesm; /* sum of energy */
   double ensexp; /* w(T) = 1/T^ensexp */
   double *lnz; /* partition function */
   double *lng; /* density of states */
@@ -120,13 +118,6 @@ ZCINLINE void tmh_eadd(tmh_t *tmh, double erg)
       tmh->itp, tmh->tpn, tmh->tp, tmh->dtp);
 #endif
   tmh->tpehis[tmh->itp*tmh->en + ie] += 1.;
-}
-
-ZCINLINE double tmh_tpadd(tmh_t *tmh, double erg)
-{
-  double x = (tmh->tphis[tmh->itp] += 1.);
-  double y = (tmh->tpesm[tmh->itp] += erg);
-  return y/x;
 }
 
 ZCINLINE int tmh_saveehis(tmh_t *tmh, const char *fn)

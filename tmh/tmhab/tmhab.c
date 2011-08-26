@@ -28,7 +28,6 @@ double tmh_tps = 0.5; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
-int tmh_dhdeupdeav = 0;
 
 /* parameters for guess the erange */
 int tmh_annealcnt = 1;
@@ -82,7 +81,6 @@ static int loadcfg(const char *fn)
   CFGGETI(tmh_teql); CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
-  CFGGETI(tmh_dhdeupdeav);
   CFGGETD(tmh_dhdemin);
   CFGGETD(tmh_dhdemax);
   CFGGETD(tmh_ensexp);
@@ -131,7 +129,7 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
 static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 {
   int it = 0, stop = 0;
-  double t, amp, dhde, erg;
+  double t, amp, dhde;
 
   amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
@@ -145,12 +143,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     }
     
     tmh_eadd(tmh, ab->epot);
-    if (tmh_dhdeupdeav) {
-      erg = tmh_tpadd(tmh, ab->epot);
-      tmh_dhdeupdate(tmh, erg, amp);
-    } else {
-      tmh_dhdeupdate(tmh, ab->epot, amp);
-    }
+    tmh_dhdeupdate(tmh, ab->epot, amp);
 
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
@@ -161,8 +154,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
       it = 0;
       tmh_tlgvmove(tmh, ab->epot, tmh_lgvdt);
       /* update amplitude */
-      amp = tmh_dhdeupdeav ? (tmh_ampc/tmh->tpn) : (tmh_ampc/t);
-      if (amp > tmh_ampmax) amp = tmh_ampmax;
+      if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
     }
   
     if ((int)fmod(t, nsttrace) == 0) {

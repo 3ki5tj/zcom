@@ -54,8 +54,6 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
     tmh->tpn = (int)((tmh->tp1 - tmh->tp0)/tmh->dtp + .5);
   }
   xnew(tmh->tpehis, tmh->tpn*tmh->en);
-  xnew(tmh->tphis, tmh->tpn);
-  xnew(tmh->tpesm, tmh->tpn);
 
   tmh->ensexp = ensexp;
   tmh_settp(tmh, (tmh->tp0+tmh->tp1)*.5);
@@ -73,8 +71,6 @@ void tmh_close(tmh_t *tmh)
   if (tmh != NULL) {
     free(tmh->dhde);
     free(tmh->tpehis);
-    free(tmh->tphis);
-    free(tmh->tpesm);
     free(tmh->lnz);
     free(tmh->lng);
     free(tmh->mh);
