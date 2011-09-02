@@ -9,7 +9,7 @@ pdbmodel_t *pdbload0(const char *fname, int verbose)
   FILE *fp;
   pdbmodel_t *m;
   pdbatom_t *at;
-  int i, j, ir, iro, nline;
+  int i, j, ir, iro/*, nline*/;
   char s[256], resnm[8];
 
   if ((fp = fopen(fname, "r")) == NULL) {
@@ -29,10 +29,10 @@ pdbmodel_t *pdbload0(const char *fname, int verbose)
     return NULL;
   }
   /* read through pdb */
-  nline = 0;
+  /*nline = 0; */
   ir = -1;
   while (fgets(s, sizeof s, fp)) {
-    nline++;
+    /*nline++; */
     if (strncmp(s, "TER", 3) == 0 ||
         strncmp(s, "ENDMDL", 6) == 0 || 
         strncmp(s, "END", 3) == 0)

@@ -47,6 +47,8 @@ typedef struct {
 pdbmodel_t *pdbload0(const char *fname, int verbose);
 pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose);
 #define pdbmdlfree(m) { free(m->at); free(m); }
+#define pdbaabbfree(b) { free(b->res); free(b); }
+
 int pdbaaidx(const char *res);
 const char *pdbaaname(int i);
 

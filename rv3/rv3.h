@@ -35,18 +35,6 @@ ZCINLINE void rv3_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1];
 ZCINLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
 ZCINLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
 
-ZCINLINE real *rv3_normalize(real *x)
-{
-  real r = rv3_norm(x);
-  if (r > 0.0) {
-    r = 1.0f/r;
-    x[0] *= r;
-    x[1] *= r;
-    x[2] *= r;
-  }
-  return x;
-}
-
 /* if x == y, try to use sqr */
 ZCINLINE real rv3_dot(const real *x, const real *y)
 {
@@ -84,6 +72,7 @@ ZCINLINE real *rv3_inc(real *x, const real *dx)
   x[2] += dx[2];
   return x;
 }
+
 ZCINLINE real *rv3_dec(real *x, const real *dx)
 {
   x[0] -= dx[0];
@@ -91,6 +80,7 @@ ZCINLINE real *rv3_dec(real *x, const real *dx)
   x[2] -= dx[2];
   return x;
 }
+
 ZCINLINE real *rv3_sinc(real *x, const real *dx, real s)
 {
   x[0] += s*dx[0];
@@ -98,6 +88,7 @@ ZCINLINE real *rv3_sinc(real *x, const real *dx, real s)
   x[2] += s*dx[2];
   return x;
 }
+
 ZCINLINE real *rv3_smul(real *x, real s)
 {
   x[0] *= s;
@@ -113,6 +104,13 @@ ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s)
   y[1] = x[1]*s;
   y[2] = x[2]*s;
   return y;
+}
+
+ZCINLINE real *rv3_normalize(real *x)
+{
+  real r = rv3_norm(x);
+  if (r > 0.0) rv3_smul(x, 1.f/r);
+  return x;
 }
 
 /* for in-place difference use rv3_dec */
@@ -134,7 +132,7 @@ ZCINLINE real rv3_dist2(const real *a, const real *b)
 /* distance between a and b */
 ZCINLINE real rv3_dist(const real *a, const real *b) 
 {
-  return (real) rv3_dist2(a, b);
+  return (real) sqrt(rv3_dist2(a, b));
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
@@ -161,6 +159,43 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
   sum[1] = a[1]*s1+b[1]*s2;
   sum[2] = a[2]*s1+b[2]*s2;
   return sum;
+}
+
+/* angle and gradients of cos(x1-x2-x3) */
+ZCINLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
+    real *g1, real *g2, real *g3)
+{
+  real a[3], b[3], ra, rb, dot;
+
+  ra = rv3_norm(rv3_diff(a, x1, x2));
+  rv3_smul(a, 1.f/ra);
+  rb = rv3_norm(rv3_diff(b, x3, x2));
+  rv3_smul(b, 1.f/rb);
+  dot = rv3_dot(a, b);
+  if (dot > 1) dot = 1; else if (dot < -1) dot = -1;
+  if (g1) {
+    rv3_lincomb2(g1, b, a, 1.f/ra, -dot/ra);
+    rv3_lincomb2(g3, a, b, 1.f/rb, -dot/rb);
+    rv3_nadd(g2, g1, g3);
+  }
+  return dot;
+}
+
+/* angle and gradients of x1-x2-x3 */
+ZCINLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
+    real *g1, real *g2, real *g3)
+{
+  real dot, sn;
+  
+  dot = rv3_cosang(x1, x2, x3, g1, g2, g3);
+  sn = (real) sqrt(1 - dot*dot);
+  if (sn < 1e-7) sn = 1; else sn = -1.f/sn;
+  if (g1) {
+    rv3_smul(g1, sn);
+    rv3_smul(g2, sn);
+    rv3_smul(g3, sn);
+  }
+  return (real) acos(dot);
 }
 
 /* vertical distance from x to line a-b */
