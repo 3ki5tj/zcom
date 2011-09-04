@@ -29,8 +29,8 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   /* the updating energy range */
   die_if(erg0 >= erg1, "Error: erg0 %g >= erg1 %g\n", erg0, erg1);
   tmh->derg = derg;
-  tmh->erg0 = dblround(erg0, derg);
-  tmh->erg1 = dblround(erg1, derg);
+  tmh->erg0 = erg0;
+  tmh->erg1 = erg0 + dblround(erg1 - erg0, derg);
   tmh->ergn = (int)((tmh->erg1 - tmh->erg0)/tmh->derg + .5);
 
   /* dhde parameters */ 

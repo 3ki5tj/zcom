@@ -83,7 +83,6 @@ int pt2_load(potts_t *pt, const char *fname)
   for (i = 0; i < n; i++) {
     while ((c=fgetc(fp)) != EOF && c == '\n') ;
     if (c == EOF) break;
-    //printf("setting i %d to %d\n", i, c-'0');
     c -= '0';
     if (c < 0 || c >= pt->q) {
       fprintf(stderr, "BAD %s s[%d] = %d, q = %d\n", fname, i, c, pt->q);

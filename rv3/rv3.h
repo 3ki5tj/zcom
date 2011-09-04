@@ -19,6 +19,7 @@
 #define RV3_T rv3_t
   typedef real rv3_t[3];
   typedef const real crv3_t[3];
+  typedef real mat3_t[3][3];
 #endif
 
 #include <math.h>
@@ -27,8 +28,11 @@
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
 
-ZCINLINE void rv3_zero(real *x) { x[0] = 0.0f; x[1] = 0.0f; x[2] = 0.0f; }
-ZCINLINE void rv3_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; }
+ZCINLINE real *rv3_make(real *x, real a, real b, real c)
+  { x[0] = a; x[1] = b; x[2] = c; return x; }
+ZCINLINE real *rv3_zero(real *x) { return rv3_make(x, 0, 0, 0); }
+ZCINLINE real *rv3_copy(real *x, const real *src)
+  { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
 /* use macro to avoid const qualifier of src */
 #define rv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
 
@@ -221,6 +225,53 @@ ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real
   return rv3_dot(u, m);
 }
 
+ZCINLINE rv3_t *mat3_trans(real a[3][3]) 
+{
+  real x;
+  x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
+  x = a[0][2], a[0][2] = a[2][0], a[2][0] = x;
+  x = a[2][1], a[2][1] = a[1][2], a[1][2] = x;
+  return a;
+}
+
+/* c = a b */
+ZCINLINE rv3_t *mat3_mul(real c[3][3], real a[3][3], real b[3][3])
+{
+  int i, j;
+  for (i = 0; i < 3; i++)
+    for (j = 0; j < 3; j++)
+      c[i][j] = a[i][0]*b[0][j]+a[i][1]*b[1][j]+a[i][2]*b[2][j];
+  return c;
+}
+
+/* c = a b^T */
+ZCINLINE rv3_t *mat3_mult(real c[3][3], real a[3][3], real b[3][3])
+{
+  int i, j;
+  for (i = 0; i < 3; i++)
+    for (j = 0; j < 3; j++)
+      c[i][j] = rv3_dot(a[i], b[j]);
+  return c;
+}
+
+/* c = a v */
+ZCINLINE real *mat3_mulvec(real *c, real a[3][3], real *v)
+{
+  c[0] = a[0][0]*v[0]+a[0][1]*v[1]+a[0][2]*v[2];
+  c[1] = a[1][0]*v[0]+a[1][1]*v[1]+a[1][2]*v[2];
+  c[2] = a[2][0]*v[0]+a[2][1]*v[1]+a[2][2]*v[2];
+  return c;
+}
+
+/* c = a^T v */
+ZCINLINE real *mat3_multvec(real *c, real a[3][3], real *v)
+{
+  c[0] = a[0][0]*v[0]+a[1][0]*v[1]+a[2][0]*v[2];
+  c[1] = a[0][1]*v[0]+a[1][1]*v[1]+a[2][1]*v[2];
+  c[2] = a[0][2]*v[0]+a[1][2]*v[1]+a[2][2]*v[2];
+  return c;
+}
+
 /* determinant of a 3x3 matrix */
 ZCINLINE real mat3_det(real a[3][3])
 {
@@ -229,7 +280,7 @@ ZCINLINE real mat3_det(real a[3][3])
 }
 
 /* inverse matrix b = a^(-1) */
-ZCINLINE void mat3_inv(real b[3][3], real a[3][3])
+ZCINLINE rv3_t *mat3_inv(real b[3][3], real a[3][3])
 {
   real det = mat3_det(a);
   if (fabs(det) < 1e-30) det = (det < 0) ? -1e-30f: 1e-30f;
@@ -242,6 +293,7 @@ ZCINLINE void mat3_inv(real b[3][3], real a[3][3])
   b[0][2] = (a[0][1]*a[1][2] - a[0][2]*a[1][1])/det;
   b[2][1] = (a[2][0]*a[0][1] - a[2][1]*a[0][0])/det;
   b[1][2] = (a[0][2]*a[1][0] - a[1][2]*a[0][0])/det;
+  return b;
 }
 
 /* eigenvalues of a 3x3 matrix */
@@ -284,31 +336,86 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
 ZCINLINE real *mat3_eigvec(real vec[3], real m[3][3], real val)
 {
   double a = m[0][0]-val, b = m[1][1]-val, c, d = m[0][1], e = m[0][2], f = m[1][2];
-  double det, tol = 1e-15f;
+  double det, tol = 1e-12;
 
   vec[2] = 1.f;
   if (fabs(det = a*b - d*d) > tol) { /* use row 0 and 1 */
-    vec[0] = (real)((d*f-b*e)/det);
-    vec[1] = (real)((e*d-a*f)/det);
+    rv3_make(vec, (real)((d*f-b*e)/det), (real)((e*d-a*f)/det), 1);
     return rv3_normalize(vec);
   }
   c = m[2][2] - val;
   if (fabs(det = a*f - e*d) > tol) { /* row 1 and 2 */
-    vec[0] = (real)((d*c-e*f)/det);
-    vec[1] = (real)((e*e-a*c)/det);
+    rv3_make(vec, (real)((d*c-e*f)/det), (real)((e*e-a*c)/det), 1);
     return rv3_normalize(vec);
   }
   if ((det = sqrt(a*a+d*d)) > tol) { /* three-row-degenerate */
-    vec[0] = (real)(d/det);
-    vec[1] = (real)(-a/det);
-    vec[2] = 0.f;
+    rv3_make(vec, (real)(d/det), (real)(-a/det), 0);
   } else {
-    vec[0] = 1.f;
-    vec[1] = 0.f;
-    vec[2] = 0.f;
+    rv3_make(vec, 1, 0, 0);
   }
   return vec;
 }
+
+/* compute eigenvectors for the eigenvalues */
+ZCINLINE rv3_t *mat3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
+{
+  const double tol = 1e-12;
+  double v0 = fabs(v[0]), v1 = fabs(v[1]), v2 = fabs(v[2]);
+  
+  mat3_eigvec(vecs[0], mat, v[0]);
+  if ( fabs(v[0] - v[1]) > tol*(v0 + v1) ) {
+    mat3_eigvec(vecs[1], mat, v[1]);
+    rv3_cross(vecs[2], vecs[0], vecs[1]);
+  } else if ( fabs(v[2] - v[1]) > tol*(v1 + v2) ) {
+    mat3_eigvec(vecs[2], mat, v[2]);
+    rv3_cross(vecs[1], vecs[2], vecs[0]);
+  } else {
+    rv3_make(vecs[1], 0, 1, 0);
+    rv3_make(vecs[2], 0, 0, 1);
+  }
+  /* transpose the matrix */
+  if (t) return vecs;
+  else return mat3_trans(vecs);
+}
+
+/* SVD decomposition of a 3x3 matrix a = u s v */
+ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
+{
+  int i, j;
+  real ata[3][3], z[3];
+  const double tol = 1e-12;
+
+  /* 1. compute A^T A and its eigenvectors */
+  for (i = 0; i < 3; i++)
+    for (j = i; j < 3; j++) {
+      ata[i][j] = a[0][i]*a[0][j] + a[1][i]*a[1][j] + a[2][i]*a[2][j];
+      if (i != j) ata[j][i] = ata[i][j];
+    }
+  mat3_eigval(s, ata);
+  for (i = 0; i < 3; i++) if (s[i] < 0) s[i] = 0;
+  mat3_eigvecs(v, ata, s, 1); /* get V^T */
+
+  /* 2. U = A V S^-1, or U^T = S^{-1}T V^T A^T */
+  j = (s[0] > tol) + (s[1] > tol) + (s[2] > tol);
+  if (j >= 2) {
+    mat3_mult(u, v, a);
+    if (j == 2) rv3_cross(u[2], u[0], u[1]); /* fix the last */
+  } else if (j == 1) {
+    mat3_multvec(u[0], a, v[0]);
+    rv3_zero(z);
+    /* choose z[i] such that z X u[0] != 0 */
+    i = (u[0][0]*u[0][0] < u[0][1]*u[0][1]) ? 0 : 1;
+    rv3_cross(u[1], z, u[0]);
+    rv3_cross(u[2], u[0], u[1]);
+  } else { /* use u */
+    for (i = 0; i < 3; i++) rv3_copy(u[i], v[i]);
+  }
+  for (i = 0; i < 3; i++) rv3_normalize(u[i]);
+  for (i = 0; i < 3; i++) s[i] = (real)sqrt(s[i]);
+  mat3_trans(u);
+  mat3_trans(v);
+  return 0;
+} 
 
 #endif /* RV3_H__ */
 

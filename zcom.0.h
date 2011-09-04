@@ -126,6 +126,11 @@
   #endif
 #endif
 
+#ifdef __INTEL_COMPILER
+  #pragma warning(disable:981) /* unspecified order warning */
+  #pragma warning(disable:177) /* unreferenced function */
+#endif
+
 #if (defined(ZCOM_RVDIM_BINDING) && !defined(ZCOM_RVDIM_BINDING_DEFINED))
 /* these binding macros reside outside both RV2 and RV3
  * to avoid undesirable shielding during multiple inclusion, e.g.,

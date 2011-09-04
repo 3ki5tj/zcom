@@ -152,30 +152,6 @@ int ab_checkconn(abpro_t *ab, const real *x, double tol)
   return 0;
 }
 
-/* check v is othogonal to x */
-int ab_checkxv(abpro_t *ab, const real *x, const real *v, double tol)
-{
-  int i, nl = ab->n - 1, d = ab->d;
-  real xv, dx[3], dv[3];
-
-  for (i = 0; i < nl; i++) {
-    if (d == 3) {
-      rv3_diff(dx, x + i*d, x + (i+1)*d);
-      rv3_diff(dv, v + i*d, v + (i+1)*d);
-      xv = rv3_dot(dx, dv);
-    } else {
-      rv2_diff(dx, x + i*d, x + (i+1)*d);
-      rv2_diff(dv, v + i*d, v + (i+1)*d);
-      xv = rv2_dot(dx, dv);
-    }
-    if (fabs(xv) > tol) {
-      fprintf(stderr, "xv broken at i = %d, xv = %g\n", i, xv);
-      return -1;
-    }
-  }
-  return 0;
-}
-
 /* shift the center of mass to zero */
 void ab_shiftcom(abpro_t *ab, real *x)
 {

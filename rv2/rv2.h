@@ -23,9 +23,9 @@
 
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
-
-ZCINLINE void rv2_zero(real *x) { x[0] = 0; x[1] = 0; }
-ZCINLINE void rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; }
+ZCINLINE real *rv2_make(real *x, real a, real b) { x[0] = a; x[1] = b; return x; }
+ZCINLINE real *rv2_zero(real *x) { return rv2_make(x, 0, 0); }
+ZCINLINE real *rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; return x; }
 /* use macro to avoid const qualifier of src */
 #define rv2_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
 

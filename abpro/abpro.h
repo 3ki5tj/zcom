@@ -30,8 +30,6 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev);
 void ab_close(abpro_t *ab);
 
 int ab_checkconn(abpro_t *ab, const real *x, double tol);
-int ab_checkxv(abpro_t *ab, const real *x, const real *v, double tol);
-
 void ab_shiftcom(abpro_t *ab, real *x);
 void ab_rmcom(abpro_t *ab, real *x, real *v);
 

@@ -291,7 +291,6 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
             r1, r, nlin, s);
         goto EXIT;
       } else if (r1 > r) {
-        //fprintf(stderr, "jump from column index %d --> %d\n", r, r1);
         r = r1;
         arr = hist + r*n;
         fac = sums[r]*dx;

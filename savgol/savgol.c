@@ -131,7 +131,6 @@ double *savgol2d(int iw, int jw, int ord, int h, int verbose)
     x = h ? (i + .5) : i;
     for (j = j0; j < j1; j++) {
       y = h ? (j + .5) : j;
-      //r = x*x/(1.*iw*iw) + y*y/(1.*jw*jw);
       w = 1.;
       /* moment matrix */
       xk = w;

@@ -1,5 +1,5 @@
 #define HAVE_REAL 1
-//typedef float real;
+/* typedef float real; */
 typedef double real;
 
 #include "time.h"
@@ -39,6 +39,9 @@ double nstsave = 1e6;
 
 double maxtime = 1e9;
 time_t time0, time1;
+
+int tmh_srand = 0; /* seed for initial random configuration */
+int verbose = 0;
 
 #define CFGGETI(x) { ret = cfgget(cfg, &x, #x, "%d");  printf("%s: %d\n", #x, x); }
 #define CFGGETD(x) { ret = cfgget(cfg, &x, #x, "%lf"); printf("%s: %g\n", #x, x); }
@@ -88,6 +91,9 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_ampc);
   CFGGETD(tmh_lgvdt);
 
+  CFGGETI(tmh_srand);
+  if (tmh_srand) srand((unsigned) tmh_srand);
+
   CFGGETD(nsttrace);
   CFGGETD(nstsave);
 
@@ -134,7 +140,9 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
   amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
     dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
-    if (usebrownian) {
+    if (usebrownian == 2) {
+      ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
+    } else if (usebrownian == 1) {
       ab_brownian(ab, (real)tmh_tps, (real)dhde, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
     } else {
       ab_vv(ab, (real)dhde, (real)mddt, AB_SOFTFORCE|AB_MILCSHAKE);
@@ -160,7 +168,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     if ((int)fmod(t, nsttrace) == 0) {
       wtrace_buf("%g %g %g %d %d %g\n",
           t, ab->epot, tmh->tp, tmh->iec, tmh->itp, dhde);
-      fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
+      if (verbose) fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
           t, ab->epot, tmh->tp, tmh->iec, tmh->itp, dhde, "");
       time(&time1);
       if (difftime(time1, time0) > maxtime) {
@@ -223,6 +231,8 @@ static int doargs(int argc, const char **argv)
       if (i == argc - 1) help(argv[0]);
       i++;
       maxtime = atof(argv[i])*3600.*0.95;
+    } else if (strcmp(argv[i], "-v") == 0) {
+      verbose = strlen(argv[i] + 1); /* number of v's, e.g., -vvv --> verbose = 3 */
     } else if (strcmp(argv[i], "-h") == 0) {
       help(argv[0]);
     }

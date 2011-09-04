@@ -17,6 +17,7 @@ dihcalc:        calculate dihedral
 endian:         write with endian
 lu:             LU decomposition
 svd:            singular value decomposition
+rotfit:         fiting two sets of points through rotation and translation
 log:            log file
 zt:             Z-algorithm related
 trace:          write trace

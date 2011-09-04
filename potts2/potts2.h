@@ -109,7 +109,6 @@ ZCINLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn,
   double rs_;
   int i, mx_ = 4;
   *so = pt->s[id];
-  //for (mx_ = 1, i = 0; i < pt->q; i++) if (h[i] > mx_) mx_ = h[i];
   for (i = 0; i < pt->q; i++) 
     pt->accprb[i+1] = pt->accprb[i] + pt->dproba[mx_-h[i]];
   for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++) 

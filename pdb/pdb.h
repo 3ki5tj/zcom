@@ -8,7 +8,7 @@
 #include <math.h>
 
 typedef struct {
-  double x[3];
+  real x[3];
   int aid;
   int rid;
   int insert;
@@ -32,7 +32,7 @@ typedef struct {
 #define HAS_CB 16
 
 typedef struct {
-  double xn[3], xca[3], xc[3], xo[3], xcb[3];
+  real xn[3], xca[3], xc[3], xo[3], xcb[3];
   int aa;
   int broken;
   unsigned flags;

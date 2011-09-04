@@ -3,6 +3,7 @@
 '''
 integrate target.c and target.h into fn_host
 debug code in target.c is removed first by calling rmdbg
+C++ compments are also removed
 '''
 
 import os, shutil, getopt, sys
@@ -80,6 +81,20 @@ def add_storage_class(hdr, prefix):
         ) or first_word.endswith("_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
+
+def remove_cpp_comments(src):
+  ''' remove C++ style comments 
+  only a line that starts with // is included '''
+  i = 0
+  while i < len(src):
+    s = src[i].strip()
+    if s.startswith("//"):
+      if verbose >= 2:
+        print "Remove commment [%s]" % s; raw_input()
+      src = src[:i]+src[i+1:]
+    else:
+      i += 1
+  return src
 
 def insert_module(src, name, module):
   '''
@@ -351,8 +366,11 @@ def integrate(srclist, host, output):
     if verbose > 1: 
       print "pivot is found at", pivot
     src = src[:pivot] + header + src[pivot + 1:]
-    
-    # 5. insert the source code into the host
+   
+    # 5. remove C++ (debug) commments
+    src = remove_cpp_comments(src)
+
+    # 6. insert the source code into the host
     host_src = insert_module(host_src, mod_name, src)
 
     modcnt += 1

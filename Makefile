@@ -4,3 +4,5 @@ zcom.h::
 zcom.zip::
 	git archive --format=zip HEAD > zcom.zip
 
+clean:
+	rm -f *~ */*~ 

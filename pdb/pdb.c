@@ -1,3 +1,4 @@
+#include "rv3.h"
 #ifndef PDB_C__
 #define PDB_C__
 
@@ -192,13 +193,11 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
   }
   /* check bond-length */
   for (i = 0; i < bb->nres; i++) {
-    double x;
-#define sqr_(dx) ((dx)*(dx))
-#define dist_(a, b) sqrt(sqr_(a[0]-b[0]) + sqr_(a[1]-b[1]) + sqr_(a[2]-b[2]))
+    real x;
     r = bb->res + i;
     if (r->broken) continue;
     if (i > 0) {
-      x = dist_(bb->res[i-1].xc, r->xn);
+      x = rv3_dist(bb->res[i-1].xc, r->xn);
       if (x < .3 || x > 2.3) {
         if (verbose)
           fprintf(stderr, "%s: C-N bond between %d (%s) and %d (%s) is broken %g, insert break\n",
@@ -206,7 +205,7 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
         bb->res[i].broken = 1;
       }
     }
-    x = dist_(r->xn, r->xca);
+    x = rv3_dist(r->xn, r->xca);
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: N-CA bond of residue %d (%s) is broken %g\n",
@@ -216,7 +215,7 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
       }
       goto ERR;
     }
-    x = dist_(r->xca, r->xc);
+    x = rv3_dist(r->xca, r->xc);
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: CA-C bond of residue %d (%s) is broken %g\n",
@@ -226,8 +225,6 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
       }
       goto ERR;
     }
-#undef dist_
-#undef sqr_
   }
   if (verbose >= 3) {
     for (i = 0; i < bb->nres; i++)
