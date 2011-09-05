@@ -55,9 +55,9 @@ ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y)
 
 ZCINLINE real *rv3_neg(real *x)
 {
-  x[0] -= x[0];
-  x[1] -= x[1];
-  x[2] -= x[2];
+  x[0] = -x[0];
+  x[1] = -x[1];
+  x[2] = -x[2];
   return x;
 }
 
@@ -275,8 +275,8 @@ ZCINLINE real *mat3_multvec(real *c, real a[3][3], real *v)
 /* determinant of a 3x3 matrix */
 ZCINLINE real mat3_det(real a[3][3])
 {
-  return a[0][0]*a[1][1]*a[2][2]+2.f*a[0][1]*a[0][2]*a[1][2]
-    - (a[0][0]*a[1][2]*a[1][2]+a[1][1]*a[0][2]*a[0][2]+a[2][2]*a[0][1]*a[0][1]);
+  return a[0][0]*a[1][1]*a[2][2]+a[0][1]*a[0][2]*a[1][2]+a[1][0]*a[2][0]*a[2][1]
+    - (a[0][0]*a[1][2]*a[2][1]+a[1][1]*a[0][2]*a[2][0]+a[2][2]*a[0][1]*a[1][0]);
 }
 
 /* inverse matrix b = a^(-1) */
@@ -307,7 +307,7 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
   a[2][2] -= m;
   q = .5f*mat3_det(a);
   p = ((a[0][0]*a[0][0]+a[1][1]*a[1][1]+a[2][2]*a[2][2]) +
-    2.f*(a[0][1]*a[0][1]+a[0][2]*a[0][2]+a[1][2]*a[1][2]))/6.f;
+    2.f*(a[0][1]*a[1][0]+a[2][0]*a[0][2]+a[1][2]*a[2][1]))/6.f;
   pr = (real)sqrt(p);
   pr3 = p*pr;
   if (pr3 <= fabs(q)) {
@@ -416,6 +416,31 @@ ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
   mat3_trans(v);
   return 0;
 } 
+
+#define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE rv3_fprint(FILE *fp, real r[3], const char *nm,
+    const char *fmt, int nl)
+{
+  int i;
+  if (nm) fprintf(fp, "%s: ", nm);
+  for (i = 0; i < 3; i++)
+    fprintf(fp, fmt, r[i], nl);
+  fprintf(fp, "%c", (nl ? '\n' : ';'));
+}
+
+#define mat3_print(r, nm, fmt, nl) mat3_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE mat3_fprint(FILE *fp, real r[3][3], const char *nm,
+    const char *fmt, int nl)
+{
+  int i, j;
+  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' '));
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      fprintf(fp, fmt, r[i][j], nl);
+    }
+    fprintf(fp, "%s", (nl ? "\n" : "; "));
+  }
+}
 
 #endif /* RV3_H__ */
 

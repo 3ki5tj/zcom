@@ -41,8 +41,8 @@ ZCINLINE real rv2_cross(const real *x, const real *y)
 
 ZCINLINE real *rv2_neg(real *x)
 {
-  x[0] -= x[0];
-  x[1] -= x[1];
+  x[0] = -x[0];
+  x[1] = -x[1];
   return x;
 }
 
@@ -201,6 +201,31 @@ ZCINLINE void mat2_inv(real b[2][2], real a[2][2])
   b[0][1] = -a[0][1]/det;
   b[1][0] = -a[1][0]/det;
   b[1][1] =  a[0][0]/det;
+}
+
+#define rv2_print(r, nm, fmt, nl) rv2_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE rv2_fprint(FILE *fp, real *r, const char *nm,
+    const char *fmt, int nl)
+{
+  int i;
+  if (nm) fprintf(fp, "%s: ", nm);
+  for (i = 0; i < 2; i++)
+    fprintf(fp, fmt, r[i], nl);
+  fprintf(fp, "%c", (nl ? '\n' : ';'));
+}
+
+#define mat2_print(r, nm, fmt, nl) mat2_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE mat2_fprint(FILE *fp, real r[2][2], const char *nm,
+    const char *fmt, int nl)
+{
+  int i, j;
+  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' '));
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      fprintf(fp, fmt, r[i][j], nl);
+    }
+    fprintf(fp, "%s", (nl ? "\n" : "; "));
+  }
 }
 
 #endif /* RV2_H__ */
