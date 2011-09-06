@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-int lusolve(double *a, double *b, int n);
+int lusolve(real *a, real *b, int n);
 
 #endif
 

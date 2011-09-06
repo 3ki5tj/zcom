@@ -6,21 +6,15 @@
 
 /* singular value decomposition of mxn matrix `a' 
  * a[m*n] (or u[m*n] on return), w[n], v[n*n] */
-int svd(double *a, double *w, double *v, int m, int n)
+int svd(real *a, real *w, real *v, int m, int n)
 {
   int flag, i, it, j, jj, k, l, nm;
-  double c, f, h, s, x, y, z;
-  double anorm = 0.0, g, scl;
-  double *rv1;
+  real c, f, h, s, x, y, z;
+  real anorm = 0.0, g, scl;
+  real *rv1;
   
-  if (m < n) {
-    fprintf(stderr, "ERROR: m %d < n %d\n", m, n);
-    exit(1);
-  }
-  if ((rv1 = calloc(n, sizeof(double))) == NULL) {
-    fprintf(stderr, "no memory for rv1 n = %d\n", n);
-    exit(1);
-  }
+  die_if (m < n, "ERROR: m %d < n %d\n", m, n);
+  xnew(rv1, n);
 
   /* Householder reduction to bidiagonal form */
   for (g = s = scl = 0., i = 0; i < n; i++) {
@@ -93,7 +87,7 @@ int svd(double *a, double *w, double *v, int m, int n)
         if (g != 0.) {
             for (j = l; j < n; j++)
                 v[j*n+i] = ((a[i*n+j] / a[i*n+l]) / g);
-                /* double division to avoid underflow */
+                /* real division to avoid underflow */
             for (j = l; j < n; j++) {
                 for (s = 0.0, k = l; k < n; k++) 
                     s += (a[i*n+k] * v[k*n+j]);
@@ -235,15 +229,12 @@ int svd(double *a, double *w, double *v, int m, int n)
   return 0;
 }
 
-int svdback(double *u, double *w, double *v, int m, int n, double *x, double *b)
+int svdback(real *u, real *w, real *v, int m, int n, real *x, real *b)
 {
   int i, j;
-  double *b1, y;
+  real *b1, y;
 
-  if ((b1 = calloc(n, sizeof(double))) == NULL) {
-    fprintf(stderr, "no memory for b1\n");
-    return -1;
-  }
+  xnew(b1, n);
   for (i = 0; i < n; i++) {
     if (w[i] <= 0.) { b1[i] = 0.; continue; }
     for (y = 0, j = 0; j < m; j++)
@@ -259,25 +250,12 @@ int svdback(double *u, double *w, double *v, int m, int n, double *x, double *b)
   return 0;
 }
 
-int svdsolve(double *a, double *x, double *b, int n, double rerr)
+int svdsolve(real *a, real *x, real *b, int n, real rerr)
 {
   int i;
-  double *u, *v, *w, wmax, wmin;
+  real *u, *v, *w, wmax, wmin;
 
-  if ((w = calloc(n, sizeof(double))) == NULL) {
-    fprintf(stderr, "no memory for w\n");
-    return -1;
-  }
-  if ((u = calloc(n*n, sizeof(double))) == NULL) {
-    free(w);
-    fprintf(stderr, "no memory for u\n");
-    return -1;
-  }
-  if ((v = calloc(n*n, sizeof(double))) == NULL) {
-    free(u); free(w);
-    fprintf(stderr, "no memory for v\n");
-    return -1;
-  }
+  xnew(w, n); xnew(u, n*n); xnew(v, n*n);
   for (i = 0; i < n*n; i++) u[i] = a[i];
   svd(u, w, v, n, n);
   for (wmax = 0., i = 0; i < n; i++)

@@ -5,11 +5,11 @@
 #include "lu.h"
 
 /* solve A x = b by L U decomposition */
-int lusolve(double *a, double *b, int n)
+int lusolve(real *a, real *b, int n)
 {
   int i, j, k, imax = 0;
-  double x, max;
-  const double mintol = 1e-16; /* absolute minimal value for a pivot */
+  real x, max;
+  const real mintol = 1e-16; /* absolute minimal value for a pivot */
 
   for (i = 0; i < n; i++) {  /* normalize each equation */
     for (max = 0.0, j = 0; j < n; j++)

@@ -6,12 +6,12 @@
 #include "mds.h"
 
 /* compute force and energy */
-static double mds_force(double *f, double *x, double *dm, int n, int dim)
+static real mds_force(real *f, real *x, real *dm, int n, int dim)
 {
-  const double dmin = 1e-6;
+  const real dmin = 1e-6f;
   int i, j, k;
-  double ene = 0., dij, dref, dsc;
-  double *dx, *xi, *xj, *fi, *fj;
+  real ene = 0., dij, dref, dsc;
+  real *dx, *xi, *xj, *fi, *fj;
 
   xnew(dx, dim);
   for (i = 0; i < n*dim; i++) f[i] = 0.;
@@ -25,7 +25,7 @@ static double mds_force(double *f, double *x, double *dm, int n, int dim)
         dx[k] = xi[k] - xj[k];
         dij += dx[k]*dx[k];
       }
-      dij = sqrt(dij);
+      dij = (real) sqrt(dij);
       dref = dm[i*n+j];
       if (dref < dmin) dref = dmin;
       dsc = dij/dref - 1;
@@ -46,9 +46,9 @@ static double mds_force(double *f, double *x, double *dm, int n, int dim)
 /* make coordinates neat
  * center coordinates
  * rotate to principle coordinates */
-static void mds_trim(double *x, int n, int dim)
+static void mds_trim(real *x, int n, int dim)
 {
-  double *av, *mmt, *eig, *vec, *xi, *b;
+  real *av, *mmt, *eig, *vec, *xi, *b;
   int i, d, d2;
 
   /* center the graph */
@@ -92,11 +92,11 @@ static void mds_trim(double *x, int n, int dim)
  * return best mds position x[n x dim];
  * dim is the target dimensional, e.g. 2
  * return the total discrepancy */
-double mds_min0(double *x, double *dm, int n, int dim, double tol)
+real mds_min0(real *x, real *dm, int n, int dim, double tol)
 {
   int i, j, it, itermax = 100000, npr;
-  double *f, *fp, *xp, ene, enep;
-  double dt = 1e-1;
+  real *f, *fp, *xp, ene, enep;
+  real dt = 1e-1f;
 
   if (n == 1) {
     for (j = 0; j < dim; j++) x[j] = 0.;
@@ -107,7 +107,7 @@ double mds_min0(double *x, double *dm, int n, int dim, double tol)
   xnew(xp, n*dim);
   xnew(fp, n*dim);
   for (i = 0; i < n*dim; i++)
-    x[i] = 1.0*rand()/RAND_MAX;
+    x[i] = 1.f*rand()/RAND_MAX;
   ene = mds_force(f, x, dm, n, dim);
   for (it = 0; it < itermax; it++) {
     enep = ene;
@@ -118,14 +118,14 @@ double mds_min0(double *x, double *dm, int n, int dim, double tol)
     for (i = 0; i < n*dim; i++) x[i] += f[i]*dt;
     ene = mds_force(f, x, dm, n, dim);
     if (ene > enep) {
-      dt *= 0.7;
+      dt *= 0.7f;
       for (i = 0; i < n*dim; i++) { /* recover */
         x[i] = xp[i];
         f[i] = fp[i];
       }
     } else {
       if (fabs(ene-enep) < tol*npr*dt) break;
-      dt *= 1.03; /* attempt to increase time step */
+      dt *= 1.03f; /* attempt to increase time step */
     }
   }
   if (it >= itermax) {

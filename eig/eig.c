@@ -1,15 +1,14 @@
 #include "util.c"
 #ifndef EIG_C__
 #define EIG_C__
-
 #include "eig.h"
 
 /* To reduce a real symmetric matrix 'm' to tridiagonal by Householder transformations.
  * The diagonal elements are saved in vector 'd' and off-diagonal elements 'e'.  */
-static void tridiag(double *m, double d[], double e[], int n)
+static void tridiag(real *m, real d[], real e[], int n)
 {
   int i, j, k;
-  double H, sigma, p, K, *x;
+  real H, sigma, p, K, *x;
  
   /* use d[i] to indicate if the i'th Householder transformation is performed */
   for (i = 0; i < n; i++) d[i] = 0;
@@ -19,7 +18,7 @@ static void tridiag(double *m, double d[], double e[], int n)
     x = m+i*n; /* alias x[k] == m[i*n+k] */
  
     for (H = 0, k = i+1; k < n; k++) H += x[k]*x[k];
-    sigma = (x[i+1] > 0 ? sqrt(H) : -sqrt(H)); /* sigma = sgn(x1) |x| */
+    sigma = (real)(x[i+1] > 0 ? sqrt(H) : -sqrt(H)); /* sigma = sgn(x1) |x| */
     e[i] = -sigma; /* P x = - sigma e1 */
     H += sigma*x[i+1]; /* H= (1/2) |u|^2 = |x|^2 + sigma x1 */
  
@@ -83,11 +82,11 @@ static void tridiag(double *m, double d[], double e[], int n)
 /* diagonize the tridiagonal matrix by QR algorithm,
    whose diagonal is d[0..n-1], off-diagonal is e[0..n-2];
  * reduce from the left-top to right-left */
-static void eigtriqr(double d[], double e[], int n, double *mat)
+static void eigtriqr(real d[], real e[], int n, real *mat)
 {
   const int itermax = 1000;
   int i, j, k, m, iter, sgn;
-  double ks = 0, r, c, s, delta, f, t1, t2;
+  real ks = 0, r, c, s, delta, f, t1, t2;
  
   e[n-1] = 0;
  
@@ -109,20 +108,20 @@ static void eigtriqr(double d[], double e[], int n, double *mat)
       delta = d[m]-d[m-1];
       sgn = ((delta > 0) ? 1: -1);
       delta /= e[m-1];
-      r = hypotn(delta, 1);
-      ks = d[m] + sgn*e[m-1]/(r + fabs(delta));
+      r = (real) hypotn(delta, 1);
+      ks = d[m] + sgn*e[m-1]/(r + (real) fabs(delta));
   
       /* Rotations */
       for (j = i; j <= m-1; j++) {
        /* calculate c and s */
        if (j == i) {
          /* First rotation */
-         r = hypotn(d[i]-ks, e[i]);
+         r = (real) hypotn(d[i]-ks, e[i]);
          c = (d[i]-ks)/r;
          s = e[i]/r;
        } else {
          /* Givens rotations */
-         r = hypotn(e[j-1], f);
+         r = (real) hypotn(e[j-1], f);
          c = e[j-1]/r;
          s = f/r;
          e[j-1] = r;
@@ -150,10 +149,10 @@ static void eigtriqr(double d[], double e[], int n, double *mat)
 }
 
 /* sort eigen values and vectors into ascending order */
-static void eigsort(double *d, double *v, int n)
+static void eigsort(real *d, real *v, int n)
 {
   int i, j, im;
-  double max, tmp;
+  real max, tmp;
 
   for (i = 0; i < n - 1; i++) {
     /* search the maximal eigenvalue */
@@ -170,9 +169,9 @@ static void eigsort(double *d, double *v, int n)
 
 /* solve eigensystem of a real symmetric matrix `mat', 
  * eigenvalues saved to `d', eigenvectors to v */
-int eigsym(double *mat, double *d, double *v, int n)
+int eigsym(real *mat, real *d, real *v, int n)
 {
-  double *e;
+  real *e;
   int i;
 
   xnew(e, n);

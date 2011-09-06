@@ -1,3 +1,4 @@
+#include "def.h"
 #ifndef SVD_H__
 #define SVD_H__
 
@@ -5,9 +6,9 @@
 #include <stdlib.h>
 #include <math.h>
  
-int svd(double *a, double *s, double *v, int m, int n);
-int svdback(double *u, double *w, double *v, int m, int n, double *x, double *b);
-int svdsolve(double *a, double *x, double *b, int n, double tol);
+int svd(real *a, real *s, real *v, int m, int n);
+int svdback(real *u, real *w, real *v, int m, int n, real *x, real *b);
+int svdsolve(real *a, real *x, real *b, int n, real tol);
 
 #endif
 

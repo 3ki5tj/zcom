@@ -1,25 +1,17 @@
+#include "def.h"
 #ifndef RV2_H__
 #define RV2_H__
-
-#ifdef HAVE_REAL
-  #ifndef ZCHAVEREAL
-  #define ZCHAVEREAL HAVE_REAL
-  #endif
-#endif
-
-#ifndef ZCHAVEREAL
-  #define ZCHAVEREAL 1
-  typedef double real;
-#endif
 
 #ifndef RV2_T
 #define RV2_T rv2_t
   typedef real rv2_t[2];
   typedef const real crv2_t[2];
+  typedef real mat2_t[2][2];
 #endif
 
-#include <math.h>
+#include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */

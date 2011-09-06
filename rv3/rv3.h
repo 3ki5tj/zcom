@@ -1,19 +1,8 @@
 #define ZCINLINE __inline static
 #define ZCRESTRICT __restrict 
-
+#include "def.h"
 #ifndef RV3_H__
 #define RV3_H__
-
-#ifdef HAVE_REAL
-  #ifndef ZCHAVEREAL
-  #define ZCHAVEREAL HAVE_REAL
-  #endif
-#endif
-
-#ifndef ZCHAVEREAL
-  #define ZCHAVEREAL 1
-  typedef double real;
-#endif
 
 #ifndef RV3_T
 #define RV3_T rv3_t
@@ -22,8 +11,9 @@
   typedef real mat3_t[3][3];
 #endif
 
-#include <math.h>
+#include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */

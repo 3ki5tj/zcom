@@ -1,10 +1,9 @@
 #include "mds.c"
 
-
 double *mkdismat0(void)
 {
   double *dm;
-  int i, j, n = 3;
+  int i, n = 3;
 
   xnew(dm, n*n);
   for (i = 0; i < n; i++) dm[i*n+i] = 0.;
