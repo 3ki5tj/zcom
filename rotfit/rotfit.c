@@ -5,7 +5,8 @@
 #include "rotfit.h"
 
 /* rotate x to fit into y, as r x + t */
-int rotfit(rv3_t *x0, rv3_t *y0, const real *w, int n, real r[3][3], real t[3])
+static int rotfit3_rt(rv3_t *x0, rv3_t *y0, const real *w, int n,
+    real r[3][3], real t[3])
 {
   int i, id, jd;
   real wtot = 0.f, sm, tmp;
@@ -70,7 +71,7 @@ int rotfit(rv3_t *x0, rv3_t *y0, const real *w, int n, real r[3][3], real t[3])
 }
 
 /* calculate RMS difference */
-real rmsdev(rv3_t *x0, rv3_t *x, rv3_t *y0, const real *w, int n, 
+static real rotfit3_rmsd(rv3_t *x0, rv3_t *x, rv3_t *y0, const real *w, int n,
     real r[3][3], const real t[3])
 {
   int i, hasx = 1;
@@ -94,6 +95,21 @@ real rmsdev(rv3_t *x0, rv3_t *x, rv3_t *y0, const real *w, int n,
   }
   if (!hasx) free(x);
   return sqrt(dev/n);
+}
+
+/* fit x0 to y after rotation/translation */
+real rotfit3(rv3_t *x0, rv3_t *x, rv3_t *y0, const real *w, int n, 
+    real (*r)[3], real *t)
+{
+  unsigned flags = 0;
+  real rmsd;
+  if (r == NULL) { xnew(r, 3); flags |= 1; }
+  if (t == NULL) { xnew(t, 3); flags |= 2; }
+  rotfit3_rt(x0, y0, w, n, r, t);
+  rmsd = rotfit3_rmsd(x0, x, y0, w, n, r, t);
+  if (flags & 1) free(r);
+  if (flags & 2) free(t);
+  return rmsd;
 }
 
 #endif

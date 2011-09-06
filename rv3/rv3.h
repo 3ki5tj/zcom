@@ -418,7 +418,7 @@ ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 } 
 
 #define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE rv3_fprint(FILE *fp, real r[3], const char *nm,
+ZCINLINE void rv3_fprint(FILE *fp, real r[3], const char *nm,
     const char *fmt, int nl)
 {
   int i;
@@ -429,7 +429,7 @@ ZCINLINE rv3_fprint(FILE *fp, real r[3], const char *nm,
 }
 
 #define mat3_print(r, nm, fmt, nl) mat3_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE mat3_fprint(FILE *fp, real r[3][3], const char *nm,
+ZCINLINE void mat3_fprint(FILE *fp, real r[3][3], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;

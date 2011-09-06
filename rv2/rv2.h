@@ -204,7 +204,7 @@ ZCINLINE void mat2_inv(real b[2][2], real a[2][2])
 }
 
 #define rv2_print(r, nm, fmt, nl) rv2_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE rv2_fprint(FILE *fp, real *r, const char *nm,
+ZCINLINE void rv2_fprint(FILE *fp, real *r, const char *nm,
     const char *fmt, int nl)
 {
   int i;
@@ -215,7 +215,7 @@ ZCINLINE rv2_fprint(FILE *fp, real *r, const char *nm,
 }
 
 #define mat2_print(r, nm, fmt, nl) mat2_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE mat2_fprint(FILE *fp, real r[2][2], const char *nm,
+ZCINLINE void mat2_fprint(FILE *fp, real r[2][2], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;
