@@ -1,5 +1,5 @@
 CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm
-deps=rv3.c rv3.h def.h
+deps=def.h rv3.h
 
 bin=testang testprinc testvdist
 all: $(bin)
