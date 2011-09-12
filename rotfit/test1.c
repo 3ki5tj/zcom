@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "rotfit.c"
 
 #define N 5

@@ -215,12 +215,58 @@ ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real
   return rv3_dot(u, m);
 }
 
+/* transpose */
 ZCINLINE rv3_t *mat3_trans(real a[3][3]) 
 {
   real x;
   x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
   x = a[0][2], a[0][2] = a[2][0], a[2][0] = x;
   x = a[2][1], a[2][1] = a[1][2], a[1][2] = x;
+  return a;
+}
+
+/* a = u^T v */
+ZCINLINE rv3_t *mat3_vtv(real a[3][3], const real *u, const real *v)
+{
+  a[0][0] = u[0]*v[0];
+  a[0][1] = u[0]*v[1];
+  a[0][2] = u[0]*v[2];
+  a[1][0] = u[1]*v[0];
+  a[1][1] = u[1]*v[1];
+  a[1][2] = u[1]*v[2];
+  a[2][0] = u[2]*v[0];
+  a[2][1] = u[2]*v[1];
+  a[2][2] = u[2]*v[2];
+  return a;
+}
+
+/* a += b */
+ZCINLINE rv3_t *mat3_inc(real a[3][3], real b[3][3])
+{
+  a[0][0] += b[0][0];
+  a[0][1] += b[0][1];
+  a[0][2] += b[0][2];
+  a[1][0] += b[1][0];
+  a[1][1] += b[1][1];
+  a[1][2] += b[1][2];
+  a[2][0] += b[2][0];
+  a[2][1] += b[2][1];
+  a[2][2] += b[2][2];
+  return a;
+}
+
+/* a += b*s */
+ZCINLINE rv3_t *mat3_sinc(real a[3][3], real b[3][3], real s)
+{
+  a[0][0] += b[0][0]*s;
+  a[0][1] += b[0][1]*s;
+  a[0][2] += b[0][2]*s;
+  a[1][0] += b[1][0]*s;
+  a[1][1] += b[1][1]*s;
+  a[1][2] += b[1][2]*s;
+  a[2][0] += b[2][0]*s;
+  a[2][1] += b[2][1]*s;
+  a[2][2] += b[2][2]*s;
   return a;
 }
 

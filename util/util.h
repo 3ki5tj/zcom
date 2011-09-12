@@ -11,7 +11,7 @@
 
 #ifndef xnew
 #define xnew(x, n) \
-  if ((n) <= 0) { \
+  if (#n[0] != '1' && (n) <= 0) { \
     fprintf(stderr, "cannot allocate %d objects for %s\n", (int) (n), #x); \
     exit(1); \
   } else if ((x = calloc(n, sizeof(*(x)))) == NULL) { \

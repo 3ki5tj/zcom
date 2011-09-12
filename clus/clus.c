@@ -473,7 +473,7 @@ static int cls_metropolis(clsys_t *cls, int iter, unsigned flags)
   i = (int)(cls->nc * rnd0());
   ci = cls->c + i;
   k = (int)(ci->cnt * rnd0());
-  die_if(ci->cnt <= 0, "empty cluster");
+  die_if(ci->cnt <= 0, "empty cluster %d\n", i);
   if (ci->cnt == 1) { /* a cluster of a single point */
     /* try to merge to another cluster */
     if ((flags & CLUS_NOGIANT) && cls->nc == 2) return 0; /* forbid giant formation */
@@ -932,7 +932,8 @@ clsys_t *cls_read(const char *fn,
   
   /* read in basic information */
   die_if (NULL == fgets(buf, sizeof buf, fp), "%s: no first line\n", fn);
-  die_if (4 != sscanf(buf, "#%d%d%lf%d", &np, &nc, &mu, &ver), "no basic info.\n");
+  die_if (4 != sscanf(buf, "#%d%d%lf%d", &np, &nc, &mu, &ver), 
+      "%s: first line broken\n", fn);
 
   /* allocate space */ 
   xnew(wt, np);
