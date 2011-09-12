@@ -256,18 +256,40 @@ def builddeps(srclist):
     # swap i with mi
     d[i], d[mi] = d[mi], d[i]
 
-  newsrclist = []
+  # build a new sorted src list and dependence list
+  newsrclist = [0]*n
+  newdeps = [0]*n
   for i in range(n):
     id = d[i]
-    newsrclist += [srclist[id]]
+    newsrclist[i] = srclist[id]
+    newdeps[i] = sorted([d.index(j) for j in deps[id]])
+  
+  # prune and minimize the dependence list
+  mindeps = [0]*n # a minimal dependent
+  for i in range(n):
+    m = len(newdeps[i])
+    depi = []
+    for j in range(m):
+      needj = 0
+      dj = newdeps[i][j]
+      for k in range(j+1, m):
+        dk = newdeps[i][k]
+        # if k depends on j too, then no need to put j in the list
+        if dj in newdeps[dk]:
+          break
+      else: # j is necessary
+        needj = 1
+      if needj: depi += [dj]
+    mindeps[i] = depi
+    #print "dep %d, %s --> %s" % (i, newdeps[i], mindeps[i])
 
+  # output the dependencies section
   sdep = []
   for i in range(n-1, 0, -1):
-    id = d[i]
-    if len(deps[id]) > 0:
-      sdep += ["#ifdef %s\n" % srclist[id][1]]
-      for j in deps[id]:
-         sdep += ["  #define %s\n" % srclist[j][1]]
+    if len(mindeps[i]) > 0:
+      sdep += ["#ifdef %s\n" % newsrclist[i][1]]
+      for j in sorted(mindeps[i], reverse = True):
+         sdep += ["  #define %s\n" % newsrclist[j][1]]
       sdep += ["#endif\n", "\n"]
   return newsrclist, sdep
 

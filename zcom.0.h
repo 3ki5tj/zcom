@@ -1,7 +1,7 @@
 /*
   common routines
 
-  Copyright (c) 2006-2010 Cheng Zhang
+  Copyright (c) 2006-2011 Cheng Zhang
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -47,10 +47,10 @@
       before including this file (or equivalently HAVE_REAL)
 */
 
-/* macros for selectively including functions, advantages: 
- * 1. reduces the # of warnings for unused functions
- * 2. accelerates the compiling
- * 3. avoids multiple inclusions
+/* ZCOM_PICK or ZCOM_NONE is used include only subset of modules to
+ * 1. reduce the # of warnings for unused functions
+ * 2. accelerate the compiling
+ * 3. avoid multiple inclusions
  * By default, ZCOM_PICK is undefined, so everything is used. */
 #ifdef ZCOM_NONE  /* equivalent to ZCOM_PICK */
 #define ZCOM_PICK
@@ -124,6 +124,6 @@
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
- * in order to avoid multiple inclusion a single ZCOM_ABC__ won't do,
- * because different module-set may be selected */
+ * in order to avoid multiple inclusions. 
+ * A single ZCOM_ABC__ won't do because different module-set may be selected */
 
