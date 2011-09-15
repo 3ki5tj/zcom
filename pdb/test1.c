@@ -5,12 +5,15 @@
 int main(void)
 {
   pdbmodel_t *m;
-  pdbaabb_t *bb;
+  pdbaac_t *c;
 
-  if ((m = pdbload0("test.pdb", 2)) == NULL) {
+  if ((m = pdbm_read("test.pdb", 2)) == NULL) {
     return -1;
   }
-  bb = pdbgetaabb(m, 1);
+  pdbm_write(m, "out.pdb");
+  c = pdbaac_parse(m, 1);
+  pdbaac_free(c);
+  pdbm_free(m);
   return 0;
 }
 

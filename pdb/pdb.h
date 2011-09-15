@@ -9,12 +9,12 @@
 
 typedef struct {
   real x[3];
-  int aid;
-  int rid;
+  int aid; /* atom index */
+  int rid; /* residue index */
   int insert;
   char atnm[8];
   char resnm[8];
-} pdbatom_t;
+} pdbatom_t; /* a single atom entry */
 
 typedef struct {
   int n; /* number of lines */
@@ -22,7 +22,7 @@ typedef struct {
   int nres;
   pdbatom_t *at;
   const char *file;
-} pdbmodel_t;
+} pdbmodel_t; /* raw data in a pdb model */
 
 #define HAS_N   1
 #define HAS_CA  2
@@ -36,21 +36,46 @@ typedef struct {
   int aa;
   int broken;
   unsigned flags;
-} pdbaares_t;
+} pdbaar_t; /* amino-acid residues */
 
 typedef struct {
-  pdbaares_t *res;
+  pdbaar_t *res;
   int nres;
   const char *file;
-} pdbaabb_t;
+} pdbaac_t; /* amino-acid chain */
 
-pdbmodel_t *pdbload0(const char *fname, int verbose);
-pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose);
-#define pdbmdlfree(m) { free(m->at); free(m); }
-#define pdbaabbfree(b) { free(b->res); free(b); }
+/* generic pdb model */
+pdbmodel_t *pdbm_read(const char *fname, int verbose);
+int pdbm_write(pdbmodel_t *m, const char *fn);
+#define pdbm_free(m) { free(m->at); free(m); }
 
-int pdbaaidx(const char *res);
-const char *pdbaaname(int i);
+/* protein pdb */
+pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
+#define pdbaac_free(c) { free(c->res); free(c); }
+
+static const char pdb_aanames_[21][4] = {"---",
+  "GLY", "ALA", "VAL", "LEU", "ILE", "PRO",
+  "THR", "SER", "CYS", "MET", "PHE", "TYR", "TRP",
+  "GLU", "GLN", "ASP", "ASN", "ARG", "LYS", "HIS"};
+
+ZCINLINE int pdbaaidx(const char *res)
+{
+  int i;
+  for (i = 1; i <= 20; i++)
+    if (strcmp(res, pdb_aanames_[i]) == 0) 
+      return i;
+  return -1;
+}
+
+ZCINLINE const char *pdbaaname(int i)
+{
+  if (i <= 0 || i > 20) {
+    fprintf(stderr, "invalid pdb id %d\n", i);
+    exit(1);
+  }
+  return pdb_aanames_[i];
+}
+
 
 #endif
 

@@ -4,13 +4,14 @@
 
 #include "pdb.h"
 
-pdbmodel_t *pdbload0(const char *fname, int verbose)
+/* read raw atom data from pdb */
+pdbmodel_t *pdbm_read(const char *fname, int verbose)
 {
   const int bsiz = 256;
   FILE *fp;
   pdbmodel_t *m;
   pdbatom_t *at;
-  int i, j, ir, iro/*, nline*/;
+  int i, j, ir, iro;
   char s[256], resnm[8];
 
   if ((fp = fopen(fname, "r")) == NULL) {
@@ -111,51 +112,57 @@ pdbmodel_t *pdbload0(const char *fname, int verbose)
   return m;
 }
 
-static const char pdb_aanames_[21][4] = {"---",
-  "GLY", "ALA", "VAL", "LEU", "ILE", "PRO",
-  "THR", "SER", "CYS", "MET", "PHE", "TYR", "TRP",
-  "GLU", "GLN", "ASP", "ASN", "ARG", "LYS", "HIS"};
-
-int pdbaaidx(const char *res)
+/* write data to file fn */
+int pdbm_write(pdbmodel_t *m, const char *fn)
 {
-  int i;
-  for (i = 1; i <= 20; i++)
-    if (strcmp(res, pdb_aanames_[i]) == 0) 
-      return i;
-  return -1;
-}
+  int i, aid, atp;
+  char atnm[8] = "";
+  FILE *fp;
+  pdbatom_t *at;
 
-const char *pdbaaname(int i)
-{
-  if (i <= 0 || i > 20) {
-    fprintf(stderr, "invalid pdb id %d\n", i);
-    exit(1);
+  if ((fp = fopen(fn, "w")) == 0) {
+    fprintf(stderr, "cannot open file [%s]\n", fn);
+    return 1;
   }
-  return pdb_aanames_[i];
+  for (aid = 1, i = 0; i < m->n; i++) {
+    at = m->at + i;
+    if (strlen(at->atnm) <= 3) {
+      sprintf(atnm, " %-3s", at->atnm);
+      atp = at->atnm[0];
+    } else {
+      strcpy(atnm, at->atnm);
+      atp = (isalpha(at->atnm[0]) ? at->atnm[0] : at->atnm[1]);
+    }
+    fprintf(fp, "ATOM  %5d %4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           %c  \n", 
+        aid++, atnm, at->resnm, at->rid+1, at->x[0], at->x[1], at->x[2], atp);
+  }
+  fprintf(fp, "END%77s\n", " ");
+  fclose(fp);
+  return 0;
 }
 
-/* get amino acid backbone */
-pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
+/* get amino acid chain by parsing pdbmodel_t m */
+pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
 {
   pdbatom_t *at;
-  pdbaabb_t *bb;
-  pdbaares_t *r;
+  pdbaac_t *c;
+  pdbaar_t *r;
   int i;
 
-  if ((bb = calloc(1, sizeof(*bb))) == NULL) {
+  if ((c = calloc(1, sizeof(*c))) == NULL) {
     fprintf(stderr, "no memory for aabb\n");
     return NULL;
   }
-  bb->nres = m->nres;
-  if ((bb->res = calloc(bb->nres, sizeof(*(bb->res)))) == NULL) {
+  c->nres = m->nres;
+  if ((c->res = calloc(c->nres, sizeof(*(c->res)))) == NULL) {
     fprintf(stderr, "no memory for residues\n");
-    free(bb);
+    free(c);
     return NULL;
   }
-  bb->file = m->file;
+  c->file = m->file;
   for (i = 0; i < m->n; i++) {
     at = m->at + i;
-    r = bb->res + at->rid;
+    r = c->res + at->rid;
     r->aa = pdbaaidx(at->resnm);
     if (r->aa < 0) {
       fprintf(stderr, "unknown amino acid residue %d/%d[%s]\n", 
@@ -180,36 +187,36 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
     }
   }
   /* checking integrity */
-  for (i = 0; i < bb->nres; i++) {
-    r = bb->res + i;
+  for (i = 0; i < c->nres; i++) {
+    r = c->res + i;
     if ((r->flags & HAS_BB) != HAS_BB) {
       if (verbose)
         fprintf(stderr, "%s: coordinates of residue %d/%d (%s) is incomplete (0x%X).\n",
-          bb->file, i+1, bb->nres, pdbaaname(r->aa), r->flags);
-      bb->res[i].broken = 1;
-      if (i < bb->nres - 1)
-        bb->res[i+1].broken = 1;
+          c->file, i+1, c->nres, pdbaaname(r->aa), r->flags);
+      c->res[i].broken = 1;
+      if (i < c->nres - 1)
+        c->res[i+1].broken = 1;
     }
   }
   /* check bond-length */
-  for (i = 0; i < bb->nres; i++) {
+  for (i = 0; i < c->nres; i++) {
     real x;
-    r = bb->res + i;
+    r = c->res + i;
     if (r->broken) continue;
     if (i > 0) {
-      x = rv3_dist(bb->res[i-1].xc, r->xn);
+      x = rv3_dist(c->res[i-1].xc, r->xn);
       if (x < .3 || x > 2.3) {
         if (verbose)
           fprintf(stderr, "%s: C-N bond between %d (%s) and %d (%s) is broken %g, insert break\n",
-            bb->file, i, pdbaaname(bb->res[i-1].aa), i+1, pdbaaname(r->aa), x);
-        bb->res[i].broken = 1;
+            c->file, i, pdbaaname(c->res[i-1].aa), i+1, pdbaaname(r->aa), x);
+        c->res[i].broken = 1;
       }
     }
     x = rv3_dist(r->xn, r->xca);
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: N-CA bond of residue %d (%s) is broken %g\n",
-          bb->file, i+1, pdbaaname(r->aa), x);
+          c->file, i+1, pdbaaname(r->aa), x);
         fprintf(stderr, "N : %8.3f %8.3f %8.3f\n", r->xn[0], r->xn[1], r->xn[2]);
         fprintf(stderr, "CA: %8.3f %8.3f %8.3f\n", r->xca[0], r->xca[1], r->xca[2]);
       }
@@ -219,7 +226,7 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: CA-C bond of residue %d (%s) is broken %g\n",
-          bb->file, i+1, pdbaaname(r->aa), x);
+          c->file, i+1, pdbaaname(r->aa), x);
         fprintf(stderr, "CA: %8.3f %8.3f %8.3f\n", r->xca[0], r->xca[1], r->xca[2]);
         fprintf(stderr, "C : %8.3f %8.3f %8.3f\n", r->xc[0], r->xc[1], r->xc[2]);
       }
@@ -227,13 +234,13 @@ pdbaabb_t *pdbgetaabb(pdbmodel_t *m, int verbose)
     }
   }
   if (verbose >= 3) {
-    for (i = 0; i < bb->nres; i++)
-      printf("%4d: %s\n", i+1, pdbaaname(bb->res[i].aa));
+    for (i = 0; i < c->nres; i++)
+      printf("%4d: %s\n", i+1, pdbaaname(c->res[i].aa));
   }
-  return bb;
+  return c;
 ERR:
-  free(bb->res);
-  free(bb);
+  free(c->res);
+  free(c);
   return NULL;
 }
 

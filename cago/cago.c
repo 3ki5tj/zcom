@@ -85,18 +85,18 @@ cago_t *cago_open(const char *fnpdb,
   cago_t *go;
   int i, j;
   pdbmodel_t *pm;
-  pdbaabb_t *bb;
+  pdbaac_t *c;
 
   xnew(go, 1);
 
-  if ((pm = pdbload0(fnpdb, 0)) == NULL)
+  if ((pm = pdbm_read(fnpdb, 0)) == NULL)
     return NULL;
   go->iscont = pdbcontact(pm, rc, 0);
-  if ((bb = pdbgetaabb(pm, 0)) == NULL)
+  if ((c = pdbaac_parse(pm, 0)) == NULL)
     return NULL;
-  pdbmdlfree(pm);
+  pdbm_free(pm);
 
-  go->n = bb->nres;
+  go->n = c->nres;
   go->dof = go->n*3 - 6;
   go->kb = kb;
   go->ka = ka;
@@ -108,10 +108,10 @@ cago_t *cago_open(const char *fnpdb,
   xnew(go->aa, go->n);
   for (i = 0; i < go->n; i++) {
     for (j = 0; j < 3; j++)
-      go->xref[i][j] = (real) bb->res[i].xca[j];
-    go->aa[i] = bb->res[i].aa;
+      go->xref[i][j] = (real) c->res[i].xca[j];
+    go->aa[i] = c->res[i].aa;
   }
-  pdbaabbfree(bb);
+  pdbaac_free(c);
 
   cago_initpot(go);
   return go;
