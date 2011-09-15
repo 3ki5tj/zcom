@@ -291,7 +291,8 @@ ZCINLINE rv3_t *mat3_mult(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a v */
-ZCINLINE real *mat3_mulvec(real *c, real a[3][3], real *v)
+#define rv3_rot(v1, rot, v) mat3_mulvec(v1, rot, v)
+ZCINLINE real *mat3_mulvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0]+a[0][1]*v[1]+a[0][2]*v[2];
   c[1] = a[1][0]*v[0]+a[1][1]*v[1]+a[1][2]*v[2];
@@ -300,7 +301,7 @@ ZCINLINE real *mat3_mulvec(real *c, real a[3][3], real *v)
 }
 
 /* c = a^T v */
-ZCINLINE real *mat3_multvec(real *c, real a[3][3], real *v)
+ZCINLINE real *mat3_multvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0]+a[1][0]*v[1]+a[2][0]*v[2];
   c[1] = a[0][1]*v[0]+a[1][1]*v[1]+a[2][1]*v[2];

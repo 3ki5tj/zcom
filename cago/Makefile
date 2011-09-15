@@ -12,7 +12,7 @@ testmd: testmd.c $(dep)
 	$(CX) -o $@ $< 
 
 clean:
-	rm -f *~ *.out MTSEED *.dat *.pos $(bin)
+	rm -f *~ *.out MTSEED *.dat *.pos $(bin) final.pdb ref.pdb
 
 .PHONY: clean all
 
