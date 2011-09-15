@@ -11,7 +11,7 @@ test1: test1.c $(dep)
 	$(CC) -o $@ $< $(src) -lm
 
 clean:
-	rm -f $(bin) *~ out.pdb
+	rm -f $(bin) *~ out.pdb a.out
 
 .PHONY: all clean
 
