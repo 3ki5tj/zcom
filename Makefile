@@ -2,6 +2,7 @@ CC = gcc -O0 -g3 -Wall -Wextra -pedantic
 CX = icc -O3 -Wall
 
 zcom.h::
+	cd abpro && ./mk2d.py && cd ..
 	python assemble.py -a -v1
 
 zcom.zip::

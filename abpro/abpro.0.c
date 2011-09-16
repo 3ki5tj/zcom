@@ -298,7 +298,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
     if (strlen(s) < 10) goto ERR;
     for (p = s, j = 0; j < d; j++, p += next) {
       if (1 != sscanf(p, fmt, x+i*d+j, &next)) {
-        fprintf(stderr, "Error reading i = %d, j = %d\n", i, j);
+        fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
         goto ERR;
       }
     }
@@ -306,7 +306,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
       vi = (v != NULL) ? (v + i*d) : vtmp;
       for (j = 0; j < d; j++, p += next) {
         if (1 != sscanf(p, fmt, vi+j, &next)) {
-          fprintf(stderr, "reading i = %d, j = %d\n", i, j);
+          fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
           goto ERR;
         }
       }
@@ -859,6 +859,7 @@ void ab_vrescale(abpro_t *ab, real tp, real dt)
 
   amp = 2*sqrt(ek1*ekav*dt/ab->dof);
   ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
+  if (ek2 < 0) ek2 = 0;
   s = (real)sqrt(ek2/ek1);
   for (ab->ekin = 0.f, i = 0; i < ab->n*ab->d; i++)
     ab->v[i] *= s;
