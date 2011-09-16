@@ -45,3 +45,15 @@ zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,
   it has no knowledge of modules included later.
 
+TOOLS:
+Makefile
+  usually tasks
+  make: assemble zcom.h
+  make zcom.zip: make a package
+
+assemble.py -a 
+  assemble zcom.h from modules
+
+zcompick.py
+  client tool to extract a few modules from zcom.h to a smaller version
+

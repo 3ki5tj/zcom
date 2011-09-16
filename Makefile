@@ -14,4 +14,4 @@ zcom.o: zcom.c zcom.h Makefile
 	wc $@
 
 clean:
-	rm -f *~ zcom.o */*~ */a.out
+	rm -f *~ zcom.o */*~ */a.out *.tmp
