@@ -6,20 +6,29 @@ typedef double real;
 #define ZCOM_PICK
 #define ZCOM_CFG
 #define ZCOM_TRACE
-#define ZCOM_ABPRO
+#define ZCOM_CAGO
 #define ZCOM_TMH
 #include "zcom.h"
 
-const char *fntp = "tmhab.t", *fndhde = "tmhab.e", *fnehis = "tmhab.ehis";
-const char *fnpos = "ab.pos";
-const char *fncfg = "tmhab.cfg";
-double nsteps = 1000000*1000;
-int seqid = 10, d = 3, model = 2, tmh_dhdeorder = 1;
+/* ca-go parameters */
+real cago_kb = 200.f; /* bond */
+real cago_ka = 40.f;  /* angle */
+real cago_kd1 = 1.f;  /* dihedral phi*1 */ 
+real cago_kd3 = .5f;  /* dihedral phi*3 */
+real cago_nbe = 1.f;
+real cago_nbc = 4.f;
+real cago_rc = 6.f; /* cutoff distance */
+
+const char *fntp = "tmhcago.t", *fndhde = "tmhcago.e", *fnehis = "tmhcago.ehis";
+const char *fnpdb = NULL; /* initial structure */
+const char *fnpos = "cago.pos"; /* position file */
+const char *fncfg = "tmhcago.cfg";
+
+double nsteps = 1000000*100;
+int tmh_dhdeorder = 1;
 double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
-real mddt = 5e-3f;
-real thermdt = 5e-3f;
-int usebrownian = 0;
-real brdt = 5e-4;
+real mddt = 2e-3f;
+real thermdt = 2e-3f;
 
 double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
@@ -42,7 +51,7 @@ time_t time0, time1;
 
 int tmh_srand = 0; /* seed for initial random configuration */
 
-const char *prog = "tmhab";
+const char *prog = "tmhgo";
 int verbose = 0;
 
 #define CFGGETI(x) { ret = cfgget(cfg, &x, #x, "%d");  printf("%s: %d\n", #x, x); }
@@ -54,19 +63,25 @@ static int loadcfg(const char *fn)
 {
   cfgdata_t *cfg;
   int ret;
-  const char *rfmt = ((sizeof(real) == sizeof(double)) ? "%lf" : "%f");
+  const char *rfmt; /* format string for real */
 
   die_if ((cfg = cfgopen(fn)) == NULL, "cannot open %s\n", fn);
 
-  CFGGETI(seqid);
-  CFGGETI(d);
-  CFGGETI(model);
+  rfmt = ((sizeof(real) == sizeof(double)) ? "%lf" : "%f");
+
+  /* ca-go parameters */
+  CFGGETR(cago_kb);
+  CFGGETR(cago_ka);
+  CFGGETR(cago_kd1);
+  CFGGETR(cago_kd3);
+  CFGGETR(cago_nbe);
+  CFGGETR(cago_nbc);
+  CFGGETR(cago_rc);
+
   CFGGETD(nsteps);
 
   CFGGETR(mddt);
   CFGGETR(thermdt);
-  CFGGETI(usebrownian);
-  CFGGETR(brdt);
 
   CFGGETD(tmh_tp0);
   CFGGETD(tmh_tp1);
@@ -106,27 +121,23 @@ static int loadcfg(const char *fn)
 }
 
 /* run constant temperature run */
-static double ctrun(abpro_t *ab, double tp, double *edev,
+static double ctrun(cago_t *go, double tp, double *edev,
     int teql, int tmax, int trep)
 {
   int t;
   double esm = 0., e2sm = 0;
 
-  ab->t = 0.; /* reset time */
+  go->t = 0.; /* reset time */
   for (t = 1; t <= teql+tmax; t++) {
-    if (usebrownian) {
-      ab_brownian(ab, (real)tp, 1.f, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
-    } else {
-      ab_vv(ab, 1.f, (real)mddt, AB_SOFTFORCE|AB_MILCSHAKE);
-      if (t % 10 == 0) ab_rmcom(ab, ab->x, ab->v);
-      ab_vrescale(ab, (real)tp, (real)thermdt);
-    }
+    cago_vv(go, 1.f, mddt);
+    if (t % 10 == 0) cago_rmcom(go, go->x, go->v);
+    cago_vrescale(go, (real)tp, thermdt);
     if (t > teql) {
-      esm += ab->epot;
-      e2sm += ab->epot * ab->epot;
+      esm += go->epot;
+      e2sm += go->epot * go->epot;
     }
     if (trep > 0 && t % trep == 0) {
-      fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g\n", ab->t, tp, ab->epot, ab->ekin);
+      fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g\n", go->t, tp, go->epot, go->ekin);
     }
   }
   esm /= tmax;
@@ -136,7 +147,7 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
   return esm;
 }
 
-static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
+static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
 {
   int it = 0, stop = 0;
   double t, amp, dhde;
@@ -144,36 +155,25 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
   amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
     dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
-    if (usebrownian == 2) {
-      ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
-    } else if (usebrownian == 1) {
-      ab_brownian(ab, (real)tmh_tps, (real)dhde, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
-    } else {
-      ab_vv(ab, (real)dhde, (real)mddt, AB_SOFTFORCE|AB_MILCSHAKE);
-      if (it == 0) ab_rmcom(ab, ab->x, ab->v);
-      ab_vrescale(ab, (real)(tmh_tps), (real)thermdt);
-    }
+    cago_vv(go, (real)dhde, mddt);
+    if (it == 0) cago_rmcom(go, go->x, go->v);
+    cago_vrescale(go, (real)(tmh_tps), thermdt);
     
-    tmh_eadd(tmh, ab->epot);
-    tmh_dhdeupdate(tmh, ab->epot, amp);
+    tmh_eadd(tmh, go->epot);
+    tmh_dhdeupdate(tmh, go->epot, amp);
 
-    if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
-      double em = ab->emin;
-      if (ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
-        printf("emin = %10.6f from %10.6f t %g tp %g.%30s\n", ab->emin, ab->epot, t, tmh->tp, "");
-    }
     if (++it % 10 == 0) {
       it = 0;
-      tmh_tlgvmove(tmh, ab->epot, tmh_lgvdt);
+      tmh_tlgvmove(tmh, go->epot, tmh_lgvdt);
       /* update amplitude */
       if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
     }
   
     if ((int)fmod(t, nsttrace) == 0) {
       wtrace_buf("%g %g %g %d %d %g\n",
-          t, ab->epot, tmh->tp, tmh->iec, tmh->itp, dhde);
+          t, go->epot, tmh->tp, tmh->iec, tmh->itp, dhde);
       if (verbose) fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
-          t, ab->epot, tmh->tp, tmh->iec, tmh->itp, dhde, "");
+          t, go->epot, tmh->tp, tmh->iec, tmh->itp, dhde, "");
       time(&time1);
       if (difftime(time1, time0) > maxtime) {
         printf("\n\nsimulation exceeds %g hours\n\n", maxtime/3600.);
@@ -183,7 +183,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     if ((int)fmod(t, nstsave) == 0 || stop) {
       mtsave(NULL);
       tmh_save(tmh, fntp, fnehis, fndhde, amp, t);
-      ab_writepos(ab, ab->x, ab->v, fnpos);
+      cago_writepos(go, go->x, go->v, fnpos);
     }
     if (stop) break;
   }
@@ -193,34 +193,33 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 }
 
 /* guess energy range from constant temperature simulation */
-static void guess_erange(abpro_t *ab, double tp0, double tp1, 
+static void guess_erange(cago_t *go, double tp0, double tp1, 
     double *erg0, double *erg1, double *emin, double *emax,
     int annealcnt, int teql, int trun, int trep)
 {
   double x, edv0, edv1;
   int i;
 
-  *erg1 = ctrun(ab, tp1, &edv1, teql, trun, trep);
+  *erg1 = ctrun(go, tp1, &edv1, teql, trun, trep);
   for (i = 1; i <= annealcnt; i++) {
     x = 1.*i/(annealcnt + 1);
-    ctrun(ab, x*tp0 + (1. - x)*tp1, NULL, teql, trun, trep);
+    ctrun(go, x*tp0 + (1. - x)*tp1, NULL, teql, trun, trep);
   }
-  *erg0 = ctrun(ab, tp0, &edv0, teql, trun, trep);
-  ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE);
+  *erg0 = ctrun(go, tp0, &edv0, teql, trun, trep);
 
   x = *erg1 - *erg0;
   *emin = *erg0 - x;
   *emax = *erg1 + 2*x;
   *erg0 += x*tmh_erg0margin;
   *erg1 -= x*tmh_erg1margin;
-  printf("Guessing energy range...\n%g: %g%+g; %g: %g%+g E (%g, %g), emin = %g\n", 
-      tp0, *erg0, edv0, tp1, *erg1, edv1, *emin, *emax, ab->emin); 
+  printf("Guessing energy range...\n%g: %g%+g; %g: %g%+g E (%g, %g)\n", 
+      tp0, *erg0, edv0, tp1, *erg1, edv1, *emin, *emax); 
 }
 
-/* print help and exit */
+/* print usage and die */
 static void help(void)
 {
-  printf("%s [OPTIONS]\n", prog);
+  printf("%s [OPTIONS] your.pdb\n", prog);
   printf("OPTIONS:\n"
       "  -maxh: followed by maximal hour\n");
   exit(1);
@@ -233,16 +232,20 @@ static int doargs(int argc, const char **argv)
 
   prog = argv[0];
   for (i = 1; i < argc; i++) {
+    if (argv[i][0] != '-') {
+      fnpdb = argv[i];
+      continue;
+    }
     if (strcmp(argv[i], "-maxh") == 0) {
       if (i == argc - 1) help();
       i++;
-      maxtime = atof(argv[i])*3600.*0.95;
+      maxtime = atof(argv[i])*3600.*0.98;
     } else if (strcmp(argv[i], "-v") == 0) {
       verbose = strlen(argv[i] + 1); /* number of v's, e.g., -vvv --> verbose = 3 */
     } else if (strcmp(argv[i], "-h") == 0) {
       help();
     } else {
-      fprintf(stderr, "unknown option %s\n", argv[i]);
+      printf("unknown option %s\n", argv[i]);
       help();
     }
   }
@@ -251,22 +254,28 @@ static int doargs(int argc, const char **argv)
 
 int main(int argc, const char **argv)
 {
-  abpro_t *ab;
+  cago_t *go;
   tmh_t *tmh;
   double step0 = 0, amp, dtp;
-  int isctn; 
+  int isctn;
 
   doargs(argc, argv);
   time(&time0);
 
   die_if (loadcfg(fncfg) != 0, "cannot load %s\n", fncfg);
-    
+
   /* assume a continuation run if fndhde exists */
   isctn = fexists(fndhde);
 
-  ab = ab_open(seqid, d, model, 0.1);
+  if ((go = cago_open(fnpdb, cago_kb, cago_ka, cago_kd1, cago_kd3, 
+          cago_nbe, cago_nbc, cago_rc)) == NULL) {
+    fprintf(stderr, "error initialize from %s\n", fnpdb);
+    return 1;
+  }
+  cago_initmd(go, -0.1, thermdt); /* also init a MD system */
+
   if (isctn) { /* load previous data */
-    if (0 != ab_readpos(ab, ab->x, ab->v, fnpos))
+    if (0 != cago_readpos(go, go->x, go->v, fnpos))
       return -1;
     if (0 != tmh_loaderange(fndhde, &tmh_tp0, &tmh_tp1, &dtp, 
           &tmh_erg0, &tmh_erg1, &tmh_derg, &tmh_emin, &tmh_emax, &tmh_de,
@@ -274,15 +283,13 @@ int main(int argc, const char **argv)
       return -1;
   } else { /* fresh new run */
     if (tmh_guesserange) {
-      guess_erange(ab, tmh_tp0, tmh_tp1, &tmh_erg0, &tmh_erg1, &tmh_emin, &tmh_emax,
+      guess_erange(go, tmh_tp0, tmh_tp1, &tmh_erg0, &tmh_erg1, &tmh_emin, &tmh_emax,
           tmh_annealcnt, tmh_teql, tmh_tctrun, tmh_trep);
     }
-    /* equilibrate to thermostat temperature */
-    ctrun(ab, tmh_tps, NULL, tmh_teql, tmh_tctrun, tmh_trep);
-    ab->epot = ab_energy(ab, ab->x, 0);
-    printf("finish equilibration, epot %g, ekin %g\n", ab->epot, ab->ekin);
+    go->epot = cago_force(go, go->f, go->x);
+    printf("finish equilibration, epot %g, ekin %g\n", go->epot, go->ekin);
   }
-
+  
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg, 
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
   printf("erange (%g, %g), active (%g, %g)\n", 
@@ -297,10 +304,10 @@ int main(int argc, const char **argv)
     tmh_settp(tmh, tmh_tps);
   }
 
-  tmhrun(tmh, ab, nsteps, step0);
-
+  tmhrun(tmh, go, nsteps, step0);
+  
   tmh_close(tmh);
-  ab_close(ab);
+  cago_close(go);
   return 0;
 }
 

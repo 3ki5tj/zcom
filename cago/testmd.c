@@ -43,16 +43,14 @@ int main(int argc, const char **argv)
 {
   cago_t *go;
   int t;
-  real rmsd;
 
   doargs(argc, argv);
   if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcutoff)) == NULL) {
-    fprintf(stderr, "error initialize from %s\n", fnpdb);
+    fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  rmsd = rotfit3(go->x, NULL, go->xref, NULL, go->n, NULL, NULL);
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, rmsd);
+  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
   cago_writepos(go, go->x, go->v, "a.pos");
   for (t = 1; t <= tmax; t++) {
     tp = (2 - 1.9f*t/tmax);
@@ -60,19 +58,19 @@ int main(int argc, const char **argv)
     cago_vrescale(go, tp, thermdt);
     cago_rmcom(go, go->x, go->v);
     if (t % tfreq == 0) {
-      rmsd = rotfit3(go->x, NULL, go->xref, NULL, go->n, NULL, NULL);
+      cago_rotfit(go, go->x, NULL);
       printf("t %d, tp = %g, ene = %g+%g = %g, %g\n", 
-    	  t, tp, go->epot, go->ekin, go->epot + go->ekin, rmsd);
+    	  t, tp, go->epot, go->ekin, go->epot + go->ekin, go->rmsd);
     }
   }
 
-  rmsd = rotfit3(go->x, go->f, go->xref, NULL, go->n, NULL, NULL);
+  cago_rotfit(go, go->x, go->f);
   cago_writepos(go, go->x, NULL, "b.pos");
   cago_writepos(go, go->f, NULL, "c.pos");
   cago_writepos(go, go->xref, NULL, "0.pos");
   cago_writepdb(go, go->f, "final.pdb");
   cago_writepdb(go, go->xref, "ref.pdb");
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, rmsd);
+  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
 
   cago_close(go);
 

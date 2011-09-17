@@ -21,6 +21,7 @@ typedef struct {
   /* variables for a typical MD simulation */
   rv3_t *x, *v, *f;
   real ekin, epot, t;
+  real rmsd; /* result from a rotfit call  */
 } cago_t;
 
 cago_t *cago_open(const char *fnpdb,
@@ -34,5 +35,9 @@ void cago_vrescale(cago_t *go, real tp, real dt);
 int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
+
+/* convenient macro for computing rmsd from the reference structure */
+ZCINLINE real cago_rotfit(cago_t *go, rv3_t *x, rv3_t *xf)
+  { return go->rmsd = rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL); }
 
 #endif

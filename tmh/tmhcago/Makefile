@@ -4,11 +4,11 @@ CX = icc -Wall -O3 -g -lm -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = tmhab
+bin = tmhcago
 
 all: $(bin)
 
-tmhab: tmhab.c $(dep)
+tmhcago: tmhcago.c $(dep)
 	$(CC) -o $@ $< 
 
 zcom.h::

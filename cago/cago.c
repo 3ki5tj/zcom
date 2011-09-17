@@ -213,12 +213,21 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   xnew(go->f, n);
 
   /* initialize position */
-  for (i = 0; i < n-1; i++) {
-    for (j = 0; j < 3; j++)
-      dx[j] = (j == 0) ? 1.f : (rndamp*(2.f*rand()/RAND_MAX - 1));
-    rv3_normalize(dx);
-    rv3_smul(dx, go->bref[i]);
-    rv3_add(go->x[i+1], go->x[i], dx);
+  if (rndamp > 0) { /* open chain */
+    for (i = 0; i < n-1; i++) {
+      for (j = 0; j < 3; j++)
+        dx[j] = (j == 0) ? 1.f : (rndamp*(2.f*rnd0()/RAND_MAX - 1));
+      rv3_normalize(dx);
+      rv3_smul(dx, go->bref[i]);
+      rv3_add(go->x[i+1], go->x[i], dx);
+    }
+  } else { /* copy from xref, slightly disturb it */
+    rndamp *= -1;
+    for (i = 0; i < n; i++) {
+      rv3_copy(go->x[i], go->xref[i]);
+      for (j = 0; j < 3; j++)
+        go->x[i][j] += rndamp*(2.f*rnd0()/RAND_MAX - 1);
+    }
   }
   go->epot = cago_force(go, go->f, go->x);
 
@@ -234,6 +243,8 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
     rv3_smul(go->v[i], s);
   }
   go->ekin = cago_ekin(go, go->v);
+
+  go->rmsd = cago_rotfit(go, go->x, NULL);
 
   go->t = 0;
 
@@ -448,3 +459,4 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
 }
 
 #endif
+
