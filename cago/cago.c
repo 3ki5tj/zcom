@@ -3,6 +3,7 @@
 #include "rng.c"
 #include "dihc.c"
 #include "rotfit.c"
+#include "md.c"
 #ifndef CAGO_C__
 #define CAGO_C__
 #include "cago.h"
@@ -134,72 +135,12 @@ void cago_close(cago_t *go)
   free(go);
 }
 
-/* shift the center of mass to zero */
-static void cago_shiftcom(cago_t *go, rv3_t *x)
-{
-  int i, n = go->n;
-  rv3_t rc = {0, 0, 0};
-
-  for (i = 0; i < n; i++) rv3_inc(rc, x[i]);
-  rv3_smul(rc, 1.f/n);
-  for (i = 0; i < n; i++) rv3_dec(x[i], rc);
-}
-
-/* remove angular motion */
-static void cago_shiftang(cago_t *go, rv3_t *x, rv3_t *v)
-{
-  int i, n = go->n;
-  real ang[3], am[3], dv[3], mat[3][3], inv[3][3];
-  const real *xi;
-  real xx = 0.f, yy = 0.f, zz = 0.f, xy = 0.f, zx = 0.f, yz = 0.f;
-
-  rv3_zero(am);
-  for (i = 0; i < n; i++) {
-    rv3_cross(ang, x[i], v[i]);
-    rv3_inc(am, ang);
-    xi = x[i];
-    xx += xi[0]*xi[0];
-    yy += xi[1]*xi[1];
-    zz += xi[2]*xi[2];
-    xy += xi[0]*xi[1];
-    yz += xi[1]*xi[2];
-    zx += xi[2]*xi[0];
-  }
-  mat[0][0] = yy+zz;
-  mat[1][1] = xx+zz;
-  mat[2][2] = xx+yy;
-  mat[0][1] = mat[1][0] = -xy;
-  mat[1][2] = mat[2][1] = -yz;
-  mat[0][2] = mat[2][0] = -zx;
-  mat3_inv(inv, mat);
-  ang[0] = -rv3_dot(inv[0], am);
-  ang[1] = -rv3_dot(inv[1], am);
-  ang[2] = -rv3_dot(inv[2], am);
-  /* ang is the solution of M^(-1) * I */
-  for (i = 0; i < n; i++) {
-    rv3_cross(dv, ang, x[i]);
-    rv3_inc(v[i], dv);
-  }
-}
-
 /* remove center of mass motion, linear and angular */
 void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
 {
-  cago_shiftcom(go, x);
-  cago_shiftcom(go, v);
-  cago_shiftang(go, x, v);
-}
-
-/* calculate kinetic energy */
-static real cago_ekin(cago_t *go, rv3_t *v)
-{
-  int i, n = go->n;
-  real ekin;
-
-  for (ekin = 0, i = 0; i < n; i++) {
-    ekin += rv3_sqr(v[i]);
-  }
-  return ekin *= .5f;
+  md_shiftcom3d(x, go->n);
+  md_shiftcom3d(v, go->n);
+  md_shiftang3d(x, v, go->n);
 }
 
 /* initialize a md system */
@@ -243,11 +184,8 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
     rv3_smul(go->v[i], s);
   }
   go->ekin = cago_ekin(go, go->v);
-
   go->rmsd = cago_rotfit(go, go->x, NULL);
-
   go->t = 0;
-
   return 0;
 }
 
@@ -345,22 +283,6 @@ int cago_vv(cago_t *go, real fscal, real dt)
   go->ekin = cago_ekin(go, go->v);
   go->t += dt;
   return 0;
-}
-
-/* velocity rescaling */
-void cago_vrescale(cago_t *go, real tp, real dt)
-{
-  int i;
-  real ekav = .5f*tp*go->dof, ek1 = go->ekin, ek2, s;
-  double amp;
-
-  amp = 2*sqrt(ek1*ekav*dt/go->dof);
-  ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
-  if (ek2 <= 0) ek2 = 0;
-  s = (real)sqrt(ek2/ek1);
-  for (go->ekin = 0.f, i = 0; i < go->n; i++)
-    rv3_smul(go->v[i], s);
-  go->ekin = ek2;
 }
 
 /* write position/velocity file */

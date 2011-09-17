@@ -1,6 +1,6 @@
 #include "rv3.h"
 #include "rv2.h"
-
+#include "md.h"
 #ifndef ABPRO_H__
 #define ABPRO_H__
 
@@ -30,7 +30,8 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev);
 void ab_close(abpro_t *ab);
 
 int ab_checkconn(abpro_t *ab, const real *x, double tol);
-void ab_shiftcom(abpro_t *ab, real *x);
+#define ab_shiftcom(ab, x)      md_shiftcom(x, ab->d, ab->n)
+#define ab_shiftang(ab, x, v)   md_shiftang(x, v, ab->d, ab->n)
 void ab_rmcom(abpro_t *ab, real *x, real *v);
 
 int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname);
@@ -50,8 +51,10 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
 real ab_energy(abpro_t *ab, const real *r, int soft);
 real ab_force(abpro_t *ab, real *f, const real *r, int soft);
 
-real ab_ekin(abpro_t *ab);
-void ab_vrescale(abpro_t *ab, real tp, real dt);
+ZCINLINE real ab_ekin(abpro_t *ab)
+  { return ab->ekin = md_ekin(ab->v, ab->n*ab->d, ab->dof, &ab->tkin); }
+ZCINLINE void ab_vrescale(abpro_t *ab, real tp, real dt)
+  { md_vrescale(tp, dt, &ab->ekin, &ab->tkin, ab->v, ab->n*ab->d, ab->dof); }
 int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags);
 int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags);
 

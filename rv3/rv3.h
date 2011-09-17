@@ -1,4 +1,6 @@
+#ifndef ZCINLINE
 #define ZCINLINE __inline static
+#endif
 #define ZCRESTRICT __restrict 
 #include "def.h"
 #ifndef RV3_H__

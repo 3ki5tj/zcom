@@ -3,7 +3,7 @@ CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic
 CX = icc -Wall -O3 -g -lm -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = abpro.c
-dep = $(src) abpro.h rv3.h rv2.h util.c util.h Makefile
+dep = $(src) abpro.h rv3.h rv2.h util.c util.h md.c md.h Makefile
 bin = testef testcn testvv testbr
 
 all: $(bin)

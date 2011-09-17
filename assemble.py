@@ -29,7 +29,9 @@ def strip_def(src):
   '''
   n = len(src) # number of lines
   for i in range(n):
-    if src[i].lstrip().startswith("#ifndef"):
+    lin = src[i].lstrip()
+    if lin.startswith("#ifndef") and (lin.find("INLINE") < 0 
+        and lin.find("RESTRICT") < 0):
       start = i
       if verbose > 1: 
         print "#ifndef found in line", start

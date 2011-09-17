@@ -31,7 +31,10 @@ void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v);
 int cago_initmd(cago_t *go, double rndamp, double T0);
 real cago_force(cago_t *go, rv3_t *x, rv3_t *f);
 int cago_vv(cago_t *go, real fscal, real dt);
-void cago_vrescale(cago_t *go, real tp, real dt);
+ZCINLINE real cago_ekin(cago_t *go, rv3_t *v)
+  { return md_ekin((real *)v, go->n*3, go->dof, NULL); }
+ZCINLINE void cago_vrescale(cago_t *go, real tp, real dt)
+  { md_vrescale(tp, dt, &go->ekin, NULL, (real *)go->v, go->n*3, go->dof); }
 int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);

@@ -1,1 +1,0 @@
-../potts2/potts2.h

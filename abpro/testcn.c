@@ -62,7 +62,7 @@ static int randmove(abpro_t *ab, real del, int repl,
     i = ab_rattle(ab, ab->x, ab->v, 0, 0., verbose);
   }
   die_if (0 != i, "%s| it %d: failed to rattle properly\n", tag, it);
-  die_if (ab_checkxv(ab, ab->x, ab->v, 1e-4),
+  die_if (ab_checkxv(ab, ab->x, ab->v, 1e-3),
       "%s| it %d: rv != 0\n", tag, it);
 
   return 0;
@@ -71,7 +71,7 @@ static int randmove(abpro_t *ab, real del, int repl,
 int main(void)
 {
   abpro_t *ab;
-  int id = 10, d = 3, model = 1, it, itmax = 100000, milc = 0, isrand = 1;
+  int id = 10, d = 3, model = 1, it, itmax = 100, milc = 1, isrand = 1;
   char fn[FILENAME_MAX];
   real del = 0.1f;
 

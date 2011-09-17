@@ -1,5 +1,6 @@
 #include "util.c"
 #include "rng.c"
+#include "md.c"
 
 #ifndef ABPRO_C__
 #define ABPRO_C__
@@ -152,91 +153,13 @@ int ab_checkconn(abpro_t *ab, const real *x, double tol)
   return 0;
 }
 
-/* shift the center of mass to zero */
-void ab_shiftcom(abpro_t *ab, real *x)
-{
-  int i, j, d = ab->d, n = ab->n;
-  real rc;
-
-  for (j = 0; j < d; j++) {
-    rc = 0;
-    for (i = 0; i < n; i++) rc += x[i*d+j];
-    rc /= n;
-    for (i = 0; i < n; i++) x[i*d+j] -= rc;
-  }
-}
-
-/* annihilate angular momentum 2d */
-static void ab_rmangular2d(abpro_t *ab, crv2_t *x, rv2_t *v)
-{
-  int i, n = ab->n;
-  real am, r2, rp[2];
-
-  for (am = r2 = 0.f, i = 0; i < n; i++) {
-    am += rv2_cross(x[i], v[i]);
-    r2 += rv2_sqr(x[i]);
-  }
-  am = -am/r2;
-  for (i = 0; i < n; i++) {
-    rp[0] = -am*x[i][1];
-    rp[1] =  am*x[i][0];
-    rv2_inc(v[i], rp);
-  }
-}
-
-/* annihilate angular momentum 3d
- * solve
- *   /  y^2 + z^2    -x y      -x y      \
- *   |  -x y       X^2 + z^2   -y z      |  c  =  I
- *   \  -x z         -y z     x^2 + y^2  / 
- * use
- *    v = c X r
- *   */
-static void ab_rmangular3d(abpro_t *ab, crv3_t *x, rv3_t *v)
-{
-  int i, n = ab->n;
-  real ang[3], am[3], dv[3], mat[3][3], inv[3][3];
-  const real *xi;
-  real xx = 0.f, yy = 0.f, zz = 0.f, xy = 0.f, zx = 0.f, yz = 0.f;
-
-  rv3_zero(am);
-  for (i = 0; i < n; i++) {
-    rv3_cross(ang, x[i], v[i]);
-    rv3_inc(am, ang);
-    xi = x[i];
-    xx += xi[0]*xi[0];
-    yy += xi[1]*xi[1];
-    zz += xi[2]*xi[2];
-    xy += xi[0]*xi[1];
-    yz += xi[1]*xi[2];
-    zx += xi[2]*xi[0];
-  }
-  mat[0][0] = yy+zz;
-  mat[1][1] = xx+zz;
-  mat[2][2] = xx+yy;
-  mat[0][1] = mat[1][0] = -xy;
-  mat[1][2] = mat[2][1] = -yz;
-  mat[0][2] = mat[2][0] = -zx;
-  mat3_inv(inv, mat);
-  ang[0] = -rv3_dot(inv[0], am);
-  ang[1] = -rv3_dot(inv[1], am);
-  ang[2] = -rv3_dot(inv[2], am);
-  /* ang is the solution of M^(-1) * I */
-  for (i = 0; i < n; i++) {
-    rv3_cross(dv, ang, x[i]);
-    rv3_inc(v[i], dv);
-  }
-}
-
 /* shift center of x to the origin, 
  * remove center velocity and angular momentum */
 void ab_rmcom(abpro_t *ab, real *x, real *v)
 {
   ab_shiftcom(ab, x);
   ab_shiftcom(ab, v);
-  /* remove angular momentum */
-  if (ab->d == 2) ab_rmangular2d(ab, (crv2_t *)x, (rv2_t *)v); 
-  else ab_rmangular3d(ab, (crv3_t *)x, (rv3_t *)v);
+  ab_shiftang(ab, x, v); /* remove angular momentum */
 }
 
 /* write position file (which may include velocity) */
@@ -848,34 +771,6 @@ SHRINK:
   }
 
   return u;
-}
-
-/* velocity rescaling */
-void ab_vrescale(abpro_t *ab, real tp, real dt)
-{
-  int i;
-  real ekav = .5f*tp*ab->dof, ek1 = ab->ekin, ek2, s;
-  double amp;
-
-  amp = 2*sqrt(ek1*ekav*dt/ab->dof);
-  ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
-  if (ek2 < 0) ek2 = 0;
-  s = (real)sqrt(ek2/ek1);
-  for (ab->ekin = 0.f, i = 0; i < ab->n*ab->d; i++)
-    ab->v[i] *= s;
-  ab->ekin = ek2;
-  ab->tkin *= s*s;
-}
-
-/* kinetic energy */
-real ab_ekin(abpro_t *ab)
-{
-  int i, nd = ab->n * ab->d;
-
-  for (ab->ekin = 0, i = 0; i < nd; i++) 
-    ab->ekin += ab->v[i]*ab->v[i];
-  ab->tkin = ab->ekin/ab->dof;
-  return (ab->ekin *= .5f);
 }
 
 static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
