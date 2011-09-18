@@ -3,5 +3,4 @@
 *.bak
 *.pyc
 *.clean.*
-zcom.h
 abpro.c

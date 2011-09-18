@@ -26,3 +26,6 @@ sync: $(prj).h $(prj).zip
 	mv $(prj).zip $(usbdir)/
 	cp $(prj).h $(usbdir)/
 
+dodep:
+	git add [a-z0-9]*/*.h
+	git add [a-z0-9]*/*/zcom.h
