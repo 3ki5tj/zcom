@@ -24,17 +24,20 @@ void md_shiftcomw(real *x, real *w, int d, int n)
 void md_shiftang2d(rv2_t *x, rv2_t *v, int n)
 {
   int i;
-  real am, r2, rp[2];
+  real am, r2, xc[2] = {0,0}, xi[2];
 
+  for (i = 0; i < n; i++) rv2_inc(xc, x[i]);
+  rv2_smul(xc, 1./n);
   for (am = r2 = 0.f, i = 0; i < n; i++) {
-    am += rv2_cross(x[i], v[i]);
+    rv2_diff(xi, x[i], xc);
+    am += rv2_cross(xi, v[i]);
     r2 += rv2_sqr(x[i]);
   }
   am = -am/r2;
   for (i = 0; i < n; i++) {
-    rp[0] = -am*x[i][1];
-    rp[1] =  am*x[i][0];
-    rv2_inc(v[i], rp);
+    rv2_diff(xi, x[i], xc);
+    v[i][0] += -am*xi[1];
+    v[i][1] +=  am*xi[0];
   }
 }
 
@@ -50,15 +53,17 @@ void md_shiftang2d(rv2_t *x, rv2_t *v, int n)
 void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 {
   int i;
-  real ang[3], am[3], dv[3], mat[3][3], inv[3][3];
-  const real *xi;
+  real xc[3], xi[3], ang[3], am[3], dv[3], mat[3][3], inv[3][3];
   real xx = 0.f, yy = 0.f, zz = 0.f, xy = 0.f, zx = 0.f, yz = 0.f;
 
+  rv3_zero(xc);
+  for (i = 0; i < n; i++) rv3_inc(xc, x[i]);
+  rv3_smul(xc, 1.f/n);
   rv3_zero(am);
   for (i = 0; i < n; i++) {
-    rv3_cross(ang, x[i], v[i]);
+    rv3_diff(xi, x[i], xc);
+    rv3_cross(ang, xi, v[i]);
     rv3_inc(am, ang);
-    xi = x[i];
     xx += xi[0]*xi[0];
     yy += xi[1]*xi[1];
     zz += xi[2]*xi[2];
@@ -78,7 +83,8 @@ void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
   ang[2] = -rv3_dot(inv[2], am);
   /* ang is the solution of M^(-1) * I */
   for (i = 0; i < n; i++) {
-    rv3_cross(dv, ang, x[i]);
+    rv3_diff(xi, x[i], xc);
+    rv3_cross(dv, ang, xi);
     rv3_inc(v[i], dv);
   }
 }
