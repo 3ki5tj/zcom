@@ -46,20 +46,18 @@ void md_shiftang2d(rv2_t *x, rv2_t *v, int n)
  *   /  y^2 + z^2    -x y      -x y      \
  *   |  -x y       X^2 + z^2   -y z      |  c  =  I
  *   \  -x z         -y z     x^2 + y^2  / 
- * use
+ * use a velocity field 
  *    v = c X r
  *   */
 
 void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 {
   int i;
-  real xc[3], xi[3], ang[3], am[3], dv[3], mat[3][3], inv[3][3];
-  real xx = 0.f, yy = 0.f, zz = 0.f, xy = 0.f, zx = 0.f, yz = 0.f;
+  real xc[3] = {0,0,0}, xi[3], ang[3], am[3] = {0,0,0}, dv[3], mat[3][3], inv[3][3];
+  real xx = 0, yy = 0, zz = 0, xy = 0, zx = 0, yz = 0;
 
-  rv3_zero(xc);
   for (i = 0; i < n; i++) rv3_inc(xc, x[i]);
   rv3_smul(xc, 1.f/n);
-  rv3_zero(am);
   for (i = 0; i < n; i++) {
     rv3_diff(xi, x[i], xc);
     rv3_cross(ang, xi, v[i]);

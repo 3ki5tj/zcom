@@ -321,17 +321,17 @@ ZCINLINE real mat3_det(real a[3][3])
 /* inverse matrix b = a^(-1) */
 ZCINLINE rv3_t *mat3_inv(real b[3][3], real a[3][3])
 {
-  real dt = mat3_det(a);
-  if (fabs(dt) < 1e-30) dt = (dt < 0) ? -1e-30f: 1e-30f;
-  b[0][0] = (a[1][1]*a[2][2] - a[1][2]*a[2][1])/dt;
-  b[1][1] = (a[2][2]*a[0][0] - a[2][0]*a[0][2])/dt;
-  b[2][2] = (a[0][0]*a[1][1] - a[0][1]*a[1][0])/dt;
-  b[1][0] = (a[1][2]*a[2][0] - a[1][0]*a[2][2])/dt;
-  b[0][1] = (a[2][1]*a[0][2] - a[0][1]*a[2][2])/dt;
-  b[2][0] = (a[1][0]*a[2][1] - a[2][0]*a[1][1])/dt;
-  b[0][2] = (a[0][1]*a[1][2] - a[0][2]*a[1][1])/dt;
-  b[2][1] = (a[2][0]*a[0][1] - a[2][1]*a[0][0])/dt;
-  b[1][2] = (a[0][2]*a[1][0] - a[1][2]*a[0][0])/dt;
+  real detm = mat3_det(a);
+  if (fabs(detm) < 1e-30) detm = (detm < 0) ? -1e-30f: 1e-30f;
+  b[0][0] = (a[1][1]*a[2][2] - a[1][2]*a[2][1])/detm;
+  b[1][1] = (a[2][2]*a[0][0] - a[2][0]*a[0][2])/detm;
+  b[2][2] = (a[0][0]*a[1][1] - a[0][1]*a[1][0])/detm;
+  b[1][0] = (a[1][2]*a[2][0] - a[1][0]*a[2][2])/detm;
+  b[0][1] = (a[2][1]*a[0][2] - a[0][1]*a[2][2])/detm;
+  b[2][0] = (a[1][0]*a[2][1] - a[2][0]*a[1][1])/detm;
+  b[0][2] = (a[0][1]*a[1][2] - a[0][2]*a[1][1])/detm;
+  b[2][1] = (a[2][0]*a[0][1] - a[2][1]*a[0][0])/detm;
+  b[1][2] = (a[0][2]*a[1][0] - a[1][2]*a[0][0])/detm;
   return b;
 }
 
@@ -375,20 +375,20 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
 ZCINLINE real *mat3_eigvec(real vec[3], real m[3][3], real val)
 {
   double a = m[0][0]-val, b = m[1][1]-val, c, d = m[0][1], e = m[0][2], f = m[1][2];
-  double dt, tol = 1e-12;
+  double detm, tol = 1e-12;
 
   vec[2] = 1.f;
-  if (fabs(dt = a*b - d*d) > tol) { /* use row 0 and 1 */
-    rv3_make(vec, (real)((d*f-b*e)/dt), (real)((e*d-a*f)/dt), 1);
+  if (fabs(detm = a*b - d*d) > tol) { /* use row 0 and 1 */
+    rv3_make(vec, (real)((d*f-b*e)/detm), (real)((e*d-a*f)/detm), 1);
     return rv3_normalize(vec);
   }
   c = m[2][2] - val;
-  if (fabs(dt = a*f - e*d) > tol) { /* row 1 and 2 */
-    rv3_make(vec, (real)((d*c-e*f)/dt), (real)((e*e-a*c)/dt), 1);
+  if (fabs(detm = a*f - e*d) > tol) { /* row 1 and 2 */
+    rv3_make(vec, (real)((d*c-e*f)/detm), (real)((e*e-a*c)/detm), 1);
     return rv3_normalize(vec);
   }
-  if ((dt = sqrt(a*a+d*d)) > tol) { /* three-row-degenerate */
-    rv3_make(vec, (real)(d/dt), (real)(-a/dt), 0);
+  if ((detm = sqrt(a*a+d*d)) > tol) { /* three-row-degenerate */
+    rv3_make(vec, (real)(d/detm), (real)(-a/detm), 0);
   } else {
     rv3_make(vec, 1, 0, 0);
   }

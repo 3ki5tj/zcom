@@ -4,6 +4,7 @@
 #include "dihc.c"
 #include "rotfit.c"
 #include "md.c"
+#include "av.h"
 #ifndef CAGO_C__
 #define CAGO_C__
 #include "cago.h"
@@ -115,6 +116,7 @@ cago_t *cago_open(const char *fnpdb,
   pdbaac_free(c);
 
   cago_initpot(go);
+
   return go;
 }
 
@@ -154,7 +156,8 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   xnew(go->f, n);
 
   /* initialize position */
-  if (rndamp > 0) { /* open chain */
+  if (rndamp < 0) { /* open chain */
+    rndamp *= -1;
     for (i = 0; i < n-1; i++) {
       for (j = 0; j < 3; j++)
         dx[j] = (j == 0) ? 1.f : (rndamp*(2.f*rnd0()/RAND_MAX - 1));
@@ -163,7 +166,6 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
       rv3_add(go->x[i+1], go->x[i], dx);
     }
   } else { /* copy from xref, slightly disturb it */
-    rndamp *= -1;
     for (i = 0; i < n; i++) {
       rv3_copy(go->x[i], go->xref[i]);
       for (j = 0; j < 3; j++)
@@ -186,6 +188,9 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   go->ekin = cago_ekin(go, go->v);
   go->rmsd = cago_rotfit(go, go->x, NULL);
   go->t = 0;
+  go->mddt = 0.002f;
+  go->thermdt = 0.02f;
+  go->nstcom = 10;
   return 0;
 }
 
@@ -379,6 +384,67 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
   fclose(fp);
   return 0;
 }
+
+/* guess a proper temperature for a given rmsd,
+ * return 0 if successful.
+ *
+ * temperature is updated according to rmsd 
+ * several stages of updating are used, each with a fixed tpdt
+ * after a stage, the updating magnitude amp is multiplied by ampf
+ * iterations finish when the temperature difference is less than 
+ * a given tolerance 'tptol'
+ * a pass is defined every time the rmsd crosses 'rmsd'
+ * in every stage, npass passes are required to determine convergence
+ * */
+int cago_cvgmdrun(cago_t *go, double rmsd, int npass, 
+    double amp, double ampf, double tptol, av_t *avtp, av_t *avep,
+    double tp, double tpmin, double tpmax, int tmax, int trep)
+{
+  int t, stg, sgp, sgn, ipass;
+  double tpp = 0;
+
+  go->rmsd = cago_rotfit(go, go->x, NULL);
+  sgp = (go->rmsd > rmsd) ? 1 : -1;
+  for (stg = 0; ; stg++, amp *= ampf) { /* stages with different dpdt */
+    if (avtp) av_clear(avtp);
+    if (avep) av_clear(avep);
+    for (ipass = 0, t = 1; t <= tmax && ipass < npass; t++) {
+      cago_vv(go, 1, go->mddt);
+      if (t % 10 == 0) cago_rmcom(go, go->x, go->v);
+      cago_vrescale(go, (real) tp, go->thermdt);
+      go->rmsd = cago_rotfit(go, go->x, NULL);
+      sgn = (go->rmsd > rmsd) ? 1 : -1;
+      if (sgn * sgp < 0) {
+        ipass++;
+        sgp = sgn;
+      }
+      /* update the temperature */
+      tp -= sgn*go->mddt*amp;
+      if (avtp) av_add(avtp, tp);
+      if (avep) av_add(avep, go->epot);
+      if (tp < tpmin) tp = tpmin;
+      else if (tp > tpmax) tp = tpmax;
+      if (trep >= 0 && t % trep == 0) {
+        printf("%d|%d: %.2f - %.2f, tp %.4f, K %g, U %g, pass: %d/%d\n",
+            stg, t, go->rmsd, rmsd, tp,
+            go->ekin, go->epot, ipass, npass);
+      }
+    }
+    /* end of a stage */
+    if (ipass < npass) { /* not enough passes over rmsd */
+      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes\n", 
+          stg, rmsd, go->rmsd, ipass);
+      return 1;
+    }
+    printf("%d: amp %g, tp %g/%g, tpav %g, epotav %g, pass %d/%d\n", 
+        stg, amp, tp, tpp, av_getave(avtp), av_getave(avep), ipass, npass);
+    if (stg > 0 && fabs(tp - tpp) < tptol*.5*fabs(tp + tpp)) break;
+    tpp = tp;
+  }
+  return 0;
+}
+
+
 
 #endif
 

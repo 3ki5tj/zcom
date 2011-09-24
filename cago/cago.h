@@ -18,10 +18,14 @@ typedef struct {
   real *r2ref; /* pair distance */
   int *iscont;
   
-  /* variables for a typical MD simulation */
+  /* variables for MD simulations */
   rv3_t *x, *v, *f;
   real ekin, epot, t;
   real rmsd; /* result from a rotfit call  */
+  /* additional parameter for MD simulations */
+  real mddt; /* dt for md */
+  real thermdt; /* dt for thermostat */
+  int nstcom; /* frequency of remove center of mass motion */
 } cago_t;
 
 cago_t *cago_open(const char *fnpdb,
@@ -42,5 +46,9 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 /* convenient macro for computing rmsd from the reference structure */
 ZCINLINE real cago_rotfit(cago_t *go, rv3_t *x, rv3_t *xf)
   { return go->rmsd = rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL); }
+
+int cago_cvgmdrun(cago_t *go, double rmsd, int npass, 
+    double amp, double ampf, double tptol, av_t *avtp, av_t *avep,
+    double tp, double tpmin, double tpmax, int tmax, int trep);
 
 #endif

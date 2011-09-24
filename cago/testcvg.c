@@ -42,37 +42,23 @@ static void doargs(int argc, const char **argv)
 int main(int argc, const char **argv)
 {
   cago_t *go;
-  int t;
+  int ret, npass = 10;
+  double rmsd_target = 15.0, tptol = 0.1, amp = 0.01, ampf = sqrt(0.1);
+  av_t avtp[1], avep[1];
 
   doargs(argc, argv);
   if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcutoff)) == NULL) {
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
-  cago_initmd(go, -0.1, 0.0);
+  cago_initmd(go, 0.1, 0.0);
   printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
-  cago_writepos(go, go->x, go->v, "a.pos");
-  for (t = 1; t <= tmax; t++) {
-    tp = (2 - 1.9f*t/tmax);
-    cago_vv(go, 1.f, mddt);
-    cago_vrescale(go, tp, thermdt);
-    cago_rmcom(go, go->x, go->v);
-    if (t % tfreq == 0) {
-      cago_rotfit(go, go->x, NULL);
-      printf("t %d, tp = %g, ene = %g+%g = %g, %g\n", 
-    	  t, tp, go->epot, go->ekin, go->epot + go->ekin, go->rmsd);
-    }
-  }
-
-  cago_rotfit(go, go->x, go->f);
-  cago_writepos(go, go->x, NULL, "b.pos");
-  cago_writepos(go, go->f, NULL, "c.pos");
-  cago_writepos(go, go->xref, NULL, "0.pos");
-  cago_writepdb(go, go->f, "final.pdb");
-  cago_writepdb(go, go->xref, "ref.pdb");
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
-
+  ret = cago_cvgmdrun(go, rmsd_target, npass, 
+      amp, ampf, tptol, avtp, avep, 
+      1.0, 0.01, 100.0, 1000000, 1000);
+  printf("cvgmd %s, epot = %g, tp = %g\n", 
+      (ret ? "failed" : "succeeded"), 
+      av_getave(avep), av_getave(avtp));
   cago_close(go);
-
   return 0;
 }

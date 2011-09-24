@@ -1,4 +1,4 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic -lm
 # optimized compiling
 CX = icc -Wall -O3 -g -lm -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
