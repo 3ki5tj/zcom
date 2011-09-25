@@ -51,7 +51,6 @@ static int *pdbcontact(pdbmodel_t *pm, double rc, int hydro)
   real d, dmin;
   int *ds;
 
-  printf("nres = %d\n", nres);
   xnew(ds, nres*nres);
   for (ir = 0; ir < nres; ir++) {
     for (jr = ir+1; jr < nres; jr++) {
@@ -72,17 +71,16 @@ static int *pdbcontact(pdbmodel_t *pm, double rc, int hydro)
   }
 
   /* exclude nearby contacts */
-  for (ir = 0; ir < nres; ir++) {
-    for (jr = ir+1; jr < ir+4 && jr < nres; jr++) {
+  for (ir = 0; ir < nres; ir++)
+    for (jr = ir+1; jr < ir+4 && jr < nres; jr++)
       ds[ir*nres + jr] = ds[jr*nres + ir] = 0;
-    }
-  }
   return ds;
 }
 
-/* return cago_t from pdb file fnpdb */
-cago_t *cago_open(const char *fnpdb,
-  real kb, real ka, real kd1, real kd3, real nbe, real nbc, real rc)
+/* return cago_t from pdb file fnpdb
+ * rcc is the cutoff radius for defining contacts */
+cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
+    real nbe, real nbc, real rcc)
 {
   cago_t *go;
   int i, j;
@@ -93,7 +91,7 @@ cago_t *cago_open(const char *fnpdb,
 
   if ((pm = pdbm_read(fnpdb, 0)) == NULL)
     return NULL;
-  go->iscont = pdbcontact(pm, rc, 0);
+  go->iscont = pdbcontact(pm, rcc, 0);
   if ((c = pdbaac_parse(pm, 0)) == NULL)
     return NULL;
   pdbm_free(pm);
@@ -117,6 +115,17 @@ cago_t *cago_open(const char *fnpdb,
 
   cago_initpot(go);
 
+  { real rmin = 1e9, rmax = 0; int id;
+  for (i = 0; i < go->n - 1; i++)
+    for (j = i+1; j < go->n; j++)
+      if (go->iscont[ (id = i*go->n + j) ]) {
+        if (go->r2ref[id] > rmax)
+          rmax = go->r2ref[id];
+        else if (go->r2ref[id] < rmin)
+          rmin = go->r2ref[id];
+      }
+  rmin = sqrt(rmin); rmax = sqrt(rmax);
+  printf("rmsd: %g, %g\n", rmin, rmax); }
   return go;
 }
 
@@ -126,6 +135,7 @@ void cago_close(cago_t *go)
   if (go->x) free(go->x);
   if (go->v) free(go->v);
   if (go->f) free(go->f);
+  if (go->x1) free(go->x1);
   if (go->iscont) free(go->iscont);
   free(go->bref);
   free(go->aref);
@@ -154,6 +164,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   xnew(go->x, n);
   xnew(go->v, n);
   xnew(go->f, n);
+  xnew(go->x1, n);
 
   /* initialize position */
   if (rndamp < 0) { /* open chain */
@@ -188,9 +199,9 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   go->ekin = cago_ekin(go, go->v);
   go->rmsd = cago_rotfit(go, go->x, NULL);
   go->t = 0;
-  go->mddt = 0.002f;
-  go->thermdt = 0.02f;
-  go->nstcom = 10;
+  //go->mddt = 0.002f;
+  //go->thermdt = 0.02f;
+  //go->nstcom = 10;
   return 0;
 }
 
@@ -235,8 +246,10 @@ real cago_force(cago_t *go, rv3_t *f, rv3_t *x)
                       DIH_FOUR|DIH_GRAD);
     del = ang - go->dref[i];
     if (del > M_PI) del -= 2*M_PI; else if (del < -M_PI) del += 2*M_PI;
-    ene += (real)(kd1*(1. - cos(del)) + kd3*(1. - cos(3.*del)));
-    amp = (real)( -kd1*sin(del) - 3*kd3*sin(3*del) );
+    ene += (real)(  kd1 * (1. - cos(del)) );
+    amp  = (real)( -kd1 * sin(del) );
+    ene += (real)(  kd3 * (1. - cos(3.*del)) );
+    amp += (real)( -kd3 * 3 * sin(3*del) );
     rv3_sinc(f[i],   dc->g[0], amp);
     rv3_sinc(f[i+1], dc->g[1], amp);
     rv3_sinc(f[i+2], dc->g[2], amp);
@@ -385,6 +398,36 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
   return 0;
 }
 
+/* run a regular md
+ * teql steps for equilibration, tmax steps for production
+ * tp: the real temperature, tps: thermostat temperature */
+int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
+    real tps, real tp, av_t *avep, av_t *avrmsd,
+    int teql, int tmax, int trep)
+{
+  int t;
+  real fs = tps/tp;
+
+  tmax = (tmax < 0) ? -1 : (tmax + teql);
+  av_clear(avep);
+  av_clear(avrmsd);
+  for (t = 1; tmax < 0 || t <= tmax; t++) {
+    cago_vv(go, fs, mddt);
+    if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
+    cago_vrescale(go, (real) tps, thermdt);
+    go->rmsd = cago_rotfit(go, go->x, NULL);
+    if (t > teql) {
+      av_add(avep, go->epot);
+      av_add(avrmsd, go->rmsd);
+    }
+    if (trep > 0 && t % trep == 0) {
+      printf("%9d: tp %.4f, tps %.4f, rmsd %7.4f, K %.2f, U %.2f\n",
+          t, tp, tps, go->rmsd, go->ekin, go->epot);
+    }
+  }
+  return 0;
+}
+
 /* guess a proper temperature for a given rmsd,
  * return 0 if successful.
  *
@@ -396,22 +439,23 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
  * a pass is defined every time the rmsd crosses 'rmsd'
  * in every stage, npass passes are required to determine convergence
  * */
-int cago_cvgmdrun(cago_t *go, double rmsd, int npass, 
-    double amp, double ampf, double tptol, av_t *avtp, av_t *avep,
-    double tp, double tpmin, double tpmax, int tmax, int trep)
+int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+    real rmsd, int npass, 
+    real amp, real ampf, real tptol, av_t *avtp, av_t *avep,
+    real tp, real tpmin, real tpmax, int tmax, int trep)
 {
-  int t, stg, sgp, sgn, ipass;
-  double tpp = 0;
+  int i, t, stg, sgp, sgn, ipass;
+  real tpp = 0, tp1, tpav, tmp;
 
   go->rmsd = cago_rotfit(go, go->x, NULL);
   sgp = (go->rmsd > rmsd) ? 1 : -1;
   for (stg = 0; ; stg++, amp *= ampf) { /* stages with different dpdt */
     if (avtp) av_clear(avtp);
     if (avep) av_clear(avep);
-    for (ipass = 0, t = 1; t <= tmax && ipass < npass; t++) {
-      cago_vv(go, 1, go->mddt);
-      if (t % 10 == 0) cago_rmcom(go, go->x, go->v);
-      cago_vrescale(go, (real) tp, go->thermdt);
+    for (ipass = 0, t = 1; (tmax < 0 || t <= tmax) && ipass < npass; t++) {
+      cago_vv(go, 1, mddt);
+      if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
+      cago_vrescale(go, (real) tp, thermdt);
       go->rmsd = cago_rotfit(go, go->x, NULL);
       sgn = (go->rmsd > rmsd) ? 1 : -1;
       if (sgn * sgp < 0) {
@@ -419,27 +463,35 @@ int cago_cvgmdrun(cago_t *go, double rmsd, int npass,
         sgp = sgn;
       }
       /* update the temperature */
-      tp -= sgn*go->mddt*amp;
+      tp1 = tp - sgn*mddt*amp;
+      if (tp1 < tpmin) tp1 = tpmin;
+      else if (tp1 > tpmax) tp1 = tpmax;
+      for (tmp = tp1/tp, i = 0; i < go->n; i++) /* scale v */
+        rv3_smul(go->v[i], tmp);
+      tp = tp1;
       if (avtp) av_add(avtp, tp);
       if (avep) av_add(avep, go->epot);
-      if (tp < tpmin) tp = tpmin;
-      else if (tp > tpmax) tp = tpmax;
       if (trep >= 0 && t % trep == 0) {
-        printf("%d|%d: %.2f - %.2f, tp %.4f, K %g, U %g, pass: %d/%d\n",
+        printf("%d|%9d: %.2f - %.2f, tp %.4f, K %.2f, U %.2f, pass: %d/%d\n",
             stg, t, go->rmsd, rmsd, tp,
             go->ekin, go->epot, ipass, npass);
       }
     }
     /* end of a stage */
     if (ipass < npass) { /* not enough passes over rmsd */
-      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes\n", 
-          stg, rmsd, go->rmsd, ipass);
+      const char fnfail[] = "fail.pos";
+      cago_rotfit(go, go->x, go->x1);
+      cago_writepos(go, go->x1, NULL, fnfail);
+      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes, %s\n", 
+          stg, rmsd, go->rmsd, ipass, fnfail);
       return 1;
     }
-    printf("%d: amp %g, tp %g/%g, tpav %g, epotav %g, pass %d/%d\n", 
-        stg, amp, tp, tpp, av_getave(avtp), av_getave(avep), ipass, npass);
-    if (stg > 0 && fabs(tp - tpp) < tptol*.5*fabs(tp + tpp)) break;
-    tpp = tp;
+    tpav = av_getave(avtp);
+    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, pass %d/%d\n", 
+        stg, amp, tp, tpav, tpp, av_getave(avep), ipass, npass);
+    tmp = .5*(tpav + tpp);
+    if (stg > 0 && fabs(tpav - tpp) < tptol*tmp) break;
+    tpp = tpav;
   }
   return 0;
 }

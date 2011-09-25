@@ -206,9 +206,11 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     if (i > 0) {
       x = rv3_dist(c->res[i-1].xc, r->xn);
       if (x < .3 || x > 2.3) {
-        if (verbose)
+        if (verbose) {
+          const char *aap = pdbaaname(c->res[i-1].aa), *aa = pdbaaname(r->aa);
           fprintf(stderr, "%s: C-N bond between %d (%s) and %d (%s) is broken %g, insert break\n",
-            c->file, i, pdbaaname(c->res[i-1].aa), i+1, pdbaaname(r->aa), x);
+            c->file, i, aap, i+1, aa, x);
+        }
         c->res[i].broken = 1;
       }
     }

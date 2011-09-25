@@ -7,7 +7,7 @@ real kd1 = 1.f;
 real kd3 = .5f;
 real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
-real rcutoff = 6.f;
+real rcc = 6.f; /* cutoff of defining contacts */
 
 real tp = 1.0f;
 real mddt = 2e-3f;
@@ -45,7 +45,7 @@ int main(int argc, const char **argv)
   int t;
 
   doargs(argc, argv);
-  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcutoff)) == NULL) {
+  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc)) == NULL) {
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
@@ -53,10 +53,10 @@ int main(int argc, const char **argv)
   printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
   cago_writepos(go, go->x, go->v, "a.pos");
   for (t = 1; t <= tmax; t++) {
-    tp = (2 - 1.9f*t/tmax);
+    tp = (2 - 1.9f*t/tmax); /* annealing */
     cago_vv(go, 1.f, mddt);
-    cago_vrescale(go, tp, thermdt);
     cago_rmcom(go, go->x, go->v);
+    cago_vrescale(go, tp, thermdt);
     if (t % tfreq == 0) {
       cago_rotfit(go, go->x, NULL);
       printf("t %d, tp = %g, ene = %g+%g = %g, %g\n", 

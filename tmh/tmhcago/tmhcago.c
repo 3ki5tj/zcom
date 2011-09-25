@@ -30,6 +30,7 @@ int tmh_dhdeorder = 1;
 double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
 real mddt = 2e-3f;
 real thermdt = 2e-3f;
+int nstcom = 10;
 
 double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
@@ -42,7 +43,7 @@ double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
 
 /* parameters for guess the erange */
 int tmh_annealcnt = 1;
-int tmh_teql = 400000, tmh_tctrun = 400000, tmh_trep = 20000;
+int tmh_tctrun = -1, tmh_trep = 20000;
 double tmh_erg0margin = 0., tmh_erg1margin = 0.1;
 
 double nsttrace = 1e4;
@@ -87,6 +88,7 @@ static int loadcfg(const char *fn)
 
   CFGGETR(mddt);
   CFGGETR(thermdt);
+  CFGGETI(nstcom);
 
   CFGGETD(tmh_rmsd0);
   CFGGETD(tmh_rmsd1);
@@ -108,7 +110,7 @@ static int loadcfg(const char *fn)
   CFGGETI(tmh_annealcnt);
   CFGGETD(tmh_erg0margin);
   CFGGETD(tmh_erg1margin);
-  CFGGETI(tmh_teql); CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
+  CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
   CFGGETD(tmh_dhdemin);
@@ -126,33 +128,6 @@ static int loadcfg(const char *fn)
 
   cfgclose(cfg);
   return 0;
-}
-
-/* run constant temperature run */
-static double ctrun(cago_t *go, double tp, av_t *vrmsd, av_t *vepot,
-    int teql, int tmax, int trep)
-{
-  int t;
-
-  av_clear(vepot);
-  av_clear(vrmsd);
-  go->t = 0.; /* reset time */
-  for (t = 1; t <= teql+tmax; t++) {
-    cago_vv(go, 1.f, mddt);
-    if (t % 10 == 0) cago_rmcom(go, go->x, go->v);
-    cago_vrescale(go, (real) tp, thermdt);
-    go->rmsd = cago_rotfit(go, go->x, NULL);
-    if (t > teql) {
-      av_add(vepot, go->epot);
-      av_add(vrmsd, go->rmsd);
-    }
-    if (trep > 0 && t % trep == 0) {
-      fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g\n", go->t, tp, go->epot, go->ekin);
-    }
-  }
-  printf("tp %g, epot %g(%g), rmsd %g(%g)\n", tp, 
-      av_getave(vepot), av_getdev(vepot), av_getave(vrmsd), av_getdev(vrmsd));
-  return av_getave(vepot);
 }
 
 static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
@@ -200,19 +175,46 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
   return 0;
 }
 
-/* guess energy range from constant temperature simulation */
-static void guess_erange(cago_t *go,
+/* guess temperature/energy range */
+static int guess_range(cago_t *go,
     double rmsd0, double rmsd1,
     double *tp0, double *tp1,
     double *erg0, double *erg1, double *emin, double *emax,
-    int annealcnt, int teql, int trun, int trep)
+    int anncnt, int tmax, int trep)
 {
   double x, edv0, edv1;
-  int i;
+  int i, npass = 100;
+  real amp = 0.01f, ampf = (real) sqrt(0.1), tptol = 0.02, rmsd, tmp;
+  real tp = 1.f, tpmin = 0.01f, tpmax = 100.f;
   av_t vep[1], vrmsd[1], vtp[1];
+  real epav, epdv, rdav, rddv, tpav, tpdv;
+  char buf[256], fn[] = "guess.range";
+  FILE *fp;
 
-  cago_cvgmdrun(go, rmsd0, 10, 0.01, sqrt(0.1), 0.1, 
-      vtp, vep, 1.0, 0.01, 100.0, teql, trep);
+  if (anncnt < 2) anncnt = 2;
+
+  if ((fp = fopen(fn, "w")) == NULL) {
+    fprintf(stderr, "cannot open %s\n", fn);
+    return -1;
+  }
+  for (i = 0; i < anncnt; i++) {
+    x = 1.f*i/(anncnt-1);
+    rmsd = rmsd0*(1-x) + rmsd1*x;
+    cago_cvgmdrun(go, mddt, thermdt, nstcom, 
+      rmsd, npass, amp, ampf, tptol, vtp, vep, 
+      tp, tpmin, tpmax, tmax, trep);
+    tpav = av_getave(vtp);
+    tpdv = av_getdev(vtp);
+    epav = av_getave(vep);
+    epdv = av_getdev(vep);
+    sprintf(buf, "%.3f: %.3f(%.3f) %.4f(%.4f)\n",
+        rmsd, tpav, tpdv, epav, epdv);
+    puts(buf); fputs(buf, fp);
+    tp = tpav;
+    //tmp = tp*0.2f; tpmin = tmp;
+    //tmp = tp*5.0f; tpmax = tmp;
+  }
+  fclose(fp);
   exit(1);
 /*
   *erg1 = ctrun(go, tp0, rmsd0, &edv1, teql, trun, trep);
@@ -299,12 +301,12 @@ int main(int argc, const char **argv)
       return -1;
   } else { /* fresh new run */
     if (tmh_guesserange) {
-      guess_erange(go,
+      guess_range(go,
           tmh_rmsd0, tmh_rmsd1,
           &tmh_tp0, &tmh_tp1,
           &tmh_erg0, &tmh_erg1,
           &tmh_emin, &tmh_emax,
-          tmh_annealcnt, tmh_teql, tmh_tctrun, tmh_trep);
+          tmh_annealcnt, tmh_tctrun, tmh_trep);
     }
     go->epot = cago_force(go, go->f, go->x);
     printf("finish equilibration, epot %g, ekin %g\n", go->epot, go->ekin);

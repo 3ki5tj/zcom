@@ -9,7 +9,7 @@ bin = tmhcago
 all: $(bin)
 
 tmhcago: tmhcago.c $(dep)
-	$(CC) -o $@ $< 
+	$(CX) -o $@ $< 
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

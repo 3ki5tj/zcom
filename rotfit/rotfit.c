@@ -39,7 +39,8 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
     rv3_diff(xs, x[i], xc); /* shift to the center avoid the translation */
     rv3_diff(ys, y[i], yc);
     mat3_vtv(xy, xs, ys);
-    sq = rv3_sqr(xs) + rv3_sqr(ys);
+    sq  = rv3_sqr(xs);
+    sq += rv3_sqr(ys);
     if (w) {
       mat3_sinc(s, xy, w[i]);
       dev += w[i]*sq;
