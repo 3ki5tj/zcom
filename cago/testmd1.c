@@ -36,7 +36,7 @@ int main(int argc, const char **argv)
 {
   cago_t *go;
   int nstcom = 10, teql = 100000, tmax = 5000000, trep = 10000;
-  real mddt = 0.002f, thermdt = 0.02f, tps = 1.5, tp = 1.5;
+  real mddt = 0.002f, thermdt = 0.02f, tps = 1.1f, tp = 1.1f;
   real epav, epdv, rdav, rddv;
   av_t avep[1], avrmsd[1];
 
@@ -46,8 +46,8 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("tp %.2f, tps %.2f, ene = %g, %g, rmsd = %g\n", 
-      tp, tps, go->epot, go->ekin, go->rmsd);
+  printf("tp %.2f, tps %.2f, epot = %g, %g, rmsd = %g\n", 
+      tp, tps, go->epot, go->epotref, go->rmsd);
   
   cago_mdrun(go, mddt, thermdt, nstcom, tps, tp, avep, avrmsd,
      teql, tmax, trep);

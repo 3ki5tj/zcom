@@ -183,7 +183,7 @@ static int guess_range(cago_t *go,
     int anncnt, int tmax, int trep)
 {
   double x, edv0, edv1;
-  int i, npass = 100;
+  int i, ret, npass = 100;
   real amp = 0.01f, ampf = (real) sqrt(0.1), tptol = 0.02, rmsd, tmp;
   real tp = 1.f, tpmin = 0.01f, tpmax = 100.f;
   av_t vep[1], vrmsd[1], vtp[1];
@@ -198,9 +198,9 @@ static int guess_range(cago_t *go,
     return -1;
   }
   for (i = 0; i < anncnt; i++) {
-    x = 1.f*i/(anncnt-1);
+    x = 1.f*i/(anncnt - 1);
     rmsd = rmsd0*(1-x) + rmsd1*x;
-    cago_cvgmdrun(go, mddt, thermdt, nstcom, 
+    ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom, 
       rmsd, npass, amp, ampf, tptol, vtp, vep, 
       tp, tpmin, tpmax, tmax, trep);
     tpav = av_getave(vtp);
@@ -213,6 +213,7 @@ static int guess_range(cago_t *go,
     tp = tpav;
     //tmp = tp*0.2f; tpmin = tmp;
     //tmp = tp*5.0f; tpmax = tmp;
+    if (ret != 0) break;
   }
   fclose(fp);
   exit(1);
@@ -291,6 +292,7 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, thermdt); /* also init a MD system */
+  printf("epotref %g\n", go->epotref);
 
   if (isctn) { /* load previous data */
     if (0 != cago_readpos(go, go->x, go->v, fnpos))

@@ -11,6 +11,7 @@ typedef struct {
   real kd1, kd3; /* kd1 (1 - cos(d - d0)) + kd3 (1 - cos(3*(d-d0))) */
   real nbe, nbc;
   rv3_t *xref;
+  real epotref; /* energy of the reference structure */
   int *aa;
   real *bref; /* bonds */
   real *aref; /* angle */
@@ -51,7 +52,7 @@ int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real tps, real tp, av_t *avep, av_t *avrmsd,
     int teql, int tmax, int trep);
 
-int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real rmsd, int npass, 
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep,
     real tp, real tpmin, real tpmax, int tmax, int trep);

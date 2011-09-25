@@ -37,9 +37,11 @@ int main(int argc, const char **argv)
   cago_t *go;
   int ret, npass = 400;
   int nstcom = 10, tmax = 100000000, trep = 10000;
-  real rmsd_target = 8.0f, /*1.63f,*/ tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
-  real mddt = 0.002f, thermdt = 0.02f, tpav, tpdv, epav, epdv;
+  real rmsd_target = 2.0f, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
+  real mddt = 0.002f, thermdt = 0.02f;
+  real tptry = 1.0, tpmin = 0.01, tpmax = 50.0;
   av_t avtp[1], avep[1];
+  real tpav, tpdv, epav, epdv;
 
   doargs(argc, argv);
   if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc)) == NULL) {
@@ -47,11 +49,11 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
+  printf("epot = %g, %g, rmsd = %g\n", go->epot, go->epotref, go->rmsd);
 
-  ret = cago_cvgmdrun(go, mddt, thermdt, nstcom,
+  ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom,
       rmsd_target, npass, amp, ampf, tptol, avtp, avep, 
-      1.0, 0.1, 50.0, tmax, trep);
+      tptry, tpmin, tpmax, tmax, trep);
   tpav = av_getave(avtp);
   tpdv = av_getdev(avtp);
   epav = av_getave(avep);

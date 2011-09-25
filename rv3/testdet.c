@@ -8,8 +8,8 @@ static void mkrotx(real m[3][3], real th)
   int i, j; 
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
-  m[1][1] =  c; m[1][2] =  s;
-  m[2][1] = -s; m[2][2] =  c;
+  m[1][1] =  c; m[1][2] = -s;
+  m[2][1] =  s; m[2][2] =  c;
 }
 
 static void mkroty(real m[3][3], real th)
@@ -17,8 +17,8 @@ static void mkroty(real m[3][3], real th)
   int i, j; 
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
-  m[2][2] =  c; m[2][0] =  s;
-  m[0][2] = -s; m[0][0] =  c;
+  m[2][2] =  c; m[2][0] = -s;
+  m[0][2] =  s; m[0][0] =  c;
 }
 
 static void mkrotz(real m[3][3], real th)
@@ -26,8 +26,8 @@ static void mkrotz(real m[3][3], real th)
   int i, j; 
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
-  m[0][0] =  c; m[0][1] =  s;
-  m[1][0] = -s; m[1][1] =  c;
+  m[0][0] =  c; m[0][1] = -s;
+  m[1][0] =  s; m[1][1] =  c;
 }
 
 static void copy(real d[3][3], real s[3][3])

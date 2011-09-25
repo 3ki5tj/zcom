@@ -293,7 +293,6 @@ ZCINLINE rv3_t *rm3_mult(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a v */
-#define rv3_rot(v1, rot, v) rm3_mulvec(v1, rot, v)
 ZCINLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[0][1]*v[1] + a[0][2]*v[2];
@@ -455,11 +454,41 @@ ZCINLINE int rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
     for (i = 0; i < 3; i++) rv3_copy(u[i], v[i]);
   }
   for (i = 0; i < 3; i++) rv3_normalize(u[i]);
-  for (i = 0; i < 3; i++) s[i] = (real)sqrt(s[i]);
+  for (i = 0; i < 3; i++) s[i] = (real) sqrt(s[i]);
   rm3_trans(u);
   rm3_trans(v);
   return 0;
-} 
+}
+
+/* return 0 rotation matrix around v for ang */
+ZCINLINE rv3_t *rm3_mkrot(real m[3][3], const real *v, real ang)
+{
+  real c = (real) cos(ang), s = (real) sin(ang), nc, n[3];
+  
+  rv3_copy(n, v);
+  rv3_normalize(n);
+  nc = 1 - c;
+  m[0][0] = n[0]*n[0]*nc + c;
+  m[0][1] = n[0]*n[1]*nc - n[2]*s;
+  m[0][2] = n[0]*n[2]*nc + n[1]*s;
+  m[1][0] = n[1]*n[0]*nc + n[2]*s;
+  m[1][1] = n[1]*n[1]*nc + c;
+  m[1][2] = n[1]*n[2]*nc - n[0]*s;
+  m[2][0] = n[2]*n[0]*nc - n[1]*s;
+  m[2][1] = n[2]*n[1]*nc + n[0]*s;
+  m[2][2] = n[2]*n[2]*nc + c;
+  return m;
+}
+
+/* rotate v0 around u by ang, save result to v1 */
+ZCINLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
+{
+  real m[3][3];
+
+  rm3_mkrot(m, u, ang);
+  rm3_mulvec(v1, m, v0);
+  return v1;
+}
 
 #define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
 ZCINLINE void rv3_fprint(FILE *fp, real r[3], const char *nm,

@@ -1,10 +1,10 @@
 CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm
 deps=def.h rv3.h
 
-bin=testang testprinc testvdist testdet testeig testsvd
+bin=testang testprinc testvdist testdet testeig testsvd testrot
 all: $(bin)
 
-.c: $(deps)
+%: %.c $(deps)
 	$(CC) -o $@ $<
 
 clean:

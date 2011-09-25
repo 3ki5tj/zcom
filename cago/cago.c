@@ -155,7 +155,11 @@ void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
   md_shiftang3d(x, v, go->n);
 }
 
-/* initialize a md system */
+/* initialize a md system
+ * if rndamp >= 0, start from the reference structure,
+ *   with a random disturbance of rndamp
+ * if rndamp < 0, start from a nearly-straight chain, 
+ *   with a disturbance of rndamp in the x, y directions */ 
 int cago_initmd(cago_t *go, double rndamp, double T0)
 {
   int i, j, n = go->n;
@@ -183,6 +187,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
         go->x[i][j] += rndamp*(2.f*rnd0()/RAND_MAX - 1);
     }
   }
+  go->epotref = cago_force(go, go->f, go->xref);
   go->epot = cago_force(go, go->f, go->x);
 
   /* initialize velocities */
@@ -428,8 +433,10 @@ int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
   return 0;
 }
 
-/* guess a proper temperature for a given rmsd,
- * return 0 if successful.
+/* guess a proper temperature for a target rmsd, return 0 if successful
+ * should work for a small rmsd
+ * for a rmsd in the transition region, it can be stuck in a local minimal,
+ * in which rmsd is greater than the target value, but tp reaches tpmin
  *
  * temperature is updated according to rmsd 
  * several stages of updating are used, each with a fixed tpdt
@@ -439,7 +446,7 @@ int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
  * a pass is defined every time the rmsd crosses 'rmsd'
  * in every stage, npass passes are required to determine convergence
  * */
-int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real rmsd, int npass, 
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep,
     real tp, real tpmin, real tpmax, int tmax, int trep)
