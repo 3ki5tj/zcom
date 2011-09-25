@@ -52,9 +52,14 @@ int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real tps, real tp, av_t *avep, av_t *avrmsd,
     int teql, int tmax, int trep);
 
+int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+    real epot, int npass, 
+    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
+    real tp, real tpmin, real tpmax, int tmax, int trep);
+
 int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real rmsd, int npass, 
-    real amp, real ampf, real tptol, av_t *avtp, av_t *avep,
+    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep);
 
 #endif

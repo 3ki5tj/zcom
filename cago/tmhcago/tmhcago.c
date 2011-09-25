@@ -201,14 +201,16 @@ static int guess_range(cago_t *go,
     x = 1.f*i/(anncnt - 1);
     rmsd = rmsd0*(1-x) + rmsd1*x;
     ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom, 
-      rmsd, npass, amp, ampf, tptol, vtp, vep, 
+      rmsd, npass, amp, ampf, tptol, vtp, vep, vrmsd,
       tp, tpmin, tpmax, tmax, trep);
     tpav = av_getave(vtp);
     tpdv = av_getdev(vtp);
     epav = av_getave(vep);
     epdv = av_getdev(vep);
-    sprintf(buf, "%.3f: %.3f(%.3f) %.4f(%.4f)\n",
-        rmsd, tpav, tpdv, epav, epdv);
+    rdav = av_getave(vrmsd);
+    rddv = av_getdev(vrmsd);
+    sprintf(buf, "%.3f: %.3f(%.3f) %.4f(%.4f) %.4f(%.4f)\n",
+        rmsd, tpav, tpdv, epav, epdv, rdav, rddv);
     puts(buf); fputs(buf, fp);
     tp = tpav;
     //tmp = tp*0.2f; tpmin = tmp;

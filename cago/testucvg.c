@@ -37,7 +37,7 @@ int main(int argc, const char **argv)
   cago_t *go;
   int ret, npass = 400;
   int nstcom = 10, tmax = 100000000, trep = 10000;
-  real rmsd_target = 2.0f, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
+  real epot_target, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
   real mddt = 0.002f, thermdt = 0.02f;
   real tptry = 1.0, tpmin = 0.01, tpmax = 50.0;
   av_t avtp[1], avep[1], avrmsd[1];
@@ -50,9 +50,10 @@ int main(int argc, const char **argv)
   }
   cago_initmd(go, 0.1, 0.0);
   printf("epot = %g, %g, rmsd = %g\n", go->epot, go->epotref, go->rmsd);
+  epot_target = -15.0f;
 
-  ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom,
-      rmsd_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 
+  ret = cago_ucvgmdrun(go, mddt, thermdt, nstcom,
+      epot_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 
       tptry, tpmin, tpmax, tmax, trep);
   tpav = av_getave(avtp);
   tpdv = av_getdev(avtp);
@@ -60,8 +61,8 @@ int main(int argc, const char **argv)
   epdv = av_getdev(avep);
   rdav = av_getave(avrmsd);
   rddv = av_getdev(avrmsd);
-  printf("rcvgmd %s, rmsd %7.4f, tp = %.4f(%.4f), epot = %.4f(%.4f), rmsd = %.2f(%.2f)\n",
-      (ret ? "   failed" : "succeeded"), rmsd_target, tpav, tpdv, epav, epdv, rdav, rddv);
+  printf("ucvgmd %s, epot %7.4f, tp = %.4f(%.4f), epot = %.4f(%.4f), rmsd = %.2f(%.2f)\n",
+      (ret ? "   failed" : "succeeded"), epot_target, tpav, tpdv, epav, epdv, rdav, rddv);
   cago_rotfit(go, go->x, go->f);
   cago_writepos(go, go->f, NULL, "c.pos");
   cago_writepos(go, go->xref, NULL, "ref.pos");  
