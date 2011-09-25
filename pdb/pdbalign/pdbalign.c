@@ -160,7 +160,7 @@ int main(int argc, const char **argv)
   w = mkweights(aligntype, nr);
   rotfit3(x2, NULL, x1, w, n, rot, trans);
   if (verbose) {
-    mat3_print(rot, "Rotation", "%8.3f", 1);
+    rm3_print(rot, "Rotation", "%8.3f", 1);
     rv3_print(trans, "Translation", "%8.3f", 1);
   }
   pdbm_rottrans(m2, rot, trans);

@@ -38,58 +38,58 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   for (i = 0; i < n; i++) {
     rv3_diff(xs, x[i], xc); /* shift to the center avoid the translation */
     rv3_diff(ys, y[i], yc);
-    mat3_vtv(xy, xs, ys);
+    rm3_vtv(xy, xs, ys);
     sq  = rv3_sqr(xs);
     sq += rv3_sqr(ys);
     if (w) {
-      mat3_sinc(s, xy, w[i]);
+      rm3_sinc(s, xy, w[i]);
       dev += w[i]*sq;
     } else {      
-      mat3_inc(s, xy);
+      rm3_inc(s, xy);
       dev += sq; /* Tr(x^T x + y^T y) */
     }
   }
 
   /* 3. SVD decompose S = u sig v^T */
-  mat3_svd(s, u, sig, v);
+  rm3_svd(s, u, sig, v);
 
   /* 4. compute R = v u^T */
-  mat3_mult(r, v, u);
-  detm = mat3_det(r);
+  rm3_mult(r, v, u);
+  detm = rm3_det(r);
 
 #define rotfit3_dump_() { \
     printf("fatal error!, detm = %g\n", detm); \
     rv3_print(sig, "sig", "%8.3f", 1); \
-    mat3_print(r, "r", "%8.3f", 1); \
-    printf("det(r) = %g\n", mat3_det(r)); \
-    mat3_mult(r, u, v); mat3_print(r, "rx", "%8.3f", 1); \
-    printf("det(rx) = %g\n", mat3_det(r)); \
-    mat3_print(u, "u", "%8.3f", 1); \
-    printf("det(u) = %g\n", mat3_det(u)); \
-    mat3_print(v, "v", "%8.3f", 1); \
-    printf("det(v) = %g\n", mat3_det(v)); \
-    mat3_print(s, "s", "%12.3f", 1); \
-    printf("det(s) = %g\n", mat3_det(s)); \
+    rm3_print(r, "r", "%8.3f", 1); \
+    printf("det(r) = %g\n", rm3_det(r)); \
+    rm3_mult(r, u, v); rm3_print(r, "rx", "%8.3f", 1); \
+    printf("det(rx) = %g\n", rm3_det(r)); \
+    rm3_print(u, "u", "%8.3f", 1); \
+    printf("det(u) = %g\n", rm3_det(u)); \
+    rm3_print(v, "v", "%8.3f", 1); \
+    printf("det(v) = %g\n", rm3_det(v)); \
+    rm3_print(s, "s", "%12.3f", 1); \
+    printf("det(s) = %g\n", rm3_det(s)); \
     exit(1); }
   if (fabs(fabs(detm) - 1) > 0.1) rotfit3_dump_();
   if (detm < 0) { /* to avoid a reflection */
-    mat3_trans(u);
+    rm3_trans(u);
     rv3_neg(u[2]); /* flip the last eigenvector */
-    mat3_mul(r, v, u);
+    rm3_mul(r, v, u);
     dev -= 2*(sig[0]+sig[1]-sig[2]);
-    detm = mat3_det(r);
+    detm = rm3_det(r);
     if (fabs(fabs(detm) - 1) > 0.1) rotfit3_dump_(); 
 #undef rotfit3_dump_
   } else {
     dev -= 2*(sig[0]+sig[1]+sig[2]); /* -2 Tr(R x y^T) */
   }
-  rv3_diff(t, yc, mat3_mulvec(xs, r, xc)); /* t = yc - R xc */
-
+  if (dev < 0) dev = 0;
+  rv3_diff(t, yc, rm3_mulvec(xs, r, xc)); /* t = yc - R xc */
 
   /* 5. compute the rotated structure */
   if (xf) {
     for (dev = 0, i = 0; i < n; i++) {
-      rv3_add(xf[i], mat3_mulvec(xs, r, x[i]), t); /* xf = R x + t */
+      rv3_add(xf[i], rm3_mulvec(xs, r, x[i]), t); /* xf = R x + t */
       sq = rv3_dist2(y[i], xf[i]);
       dev +=  (w ? w[i]*sq : sq); /* recompute the deviation */
     }

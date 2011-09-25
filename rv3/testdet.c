@@ -40,7 +40,7 @@ static void copy(real d[3][3], real s[3][3])
 static void rot(real r[3][3], real u[3][3])
 {
   real x[3][3];
-  mat3_mult(x, r, u);
+  rm3_mult(x, r, u);
   copy(r, x);
 }
 
@@ -57,23 +57,23 @@ int main(void)
     mkrotz(u, amp*rand()/RAND_MAX);
     rot(r, u);
 
-    detm = mat3_det(r);
+    detm = rm3_det(r);
     if (fabs(detm - 1) > 0.01) {
       fprintf(stderr, "%d: determinant test failed %g\n", i, detm);
-      mat3_print(r, "rot", "%8.3f", 1);
-      mat3_print(u, "ro0", "%8.3f", 1);
+      rm3_print(r, "rot", "%8.3f", 1);
+      rm3_print(u, "ro0", "%8.3f", 1);
       break;
     }
-    mat3_inv(v, r);
-    mat3_mul(u, v, r);
+    rm3_inv(v, r);
+    rm3_mul(u, v, r);
     if (fabs(u[0][0] - 1) > 0.01 || fabs(u[1][1] - 1) > 0.01 || fabs(u[2][2] - 1) > 0.01
      || fabs(u[0][1]) > 0.01 || fabs(u[1][0]) > 0.01
      || fabs(u[1][2]) > 0.01 || fabs(u[2][1]) > 0.01
      || fabs(u[2][0]) > 0.01 || fabs(u[0][2]) > 0.01) {
       fprintf(stderr, "%d: inversion test failed\n", i);
-      mat3_print(r, "rot", "%8.3f", 1);
-      mat3_print(v, "inv", "%8.3f", 1);
-      mat3_print(u, "uni", "%8.3f", 1);
+      rm3_print(r, "rot", "%8.3f", 1);
+      rm3_print(v, "inv", "%8.3f", 1);
+      rm3_print(u, "uni", "%8.3f", 1);
       break;
     }
   }

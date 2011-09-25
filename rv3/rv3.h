@@ -10,7 +10,7 @@
 #define RV3_T rv3_t
   typedef real rv3_t[3];
   typedef const real crv3_t[3];
-  typedef real mat3_t[3][3];
+  typedef real rm3_t[3][3];
 #endif
 
 #include <stdio.h>
@@ -218,7 +218,7 @@ ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real
 }
 
 /* transpose */
-ZCINLINE rv3_t *mat3_trans(real a[3][3]) 
+ZCINLINE rv3_t *rm3_trans(real a[3][3]) 
 {
   real x;
   x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
@@ -228,7 +228,7 @@ ZCINLINE rv3_t *mat3_trans(real a[3][3])
 }
 
 /* a = u^T v */
-ZCINLINE rv3_t *mat3_vtv(real a[3][3], const real *u, const real *v)
+ZCINLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
 {
   a[0][0] = u[0]*v[0];
   a[0][1] = u[0]*v[1];
@@ -243,7 +243,7 @@ ZCINLINE rv3_t *mat3_vtv(real a[3][3], const real *u, const real *v)
 }
 
 /* a += b */
-ZCINLINE rv3_t *mat3_inc(real a[3][3], real b[3][3])
+ZCINLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
 {
   a[0][0] += b[0][0];
   a[0][1] += b[0][1];
@@ -258,7 +258,7 @@ ZCINLINE rv3_t *mat3_inc(real a[3][3], real b[3][3])
 }
 
 /* a += b*s */
-ZCINLINE rv3_t *mat3_sinc(real a[3][3], real b[3][3], real s)
+ZCINLINE rv3_t *rm3_sinc(real a[3][3], real b[3][3], real s)
 {
   a[0][0] += b[0][0]*s;
   a[0][1] += b[0][1]*s;
@@ -273,7 +273,7 @@ ZCINLINE rv3_t *mat3_sinc(real a[3][3], real b[3][3], real s)
 }
 
 /* c = a b */
-ZCINLINE rv3_t *mat3_mul(real c[3][3], real a[3][3], real b[3][3])
+ZCINLINE rv3_t *rm3_mul(real c[3][3], real a[3][3], real b[3][3])
 {
   int i, j;
   for (i = 0; i < 3; i++)
@@ -283,7 +283,7 @@ ZCINLINE rv3_t *mat3_mul(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a b^T */
-ZCINLINE rv3_t *mat3_mult(real c[3][3], real a[3][3], real b[3][3])
+ZCINLINE rv3_t *rm3_mult(real c[3][3], real a[3][3], real b[3][3])
 {
   int i, j;
   for (i = 0; i < 3; i++)
@@ -293,8 +293,8 @@ ZCINLINE rv3_t *mat3_mult(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a v */
-#define rv3_rot(v1, rot, v) mat3_mulvec(v1, rot, v)
-ZCINLINE real *mat3_mulvec(real *c, real a[3][3], const real *v)
+#define rv3_rot(v1, rot, v) rm3_mulvec(v1, rot, v)
+ZCINLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[0][1]*v[1] + a[0][2]*v[2];
   c[1] = a[1][0]*v[0] + a[1][1]*v[1] + a[1][2]*v[2];
@@ -303,7 +303,7 @@ ZCINLINE real *mat3_mulvec(real *c, real a[3][3], const real *v)
 }
 
 /* c = a^T v */
-ZCINLINE real *mat3_multvec(real *c, real a[3][3], const real *v)
+ZCINLINE real *rm3_multvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[1][0]*v[1] + a[2][0]*v[2];
   c[1] = a[0][1]*v[0] + a[1][1]*v[1] + a[2][1]*v[2];
@@ -312,7 +312,7 @@ ZCINLINE real *mat3_multvec(real *c, real a[3][3], const real *v)
 }
 
 /* determinant of a 3x3 matrix */
-ZCINLINE real mat3_det(real a[3][3])
+ZCINLINE real rm3_det(real a[3][3])
 {
   return a[0][0] * (a[1][1]*a[2][2] - a[1][2]*a[2][1])
       +  a[0][1] * (a[1][2]*a[2][0] - a[1][0]*a[2][2])
@@ -320,7 +320,7 @@ ZCINLINE real mat3_det(real a[3][3])
 }
 
 /* inverse matrix b = a^(-1) */
-ZCINLINE rv3_t *mat3_inv(real b[3][3], real a[3][3])
+ZCINLINE rv3_t *rm3_inv(real b[3][3], real a[3][3])
 {
   real d00, d01, d02, detm;
   d00 = a[1][1]*a[2][2] - a[1][2]*a[2][1];
@@ -341,7 +341,7 @@ ZCINLINE rv3_t *mat3_inv(real b[3][3], real a[3][3])
 }
 
 /* eigenvalues of a 3x3 matrix */
-ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
+ZCINLINE real *rm3_eigval(real v[3], real a[3][3])
 {
   real m, p, q, cphi, sphi, pr, pr3;
 
@@ -349,7 +349,7 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
   a[0][0] -= m;
   a[1][1] -= m;
   a[2][2] -= m;
-  q = .5f * mat3_det(a);
+  q = .5f * rm3_det(a);
   p = ((a[0][0]*a[0][0] + a[1][1]*a[1][1] + a[2][2]*a[2][2]) +
    2.f*(a[0][1]*a[1][0] + a[1][2]*a[2][1] + a[2][0]*a[0][2]))/6.f;
   pr = (real) sqrt(p);
@@ -377,7 +377,7 @@ ZCINLINE real *mat3_eigval(real v[3], real a[3][3])
 }
 
 /* given matrix a and eigenvalue lm, return eigenvector */
-ZCINLINE real *mat3_eigvec(real vec[3], real m[3][3], real val)
+ZCINLINE real *rm3_eigvec(real vec[3], real m[3][3], real val)
 {
   double a = m[0][0]-val, b = m[1][1]-val, c, d = m[0][1], e = m[0][2], f = m[1][2];
   double detm, tol = 1e-12;
@@ -401,17 +401,17 @@ ZCINLINE real *mat3_eigvec(real vec[3], real m[3][3], real val)
 }
 
 /* compute eigenvectors for the eigenvalues */
-ZCINLINE rv3_t *mat3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
+ZCINLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
 {
   const double tol = 1e-12;
   double v0 = fabs(v[0]), v1 = fabs(v[1]), v2 = fabs(v[2]);
   
-  mat3_eigvec(vecs[0], mat, v[0]);
+  rm3_eigvec(vecs[0], mat, v[0]);
   if ( fabs(v[0] - v[1]) > tol*(v0 + v1) ) {
-    mat3_eigvec(vecs[1], mat, v[1]);
+    rm3_eigvec(vecs[1], mat, v[1]);
     rv3_cross(vecs[2], vecs[0], vecs[1]);
   } else if ( fabs(v[2] - v[1]) > tol*(v1 + v2) ) {
-    mat3_eigvec(vecs[2], mat, v[2]);
+    rm3_eigvec(vecs[2], mat, v[2]);
     rv3_cross(vecs[1], vecs[2], vecs[0]);
   } else {
     rv3_make(vecs[1], 0, 1, 0);
@@ -419,11 +419,11 @@ ZCINLINE rv3_t *mat3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
   }
   /* transpose the matrix */
   if (t) return vecs;
-  else return mat3_trans(vecs);
+  else return rm3_trans(vecs);
 }
 
 /* SVD decomposition of a 3x3 matrix a = u s v */
-ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
+ZCINLINE int rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 {
   int i, j;
   real ata[3][3], z[3];
@@ -435,17 +435,17 @@ ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
       ata[i][j] = a[0][i]*a[0][j] + a[1][i]*a[1][j] + a[2][i]*a[2][j];
       if (i != j) ata[j][i] = ata[i][j];
     }
-  mat3_eigval(s, ata);
+  rm3_eigval(s, ata);
   for (i = 0; i < 3; i++) if (s[i] < 0) s[i] = 0;
-  mat3_eigvecs(v, ata, s, 1); /* get V^T */
+  rm3_eigvecs(v, ata, s, 1); /* get V^T */
 
   /* 2. U = A V S^-1, or U^T = S^{-1}T V^T A^T */
   j = (s[0] > tol) + (s[1] > tol) + (s[2] > tol);
   if (j >= 2) {
-    mat3_mult(u, v, a);
+    rm3_mult(u, v, a);
     if (j == 2) rv3_cross(u[2], u[0], u[1]); /* fix the last */
   } else if (j == 1) {
-    mat3_multvec(u[0], a, v[0]);
+    rm3_multvec(u[0], a, v[0]);
     rv3_zero(z);
     /* choose z[i] such that z X u[0] != 0 */
     i = (u[0][0]*u[0][0] < u[0][1]*u[0][1]) ? 0 : 1;
@@ -456,8 +456,8 @@ ZCINLINE int mat3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
   }
   for (i = 0; i < 3; i++) rv3_normalize(u[i]);
   for (i = 0; i < 3; i++) s[i] = (real)sqrt(s[i]);
-  mat3_trans(u);
-  mat3_trans(v);
+  rm3_trans(u);
+  rm3_trans(v);
   return 0;
 } 
 
@@ -472,8 +472,8 @@ ZCINLINE void rv3_fprint(FILE *fp, real r[3], const char *nm,
   fprintf(fp, "%c", (nl ? '\n' : ';'));
 }
 
-#define mat3_print(r, nm, fmt, nl) mat3_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE void mat3_fprint(FILE *fp, real r[3][3], const char *nm,
+#define rm3_print(r, nm, fmt, nl) rm3_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE void rm3_fprint(FILE *fp, real r[3][3], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;

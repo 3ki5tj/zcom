@@ -20,29 +20,29 @@ int main(void)
   /* construct a configuration */
   for (i = 0; i < N; i++) {
     rv3_diff(tmp, y[i], t0);
-    mat3_mulvec(x[i], r0, tmp);
+    rm3_mulvec(x[i], r0, tmp);
   }
   
   printf("\n\nPure rotation\n");
   dev = rotfit3(x, NULL, y, NULL, N, r, t);  
   printf("dev = %g\n", dev);
-  mat3_print(r, "R ", "%10.5f", 1);
-  mat3_print(r0, "R0", "%10.5f", 1);
+  rm3_print(r, "R ", "%10.5f", 1);
+  rm3_print(r0, "R0", "%10.5f", 1);
   rv3_print(t, "t ", "%10.5f", 1);
   rv3_print(t, "t0", "%10.5f", 1);
 
   /* construct a configuration */
   for (i = 0; i < N; i++) {
     rv3_diff(tmp, y[i], t0);
-    mat3_mulvec(x[i], r0, tmp);
+    rm3_mulvec(x[i], r0, tmp);
     x[i][2] = -x[i][2];
   }
   
   printf("\n\nWith reflection\n");
   dev = rotfit3(x, NULL, y, NULL, N, r, t);  
   printf("dev = %g\n", dev);
-  mat3_print(r, "R ", "%10.5f", 1);
-  mat3_print(r0, "R0", "%10.5f", 1);
+  rm3_print(r, "R ", "%10.5f", 1);
+  rm3_print(r0, "R0", "%10.5f", 1);
   rv3_print(t, "t ", "%10.5f", 1);
   rv3_print(t, "t0", "%10.5f", 1);
 

@@ -75,7 +75,7 @@ void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
   mat[0][1] = mat[1][0] = -xy;
   mat[1][2] = mat[2][1] = -yz;
   mat[0][2] = mat[2][0] = -zx;
-  mat3_inv(inv, mat);
+  rm3_inv(inv, mat);
   ang[0] = -rv3_dot(inv[0], am);
   ang[1] = -rv3_dot(inv[1], am);
   ang[2] = -rv3_dot(inv[2], am);

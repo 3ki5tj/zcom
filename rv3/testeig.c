@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "rv3.h"
-#include "eig.c"
+#include "include/eig.c"
 
 int main(void)
 {
@@ -14,9 +14,9 @@ int main(void)
   
   /* cheap 3x3 eigensystem */ 
   memcpy(mat, a, sizeof(real)*9);
-  mat3_eigval(v, mat);
+  rm3_eigval(v, mat);
   printf("eigenvalues are %g, %g, %g\n", v[0], v[1], v[2]);
-  mat3_eigvecs(vecs, mat, v, 0);
+  rm3_eigvecs(vecs, mat, v, 0);
   for (j = 0; j < 3; j++)
     printf("eigenvector %d: %g, %g, %g\n", j, vecs[0][j], vecs[1][j], vecs[2][j]);
   

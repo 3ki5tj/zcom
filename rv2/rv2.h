@@ -6,7 +6,7 @@
 #define RV2_T rv2_t
   typedef real rv2_t[2];
   typedef const real crv2_t[2];
-  typedef real mat2_t[2][2];
+  typedef real rm2_t[2][2];
 #endif
 
 #include <stdio.h>
@@ -179,15 +179,15 @@ ZCINLINE real rv2_vdist(const real *x, const real *a, const real *b)
 }
 
 /* determinant of a 2x2 matrix */
-ZCINLINE real mat2_det(real a[2][2])
+ZCINLINE real rm2_det(real a[2][2])
 {
   return a[0][0]*a[1][1] - a[0][1]*a[1][0];
 }
 
 /* inverse matrix b = a^(-1) */
-ZCINLINE void mat2_inv(real b[2][2], real a[2][2])
+ZCINLINE void rm2_inv(real b[2][2], real a[2][2])
 {
-  real det = mat2_det(a);
+  real det = rm2_det(a);
   if (fabs(det) < 1e-30) det = (det < 0) ? -1e-30f: 1e-30f;
   b[0][0] =  a[1][1]/det;
   b[0][1] = -a[0][1]/det;
@@ -206,8 +206,8 @@ ZCINLINE void rv2_fprint(FILE *fp, real *r, const char *nm,
   fprintf(fp, "%c", (nl ? '\n' : ';'));
 }
 
-#define mat2_print(r, nm, fmt, nl) mat2_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE void mat2_fprint(FILE *fp, real r[2][2], const char *nm,
+#define rm2_print(r, nm, fmt, nl) rm2_fprint(stdout, r, nm, fmt, nl)
+ZCINLINE void rm2_fprint(FILE *fp, real r[2][2], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;
