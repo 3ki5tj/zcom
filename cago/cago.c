@@ -265,8 +265,8 @@ real cago_force(cago_t *go, rv3_t *f, rv3_t *x)
       if (go->iscont[i*n + j]) { /* is a contact */
         dr2 = go->r2ref[i*n+j]*invr2;
         dr6 = dr2*dr2*dr2;
-        amp = nbe*(60*dr6 - 36)*dr6*invr2;
-        ene += nbe*(5*dr6 - 6)*dr6;
+        amp = nbe*12*(dr6 - 1)*dr6*invr2;
+        ene += nbe*(dr6 - 2)*dr6;
       } else {
         dr2 = nbc2/dr2;
         dr6 = dr2*dr2*dr2;

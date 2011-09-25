@@ -314,8 +314,8 @@ ZCINLINE real *mat3_multvec(real *c, real a[3][3], const real *v)
 /* determinant of a 3x3 matrix */
 ZCINLINE real mat3_det(real a[3][3])
 {
-  return a[0][0]*a[1][1]*a[2][2]+a[0][1]*a[0][2]*a[1][2]+a[1][0]*a[2][0]*a[2][1]
-    - (a[0][0]*a[1][2]*a[2][1]+a[1][1]*a[0][2]*a[2][0]+a[2][2]*a[0][1]*a[1][0]);
+  return a[0][0]*a[1][1]*a[2][2]+a[0][1]*a[1][2]*a[2][0]+a[0][2]*a[1][0]*a[2][1]
+      - (a[0][0]*a[1][2]*a[2][1]+a[0][1]*a[1][0]*a[2][2]+a[0][2]*a[1][1]*a[2][0]);
 }
 
 /* inverse matrix b = a^(-1) */
