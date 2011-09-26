@@ -36,10 +36,10 @@ int main(int argc, const char **argv)
 {
   cago_t *go;
   int ret, npass = 400;
-  int nstcom = 10, tmax = 100000000, trep = 10000;
-  real rmsd_target = 2.0f, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
+  int nstcom = 10, tmax = 20000000, trep = 10000;
+  real rmsd_target = 0.5f, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
   real mddt = 0.002f, thermdt = 0.02f;
-  real tptry = 1.0, tpmin = 0.01, tpmax = 50.0;
+  real tptry = 0.1, tpmin = 0.01, tpmax = 50.0;
   av_t avtp[1], avep[1], avrmsd[1];
   real tpav, tpdv, epav, epdv, rdav, rddv;
 
@@ -49,7 +49,7 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("epot = %g, %g, rmsd = %g\n", go->epot, go->epotref, go->rmsd);
+  printf("%s n %d, epot = %g, %g, rmsd = %g\n", fnpdb, go->n, go->epot, go->epotref, go->rmsd);
 
   ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom,
       rmsd_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 

@@ -1,5 +1,6 @@
 #include "cago.c"
 
+const char *prog = "go";
 const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
 real ka = 40.f;
@@ -9,7 +10,7 @@ real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
 real rcc = 6.f;
 
-const char *prog = "go";
+real tps = 0.3f, tp = 0.3f;
 
 static void help(void)
 {
@@ -20,6 +21,8 @@ static void help(void)
 static void doargs(int argc, const char **argv)
 {
   int i;
+  char ch;
+  const char *val;
   
   prog = argv[0];
   for (i = 1; i < argc; i++) {
@@ -27,8 +30,24 @@ static void doargs(int argc, const char **argv)
       fnpdb = argv[i];
       continue;
     }
-    if (argv[i][1] == 'h')
+    ch = argv[i][1];
+    if (strchr("T", ch)) {
+      val = argv[i] + 2;
+      if (*val == '\0') {
+        if (++i < argc) val = argv[i];
+        else help();
+      }
+      if (ch == 'T') {
+        tps = tp = (real) atof(val);
+      }
+      continue;
+    }
+    if (ch == 'h') {
       help();
+    } else {
+      printf("unknown flag -%c\n", ch);
+      help();
+    }
   }
 }
 
@@ -36,7 +55,7 @@ int main(int argc, const char **argv)
 {
   cago_t *go;
   int nstcom = 10, teql = 100000, tmax = 5000000, trep = 10000;
-  real mddt = 0.002f, thermdt = 0.02f, tps = 1.1f, tp = 1.1f;
+  real mddt = 0.002f, thermdt = 0.02f;
   real epav, epdv, rdav, rddv;
   av_t avep[1], avrmsd[1];
 
@@ -46,8 +65,8 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("tp %.2f, tps %.2f, epot = %g, %g, rmsd = %g\n", 
-      tp, tps, go->epot, go->epotref, go->rmsd);
+  printf("%s n %d, tp %.3f, tps %.3f, epot = %g, %g (ref), rmsd = %g\n", 
+      fnpdb, go->n, tp, tps, go->epot, go->epotref, go->rmsd);
   
   cago_mdrun(go, mddt, thermdt, nstcom, tps, tp, avep, avrmsd,
      teql, tmax, trep);
@@ -55,7 +74,7 @@ int main(int argc, const char **argv)
   epdv = av_getdev(avep);
   rdav = av_getave(avrmsd);
   rddv = av_getdev(avrmsd);
-  printf("tp %2.f, tps %.2f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n", 
+  printf("tp %.3f, tps %.3f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n", 
       tp, tps, epav, epdv, rdav, rddv);
   cago_rotfit(go, go->x, go->f);
   cago_writepos(go, go->f, NULL, "c.pos");

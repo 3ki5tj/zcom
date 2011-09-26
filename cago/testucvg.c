@@ -1,5 +1,6 @@
 #include "cago.c"
 
+const char *prog = "cagocvg";
 const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
 real ka = 40.f;
@@ -9,7 +10,7 @@ real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
 real rcc = 6.f;
 
-const char *prog = "cagocvg";
+real epot_target = 0;
 
 static void help(void)
 {
@@ -20,6 +21,8 @@ static void help(void)
 static void doargs(int argc, const char **argv)
 {
   int i;
+  char ch;
+  const char *val;
   
   prog = argv[0];
   for (i = 1; i < argc; i++) {
@@ -27,8 +30,24 @@ static void doargs(int argc, const char **argv)
       fnpdb = argv[i];
       continue;
     }
-    if (argv[i][1] == 'h')
+    ch = argv[i][1];
+    if (strchr("E", ch)) {
+      val = argv[i] + 2;
+      if (*val == '\0') {
+        if (++i < argc) val = argv[i];
+        else help();
+      }
+      if (ch == 'T') {
+        epot_target = (real) atof(val);
+      }
+      continue;
+    }
+    if (ch == 'h') {
       help();
+    } else {
+      printf("unknown flag -%c\n", ch);
+      help();
+    }
   }
 }
 
@@ -37,9 +56,9 @@ int main(int argc, const char **argv)
   cago_t *go;
   int ret, npass = 400;
   int nstcom = 10, tmax = 100000000, trep = 10000;
-  real epot_target, tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
+  real tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
   real mddt = 0.002f, thermdt = 0.02f;
-  real tptry = 1.0, tpmin = 0.01, tpmax = 50.0;
+  real tptry = 1.0, tpmin = 0.001, tpmax = 50.0;
   av_t avtp[1], avep[1], avrmsd[1];
   real tpav, tpdv, epav, epdv, rdav, rddv;
 
@@ -49,8 +68,11 @@ int main(int argc, const char **argv)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("epot = %g, %g, rmsd = %g\n", go->epot, go->epotref, go->rmsd);
-  epot_target = -15.0f;
+  printf("%s n %d, epot = %g, %g, rmsd = %g\n", fnpdb, go->n, go->epot, go->epotref, go->rmsd);
+  if (epot_target < go->epotref) {
+    fprintf(stderr, "target energy %g must be greater than %g\n", epot_target, go->epotref);
+    return 0;
+  }
 
   ret = cago_ucvgmdrun(go, mddt, thermdt, nstcom,
       epot_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 

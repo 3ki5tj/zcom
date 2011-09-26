@@ -17,7 +17,10 @@ typedef struct {
   real *aref; /* angle */
   real *dref; /* dihedral */
   real *r2ref; /* pair distance */
+  int ncont; /* number of contacts */
   int *iscont;
+  real kave; /* average spring constant of contacts */
+  real rrtp; /* estimate of sqrt( <r^2> / tp ) at low temperature */
   
   /* variables for MD simulations */
   rv3_t *x, *v, *f, *x1;

@@ -83,9 +83,10 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
     real nbe, real nbc, real rcc)
 {
   cago_t *go;
-  int i, j;
+  int i, j, id;
   pdbmodel_t *pm;
   pdbaac_t *c;
+  real rmin = 1e9, rmax = 0;
 
   xnew(go, 1);
 
@@ -115,7 +116,8 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
 
   cago_initpot(go);
 
-  { real rmin = 1e9, rmax = 0; int id;
+  go->ncont = 0;
+  go->kave = 0;
   for (i = 0; i < go->n - 1; i++)
     for (j = i+1; j < go->n; j++)
       if (go->iscont[ (id = i*go->n + j) ]) {
@@ -123,9 +125,14 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
           rmax = go->r2ref[id];
         else if (go->r2ref[id] < rmin)
           rmin = go->r2ref[id];
+        go->ncont++;
+        go->kave += 72.f/go->r2ref[id];
       }
+  if (go->ncont > 0) go->kave /= go->ncont;
   rmin = sqrt(rmin); rmax = sqrt(rmax);
-  printf("rmsd: %g, %g\n", rmin, rmax); }
+  go->rrtp = (real) sqrt(1.5 * go->dof/ (go->ncont*go->kave));
+  printf("rmsd: %g, %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
+      rmin, rmax, go->ncont, go->kave, go->rrtp);
   return go;
 }
 
