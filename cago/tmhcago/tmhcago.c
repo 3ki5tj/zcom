@@ -36,15 +36,12 @@ double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
 int tmh_guesserange = 0; /* guess energy range */
 double tmh_tps = 0.5; /* thermostat temperature */
-double tmh_rmsd0 = 1.0, tmh_rmsd1 = 20.0, tmh_drmsd = 0.5;
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
 
 /* parameters for guess the erange */
-int tmh_annealcnt = 1;
 int tmh_tctrun = -1, tmh_trep = 20000;
-double tmh_erg0margin = 0., tmh_erg1margin = 0.1;
 
 double nsttrace = 1e4;
 double nstsave = 1e6;
@@ -90,12 +87,9 @@ static int loadcfg(const char *fn)
   CFGGETR(thermdt);
   CFGGETI(nstcom);
 
-  CFGGETD(tmh_rmsd0);
-  CFGGETD(tmh_rmsd1);
-  CFGGETD(tmh_drmsd);
-  //CFGGETD(tmh_tp0);
-  //CFGGETD(tmh_tp1);
-  //CFGGETD(tmh_dtp);
+  CFGGETD(tmh_tp0);
+  CFGGETD(tmh_tp1);
+  CFGGETD(tmh_dtp);
 
   CFGGETD(tmh_de);
   CFGGETD(tmh_derg);
@@ -107,9 +101,6 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_emax); if (ret != 0) tmh_guesserange = 1;
   CFGGETD(tmh_erg0); if (ret != 0) tmh_guesserange = 1;
   CFGGETD(tmh_erg1); if (ret != 0) tmh_guesserange = 1;
-  CFGGETI(tmh_annealcnt);
-  CFGGETD(tmh_erg0margin);
-  CFGGETD(tmh_erg1margin);
   CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
@@ -133,28 +124,33 @@ static int loadcfg(const char *fn)
 static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
 {
   int it = 0, stop = 0;
-  double t, amp, dhde;
+  double t, amp, ampadj, dhde;
 
-  amp = tmh_ampmax;
+  ampadj = amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
     dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
     cago_vv(go, (real)dhde, mddt);
     if (it == 0) cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, (real)(tmh_tps), thermdt);
+    go->rmsd = cago_rotfit(go, go->x, NULL);
 
     tmh_eadd(tmh, go->epot);
-    tmh_dhdeupdate(tmh, go->epot, amp);
+    tmh_dhdeupdate(tmh, go->epot, ampadj);
 
     if (++it % 10 == 0) {
       it = 0;
       tmh_tlgvmove(tmh, go->epot, tmh_lgvdt);
       /* update amplitude */
       if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
+      ampadj = amp*tmh->tp0/tmh->tp;
+    }
+    if ((int)fmod(t, 10000) == 0) {
+      printf("t %g, tp %g, epot %g, rmsd %g, dhde = %g\n", t, tmh->tp, go->epot, go->rmsd, dhde);
     }
 
     if ((int)fmod(t, nsttrace) == 0) {
-      wtrace_buf("%g %g %g %d %d %g\n",
-          t, go->epot, tmh->tp, tmh->iec, tmh->itp, dhde);
+      wtrace_buf("%g %g %g %g %d %d %g\n",
+          t, go->epot, tmh->tp, go->rmsd, tmh->iec, tmh->itp, dhde);
       if (verbose) fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
           t, go->epot, tmh->tp, tmh->iec, tmh->itp, dhde, "");
       time(&time1);
@@ -173,77 +169,6 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
   /* finish */
   wtrace_buf(NULL, NULL);
   return 0;
-}
-
-/* guess temperature/energy range */
-static int guess_range(cago_t *go,
-    double rmsd0, double rmsd1,
-    double *tp0, double *tp1,
-    double *erg0, double *erg1, double *emin, double *emax,
-    int anncnt, int tmax, int trep)
-{
-  double x, edv0, edv1;
-  int i, ret, npass = 100;
-  real amp = 0.01f, ampf = (real) sqrt(0.1), tptol = 0.02, rmsd, epot, tmp;
-  real tp = 1.f, tpmin = 0.01f, tpmax = 100.f;
-  av_t *vep, *vrmsd, *vtp;
-  real epav, epdv, rdav, rddv, tpav, tpdv;
-  char buf[256], fn[] = "guess.range";
-  FILE *fp;
-
-  if (anncnt < 2) anncnt = 2;
-  xnew(vep, anncnt);
-  xnew(vtp, anncnt);
-  xnew(vrmsd, anncnt);
-
-  if ((fp = fopen(fn, "w")) == NULL) {
-    fprintf(stderr, "cannot open %s\n", fn);
-    return -1;
-  }
-  /* first point */
-  ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom, 
-    rmsd0, npass, amp, ampf, tptol, vtp, vep, vrmsd,
-    tp, tpmin, tpmax, tmax, trep);  
-  
-  for (i = 1; i < 2; i++) {
-    if (i == 0) {
-
-    } else {
-      epot = -go->epotref;
-      ret = cago_ucvgmdrun(go, mddt, thermdt, nstcom, 
-        epot, npass, amp, ampf, tptol, vtp+i, vep+i, vrmsd+i,
-        tp, tpmin, tpmax, tmax, trep);
-    }
-    tpav = av_getave(vtp+i);
-    tpdv = av_getdev(vtp+i);
-    epav = av_getave(vep+i);
-    epdv = av_getdev(vep+i);
-    rdav = av_getave(vrmsd+i);
-    rddv = av_getdev(vrmsd+i);
-    sprintf(buf, "%d: %.3f(%.3f) %.4f(%.4f) %.4f(%.4f)\n",
-        i, tpav, tpdv, epav, epdv, rdav, rddv);
-    puts(buf); fputs(buf, fp);
-    if (ret != 0) break;
-  }
-  fclose(fp);
-  exit(1);
-/*
-  *erg1 = ctrun(go, tp0, rmsd0, &edv1, teql, trun, trep);
-  for (i = 1; i <= annealcnt; i++) {
-    x = 1.*i/(annealcnt + 1);
-    ctrun(go, x*tp1 + (1. - x)*tp0, NULL, teql, trun, trep);
-  }
-  *erg0 = ctrun(go, tp0, &edv0, teql, trun, trep);
-
-  x = *erg1 - *erg0;
-  *emin = *erg0 - x;
-  *emax = *erg1 + 2*x;
-  *erg0 += x*tmh_erg0margin;
-  *erg1 -= x*tmh_erg1margin;
-  printf("Guessing energy range...\n%g: %g%+g; %g: %g%+g E (%g, %g)\n",
-      tp0, *erg0, edv0, tp1, *erg1, edv1, *emin, *emax);
-*/
-  free(vep); free(vtp); free(vrmsd);
 }
 
 /* print usage and die */
@@ -313,16 +238,8 @@ int main(int argc, const char **argv)
           &tmh_ensexp, &tmh_dhdeorder))
       return -1;
   } else { /* fresh new run */
-    if (tmh_guesserange) {
-      guess_range(go,
-          tmh_rmsd0, tmh_rmsd1,
-          &tmh_tp0, &tmh_tp1,
-          &tmh_erg0, &tmh_erg1,
-          &tmh_emin, &tmh_emax,
-          tmh_annealcnt, tmh_tctrun, tmh_trep);
-    }
-    go->epot = cago_force(go, go->f, go->x);
-    printf("finish equilibration, epot %g, ekin %g\n", go->epot, go->ekin);
+    if (tmh_guesserange) 
+        printf("this feature is not supported\n"), exit(1);
   }
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg,

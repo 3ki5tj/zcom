@@ -11,10 +11,13 @@ real nbc = 4.f; /* repulsion distance */
 real rcc = 6.f;
 
 real epot_target = 0;
+int npass = 400;
 
 static void help(void)
 {
   printf("%s your.pdb\n", prog);
+  printf(" -E: followed by target energy %g\n", epot_target);
+  printf(" -p: followed by # of passes %d\n", npass);
   exit(1);
 }
 
@@ -31,14 +34,19 @@ static void doargs(int argc, const char **argv)
       continue;
     }
     ch = argv[i][1];
-    if (strchr("E", ch)) {
+    if (strchr("Ep", ch)) {
       val = argv[i] + 2;
       if (*val == '\0') {
         if (++i < argc) val = argv[i];
         else help();
       }
-      if (ch == 'T') {
+      if (ch == 'E') {
         epot_target = (real) atof(val);
+      } else if (ch == 'p') {
+        npass = atoi(val);
+      } else {
+        fprintf(stderr, "program error, unhandled option [-%c]\n", ch);
+        exit(1);
       }
       continue;
     }
@@ -54,7 +62,7 @@ static void doargs(int argc, const char **argv)
 int main(int argc, const char **argv)
 {
   cago_t *go;
-  int ret, npass = 400;
+  int ret;
   int nstcom = 10, tmax = 100000000, trep = 10000;
   real tptol = 0.01f, amp = 0.01f, ampf = sqrt(0.1);
   real mddt = 0.002f, thermdt = 0.02f;

@@ -126,7 +126,7 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
         else if (go->r2ref[id] < rmin)
           rmin = go->r2ref[id];
         go->ncont++;
-        go->kave += 72.f/go->r2ref[id];
+        go->kave += 120.f/go->r2ref[id];
       }
   if (go->ncont > 0) go->kave /= go->ncont;
   rmin = sqrt(rmin); rmax = sqrt(rmax);
@@ -220,7 +220,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
 real cago_force(cago_t *go, rv3_t *f, rv3_t *x)
 {
   int i, j, n = go->n;
-  real ene = 0, dr, del, ang, amp, invr2, dr2, dr6;
+  real ene = 0, dr, del, ang, amp, invr2, dr2, dr4, dr6, dr10;
   real kb = go->kb, ka = go->ka, kd1 = go->kd1, kd3 = go->kd3,
        nbe = go->nbe, nbc2 = go->nbc*go->nbc;
   rv3_t dx, g[3];
@@ -276,9 +276,11 @@ real cago_force(cago_t *go, rv3_t *f, rv3_t *x)
       invr2 = 1/dr2;
       if (go->iscont[i*n + j]) { /* is a contact */
         dr2 = go->r2ref[i*n+j]*invr2;
-        dr6 = dr2*dr2*dr2;
-        amp = nbe*12*(dr6 - 1)*dr6*invr2;
-        ene += nbe*(dr6 - 2)*dr6;
+        dr4 = dr2*dr2;
+        dr6 = dr4*dr2;
+        dr10 = dr4*dr6;
+        amp = nbe*60*(dr2 - 1)*dr10*invr2;
+        ene += nbe*(5*dr2 - 6)*dr10;
       } else {
         dr2 = nbc2/dr2;
         dr6 = dr2*dr2*dr2;
