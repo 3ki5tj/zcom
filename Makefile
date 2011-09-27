@@ -22,7 +22,7 @@ pack: $(prj).zip
 	wc $<
 	gnome-open $<
 
-syncusb: $(prj).h $(prj).zip
+usb: $(prj).h $(prj).zip
 	mv $(prj).zip $(usbdir)/
 	cp $(prj).h $(usbdir)/
 

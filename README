@@ -9,27 +9,36 @@ Code should be concise and limited in size,
 Try to use symbolic links to files in this folder if possible, 
   otherwise try to use rsync to other locations
 
-ss:             safe string
-str:            utilities for string, compare, convert, strip
-rng:            random number generator
-cfg:            configuration file
-dihcalc:        calculate dihedral
-endian:         write with endian
-lu:             LU decomposition
-svd:            singular value decomposition
-rotfit:         fiting two sets of points through rotation and translation
-log:            log file
-zt:             Z-algorithm related
-trace:          write trace
-hist:           collect and write simple histograms (1d/2d) 
-bio:            macros for read/write binary files
-ising2:         two dimensional ising model
-potts2:         two dimensional potts model
-abpro:          AB beads protein model
+def:            definition of real and M_PI
 util:           useful but unclassified routines
-pdb:            read pdb
+str:            utilities for string, compare, convert, strip
+ss:             safe string
+endn:           handle endianness
+bio:            macros for read/write binary files
+rng:            random number generator
+rv2:            real [2] vectors and 2x2 matrices
+rv3:            real [3] vectors and 3x3 matrices
+dihc:           compute dihedrals
+eig:            eigenvalues and eigenvectors
+lu:             LU decomposition
+svd:            single value decomposion
+rotfit:         fit two structures via rotation and translation
 savgol:         compute Savitzky-Golay coeffcients
 specfunc:       special functions
+cfg:            configuration file
+trace:          write trace
+log:            log file
+av:             simple mean/deviation
+hist:           collect and write simple histograms (1d/2d)
+mds:            multidimensional scaling
+pdb:            read pdb
+clus:           a Monte Carlo based clustering
+ising2:         two dimensional ising model
+potts2:         two dimensional potts model
+md:             common molecular dynamics routines
+abpro:          AB beads protein model
+cago:           C-alpha Go model
+tmh:            tempering with modified Hamiltonian
 
 zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h
@@ -47,8 +56,8 @@ zcom.h should not have a routine like zcom_finish()
 
 TOOLS:
 Makefile
-  usually tasks
-  make: assemble zcom.h
+  common tasks
+  make: call assemble.py to assemble zcom.h from modules
   make zcom.zip: make a package
 
 assemble.py -a 
