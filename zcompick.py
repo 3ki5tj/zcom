@@ -2,7 +2,7 @@
 
 ''' create a specialized version from zcom.h '''
 
-import os, sys, shutil, getopt, filecmp
+import os, sys, re, shutil, getopt, filecmp
 
 verbose = 0
 fninput = "zcom.h"
@@ -26,8 +26,9 @@ def mksmall(input, output, goodkeys):
 
   def haskey(ln, keys):
     ''' if a line ln has any of keys '''
+    ln = ln.strip()
     for key in keys:
-      if ln.find(key) >= 0:
+      if re.search("\s" + key + "$", ln):
         if verbose >= 1: print "IGNOR + %s, #%s: %s" % (level, lnum, lin),
         return 1
     return 0
