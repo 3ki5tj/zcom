@@ -1,7 +1,6 @@
 #include "util.c"
 #include "pdb.c"
 #include "rng.c"
-#include "dihc.c"
 #include "rotfit.c"
 #include "md.c"
 #include "av.h"

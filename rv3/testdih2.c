@@ -1,4 +1,4 @@
-#include "dihc.c"
+#include "rv3.h"
 
 int main(void)
 {

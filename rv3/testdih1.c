@@ -3,17 +3,19 @@
 
 typedef float real;
 #define ZCHAVEREAL 1
-#include "dihc.c" /* do not include dih.h to avoid different definition of real */
+#include "rv3.h" 
 
 #define R2D (180.0/M_PI)
 
 int main(void)
 {
   dihcalc_t dih;
+
   real a[3] = {1, 0, 0},
        b[3] = {0, 0, 0},
        c[3] = {0, -1, 0},
-       d[3] = {-1, -1, 2e-4};
+       d[3] = {-1, -1, 2e-2};
+
 /*
   real a[3] = {1.0, 3.123456789, -0.577350269}, 
        b[3] = {0, 0, 0}, 

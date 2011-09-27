@@ -18,7 +18,6 @@ bio:            macros for read/write binary files
 rng:            random number generator
 rv2:            real [2] vectors and 2x2 matrices
 rv3:            real [3] vectors and 3x3 matrices
-dihc:           compute dihedrals
 eig:            eigenvalues and eigenvectors
 lu:             LU decomposition
 svd:            single value decomposion

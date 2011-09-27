@@ -1,0 +1,387 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[margin=1.6in]{geometry}
+\begin{document}
+
+\section{Dihedral angle and its derivatives}
+
+\subsection{Definition}
+
+The dihedral $\phi$ of four points $i$, $j$, $k$ and $l$, 
+is defined as the angle between the plane vectors 
+$k$-$j$-$i$, and $l$-$k$-$j$, see Figure \ref{dihfig}.
+%
+More precisely,
+\begin{equation}
+  \cos \phi = \frac { \vec m \cdot \vec n} { m \  n},
+  \label{eq:cosphi}
+\end{equation}
+%
+where the plane vectors $\vec m$ and $\vec n$ are
+\begin{equation}
+\vec m = \vec r_{ij} \times \vec r_{kj}
+\label{eq:m_ijk}
+\end{equation}
+%
+\begin{equation}
+\vec n = \vec r_{kj} \times \vec r_{kl} 
+\label{eq:n_jkl}
+\end{equation}
+%
+and $m = | \vec m |$ and $n = | \vec n |$.
+%
+Since both $\phi$ and $-\phi$ yield the same value of cosine,
+we determine the sign of $\phi$ from
+that of $\vec n \cdot \vec r_{ij}$;
+the valid range of $\phi$ is $(-\pi, \pi)$. 
+%
+\begin{figure}[h]
+\begin{center}
+\includegraphics{dihfig.ps}
+\caption{\label{dihfig}definition of a dihedral angle}
+\end{center}
+\end{figure}
+
+
+\subsection{First order derivatives}
+
+
+It is convenient to define 
+\begin{eqnarray}
+  \vec m_k  &=&   \frac {\vec m} { m^k }, \\
+  \vec n_k  &=&   \frac {\vec n} { n^k },
+\end{eqnarray}
+where $k$ is $1, 2, \ldots$ (the $k=1$ case represents unit vectors). 
+%
+Eq. (\ref{eq:cosphi}) can be rewritten as 
+$\cos \phi = \vec m_1 \cdot \vec n_1$,
+and the derivative of $\phi$ can be computed as 
+\begin{eqnarray*}
+d \phi  &=&  -\frac{ d (\vec m_1 \cdot \vec n_1) } {\sin \phi} 
+\end{eqnarray*}
+where 
+$\hat r_{kj} = \vec r_{kj}/|\vec r_{kj}|$,
+and 
+$\sin\phi = \vec m_1 \times \vec n_1 \cdot \hat r_{kj} $.
+
+To derive derivatives of $m_1$ with respect to coordinates, 
+we use Einstein notations.
+Eq. (\ref{eq:m_ijk}) is equivalent to
+$m_\alpha = \epsilon_{\alpha \beta \gamma} r_{ij \beta} r_{kj \gamma}$.
+%
+Thus, 
+$\nabla_i \otimes \vec m$
+is 
+\begin{equation}
+  \frac {\partial m_\alpha} {\partial r_{i \beta}} 
+  = \epsilon_{\alpha \beta \gamma} r_{k j \gamma},
+  \label{eq:dmadrib}
+\end{equation}
+where $\epsilon_{\alpha \beta \gamma}$ is the Levi-Civita symbol;
+%
+summation over repeated indices is assumed.
+%
+%or $\nabla_i \otimes \vec m = \times \vec r_{kj} \times$
+Further,
+$\nabla_i m$ is 
+\begin{equation}
+    \frac {\partial m} {\partial r_{i  \beta}} 
+  = \frac {m_\alpha}{m} \frac {\partial m_\alpha} {\partial r_{i \beta}} 
+  = \frac {\epsilon_{\alpha \beta \gamma} m_\alpha r_{k j \gamma}}{m}.
+  \label{eq:dmdrib}
+\end{equation}
+%
+
+We now show that
+\begin{equation}
+\nabla_i \otimes \vec m_1   
+= \frac{ \nabla_i \otimes \vec m   } {m}
+- \frac{ \nabla_i m \otimes \vec m } {m^2}   
+= \vec m_2 \otimes (\vec m_1 \times \vec r_{kj}),
+\label{eq:dim1}
+\end{equation}
+%
+\begin{eqnarray*}
+  \frac {\partial m_{\alpha}} {m \, \partial r_{i \beta} } 
+  -
+  \frac {\partial m} {\partial r_{i \beta}} 
+  \frac {m_\alpha} {m^2} 
+  &=&
+  \frac{ \epsilon_{\alpha \beta \gamma} r_{kj \gamma} } { m }
+  - \frac{ \epsilon_{\alpha' \beta \gamma} m_{\alpha'} r_{k j \gamma} m_\alpha }
+    { m^3 } \\ 
+  &=& 
+  \left( 
+       \delta_{\alpha \alpha'} 
+       - \frac{ m_\alpha m_{\alpha'} }{ m^2 } 
+  \right)  
+  \frac{\epsilon_{\alpha' \beta \gamma} \, r_{kj \gamma} } {m} \\
+  &=&
+   \epsilon_{\alpha \mu \eta} \epsilon_{\alpha' \nu \eta}
+   m_\mu m_\nu
+  \frac{\epsilon_{\alpha' \beta \gamma} \, r_{kj \gamma} } {m^3} \\
+  &=&
+  \epsilon_{\alpha \mu \eta}   m_\mu m_\nu
+  (\delta_{\nu \beta} \delta_{\eta \gamma} - 
+   \delta_{\nu \gamma} \delta_{\eta \beta})
+  \frac{ r_{kj \gamma} } {m^3} \\
+  &=&
+  (\epsilon_{\alpha \mu \gamma}   m_\mu m_\beta  - 
+   \epsilon_{\alpha \mu \beta}   m_\mu m_\gamma )
+  \frac{ r_{kj \gamma} } {m^3} \\
+  &=&
+  \frac{m_\beta \, \epsilon_{\alpha \mu \gamma}  m_\mu  r_{kj \gamma}} {m^3},
+\end{eqnarray*}
+%
+where, on the third line we have used the identity 
+$ \delta_{\alpha \alpha'} - s_\alpha s_{\alpha'} 
+ = \epsilon_{\alpha \mu \eta} \epsilon_{\alpha' \nu \eta} s_\mu s_\nu $
+for a unit vector $\vec s$; 
+%
+on the last line, the second term is dropped because 
+$m_\gamma r_{kj \gamma}  = \vec m \cdot \vec r_{kj} = 0$.
+%
+Similarly, we have
+\begin{eqnarray}
+\nabla_j \otimes \vec m_1   &=&  -\vec m_2 \otimes (\vec m_1 \times \vec r_{ki}), \\
+\nabla_k \otimes \vec m_1   &=&  -\vec m_2 \otimes (\vec m_1 \times \vec r_{ij}),
+\end{eqnarray}
+%
+and for $n_1$,
+\begin{eqnarray}
+\nabla_j \otimes \vec n_1   &=&  -\vec n_2 \otimes (\vec n_1 \times \vec r_{kl}), \\
+\nabla_k \otimes \vec n_1   &=&  -\vec n_2 \otimes (\vec n_1 \times \vec r_{lj}), \\
+\nabla_l \otimes \vec n_1   &=&   \vec n_2 \otimes (\vec n_1 \times \vec r_{kj}),
+\end{eqnarray}
+
+The gradient $\phi$ with respect to coordinates are now readily obtained:
+\begin{eqnarray*}
+\nabla_i \phi &=& -\frac{ \nabla \otimes \vec m_1 \cdot \vec n_1  + m_1 \cdot \nabla \otimes \vec n_1 }
+                  {\sin \phi} \\
+              &=& -\frac{ \vec m_2 (\vec m_1 \times \vec r_{kj} \cdot \vec n_1) + 0 }
+                  {\sin \phi} \\
+              &=& \frac{ (\vec m_1 \times \vec n_1 \cdot \hat r_{kj}) \, r_{kj} }
+                  {\sin \phi} \vec m_2 \\
+              &=& r_{kj} \, \vec m_2,
+\end{eqnarray*}
+
+Other gradient terms can be obtained similarly, in summary:
+\begin{eqnarray}
+\nabla_i \phi   &=&  r_{kj} \, \vec m_2, \\
+\nabla_j \phi   &=& -r_{kj} \, \vec m_2 + \vec S, \\
+\nabla_k \phi   &=&  r_{kj} \, \vec n_2 - \vec S, \\
+\nabla_l \phi   &=& -r_{kj} \, \vec n_2,
+\end{eqnarray}
+where
+$\vec S = (\vec r_{ij} \cdot \hat r_{kj}) \ \vec m_2 
+        + (\vec r_{kl} \cdot \hat r_{kj}) \ \vec n_2.$
+
+
+
+\subsection{Conjugate field and its divergence}
+
+
+The conjugate field $\vec u$ is defined as
+\begin{equation}
+\vec u = \frac {\nabla \phi} {\nabla \phi \cdot \nabla \phi},
+\end{equation}
+and its divergence
+\begin{equation}
+\nabla \cdot \vec u  = 
+   \frac {\nabla^2 \phi} 
+         {\nabla \phi \cdot \nabla \phi}
+ - \frac {\nabla \phi \cdot \nabla \otimes \nabla \phi \cdot \nabla \phi} 
+         {(\nabla \phi \cdot \nabla \phi)^2}.
+\end{equation}
+%
+We thus need to compute 
+$\nabla^2 \phi$
+and
+$\nabla \phi \cdot \nabla \otimes \nabla \phi \cdot \nabla \phi$.
+
+
+\subsubsection{$\nabla^2 \phi$}
+First, $\nabla \cdot \nabla_i \phi$ is easier,
+%
+\begin{eqnarray*}
+\nabla_i^2 \phi   
+&=& \nabla_i \cdot (r_{kj} \, \vec m_2) 
+ =  r_{kj} \; ( \nabla_i \cdot \vec m_2 ) \\
+&=& r_{kj} 
+  \left(
+    \frac {\nabla_i \cdot \vec m} {m^2} 
+    - 2 \frac {\vec m \cdot \nabla_i m} {m^3}
+  \right) = 0,
+\end{eqnarray*}
+where on the last line, we used
+$\nabla_i \cdot \vec m = \vec m \cdot \nabla_i m = 0$,
+from Eq. (\ref{eq:dmadrib}) and (\ref{eq:dmdrib}).
+%
+Similarly, since
+$\nabla_j \cdot \vec m_2 = \nabla_k \cdot \vec m_2 = 0$,
+and
+$\nabla_j r_{jk} = \hat r_{jk}$,
+%
+$\nabla_j \cdot \nabla_i \phi = \nabla_k \cdot \nabla_i \phi = 0$.
+
+
+Second, $\nabla \cdot \nabla_j \phi$, involves evaluating $\nabla \cdot \vec S$,
+\begin{eqnarray*}
+\nabla_k \cdot [ ( \vec r_{ij} \cdot \hat r_{kj}) \vec m_2]
+&=& 
+\nabla_k ( \vec r_{ij} \cdot \hat r_{kj}) \cdot \vec m_2
++
+( \vec r_{ij} \cdot \hat r_{kj}) \; (\nabla_k \cdot \vec m_2) \\
+&=& 
+\vec m_2 \cdot \nabla_k \otimes \hat r_{kj} \cdot \vec r_{ij}
++ 0.
+\end{eqnarray*}
+%
+Since,
+$ \nabla_k \otimes \vec r_{kj} 
+= \frac {\mathbf I} { r_{kj}}
+- \frac { \nabla_k r_{kj} \otimes \vec r_{kj} }{ r_{kj}^2} 
+= \frac { {\mathbf I - \hat r_{kj} \otimes \hat r_{kj}} } { r_{kj}},$
+%
+we have
+\begin{eqnarray*}
+\nabla_k \cdot [ ( \vec r_{ij} \cdot \hat r_{kj}) \vec m_2]
+=
+\vec m_2 \cdot \frac { {\mathbf I - \hat r_{kj} \otimes \hat r_{kj}} } { r_{kj}} \cdot \vec r_{ij} 
+= 0 + 0 = 0.
+\end{eqnarray*}
+
+In summary, $\nabla^2 \phi = 0$.
+
+\subsubsection{$\nabla \phi \cdot \nabla \otimes \nabla \phi \cdot \nabla \phi$}
+We define 
+$D_{ab} \equiv \nabla_a \phi \cdot \nabla_a \otimes \nabla_b \phi \cdot \nabla_b \phi$, 
+where $a, b = i, j, k, l$.
+
+First $D_{ii} = 0$, proof:
+\begin{eqnarray*}
+D_{ii} 
+&=& \nabla_i \phi \cdot \nabla_i \otimes \nabla_i \phi \cdot \nabla_i \phi \\
+&=& \nabla_i \phi \cdot r_{kj} \nabla_i \otimes \vec m_2 \cdot \nabla_i \phi \\
+&=& \nabla_i \phi \cdot r_{kj} 
+    \left(
+    \frac {\nabla_i \otimes \vec m} {m^2}
+    - 2 \frac{\nabla_i m \otimes \vec m}{m^3} 
+    \right)
+  \cdot \nabla_i \phi \\
+&=& r_{kj} \left(
+    \frac {\vec r_{kj} \cdot \nabla_i \phi \times \nabla_i \phi} {m^2}
+    - 2 \frac{(\nabla_i \phi \cdot \nabla_i m) \; (\vec m \cdot \nabla_i \phi)}{m^3} 
+    \right) \\
+&=& 0 + 0 = 0
+\end{eqnarray*}
+where we have used a similar technique in deriving Eq. (\ref{eq:dim1}),
+and $\nabla_i m = \vec r_{kj} \times \hat m$, 
+and thus $\nabla_i \phi \cdot \nabla_i m = 0$.
+We list the rest of nonzero items:
+
+\begin{eqnarray}
+D_{ij} 
+&=& \frac {\sin \phi} {mn} \; \frac {r_{kj}^2} {m^2} \;
+  z_{ki} \; z_{kl}, \\
+%
+D_{ik} 
+&=&  \frac {\sin \phi} {mn} \; \frac {r_{kj}^2} {m^2} \; 
+  z_{ij} \; z_{lj}, \\
+%
+D_{kl}
+&=& \frac {\sin \phi} {mn} \; \frac {r_{kj}^2}{n^2} \; 
+  z_{ij} \; z_{lj} , \\
+%
+D_{jl}
+&=& \frac {\sin \phi} {mn} \; \frac {r_{kl}^2} {n^2} \;
+  z_{ki} \; z_{kl} , \\
+%
+D_{jj} 
+&=& - \frac{
+    (\nabla_j \phi \otimes \nabla_j \phi)  : 
+    (\vec r_{ij} \otimes \vec m_2 + \vec r_{kl} \otimes \vec n_2)
+  } {r_{kj}} \nonumber \\
+& & - 2 \frac {\sin \phi} {mn}  
+  z_{ki} \; z_{kl} \;
+  [
+    (\nabla_j \phi \cdot \vec m_2) \; z_{ki}
+   -(\nabla_j \phi \cdot \vec n_2) \; z_{kl}
+  ], \\
+%
+D_{jk} 
+&=&
+\frac{ 
+    (\nabla_j \phi \otimes \nabla_k \phi)  : 
+    (\vec r_{ij} \otimes \vec m_2 + \vec r_{kl} \otimes \vec n_2)
+} {r_{kj}} \nonumber \\
+& & 
+{} -\frac {\sin \phi} {mn}
+  z_{ij} \; z_{ki} \;
+  [
+    (\nabla_j \phi \cdot \vec m_2) \; z_{lj}
+   +(\nabla_k \phi \cdot \vec m_2) \; z_{kl}
+  ] \nonumber \\
+& &
+ {} +\frac {\sin \phi} {mn}
+  z_{lj} \; z_{kl} \;
+  [
+    (\nabla_j \phi \cdot \vec n_2) \; z_{kl}
+   +(\nabla_k \phi \cdot \vec n_2) \; z_{ki}
+  ], \\
+%
+D_{kk}
+&=& - \frac{
+    (\nabla_k \phi \otimes \nabla_k \phi)  : 
+    (\vec r_{ij} \otimes \vec m_2 + \vec r_{kl} \otimes \vec n_2)
+  } {r_{kj}} \nonumber \\
+& & {}- 2 \frac {\sin \phi} {mn}  
+  z_{lj} \; z_{ij} \;
+  [
+    (\nabla_k \phi \cdot \vec m_2) \; z_{ij}
+   -(\nabla_k \phi \cdot \vec n_2) \; z_{lj}
+  ],
+\end{eqnarray}
+where, component parallel to $\hat r_{kj}$ is denoted by $z$, e.g., 
+$z_{ij} \equiv \vec r_{ij} \cdot \hat r_{kj}$.
+Note, although not obvious, the expression for $D_{jk}$ is symmetrical to $j$ and $k$. 
+\begin{align*}
+&\ \ \ (\nabla_j \phi \otimes \nabla_k \phi) : (\vec r_{ij} \otimes \vec m_2)
++ (\nabla_j \phi \otimes \nabla_k \phi) : (\vec r_{kl} \otimes \vec n_2) \\
+&= (\nabla_j \phi \cdot \vec r_{ij})
+  (\nabla_k \phi \cdot \vec m_2)
++ (\nabla_j \phi \cdot \vec r_{kl})
+  (\nabla_k \phi \cdot \vec n_2) \\
+&= z_{kl} \; (\vec n_2 \cdot \vec r_{ij})
+  (\nabla_k \phi \cdot \vec m_2 ) 
++  z_{ik} \; (\vec m_2 \cdot \vec r_{kl})
+  (\nabla_k \phi \cdot \vec n_2 ) \\
+&= -z_{kl} \; (\vec n_2 \cdot \vec r_{ij})
+   (z_{ij} \vec m_2 + z_{lj} \vec n_2) \cdot \vec m_2 
+-  z_{ik} \; (\vec m_2 \cdot \vec r_{kl})
+   (r_{ij} \vec m_2 + r_{lj} \vec n_2) \cdot \vec n_2 \\
+&= - \; \frac{V}{n^2}
+  \left( 
+    \frac {z_{kl} z_{ij}}{m^2} +
+    z_{kl} z_{lj} \; \vec m_2 \cdot \vec n_2 
+  \right)
+- \; \frac{V}{m^2}
+  \left( 
+    z_{ik} z_{ij} \; \vec m_2 \cdot \vec n_2 +
+    \frac {z_{ik} z_{lj}} {n^2} 
+  \right) \\  
+&= - \frac{V}{m^2 n^2} 
+  \left(
+    z_{kl} z_{ij} + z_{ik} z_{lj}
+  \right)
+   - V \vec m_2 \cdot \vec n_2
+   \left(
+     \frac {z_{kl} z_{lj}} {n^2} 
+    +\frac {z_{ik} z_{ij}} {m^2} 
+   \right).
+\end{align*}
+%
+
+
+\end{document}
