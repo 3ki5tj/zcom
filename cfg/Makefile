@@ -7,7 +7,9 @@ all: $(bin)
 
 CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 
-%: %.c $(dep)
+$(bin): $(dep)
+
+%:: %.c
 	$(CC) -o $@ $< $(src) -lm
 
 clean:

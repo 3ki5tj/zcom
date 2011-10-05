@@ -54,7 +54,7 @@ real ab_force(abpro_t *ab, real *f, const real *r, int soft);
 ZCINLINE real ab_ekin(abpro_t *ab)
   { return ab->ekin = md_ekin(ab->v, ab->n*ab->d, ab->dof, &ab->tkin); }
 ZCINLINE void ab_vrescale(abpro_t *ab, real tp, real dt)
-  { md_vrescale(tp, dt, &ab->ekin, &ab->tkin, ab->v, ab->n*ab->d, ab->dof); }
+  { md_vrescale(ab->v, ab->n*ab->d, ab->dof, tp, dt, &ab->ekin, &ab->tkin); }
 int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags);
 int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags);
 

@@ -8,11 +8,10 @@ int main(void)
 {
   abpro_t *ab;
   int id = 7, d = 3, model = 2;
-  int it, itmax = 1000000, n;
+  int it, itmax = 1000000;
   real dt = 1e-3f, T = .5f, sme = 0.;
 
   ab = ab_open(id, d, model, 0.1);
-  n = ab->n;
 
   for (it = 1; it <= itmax; it++) {
     ab_brownian(ab, T, 1.f, dt, AB_SOFTFORCE|AB_MILCSHAKE);

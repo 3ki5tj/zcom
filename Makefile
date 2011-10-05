@@ -3,6 +3,9 @@ CX = icc -O3 -Wall
 usbdir = /media/RII
 prj = zcom
 
+subdirs = def util str ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
+	  argopt cfg trace log av hist mds pdb clus ising2 potts2 md lj abpro cago tmh
+
 $(prj).h::
 	cd abpro && ./mk2d.py && cd ..
 	python assemble.py -a -v1
@@ -16,7 +19,8 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	wc $@
 
 clean:
-	rm -f *~ $(prj).o $(prj).zip */*~ */a.out *.tmp
+	$(RM) -f *~ $(prj).o $(prj).zip */*~ */a.out *.tmp
+	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
 
 pack: $(prj).zip
 	wc $<

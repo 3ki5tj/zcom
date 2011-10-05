@@ -4,13 +4,13 @@
 #include "md.h"
 
 /* shift the center of mass to zero */
-void md_shiftcomw(real *x, real *w, int d, int n)
+void md_shiftcomw(real *x, const real *w, int n, int d)
 {
   int i, j;
   real rc, wtot = 0;
   
   if (w) for (i = 0; i < n; i++) wtot += w[i];
-  else wtot = n;
+  else wtot = (real) n;
   for (j = 0; j < d; j++) {
     for (rc = 0, i = 0; i < n; i++)
       rc += x[i*d+j]*(w ? w[i] : 1.f);
@@ -27,7 +27,7 @@ void md_shiftang2d(rv2_t *x, rv2_t *v, int n)
   real am, r2, xc[2] = {0,0}, xi[2];
 
   for (i = 0; i < n; i++) rv2_inc(xc, x[i]);
-  rv2_smul(xc, 1./n);
+  rv2_smul(xc, 1.f/n);
   for (am = r2 = 0.f, i = 0; i < n; i++) {
     rv2_diff(xi, x[i], xc);
     am += rv2_cross(xi, v[i]);
@@ -88,7 +88,7 @@ void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 }
 
 /* return kinetic energy */
-real md_ekin(real *v, int nd, int dof, real *tkin)
+real md_ekin(const real *v, int nd, int dof, real *tkin)
 {
   int i;
   real ekin;
@@ -99,8 +99,7 @@ real md_ekin(real *v, int nd, int dof, real *tkin)
 }
 
 /* velocity rescaling thermostat */
-void md_vrescale(real tp, real dt, real *ekin, real *tkin, 
-    real *v, int nd, int dof)
+void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
   real ekav = .5f*tp*dof, ek1 = *ekin, ek2, s;

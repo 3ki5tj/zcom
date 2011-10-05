@@ -83,7 +83,7 @@ ZCINLINE real *rv2_smul2(real *y, const real *x, real s)
 ZCINLINE real *rv2_normalize(real *x)
 {
   real r = rv2_norm(x);
-  if (r > 0.f) rv2_smul(x, 1./r);
+  if (r > 0.f) rv2_smul(x, 1.f/r);
   return x;
 }
 

@@ -1,10 +1,12 @@
 CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm
-deps=def.h rv3.h
 
-bin=testang testprinc testvdist testdet testeig testsvd testrot testdih1 testdih2
+bin=$(patsubst %.c,%, $(wildcard test*.c))
+
 all: $(bin)
 
-%: %.c $(deps)
+$(bin): def.h rv3.h Makefile
+
+%: %.c
 	$(CC) -o $@ $<
 
 clean:
