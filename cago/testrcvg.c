@@ -1,4 +1,5 @@
 #include "cago.c"
+#include "argopt.c"
 
 const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
@@ -9,27 +10,13 @@ real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
 real rcc = 6.f;
 
-const char *prog = "cagocvg";
-
-static void help(void)
-{
-  printf("%s your.pdb\n", prog);
-  exit(1);
-}
-
 static void doargs(int argc, const char **argv)
 {
-  int i;
-  
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      fnpdb = argv[i];
-      continue;
-    }
-    if (argv[i][1] == 'h')
-      help();
-  }
+  argopt_t *ao = argopt_open(0, "C-alpha GO model rmsd convergent", "James Bond");
+  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_regopt_help(ao, "-h");
+  argopt_parse(ao, argc, argv);
+  argopt_close(ao);
 }
 
 int main(int argc, const char **argv)

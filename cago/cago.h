@@ -26,10 +26,6 @@ typedef struct {
   rv3_t *x, *v, *f, *x1;
   real ekin, epot, t;
   real rmsd; /* result from a rotfit call  */
-  /* additional parameter for MD simulations */
-  //real mddt; /* dt for md */
-  //real thermdt; /* dt for thermostat */
-  //int nstcom; /* frequency of remove center of mass motion */
 } cago_t;
 
 cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,

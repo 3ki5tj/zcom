@@ -1,4 +1,5 @@
 #include "cago.c"
+#include "argopt.c"
 
 const char *fnpdb = "pdb/1MBN.pdb";
 real kb = 200.f;
@@ -16,27 +17,14 @@ real thermdt = 2e-2f;
 int tfreq =  2000;
 int tmax = 200000;
 
-const char *prog = "go";
-
-static void help(void)
-{
-  printf("%s your.pdb\n", prog);
-  exit(1);
-}
-
 static void doargs(int argc, const char **argv)
 {
-  int i;
-  
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      fnpdb = argv[i];
-      continue;
-    }
-    if (argv[i][1] == 'h')
-      help();
-  }
+  argopt_t *ao = argopt_open(0, "C-alpha GO model", "James Bond");
+  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_regopt_help(ao, "-h");
+  argopt_regopt(ao, "-n", 1, "%d", &tmax, "number of simulation steps");
+  argopt_parse(ao, argc, argv);
+  argopt_close(ao);
 }
 
 int main(int argc, const char **argv)

@@ -1,6 +1,6 @@
 #include "cago.c"
+#include "argopt.c"
 
-const char *prog = "cagocvg";
 const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
 real ka = 40.f;
@@ -13,50 +13,15 @@ real rcc = 6.f;
 real epot_target = 0;
 int npass = 400;
 
-static void help(void)
-{
-  printf("%s your.pdb\n", prog);
-  printf(" -E: followed by target energy %g\n", epot_target);
-  printf(" -p: followed by # of passes %d\n", npass);
-  exit(1);
-}
-
 static void doargs(int argc, const char **argv)
 {
-  int i;
-  char ch;
-  const char *val;
-  
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      fnpdb = argv[i];
-      continue;
-    }
-    ch = argv[i][1];
-    if (strchr("Ep", ch)) {
-      val = argv[i] + 2;
-      if (*val == '\0') {
-        if (++i < argc) val = argv[i];
-        else help();
-      }
-      if (ch == 'E') {
-        epot_target = (real) atof(val);
-      } else if (ch == 'p') {
-        npass = atoi(val);
-      } else {
-        fprintf(stderr, "program error, unhandled option [-%c]\n", ch);
-        exit(1);
-      }
-      continue;
-    }
-    if (ch == 'h') {
-      help();
-    } else {
-      printf("unknown flag -%c\n", ch);
-      help();
-    }
-  }
+  argopt_t *ao = argopt_open(0, "C-alpha GO model rmsd convergent", "James Bond");
+  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_regopt_help(ao, "-h");
+  argopt_regopt(ao, "-E", 1, "%r", &epot_target, "target energy");
+  argopt_regopt(ao, "-p", 1, "%d", &epot_target, "number of passes");
+  argopt_parse(ao, argc, argv);
+  argopt_close(ao);
 }
 
 int main(int argc, const char **argv)

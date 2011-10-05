@@ -1,6 +1,6 @@
 #include "cago.c"
+#include "argopt.c"
 
-const char *prog = "go";
 const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
 real ka = 40.f;
@@ -12,43 +12,17 @@ real rcc = 6.f;
 
 real tps = 0.3f, tp = 0.3f;
 
-static void help(void)
-{
-  printf("%s your.pdb\n", prog);
-  exit(1);
-}
-
 static void doargs(int argc, const char **argv)
 {
-  int i;
-  char ch;
-  const char *val;
-  
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      fnpdb = argv[i];
-      continue;
-    }
-    ch = argv[i][1];
-    if (strchr("T", ch)) {
-      val = argv[i] + 2;
-      if (*val == '\0') {
-        if (++i < argc) val = argv[i];
-        else help();
-      }
-      if (ch == 'T') {
-        tps = tp = (real) atof(val);
-      }
-      continue;
-    }
-    if (ch == 'h') {
-      help();
-    } else {
-      printf("unknown flag -%c\n", ch);
-      help();
-    }
-  }
+  argopt_t *ao = argopt_open(0, "C-alpha GO model", "James Bond");
+  opt_t *otp;
+
+  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_regopt_help(ao, "-h");
+  otp = argopt_regopt(ao, "-T", 1, "%r", &tp, "Temperature");
+  argopt_parse(ao, argc, argv);
+  if (otp->set) tps = tp;
+  argopt_close(ao);
 }
 
 int main(int argc, const char **argv)
