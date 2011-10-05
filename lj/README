@@ -1,0 +1,3 @@
+2D/3D Lennard Jones system
+
+test1.c is somehow slower than ../md/testlj.c
