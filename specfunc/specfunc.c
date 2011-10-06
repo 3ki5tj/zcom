@@ -45,5 +45,25 @@ double ksq(double x)
   }
 }
 
+/* normalized associated legendre polynomial
+ * nplm(x) = sqrt( (2l+1)/(4 pi) (l-m)!/(l+m)!) P_l^m(x)
+ * real solution of m <= l, l, m >= 0
+ * (1 - x^2) y'' - 2 x y' + [l(l+1) - m^2/(1-x^2)] y = 0 */
+double plegendre(double x, int l, int m)
+{
+  int i;
+  double y, yp, ypp, f, fp, s = 1 - x*x;
+ 
+  if (m < 0 || m > l || s < 0) return 0; 
+  for (yp = 1, i = 1; i <= m; i++) yp *= (1 + .5/i)*s;
+  yp = sqrt(yp/(4*M_PI)) * (m % 2 ? -1: 1); /* P(m, m) */
+  /* (l-m) P_l^m = x (2l-1) P_{l-1}^m - (l+m-1)*P_{l-2}^m */
+  for (fp = 1, ypp = 0, i = m + 1; i <= l; i++, fp = f, ypp = yp, yp = y) {
+    f = sqrt((4.*i*i-1)/((i-m)*(i+m)));
+    y = f*(x*yp - ypp/fp);
+  }
+  return yp;
+}
+
 #endif
 

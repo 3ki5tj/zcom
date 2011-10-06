@@ -1,11 +1,6 @@
 #include <stdlib.h>
 #include "specfunc.c"
         
-static void test_lngam(double x)
-{
-  printf("lngamma(%g) = %.14f\n", x, lngam(x));
-}
-
 static void test_ksq(double x)
 {
   FILE *fp;
@@ -28,7 +23,6 @@ int main(int argc, char **argv)
   double x = .5;
 
   if (argc > 1) x = atof(argv[1]);
-  test_lngam(x);
   test_ksq(x);
   return 0;
 }
