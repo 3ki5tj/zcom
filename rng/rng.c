@@ -1,4 +1,3 @@
-/* stuff before the first #ifndef is not imported to zcom.h */
 #ifndef RNG_C__
 #define RNG_C__
 #include "rng.h"

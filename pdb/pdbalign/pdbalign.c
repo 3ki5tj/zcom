@@ -28,7 +28,7 @@ static void help(void)
 }
 
 /* handle arguments */
-static int doargs(int argc, const char **argv)
+static int doargs(int argc, char **argv)
 {
   int i, j, ch, acnt = 0;
   const char *val;
@@ -136,7 +136,7 @@ static real *mkweights(int alntype, int nr)
   return w;
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   pdbmodel_t *m1, *m2;
   real *w;

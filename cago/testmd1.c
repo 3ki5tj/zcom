@@ -12,20 +12,19 @@ real rcc = 6.f;
 
 real tps = 0.3f, tp = 0.3f;
 
-static void doargs(int argc, const char **argv)
+static void doargs(int argc, char **argv)
 {
-  argopt_t *ao = argopt_open(0, "C-alpha GO model", "James Bond");
-  opt_t *otp;
+  argopt_t *ao = argopt_open(0);
 
-  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
   argopt_regopt_help(ao, "-h");
-  otp = argopt_regopt(ao, "-T", 1, "%r", &tp, "Temperature");
+  argopt_regopt(ao, "-T", "%r", &tp, "Temperature");
   argopt_parse(ao, argc, argv);
-  if (otp->set) tps = tp;
+  if (argopt_set(ao, tp)) tps = tp;
   argopt_close(ao);
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   cago_t *go;
   int nstcom = 10, teql = 100000, tmax = 5000000, trep = 10000;

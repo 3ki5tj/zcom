@@ -15,7 +15,7 @@ zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
 clean:
-	rm -f *~ *.out MTSEED $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE ab.pos
+	rm -f *~ *.out MTSEED $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE cago.pos fail.pos guess.range
 
 .PHONY: clean all
 

@@ -4,6 +4,7 @@ typedef double real;
 
 #include "time.h"
 #define ZCOM_PICK
+#define ZCOM_ARGOPT
 #define ZCOM_CFG
 #define ZCOM_AV
 #define ZCOM_TRACE
@@ -171,43 +172,20 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
   return 0;
 }
 
-/* print usage and die */
-static void help(void)
+static void doargs(int argc, char **argv)
 {
-  printf("%s [OPTIONS] [your.cfg]\n", prog);
-  printf("OPTIONS:\n"
-      "  -maxh: followed by maximal hour\n");
-  exit(1);
+  argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -maxh */
+  argopt_regarg(ao, NULL, &fncfg, "cfgfile");
+  argopt_regopt_help(ao, "-h");
+  argopt_regopt_version(ao, "--version");
+  argopt_regopt(ao, "-v", "%b", &verbose, "verbose");
+  argopt_regopt(ao, "-maxh", "%lf", &maxtime, "max. simulation hours");
+  argopt_parse(ao, argc, argv);
+  if (argopt_set(ao, maxtime)) maxtime *= 3600.*.98;
+  argopt_close(ao); 
 }
 
-/* handle input arguments */
-static int doargs(int argc, const char **argv)
-{
-  int i;
-
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      fncfg = argv[i];
-      continue;
-    }
-    if (strcmp(argv[i], "-maxh") == 0) {
-      if (i == argc - 1) help();
-      i++;
-      maxtime = atof(argv[i])*3600.*0.98;
-    } else if (strcmp(argv[i], "-v") == 0) {
-      verbose = strlen(argv[i] + 1); /* number of v's, e.g., -vvv --> verbose = 3 */
-    } else if (strcmp(argv[i], "-h") == 0) {
-      help();
-    } else {
-      printf("unknown option %s\n", argv[i]);
-      help();
-    }
-  }
-  return 0;
-}
-
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   cago_t *go;
   tmh_t *tmh;

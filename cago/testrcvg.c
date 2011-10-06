@@ -10,16 +10,17 @@ real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
 real rcc = 6.f;
 
-static void doargs(int argc, const char **argv)
+static void doargs(int argc, char **argv)
 {
-  argopt_t *ao = argopt_open(0, "C-alpha GO model rmsd convergent", "James Bond");
-  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_t *ao = argopt_open(0);
+  ao->desc = "C-alpha Go model, rmsd convergent";
+  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
   argopt_regopt_help(ao, "-h");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   cago_t *go;
   int ret, npass = 400;

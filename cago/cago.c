@@ -204,7 +204,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   for (s = 0, i = 0; i < n; i++)
     s += rv3_sqr(go->v[i]);
   s = sqrt( (3*n*T0)/s );
-  for (go->ekin = 0, i = 0; i < n; i++) {
+  for (i = 0; i < n; i++) {
     rv3_smul(go->v[i], s);
   }
   go->ekin = cago_ekin(go, go->v);

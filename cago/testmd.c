@@ -17,17 +17,17 @@ real thermdt = 2e-2f;
 int tfreq =  2000;
 int tmax = 200000;
 
-static void doargs(int argc, const char **argv)
+static void doargs(int argc, char **argv)
 {
-  argopt_t *ao = argopt_open(0, "C-alpha GO model", "James Bond");
-  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_t *ao = argopt_open(0);
+  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
   argopt_regopt_help(ao, "-h");
-  argopt_regopt(ao, "-n", 1, "%d", &tmax, "number of simulation steps");
+  argopt_regopt(ao, "-n", "%d", &tmax, "number of simulation steps");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   cago_t *go;
   int t;
@@ -59,8 +59,6 @@ int main(int argc, const char **argv)
   cago_writepdb(go, go->f, "final.pdb");
   cago_writepdb(go, go->xref, "ref.pdb");
   printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
-
   cago_close(go);
-
   return 0;
 }

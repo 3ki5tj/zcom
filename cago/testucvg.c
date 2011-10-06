@@ -13,18 +13,19 @@ real rcc = 6.f;
 real epot_target = 0;
 int npass = 400;
 
-static void doargs(int argc, const char **argv)
+static void doargs(int argc, char **argv)
 {
-  argopt_t *ao = argopt_open(0, "C-alpha GO model rmsd convergent", "James Bond");
-  argopt_regarg(ao, 0, NULL, &fnpdb, "pdbfile");
+  argopt_t *ao = argopt_open(0);
+  ao->desc = "C-alpha GO model potential energy convergent";
+  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
   argopt_regopt_help(ao, "-h");
-  argopt_regopt(ao, "-E", 1, "%r", &epot_target, "target energy");
-  argopt_regopt(ao, "-p", 1, "%d", &epot_target, "number of passes");
+  argopt_regopt(ao, "-E", "%r", &epot_target, "target energy");
+  argopt_regopt(ao, "-p","%d", &epot_target, "number of passes");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   cago_t *go;
   int ret;

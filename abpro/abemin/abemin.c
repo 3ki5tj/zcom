@@ -51,7 +51,7 @@ static void help(const char *prog)
 }
 
 /* handle arguments */
-static int doargs(int argc, const char **argv)
+static int doargs(int argc, char **argv)
 {
   int i, j, ch;
   const char *val;
@@ -96,7 +96,7 @@ static int doargs(int argc, const char **argv)
   return 0;
 }
   
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   abpro_t *ab;
   int seqid, d, model, flags;

@@ -55,8 +55,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
 
 static const char pdb_aanames_[21][4] = {"---",
   "GLY", "ALA", "VAL", "LEU", "ILE", "PRO",
-  "THR", "SER", "CYS", "MET", "PHE", "TYR", "TRP",
-  "GLU", "GLN", "ASP", "ASN", "ARG", "LYS", "HIS"};
+  "SER", "THR", "CYS", "MET", "PHE", "TYR", "TRP", 
+  "ASN", "GLN", "ASP", "GLU", "LYS", "HIS", "ARG"};
 
 ZCINLINE int pdbaaidx(const char *res)
 {

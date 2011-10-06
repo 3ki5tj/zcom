@@ -4,16 +4,14 @@
 #include "argopt.h"
 
 /* initialize the argument structure */
-argopt_t *argopt_open(int version, const char *desc, const char *author)
+argopt_t *argopt_open(unsigned flags)
 {
   argopt_t *ao;
   time_t tmcmpl;
 
   xnew(ao, 1);
+  ao->flags = flags;
   ao->narg = ao->nopt = 0;
-  ao->version = version;
-  ao->desc = desc;
-  ao->author = author;
   tmcmpl = time(NULL);
   ao->tm = localtime( &tmcmpl );
   xnew(ao->args, 1);
@@ -71,25 +69,26 @@ static void argopt_help(argopt_t *ao)
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
     printf("  %-*s : %s%s\n", maxlen, lo[i].sflag,
-        (lo[i].hasarg ? "followed by " : ""), desc);
+        (!(lo[i].flags & ARGOPT_SWITCH) ? "followed by " : ""), desc);
   }
   argopt_close(ao);
   exit(1);
 }
 
 /* register argument */
-opt_t *argopt_regarg(argopt_t *ao, int must,
-    const char *fmt, void *ptr, const char *desc)
+int argopt_regarg(argopt_t *ao, const char *fmt, void *ptr, const char *desc)
 {
   opt_t *al = ao->args + ao->narg;
 
   al->isopt = 0;
-  al->ch = '\0';
+  al->ch = '\0'; /* arguments have no flags */
   al->sflag = NULL;
-  al->hasarg = 1;
-  al->must = must;
-  al->hasarg = 0;
-  al->set = 0;
+  
+  al->flags = 0;
+  if (fmt && fmt[0] == '!') {
+    fmt++;
+    al->flags |= ARGOPT_MUST;
+  }
   al->fmt = fmt;
   if (ptr == NULL) {
     printf("using null pointer for argument %s\n", desc);
@@ -100,11 +99,11 @@ opt_t *argopt_regarg(argopt_t *ao, int must,
   
   ao->narg++;
   xrenew(ao->args, ao->narg+1);
-  return al;
+  return ao->narg - 1;
 }
 
-/* register option */
-opt_t *argopt_regopt(argopt_t *ao, const char *sflag, int hasarg,
+/* register option: "%b" for a switch */
+int argopt_regopt(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc)
 {
   opt_t *ol = ao->opts + ao->nopt;
@@ -112,26 +111,34 @@ opt_t *argopt_regopt(argopt_t *ao, const char *sflag, int hasarg,
   ol->isopt = 1;
   ol->sflag = sflag;
   ol->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
-  ol->hasarg = hasarg;
-  ol->must = 0; /* TODO: mandatory options */
-  ol->set = 0;
-  ol->desc = desc;
-  ol->fmt = fmt;
-  ol->ptr = ptr;
+  ol->flags = 0;
   if (ptr == NULL) {
-    printf("using null pointer for option %s: %s\n", sflag, desc);
+    printf("using null pointer for argument %s\n", desc);
     exit(1);
+  }  
+  ol->ptr = ptr;
+  if (fmt && fmt[0] == '!') {
+    fmt++;
+    ol->flags |= ARGOPT_MUST;
   }
+  if (fmt && strcmp(fmt, "%b") == 0) {
+    fmt = "%d";
+    ol->flags |= ARGOPT_SWITCH;
+    *(int *) ptr = 0;
+  }
+  ol->fmt = fmt;
+  ol->desc = desc;
+
   ao->nopt++;
   xrenew(ao->opts, ao->nopt+1);
-  return ol;
+  return ao->nopt - 1;
 }
 
 /* translate string values to actual ones through sscanf() */
 static int opt_getval_(opt_t *o)
 {
   const char *fmt = o->fmt;
-  if (fmt == NULL) { /* raw string assignment */
+  if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
     *(const char **)o->ptr = o->val;
   } else { /* call sscanf */
     int ret, ch;
@@ -149,7 +156,7 @@ static int opt_getval_(opt_t *o)
 }
 
 /* main parser of arguments */
-void argopt_parse(argopt_t *ao, int argc, const char **argv) 
+void argopt_parse(argopt_t *ao, int argc, char **argv) 
 {
   int i, j, k, ch, acnt = 0;
   opt_t *al = ao->args;
@@ -160,7 +167,7 @@ void argopt_parse(argopt_t *ao, int argc, const char **argv)
     if (argv[i][0] != '-') { /* it's an argument */
       if (acnt >= ao->narg) argopt_help(ao);
       al[acnt].val = argv[i];
-      al[acnt].set = 1;
+      al[acnt].flags |= ARGOPT_SET;
       if (0 != opt_getval_(al+acnt))
         argopt_help(ao);
       ++acnt;
@@ -169,7 +176,7 @@ void argopt_parse(argopt_t *ao, int argc, const char **argv)
 
     /* it's an option, loop for abbreviated form "-abc" == "-a -b -c" */
     for (j = 1; (ch = argv[i][j]) != '\0'; j++) {
-      int islong = (j == 1 && argv[i][1] == '-');
+      int islong = (j == 1 && argv[i][1] == '-') | (ao->flags & ARGOPT_LONGOPT);
       
       if (islong) { /* compare against long options */
         for (k = 0; k < ao->nopt; k++)
@@ -192,7 +199,11 @@ void argopt_parse(argopt_t *ao, int argc, const char **argv)
           argopt_version(ao);
       }
 
-      if (ol[k].hasarg) { /* look for the additional argument for this */
+      if (ol[k].flags & ARGOPT_SWITCH) {
+        ol[k].flags |= ARGOPT_SET;
+        *(int *)ol[k].ptr = 1;
+        if (islong) break; /* go to the next argument argv[i+1] */
+      } else { /* look for the additional argument for this */
         int hasv = 0;
         if (islong) { /* e.g., --version=11 */
           j = strlen(ol[k].sflag);
@@ -209,29 +220,26 @@ void argopt_parse(argopt_t *ao, int argc, const char **argv)
         
         if (!hasv) { /* --version 11 or -n 8 */
           if (++i >= argc) {
-            printf("[%s|%s] requires an argument!\n", ol[k].sflag, argv[i-1]);
+            printf("%s(%s) requires an argument!\n", ol[k].sflag, argv[i-1]);
             argopt_help(ao);
           }
           ol[k].val = argv[i];
         }
+        ol[k].flags |= ARGOPT_SET;
         if (0 != opt_getval_(ol+k)) argopt_help(ao);
         break; /* go to the next argument argv[i+1] */
-      } else {
-        ol[k].set = 1;
-        *(int *)(ol[k].ptr) = 1;
-        if (islong) break; /* go to the next argument argv[i+1] */
       }
     } /* end of short option loop */
   }
   /* check if we have all mandatory arguments and options */
   for (i = 0; i < ao->narg; i++) {
-    if (al[i].must && !al[i].set) {
+    if ((al[i].flags & ARGOPT_MUST) && !(al[i].flags & ARGOPT_SET)) {
       printf("Error: missing argument %d: %s\n\n", i, al[i].desc);
       argopt_help(ao);
     }
   }
   for (i = 0; i < ao->nopt; i++) {
-    if (ol[i].must && !ol[i].set) {
+    if ((ol[i].flags & ARGOPT_MUST) && !(ol[i].flags & ARGOPT_SET)) {
       printf("Error: missing option %s: %s\n\n", ol[i].sflag, ol[i].desc);
       argopt_help(ao);
     }
