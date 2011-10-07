@@ -27,7 +27,7 @@ static void doargs(int argc, char **argv)
 int main(int argc, char **argv)
 {
   cago_t *go;
-  int nstcom = 10, teql = 100000, tmax = 5000000, trep = 10000;
+  int nstcom = 10, teql = 100000, tmax = 500000, trep = 10000;
   real mddt = 0.002f, thermdt = 0.02f;
   real epav, epdv, rdav, rddv;
   av_t avep[1], avrmsd[1];

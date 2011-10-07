@@ -1,5 +1,4 @@
 #include <stdio.h>
-#define ZCINLINE __inline static
 #include "rv2.h"
 
 int main(void)

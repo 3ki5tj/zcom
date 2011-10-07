@@ -1,4 +1,4 @@
-#define ZCINLINE __inline static
+#define INLINE __inline static
 
 #ifndef UTIL_H__
 #define UTIL_H__
@@ -35,7 +35,7 @@ void perrmsg__(const char *file, int line, const char *why,
 
 #ifdef ZCHAVEVAM
 
-ZCINLINE void perrmsg_(const char *file, int line, const char *why,
+INLINE void perrmsg_(const char *file, int line, const char *why,
     int cond, int err, const char *fmt, ...)
 {
   va_list args;
@@ -63,9 +63,9 @@ ZCINLINE void perrmsg_(const char *file, int line, const char *why,
     va_end(args);                             \
     if (#x[0] == '1') exit(1);                \
   } }
-ZCINLINE void die_if(int cond, const char *fmt, ...) PERRMSG__(cond, 1)
+INLINE void die_if(int cond, const char *fmt, ...) PERRMSG__(cond, 1)
 #ifdef USE_MSG_IF
-ZCINLINE void msg_if(int cond, const char *fmt, ...) PERRMSG__(cond, 0)
+INLINE void msg_if(int cond, const char *fmt, ...) PERRMSG__(cond, 0)
 #endif
 #ifdef USE_FATAL
 void fatal(const char *fmt, ...) PERRMSG__(1, 1)
@@ -74,7 +74,7 @@ void fatal(const char *fmt, ...) PERRMSG__(1, 1)
 
 #endif /* ZCHAVEVAM */
 
-ZCINLINE int fexists(const char *fn)
+INLINE int fexists(const char *fn)
 {
   FILE *fp; 
   if ((fp = fopen(fn, "r")) == NULL) return 0;
@@ -82,7 +82,7 @@ ZCINLINE int fexists(const char *fn)
 } 
 
 /* sqrt(x*x + y*y) */
-ZCINLINE double hypotn(double x, double y)
+INLINE double hypotn(double x, double y)
 {
   double t;
   x = fabs(x);
@@ -95,20 +95,20 @@ ZCINLINE double hypotn(double x, double y)
 }
 
 /* round x to a multiple dx  */
-ZCINLINE double dblround(double x, double dx)
+INLINE double dblround(double x, double dx)
 {
   if (x > 0) return dx * (int)(x/dx+.5-1e-14);
   else return -dx * (int)(-x/dx+.5-1e-14);
 }
 
-ZCINLINE double dblsqr(double x) { return x*x; }
+INLINE double dblsqr(double x) { return x*x; }
 
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED
 #define LN_BIG 50.0
 
 /* log(exp(a) + exp(b)) */
-ZCINLINE double lnadd(double a, double b)
+INLINE double lnadd(double a, double b)
 {
   double c;
   if (a < b) { c = a; a = b; b = c; } /* ensure a >= b */
@@ -116,7 +116,7 @@ ZCINLINE double lnadd(double a, double b)
 }
 
 /* log(exp(a)-exp(b)), only works for a>b */
-ZCINLINE double lnmin(double a, double b)
+INLINE double lnmin(double a, double b)
 {
   double c;
   die_if (a < b, "lnmin: %g < %g\n", a, b);
@@ -124,7 +124,7 @@ ZCINLINE double lnmin(double a, double b)
 }
 
 /* log(exp(a)+b) */
-ZCINLINE double lnaddn(double a, double b)
+INLINE double lnaddn(double a, double b)
 {
   return (a > LN_BIG) ? a : a + log(1 + b*exp(-a));
 }

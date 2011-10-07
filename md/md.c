@@ -4,7 +4,7 @@
 #include "md.h"
 
 /* shift the center of mass to zero */
-void md_shiftcomw(real *x, const real *w, int n, int d)
+void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int d)
 {
   int i, j;
   real rc, wtot = 0;
@@ -21,7 +21,7 @@ void md_shiftcomw(real *x, const real *w, int n, int d)
 }
 
 /* annihilate angular momentum 2d */
-void md_shiftang2d(rv2_t *x, rv2_t *v, int n)
+void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 {
   int i;
   real am, r2, xc[2] = {0,0}, xi[2];

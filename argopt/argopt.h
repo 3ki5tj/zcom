@@ -1,5 +1,5 @@
-#ifndef ZCINLINE
-#define ZCINLINE __inline static
+#ifndef INLINE
+#define INLINE __inline static
 #endif
 #include "def.h"
 #ifndef ARGOPT_H__
@@ -49,13 +49,13 @@ void argopt_parse(argopt_t *ao, int argc, char **argv);
 #define argopt_regopt_help(ao, sflag) argopt_regopt(ao, sflag, NULL, &ao->dum_, "$HELP")
 #define argopt_regopt_version(ao, sflag) argopt_regopt(ao, sflag, NULL, &ao->dum_, "$VERSION")
 
-ZCINLINE opt_t *argopt_getopt(argopt_t *ao, const void *p)
+INLINE opt_t *argopt_getopt(argopt_t *ao, const void *p)
  { int i; for (i = 0; i < ao->nopt; i++) if (ao->opts[i].ptr == p) return ao->opts+i; return NULL; }
-ZCINLINE opt_t *argopt_getarg(argopt_t *ao, const void *p)
+INLINE opt_t *argopt_getarg(argopt_t *ao, const void *p)
  { int i; for (i = 0; i < ao->narg; i++) if (ao->args[i].ptr == p) return ao->args+i; return NULL; }
 
 #define argopt_set(ao, var) argopt_set_(ao, &var, #var)
-ZCINLINE int argopt_set_(argopt_t *ao, const void *p, const char *var)
+INLINE int argopt_set_(argopt_t *ao, const void *p, const char *var)
 { 
    opt_t *a = argopt_getarg(ao, p), *o = argopt_getopt(ao, p);
    die_if(!a && !o, "cannot locate var %s, %p\n", var, p);

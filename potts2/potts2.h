@@ -1,4 +1,4 @@
-#define ZCINLINE __inline static
+#define INLINE __inline static
 #ifndef POTTS2_H__
 #define POTTS2_H__
 
@@ -85,7 +85,7 @@ void pt2_close(potts_t *pt);
   pt2_heatbath(pt, id, &so, &sn, h)
 #define PT2_FLIP(pt, id, so, sn, h) {so = pt->s[id]; pt2_flip(pt, id, sn, h); }
 
-ZCINLINE int pt2_pick(const potts_t *pt, int h[])
+INLINE int pt2_pick(const potts_t *pt, int h[])
 {
   int i, id, ix, iy, l, lm, n, nm, *p;
   int sl, sr, sd, su;
@@ -103,7 +103,7 @@ ZCINLINE int pt2_pick(const potts_t *pt, int h[])
   return id;
 }
 
-ZCINLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
+INLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
     const int h[]) 
 {
   double rs_;
@@ -119,7 +119,7 @@ ZCINLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn,
 }
 
 /* flip site `id' to `sn', with h different neighbors */
-ZCINLINE int pt2_flip(potts_t *pt, int id, int sn, const int h[])
+INLINE int pt2_flip(potts_t *pt, int id, int sn, const int h[])
 {
   int so = pt->s[id];
   die_if(id >= pt->n, "id %d >= n %d\n", id, pt->n);

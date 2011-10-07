@@ -1,3 +1,14 @@
 2D/3D Lennard Jones system
 
 test1.c is somehow slower than ../md/testlj.c
+because the array were allocated on the heap instead of the stack
+
+test2.c is a better illustration
+Using -DSTACK
+          icc -O3     gcc -O3 -mfpmath=sse -march=pentium4 -fstrict-aliasing -funroll-all-loops -lm
+ (HEAP)   14.6s       15.5s
+-DSTACK   12.0s       12.8s
+
+The speed up of using a stack is > 10%.
+
+Interestingly, swapping xnew(x) and xnew(f) alleviates the problem

@@ -47,7 +47,7 @@ int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
     const char *fndos, const char *fnlnz);
 
 /* set the current temperature */
-ZCINLINE void tmh_settp(tmh_t *tmh, double tp)
+INLINE void tmh_settp(tmh_t *tmh, double tp)
 {
 #ifndef TMH_NOCHECK
   die_if (tp > tmh->tp1 || tp < tmh->tp0, "temperature %g not in(%g, %g)", tp, tmh->tp0, tmh->tp1);
@@ -59,7 +59,7 @@ ZCINLINE void tmh_settp(tmh_t *tmh, double tp)
 }
 
 /* retrieve local dhde */
-ZCINLINE double tmh_getdhde(tmh_t *tmh, double e, int ie)
+INLINE double tmh_getdhde(tmh_t *tmh, double e, int ie)
 {
   if (tmh->dhdeorder == 0) {
 #ifndef TMH_NOCHECK
@@ -78,7 +78,7 @@ ZCINLINE double tmh_getdhde(tmh_t *tmh, double e, int ie)
 }
 
 /* update dhde curve */
-ZCINLINE void tmh_dhdeupdate(tmh_t *tmh, double erg, double amp)
+INLINE void tmh_dhdeupdate(tmh_t *tmh, double erg, double amp)
 {
   double del = amp * (erg - tmh->ec);
 
@@ -104,7 +104,7 @@ ZCINLINE void tmh_dhdeupdate(tmh_t *tmh, double erg, double amp)
   }
 }
 
-ZCINLINE void tmh_eadd(tmh_t *tmh, double erg)
+INLINE void tmh_eadd(tmh_t *tmh, double erg)
 {
   int ie;
 #ifndef TMH_NOCHECK
@@ -120,13 +120,13 @@ ZCINLINE void tmh_eadd(tmh_t *tmh, double erg)
   tmh->tpehis[tmh->itp*tmh->en + ie] += 1.;
 }
 
-ZCINLINE int tmh_saveehis(tmh_t *tmh, const char *fn)
+INLINE int tmh_saveehis(tmh_t *tmh, const char *fn)
 {
   return histsave(tmh->tpehis, tmh->tpn, 
       tmh->en, tmh->emin, tmh->de, HIST_ADDAHALF|HIST_OVERALL, fn);
 }
 
-ZCINLINE int tmh_loadehis(tmh_t *tmh, const char *fn)
+INLINE int tmh_loadehis(tmh_t *tmh, const char *fn)
 {
   return histload(tmh->tpehis, tmh->tpn, 
       tmh->en, tmh->emin, tmh->de, HIST_ADDAHALF, fn);

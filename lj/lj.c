@@ -73,9 +73,9 @@ lj_t *lj_open(int n, int d, real rho, real rcdef, real tp)
   lj->d = d;
   lj->dof = n*d - d*(d+1)/2;
   lj->tp = tp;
-  xnew(lj->x, n*d);
-  xnew(lj->v, n*d);
   xnew(lj->f, n*d);
+  xnew(lj->v, n*d);
+  xnew(lj->x, n*d);
 
   lj->rcdef = rcdef;
   lj_setrho(lj, rho);
@@ -98,19 +98,19 @@ void lj_close(lj_t *lj)
   free(lj);
 }
 
-ZCINLINE real lj_pbc(real x, real L)
+INLINE real lj_pbc(real x, real L)
   { return (real)((x - ((int)((x)+1000.5) - 1000))*L) ; }
 
-ZCINLINE real *lj_vpbc2d(real *v, real L)
+INLINE real *lj_vpbc2d(real *v, real L)
   { v[0] = lj_pbc(v[0], L); v[1] = lj_pbc(v[1], L); return v; }
 
-ZCINLINE real lj_pbcdist2_2d(real dx[], const real a[], const real b[], real L)
+INLINE real lj_pbcdist2_2d(real * RESTRICT dx, const real * RESTRICT a, const real * RESTRICT b, real L)
   { return rv2_sqr(lj_vpbc2d(rv3_diff(dx, a, b), L)); }
 
-ZCINLINE real *lj_vpbc3d(real *v, real L)
+INLINE real *lj_vpbc3d(real *v, real L)
   { v[0] = lj_pbc(v[0], L); v[1] = lj_pbc(v[1], L); v[2] = lj_pbc(v[2], L); return v; }
 
-ZCINLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real L)
+INLINE real lj_pbcdist2_3d(real * RESTRICT dx, const real * RESTRICT a, const real * RESTRICT b, real L)
   { return rv3_sqr(lj_vpbc3d(rv3_diff(dx, a, b), L)); }
 
 static void lj_force2d(lj_t *lj)
@@ -151,7 +151,7 @@ static void lj_force3d(lj_t *lj)
 {
   real dx[3], fi[3], dr2, dr6, fs, tmp, U, Vir, L = lj->l, rc2 = lj->rc*lj->rc;
   int i, j, d, prcnt = 0, n = lj->n;
-  real *f = lj->f, *x = lj->x;
+  real * RESTRICT f = lj->f, * RESTRICT x = lj->x;
 
   for (i = 0; i < lj->n*3; i++) f[i] = 0;
   for (U = Vir = 0, i = 0; i < n - 1; i++) {

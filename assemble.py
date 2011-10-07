@@ -14,7 +14,7 @@ module attributes, set before use
 '''
 fn_host     = "zcom.h"
 fn_output   = None
-strcls      = "ZCSTRCLS"
+strcls      = "STRCLS"
 host_prefix = "ZCOM_"
 verbose     = 1
 

@@ -58,7 +58,7 @@ static const char pdb_aanames_[21][4] = {"---",
   "SER", "THR", "CYS", "MET", "PHE", "TYR", "TRP", 
   "ASN", "GLN", "ASP", "GLU", "LYS", "HIS", "ARG"};
 
-ZCINLINE int pdbaaidx(const char *res)
+INLINE int pdbaaidx(const char *res)
 {
   int i;
   for (i = 1; i <= 20; i++)
@@ -67,7 +67,7 @@ ZCINLINE int pdbaaidx(const char *res)
   return -1;
 }
 
-ZCINLINE const char *pdbaaname(int i)
+INLINE const char *pdbaaname(int i)
 {
   if (i <= 0 || i > 20) {
     fprintf(stderr, "invalid pdb id %d\n", i);

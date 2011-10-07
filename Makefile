@@ -19,7 +19,7 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	wc $@
 
 clean:
-	$(RM) -f *~ $(prj).o $(prj).zip */*~ */a.out *.tmp
+	$(RM) -f *~ $(prj).o $(prj).zip */*~ */*/*~ */a.out *.tmp
 	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
 
 pack: $(prj).zip

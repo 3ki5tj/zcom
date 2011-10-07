@@ -35,8 +35,8 @@
       before including this file. 
 
   5.  If the compiler supports keywords inline and restrict,
-        #define ZCINLINE inline
-        #define ZCRESRICT restrict
+        #define INLINE inline
+        #define RESRICT restrict
       before including this file.
       
   6.  Define ZCHAVEVAM if the compiler supports variable-argument macros.
@@ -70,44 +70,44 @@
    In case that this file is included multiple times,
    ZCOM_XFUNCS should be defined before the first inclusion,
    otherwise it won't be effective in deciding storage class. */
-#ifndef ZCSTRCLS
+#ifndef STRCLS
   #ifndef ZCOM_XFUNCS
-    #define ZCSTRCLS static
+    #define STRCLS static
   #else
-    #define ZCSTRCLS
+    #define STRCLS
   #endif
 #endif
 
 /* inline keyword */
-#ifndef ZCINLINE
+#ifndef INLINE
   #if defined(__GNUC__) || defined(__xlC__)
-    #define ZCINLINE ZCSTRCLS __inline__
+    #define INLINE STRCLS __inline__
   #elif defined(_MSC_VER) || defined(__BORLANDC__)
-    #define ZCINLINE __inline ZCSTRCLS
+    #define INLINE __inline STRCLS
   #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
-    #define ZCINLINE ZCSTRCLS inline
+    #define INLINE STRCLS inline
   #else
-    #define ZCINLINE ZCSTRCLS
+    #define INLINE STRCLS
   #endif
 #endif
 
 /* restrict keyword */
-#ifndef ZCRESTRICT
+#ifndef RESTRICT
   #if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__))
-    #define ZCRESTRICT __restrict
+    #define RESTRICT __restrict
   #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
-    #define ZCRESTRICT restrict
+    #define RESTRICT restrict
   #else
-    #define ZCRESTRICT
+    #define RESTRICT
   #endif
 #endif
 
 /* macros with variable-length arguments */
-#ifndef ZCHAVEVAM
+#ifndef HAVEVAM
   #if (  (defined(__GNUC__) && (__GNUC__ >= 3))   \
       || (defined(__xlC__)  && (__xlC__ >= 0x0700)) \
       || (defined(_MSC_VER) && (_MSC_VER >= 1400)) ) 
-    #define ZCHAVEVAM 1
+    #define HAVEVAM 1
   #endif
 #endif
 

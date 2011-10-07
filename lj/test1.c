@@ -17,14 +17,12 @@ int main(void)
   lj = lj_open(N, 3, rho, rc, tp);
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
-    //printf("U = %g, p = %g, K = %g\n", lj->epot/N, lj->p, lj->ekin/N);
     lj_vrescale(lj, thermdt);
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->p);
     }
-    //printf("U = %g, p = %g, K = %g\n", lj->epot/N, lj->p, lj->ekin/N);
   }
   printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f\n", av_getave(&avU)/N, av_getave(&avK)/N, av_getave(&avp));  
   lj_close(lj);

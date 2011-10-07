@@ -1,7 +1,7 @@
-#ifndef ZCINLINE
-#define ZCINLINE __inline static
+#ifndef INLINE
+#define INLINE __inline static
 #endif
-#define ZCRESTRICT __restrict 
+#define RESTRICT __restrict 
 #include "def.h"
 #ifndef RV3_H__
 #define RV3_H__
@@ -21,24 +21,24 @@
 /* due to that pointer may overlap with each other,
  * be careful when using the const modifier */
 
-ZCINLINE real *rv3_make(real *x, real a, real b, real c)
+INLINE real *rv3_make(real *x, real a, real b, real c)
   { x[0] = a; x[1] = b; x[2] = c; return x; }
-ZCINLINE real *rv3_zero(real *x) { return rv3_make(x, 0, 0, 0); }
-ZCINLINE real *rv3_copy(real *x, const real *src)
+INLINE real *rv3_zero(real *x) { return rv3_make(x, 0, 0, 0); }
+INLINE real *rv3_copy(real *x, const real *src)
   { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
 /* use macro to avoid const qualifier of src */
 #define rv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
 
-ZCINLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
-ZCINLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
+INLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
+INLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
 
 /* if x == y, try to use sqr */
-ZCINLINE real rv3_dot(const real *x, const real *y)
+INLINE real rv3_dot(const real *x, const real *y)
 {
   return x[0]*y[0]+x[1]*y[1]+x[2]*y[2];
 }
 
-ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y)
+INLINE real *rv3_cross(real *RESTRICT z, const real *x, const real *y)
 {
   z[0] = x[1]*y[2]-x[2]*y[1];
   z[1] = x[2]*y[0]-x[0]*y[2];
@@ -46,7 +46,7 @@ ZCINLINE real *rv3_cross(real *ZCRESTRICT z, const real *x, const real *y)
   return z;
 }
 
-ZCINLINE real *rv3_neg(real *x)
+INLINE real *rv3_neg(real *x)
 {
   x[0] = -x[0];
   x[1] = -x[1];
@@ -54,7 +54,7 @@ ZCINLINE real *rv3_neg(real *x)
   return x;
 }
 
-ZCINLINE real *rv3_neg2(real *nx, const real *x)
+INLINE real *rv3_neg2(real *nx, const real *x)
 {
   nx[0] = -x[0];
   nx[1] = -x[1];
@@ -62,7 +62,7 @@ ZCINLINE real *rv3_neg2(real *nx, const real *x)
   return nx;
 }
 
-ZCINLINE real *rv3_inc(real *x, const real *dx)
+INLINE real *rv3_inc(real * RESTRICT x, const real *dx)
 {
   x[0] += dx[0];
   x[1] += dx[1];
@@ -70,7 +70,7 @@ ZCINLINE real *rv3_inc(real *x, const real *dx)
   return x;
 }
 
-ZCINLINE real *rv3_dec(real *x, const real *dx)
+INLINE real *rv3_dec(real *x, const real *dx)
 {
   x[0] -= dx[0];
   x[1] -= dx[1];
@@ -78,7 +78,7 @@ ZCINLINE real *rv3_dec(real *x, const real *dx)
   return x;
 }
 
-ZCINLINE real *rv3_sinc(real *x, const real *dx, real s)
+INLINE real *rv3_sinc(real * RESTRICT x, const real *dx, real s)
 {
   x[0] += s*dx[0];
   x[1] += s*dx[1];
@@ -86,7 +86,7 @@ ZCINLINE real *rv3_sinc(real *x, const real *dx, real s)
   return x;
 }
 
-ZCINLINE real *rv3_smul(real *x, real s)
+INLINE real *rv3_smul(real *x, real s)
 {
   x[0] *= s;
   x[1] *= s;
@@ -95,7 +95,7 @@ ZCINLINE real *rv3_smul(real *x, real s)
 }
 
 /* if y == x, just use smul */
-ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s)
+INLINE real *rv3_smul2(real * RESTRICT y, const real *x, real s)
 {
   y[0] = x[0]*s;
   y[1] = x[1]*s;
@@ -103,7 +103,7 @@ ZCINLINE real *rv3_smul2(real * ZCRESTRICT y, const real *x, real s)
   return y;
 }
 
-ZCINLINE real *rv3_normalize(real *x)
+INLINE real *rv3_normalize(real *x)
 {
   real r = rv3_norm(x);
   if (r > 0.0) rv3_smul(x, 1.f/r);
@@ -111,7 +111,7 @@ ZCINLINE real *rv3_normalize(real *x)
 }
 
 /* for in-place difference use rv3_dec */
-ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b)
+INLINE real *rv3_diff(real * RESTRICT diff, const real *a, const real *b)
 {
   diff[0] = a[0]-b[0];
   diff[1] = a[1]-b[1];
@@ -120,20 +120,20 @@ ZCINLINE real *rv3_diff(real * ZCRESTRICT diff, const real *a, const real *b)
 }
 
 /* distance^2 between a and b */
-ZCINLINE real rv3_dist2(const real *a, const real *b) 
+INLINE real rv3_dist2(const real *a, const real *b) 
 {
   real d[3]; 
   return rv3_sqr(rv3_diff(d, a, b));
 }
 
 /* distance between a and b */
-ZCINLINE real rv3_dist(const real *a, const real *b) 
+INLINE real rv3_dist(const real *a, const real *b) 
 {
   return (real) sqrt(rv3_dist2(a, b));
 }
 
 /* sum = a+b, for in-place addition use rv3_inc */
-ZCINLINE real *rv3_add(real * ZCRESTRICT sum, const real *a, const real *b)
+INLINE real *rv3_add(real * RESTRICT sum, const real *a, const real *b)
 {
   sum[0] = a[0]+b[0];
   sum[1] = a[1]+b[1];
@@ -142,7 +142,7 @@ ZCINLINE real *rv3_add(real * ZCRESTRICT sum, const real *a, const real *b)
 }
 
 /* sum = -a-b */
-ZCINLINE real *rv3_nadd(real *sum, const real *a, const real *b)
+INLINE real *rv3_nadd(real *sum, const real *a, const real *b)
 {
   sum[0] = -a[0]-b[0];
   sum[1] = -a[1]-b[1];
@@ -150,7 +150,7 @@ ZCINLINE real *rv3_nadd(real *sum, const real *a, const real *b)
   return sum;
 }
 
-ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, real s2)
+INLINE real *rv3_lincomb2(real * RESTRICT sum, const real *a, const real *b, real s1, real s2)
 {
   sum[0] = a[0]*s1+b[0]*s2;
   sum[1] = a[1]*s1+b[1]*s2;
@@ -159,7 +159,7 @@ ZCINLINE real *rv3_lincomb2(real *sum, const real *a, const real *b, real s1, re
 }
 
 /* angle and gradients of cos(x1-x2-x3) */
-ZCINLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
+INLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {
   real a[3], b[3], ra, rb, dot;
@@ -179,7 +179,7 @@ ZCINLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
 }
 
 /* angle and gradients of x1-x2-x3 */
-ZCINLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
+INLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {
   real dot, sn;
@@ -196,7 +196,7 @@ ZCINLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
 }
 
 /* vertical distance from x to line a-b */
-ZCINLINE real rv3_vdist(const real *x, const real *a, const real *b)
+INLINE real rv3_vdist(const real *x, const real *a, const real *b)
 {
   real nm[3], d[3], dot;
 
@@ -207,7 +207,7 @@ ZCINLINE real rv3_vdist(const real *x, const real *a, const real *b)
 }
 
 /* signed distance from x to the plane extended by a, b, c */
-ZCINLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real *c)
+INLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real *c)
 {
   real u[3], v[3], m[3];
 
@@ -279,7 +279,7 @@ typedef struct {
 #define rv3_calcdihv(dih, x, idx, flags) \
   rv3_calcdih(dih, x[*(idx)], x[*(idx+1)], x[*(idx+2)], x[*(idx+3)], flags)
 
-ZCINLINE real rv3_calcdih(dihcalc_t *dih,
+INLINE real rv3_calcdih(dihcalc_t *dih,
     const real *xi, const real *xj, const real *xk, const real *xl,
     unsigned int flags)
 {
@@ -461,7 +461,7 @@ ZCINLINE real rv3_calcdih(dihcalc_t *dih,
 
 
 /* transpose */
-ZCINLINE rv3_t *rm3_trans(real a[3][3]) 
+INLINE rv3_t *rm3_trans(real a[3][3]) 
 {
   real x;
   x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
@@ -471,7 +471,7 @@ ZCINLINE rv3_t *rm3_trans(real a[3][3])
 }
 
 /* a = u^T v */
-ZCINLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
+INLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
 {
   a[0][0] = u[0]*v[0];
   a[0][1] = u[0]*v[1];
@@ -486,7 +486,7 @@ ZCINLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
 }
 
 /* a += b */
-ZCINLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
+INLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
 {
   a[0][0] += b[0][0];
   a[0][1] += b[0][1];
@@ -501,7 +501,7 @@ ZCINLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
 }
 
 /* a += b*s */
-ZCINLINE rv3_t *rm3_sinc(real a[3][3], real b[3][3], real s)
+INLINE rv3_t *rm3_sinc(real a[3][3], real b[3][3], real s)
 {
   a[0][0] += b[0][0]*s;
   a[0][1] += b[0][1]*s;
@@ -516,7 +516,7 @@ ZCINLINE rv3_t *rm3_sinc(real a[3][3], real b[3][3], real s)
 }
 
 /* c = a b */
-ZCINLINE rv3_t *rm3_mul(real c[3][3], real a[3][3], real b[3][3])
+INLINE rv3_t *rm3_mul(real c[3][3], real a[3][3], real b[3][3])
 {
   int i, j;
   for (i = 0; i < 3; i++)
@@ -526,7 +526,7 @@ ZCINLINE rv3_t *rm3_mul(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a b^T */
-ZCINLINE rv3_t *rm3_mult(real c[3][3], real a[3][3], real b[3][3])
+INLINE rv3_t *rm3_mult(real c[3][3], real a[3][3], real b[3][3])
 {
   int i, j;
   for (i = 0; i < 3; i++)
@@ -536,7 +536,7 @@ ZCINLINE rv3_t *rm3_mult(real c[3][3], real a[3][3], real b[3][3])
 }
 
 /* c = a v */
-ZCINLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
+INLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[0][1]*v[1] + a[0][2]*v[2];
   c[1] = a[1][0]*v[0] + a[1][1]*v[1] + a[1][2]*v[2];
@@ -545,7 +545,7 @@ ZCINLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
 }
 
 /* c = a^T v */
-ZCINLINE real *rm3_multvec(real *c, real a[3][3], const real *v)
+INLINE real *rm3_multvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[1][0]*v[1] + a[2][0]*v[2];
   c[1] = a[0][1]*v[0] + a[1][1]*v[1] + a[2][1]*v[2];
@@ -554,7 +554,7 @@ ZCINLINE real *rm3_multvec(real *c, real a[3][3], const real *v)
 }
 
 /* determinant of a 3x3 matrix */
-ZCINLINE real rm3_det(real a[3][3])
+INLINE real rm3_det(real a[3][3])
 {
   return a[0][0] * (a[1][1]*a[2][2] - a[1][2]*a[2][1])
       +  a[0][1] * (a[1][2]*a[2][0] - a[1][0]*a[2][2])
@@ -562,7 +562,7 @@ ZCINLINE real rm3_det(real a[3][3])
 }
 
 /* inverse matrix b = a^(-1) */
-ZCINLINE rv3_t *rm3_inv(real b[3][3], real a[3][3])
+INLINE rv3_t *rm3_inv(real b[3][3], real a[3][3])
 {
   real d00, d01, d02, detm;
   d00 = a[1][1]*a[2][2] - a[1][2]*a[2][1];
@@ -583,7 +583,7 @@ ZCINLINE rv3_t *rm3_inv(real b[3][3], real a[3][3])
 }
 
 /* eigenvalues of a 3x3 matrix */
-ZCINLINE real *rm3_eigval(real v[3], real a[3][3])
+INLINE real *rm3_eigval(real v[3], real a[3][3])
 {
   real m, p, q, cphi, sphi, pr, pr3;
 
@@ -619,7 +619,7 @@ ZCINLINE real *rm3_eigval(real v[3], real a[3][3])
 }
 
 /* given matrix a and eigenvalue lm, return eigenvector */
-ZCINLINE real *rm3_eigvec(real vec[3], real m[3][3], real val)
+INLINE real *rm3_eigvec(real vec[3], real m[3][3], real val)
 {
   double a = m[0][0]-val, b = m[1][1]-val, c, d = m[0][1], e = m[0][2], f = m[1][2];
   double detm, tol = 1e-12;
@@ -643,7 +643,7 @@ ZCINLINE real *rm3_eigvec(real vec[3], real m[3][3], real val)
 }
 
 /* compute eigenvectors for the eigenvalues */
-ZCINLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
+INLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
 {
   const double tol = 1e-12;
   double v0 = fabs(v[0]), v1 = fabs(v[1]), v2 = fabs(v[2]);
@@ -665,7 +665,7 @@ ZCINLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int t)
 }
 
 /* SVD decomposition of a 3x3 matrix a = u s v */
-ZCINLINE int rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
+INLINE int rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 {
   int i, j;
   real ata[3][3], z[3];
@@ -704,7 +704,7 @@ ZCINLINE int rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 }
 
 /* return 0 rotation matrix around v for ang */
-ZCINLINE rv3_t *rm3_mkrot(real m[3][3], const real *v, real ang)
+INLINE rv3_t *rm3_mkrot(real m[3][3], const real *v, real ang)
 {
   real c = (real) cos(ang), s = (real) sin(ang), nc, n[3];
   
@@ -724,7 +724,7 @@ ZCINLINE rv3_t *rm3_mkrot(real m[3][3], const real *v, real ang)
 }
 
 /* rotate v0 around u by ang, save result to v1 */
-ZCINLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
+INLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
 {
   real m[3][3];
 
@@ -734,7 +734,7 @@ ZCINLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
 }
 
 #define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE void rv3_fprint(FILE *fp, real r[3], const char *nm,
+INLINE void rv3_fprint(FILE *fp, const real *r, const char *nm,
     const char *fmt, int nl)
 {
   int i;
@@ -745,7 +745,7 @@ ZCINLINE void rv3_fprint(FILE *fp, real r[3], const char *nm,
 }
 
 #define rm3_print(r, nm, fmt, nl) rm3_fprint(stdout, r, nm, fmt, nl)
-ZCINLINE void rm3_fprint(FILE *fp, real r[3][3], const char *nm,
+INLINE void rm3_fprint(FILE *fp, real r[3][3], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;

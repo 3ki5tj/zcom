@@ -77,9 +77,9 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   nd = ab->n * ab->d;
   xnew(ab->x, nd);
   xnew(ab->x1, nd);
-  xnew(ab->dx, nd);
   xnew(ab->v, nd);
   xnew(ab->f, nd);
+  xnew(ab->dx, nd);
   xnew(ab->lmx, nd);
   xnew(ab->xmin, nd);
 
@@ -108,8 +108,8 @@ int ab_initpos(abpro_t *ab, real *x, real del)
       rv2_add(x + (i+1)*ab->d, x + i*ab->d, dx);
     }
   }
-  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed, with del = %g\n", del);
   ab_shiftcom(ab, x);
+  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed, with del = %g\n", del);
   return 0;
 }
 
@@ -688,7 +688,6 @@ static real ab_force3dm2(abpro_t *ab, rv3_t *f, crv3_t *r, int soft)
       rv3_sinc(f[j], dxi,  ff);
     }
   }
-
   return U;
 }
 

@@ -171,9 +171,9 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   int i, j, n = go->n;
   real s, dx[3];
 
-  xnew(go->x, n);
-  xnew(go->v, n);
   xnew(go->f, n);
+  xnew(go->v, n);
+  xnew(go->x, n);
   xnew(go->x1, n);
 
   /* initialize position */
@@ -210,9 +210,6 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   go->ekin = cago_ekin(go, go->v);
   go->rmsd = cago_rotfit(go, go->x, NULL);
   go->t = 0;
-  //go->mddt = 0.002f;
-  //go->thermdt = 0.02f;
-  //go->nstcom = 10;
   return 0;
 }
 
