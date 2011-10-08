@@ -819,7 +819,7 @@ class Item:
         varname, flag, escape(key), flag, varname, flag)
 
     elif it.gtype in ("pointer",):
-      print "skip var. [%s] of type [%s]" % (varname, it.gtype); raw_input()
+      print "skip var. [%s] of type [%s]" % (varname, it.gtype); # raw_input()
     
     else:
       try:

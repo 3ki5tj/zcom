@@ -8,7 +8,7 @@
 #define CAGO_C__
 #include "cago.h"
 
-/* initialize data for potential energy */
+/* initialize data for the potential energy function */
 static int cago_initpot(cago_t *go)
 {
   int i, j, n = go->n;
@@ -42,40 +42,6 @@ static int cago_initpot(cago_t *go)
   return 0;
 }
 
-/* hydro include hydrogen atoms */
-static int *pdbcontact(pdbmodel_t *pm, double rc, int hydro)
-{
-  int ir, jr, i, j, n = pm->n, nres = pm->nres;
-  pdbatom_t *at = pm->at;
-  real d, dmin;
-  int *ds;
-
-  xnew(ds, nres*nres);
-  for (ir = 0; ir < nres; ir++) {
-    for (jr = ir+1; jr < nres; jr++) {
-      /* compute the minimal distance between ir and jr */
-      dmin = 1e9;
-      for (i = 0; i < n; i++) {
-        if (at[i].rid != ir) continue;
-        if (!hydro && at[i].atnm[0] == 'H') continue;
-        for (j = 0; j < n; j++) {
-          if (!hydro && at[j].atnm[0] == 'H') continue;
-          if (at[j].rid != jr) continue;
-          d = rv3_dist(at[i].x, at[j].x);
-          if (d < dmin) dmin = d;
-        }
-      }
-      ds[ir*nres+jr] = ds[jr*nres+ir] = (dmin < rc) ? 1 : 0;
-    }
-  }
-
-  /* exclude nearby contacts */
-  for (ir = 0; ir < nres; ir++)
-    for (jr = ir+1; jr < ir+4 && jr < nres; jr++)
-      ds[ir*nres + jr] = ds[jr*nres + ir] = 0;
-  return ds;
-}
-
 /* return cago_t from pdb file fnpdb
  * rcc is the cutoff radius for defining contacts */
 cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
@@ -91,7 +57,7 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
 
   if ((pm = pdbm_read(fnpdb, 0)) == NULL)
     return NULL;
-  go->iscont = pdbcontact(pm, rcc, 0);
+  go->iscont = pdbm_contact(pm, rcc, PDB_CONTACT_HEAVY, 3, 1);
   if ((c = pdbaac_parse(pm, 0)) == NULL)
     return NULL;
   pdbm_free(pm);
@@ -130,7 +96,7 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
   if (go->ncont > 0) go->kave /= go->ncont;
   rmin = sqrt(rmin); rmax = sqrt(rmax);
   go->rrtp = (real) sqrt(1.5 * go->dof/ (go->ncont*go->kave));
-  printf("rmsd: %g, %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
+  printf("CONTACTS: %g < ca_rmsd < %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
       rmin, rmax, go->ncont, go->kave, go->rrtp);
   return go;
 }
@@ -181,7 +147,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
     rndamp *= -1;
     for (i = 0; i < n-1; i++) {
       for (j = 0; j < 3; j++)
-        dx[j] = (j == 0) ? 1.f : (rndamp*(2.f*rnd0()/RAND_MAX - 1));
+        dx[j] = (j == 0) ? 1.f : rndamp*(2.f*rnd0() - 1);
       rv3_normalize(dx);
       rv3_smul(dx, go->bref[i]);
       rv3_add(go->x[i+1], go->x[i], dx);
@@ -190,7 +156,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
     for (i = 0; i < n; i++) {
       rv3_copy(go->x[i], go->xref[i]);
       for (j = 0; j < 3; j++)
-        go->x[i][j] += rndamp*(2.f*rnd0()/RAND_MAX - 1);
+        go->x[i][j] += rndamp*(2.f*rnd0() - 1);
     }
   }
   go->epotref = cago_force(go, go->f, go->xref);

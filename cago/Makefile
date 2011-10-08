@@ -1,7 +1,7 @@
 incl = -I./include
 CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic $(incl)
 # optimized compiling
-CX = icc -Wall -O3 -g -lm -vec_report0 $(incl)
+CX = icc -Wall -O3 -g -lm -vec_report0 -wn1 $(incl)
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 
 deps = cago.c cago.h def.h rv3.h md.c md.h pdb.h pdb.c util.c util.h rotfit.c rotfit.h \

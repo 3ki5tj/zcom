@@ -21,6 +21,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   abpro_t *ab;
   int i, nd;
   double x;
+  const int verbose = 0;
 
   die_if (d == 2 && model != 1, "%dd only for model 1", d);
   die_if (seqid < 0, "bad seqid %d\n", seqid);
@@ -71,8 +72,12 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
 
   /* number of degrees of freedom */
   ab->dof = (ab->d == 2) ? (ab->n - 2) : (2*ab->n - 5);
-  //printf("n = %3d, dof = %3d: ", ab->n, ab->dof);
-  //for (i = 0; i < ab->n; i++) printf("%c", ab->type[i]+'A'); printf("\n");
+  if (verbose) {
+    printf("n = %3d, d = %d, dof = %3d: ", ab->n, ab->d, ab->dof);
+    for (i = 0; i < ab->n; i++)
+      printf("%c", ab->type[i]+'A');
+    printf("\n");
+  }
 
   nd = ab->n * ab->d;
   xnew(ab->x, nd);

@@ -8,7 +8,7 @@ real kd1 = 1.f;
 real kd3 = .5f;
 real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
-real rcc = 6.f; /* cutoff of defining contacts */
+real rc = 5.f; /* cutoff distance of defining contacts */
 
 real tp = 1.0f;
 real mddt = 2e-3f;
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   int t;
 
   doargs(argc, argv);
-  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc)) == NULL) {
+  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rc)) == NULL) {
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }

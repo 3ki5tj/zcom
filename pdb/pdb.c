@@ -1,7 +1,6 @@
 #include "rv3.h"
 #ifndef PDB_C__
 #define PDB_C__
-
 #include "pdb.h"
 
 /* read raw atom data from pdb */
@@ -13,6 +12,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   pdbatom_t *at;
   int i, j, ir, iro;
   char s[256], resnm[8];
+  float x[3];
 
   if ((fp = fopen(fname, "r")) == NULL) {
     fprintf(stderr, "cannot read %s\n", fname);
@@ -67,6 +67,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
 
     /* atom name */
     sncpy_(at->atnm, s+12, 4);
+    pdbm_fmtatom(at->atnm, at->atnm, 0);
     /* residue name */
     sncpy_(at->resnm, s+17, 3);
 #undef sncpy_
@@ -81,7 +82,8 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     strcpy(resnm, at->resnm);
     ir = at->rid;
     /* coordinates */
-    sscanf(s+30, "%lf%lf%lf", at->x, at->x+1, at->x+2);
+    sscanf(s+30, "%f%f%f", x, x+1, x+2);
+    rv3_make(at->x, x[0], x[1], x[2]);
     m->n++;
   }
   if (verbose)
@@ -126,13 +128,8 @@ int pdbm_write(pdbmodel_t *m, const char *fn)
   }
   for (aid = 1, i = 0; i < m->n; i++) {
     at = m->at + i;
-    if (strlen(at->atnm) <= 3) {
-      sprintf(atnm, " %-3s", at->atnm);
-      atp = at->atnm[0];
-    } else {
-      strcpy(atnm, at->atnm);
-      atp = (isalpha(at->atnm[0]) ? at->atnm[0] : at->atnm[1]);
-    }
+    atp = at->atnm[0];
+    pdbm_fmtatom(atnm, at->atnm, 1);
     fprintf(fp, "ATOM  %5d %4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           %c  \n", 
         aid++, atnm, at->resnm, at->rid+1, at->x[0], at->x[1], at->x[2], atp);
   }
@@ -140,6 +137,64 @@ int pdbm_write(pdbmodel_t *m, const char *fn)
   fclose(fp);
   return 0;
 }
+
+INLINE int iscontactatom(int level, const char *atnm)
+{
+  if (level == PDB_CONTACT_ALL) return 1;
+  else if (level == PDB_CONTACT_HEAVY) return atnm[0] != 'H';
+  else return strcmp(atnm, "CA") == 0; /* PDB_CONTACT_CA */
+}
+
+/* return a nres x nres array to indicate if two residues form a contact
+ * it is a contact only if the distance of any two atoms from the two residues 
+ * is less than rc,
+ * 'level' : one of the PDB_CONTACT_XX values above.
+ * 'nearby': # of adjacent resdiues to be excluded from the list
+ * */
+int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
+{
+  int ir, jr, i, j, im, jm, ica, jca, n = pm->n, nres = pm->nres;
+  pdbatom_t *at = pm->at;
+  real d, dmin, dca;
+  int *ds;
+
+  if ((ds = calloc(nres*nres, sizeof(*ds))) == NULL) {
+    fprintf(stderr, "cannot allocate contact array\n");
+    return NULL;
+  }
+  for (ir = 0; ir < nres; ir++) {
+    for (jr = ir+1; jr < nres; jr++) {
+      /* compute the minimal distance between ir and jr */
+      dmin = 1e9; dca = 0; im = jm = -1;
+      for (i = 0; i < n; i++) {
+        if (at[i].rid != ir) continue;
+        if (!iscontactatom(level, at[i].atnm)) continue;
+        ica = iscontactatom(PDB_CONTACT_CA, at[i].atnm);
+        for (j = 0; j < n; j++) {
+          if (at[j].rid != jr) continue;
+          if (!iscontactatom(level, at[j].atnm)) continue;
+          jca = iscontactatom(PDB_CONTACT_CA, at[j].atnm);
+          d = rv3_dist(at[i].x, at[j].x);
+          if (d < dmin) { dmin = d; im = i; jm = j; }
+          if (ica && jca) dca = d; /* CA distance */
+        }
+      }
+      ds[ir*nres+jr] = ds[jr*nres+ir] = (dmin < rc) ? 1 : 0;
+      if (dbg && ds[ir*nres + jr]) /* print decision */
+        printf("%s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
+          at[im].resnm, ir+1, at[jm].resnm, jr+1, dca, dmin, 
+          at[im].atnm, im+1, at[jm].atnm, jm+1);
+    }
+  }
+
+  /* exclude nearby residues */
+  for (ir = 0; ir < nres; ir++)
+    for (jr = ir+1; jr <= ir+nearby && jr < nres; jr++)
+      ds[ir*nres + jr] = ds[jr*nres + ir] = 0;
+  return ds;
+}
+
+
 
 /* get amino acid chain by parsing pdbmodel_t m */
 pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
