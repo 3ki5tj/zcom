@@ -33,7 +33,7 @@
 void perrmsg__(const char *file, int line, const char *why,
     int err, const char *fmt, va_list args);
 
-#ifdef ZCHAVEVAM
+#ifdef HAVEVAM
 
 INLINE void perrmsg_(const char *file, int line, const char *why,
     int cond, int err, const char *fmt, ...)
@@ -53,7 +53,7 @@ INLINE void perrmsg_(const char *file, int line, const char *why,
   perrmsg_(__FILE__, __LINE__, #cond, cond, 0, fmt, ## __VA_ARGS__)
 #define fatal(fmt, ...)  die_if(1, fmt, ## __VA_ARGS__)
 
-#else /* ZCHAVEVAM */
+#else /* HAVEVAM */
 
 #define PERRMSG__(c, x) {                     \
   va_list args;                               \
@@ -72,7 +72,7 @@ void fatal(const char *fmt, ...) PERRMSG__(1, 1)
 #endif
 #undef PERRMSG__
 
-#endif /* ZCHAVEVAM */
+#endif /* HAVEVAM */
 
 INLINE int fexists(const char *fn)
 {

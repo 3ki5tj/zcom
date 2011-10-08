@@ -1,8 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-/*
-#define ZCHAVEVAM 1
-*/
 #include "util.c"
 
 int main(void)

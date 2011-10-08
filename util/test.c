@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 /*
-#define ZCHAVEVAM 1
+#define HAVEVAM 1
 */
 #include "util.c"
 

@@ -3,13 +3,13 @@
 
 /* define a real type */
 #ifdef HAVE_REAL
-  #ifndef ZCHAVEREAL
-  #define ZCHAVEREAL HAVE_REAL
+  #ifndef HAVEREAL
+  #define HAVEREAL HAVE_REAL
   #endif
 #endif
 
-#ifndef ZCHAVEREAL
-  #define ZCHAVEREAL 1
+#ifndef HAVEREAL
+  #define HAVEREAL 1
   typedef double real;
 #endif
 

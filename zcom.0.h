@@ -25,26 +25,27 @@
   2.  You should be able to include this file multiple times in a single file
       without a problem (otherwise a bug!).
 
-  3.  Every function is static by default. If you want to export functions,
+  3.  Function are static by default. To export functions,
       e.g., to make it easier to debug, or to avoid warning of unused functions,
       define ZCOM_XFUNCS before the first inclusion.
 
-  4.  The file combines many modules. To specify a particular module,
+  4.  To hand-pick specific set of modules,
         #define ZCOM_PICK
         #define ZCOM_RNG
-      before including this file. 
+        #define ZCOM_ARGOPT
+      before including this file. Other modules will not be compiled.
 
   5.  If the compiler supports keywords inline and restrict,
         #define INLINE inline
         #define RESRICT restrict
       before including this file.
       
-  6.  Define ZCHAVEVAM if the compiler supports variable-argument macros.
+  6.  Define HAVEVAM if the compiler supports variable-argument macros.
 
   7.  The def module defines `real' as a double, to override
         typedef float real;
-        #define ZCHAVEREAL 1
-      before including this file (or equivalently HAVE_REAL)
+        #define HAVEREAL 1
+      before including this file (or equivalently define HAVE_REAL)
 */
 
 /* ZCOM_PICK or ZCOM_NONE is used include only subset of modules to

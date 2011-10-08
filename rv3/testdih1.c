@@ -2,7 +2,7 @@
 #include <string.h>
 
 typedef float real;
-#define ZCHAVEREAL 1
+#define HAVEREAL 1
 #include "rv3.h" 
 
 #define R2D (180.0/M_PI)

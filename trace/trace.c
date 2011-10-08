@@ -135,7 +135,7 @@ static int wtrace_buf_low_(int cnt, int freq,
  * if fmt="%@freq=%d", the next argument is 100,
  *    then we refresh every 100 calls.
  * */
-#ifdef ZCHAVEVAM
+#ifdef HAVEVAM
 int wtrace_x(int wtrace_flags_, const char *fmt, ...)
 #else
 static int wtrace_flags_ = 1;
