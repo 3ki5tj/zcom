@@ -3,7 +3,7 @@
 /*
 #define HAVEVAM 1
 */
-#include "util.c"
+#include "util.h"
 
 int main(void)
 {

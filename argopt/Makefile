@@ -1,7 +1,5 @@
 CC = gcc -O0 -g3 -Wall -pedantic -Wextra -lm
-hdr=argopt.h util.h def.h
-src=argopt.c util.c 
-dep=$(src) $(hdr) Makefile
+dep=def.h util.h argopt.h argopt.c Makefile
 
 bin=test1
 all: $(bin)

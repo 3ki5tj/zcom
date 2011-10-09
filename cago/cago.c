@@ -1,9 +1,9 @@
-#include "util.c"
+#include "util.h"
+#include "av.h"
 #include "pdb.c"
 #include "rng.c"
 #include "rotfit.c"
 #include "md.c"
-#include "av.h"
 #ifndef CAGO_C__
 #define CAGO_C__
 #include "cago.h"
@@ -96,8 +96,8 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
   if (go->ncont > 0) go->kave /= go->ncont;
   rmin = sqrt(rmin); rmax = sqrt(rmax);
   go->rrtp = (real) sqrt(1.5 * go->dof/ (go->ncont*go->kave));
-  printf("CONTACTS: %g < ca_rmsd < %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
-      rmin, rmax, go->ncont, go->kave, go->rrtp);
+  //printf("CONTACTS: %g < ca_rmsd < %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
+  //    rmin, rmax, go->ncont, go->kave, go->rrtp);
   return go;
 }
 

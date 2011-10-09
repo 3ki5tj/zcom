@@ -3,9 +3,9 @@
 #define ZCOM_UTIL
 #define ZCOM_ROTFIT
 #define ZCOM_PDB
+#define ZCOM_ARGOPT
 #include "zcom.h"
 
-const char *prog = "pdbalign";
 const char *fn1 = NULL;
 const char *fn2 = NULL;
 const char *fnout = "fit.pdb";
@@ -13,66 +13,18 @@ enum {ALN_CA = 0, ALN_BB = 1, ALN_LAST};
 int aligntype = 1;
 int verbose = 1;
 
-
-/* print help and die */
-static void help(void)
+static void doargs(int argc, char **argv)
 {
-  printf("%s [OPTIONS] ref.pdb x.pdb\n", prog);
-  printf("Rotate & translate x.pdb to a best fitting postion to ref.pdb\n\n");
-  printf("OPTIONS:\n");
-  printf(" -o: followed by the output file, default \"%s\"\n", fnout);
-  printf(" -a: followed by alignment type 0: C-alpha, 1: backbone, default %d\n", aligntype);
-  printf(" -v: followed by the verbose level, default %d\n", verbose);
-  printf(" -h: print this message\n\n");
-  exit(1);
-}
-
-/* handle arguments */
-static int doargs(int argc, char **argv)
-{
-  int i, j, ch, acnt = 0;
-  const char *val;
-
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (argv[i][0] != '-') {
-      if (acnt == 0) {
-        fn1 = argv[i];
-      } else if (acnt == 1) {
-        fn2 = argv[i];
-      } else help();
-      acnt++;
-      continue;
-    }
-    ch = argv[i][1];
-    if (strchr("aov", ch)) { /* argument options */
-      val = argv[i] + 2;
-      if (*val == '\0') {
-        if (i == argc - 1) {
-          fprintf(stderr, "need arg. after %s\n", argv[i]);
-          help();
-        }
-        val = argv[++i];
-      }
-      if (ch == 'o') {
-        fnout = val;
-      } else if (ch == 'a') {
-        aligntype = atoi(val);
-        if (aligntype < 0 || aligntype >= ALN_LAST) help();
-      } else if (ch == 'v') {
-        verbose = atoi(val);
-      } else {
-        fprintf(stderr, "program error: -%c is not handled\n", ch);
-      }
-    } else { /* simple options */
-      for (j = 1; (ch = argv[i][j]) != '\0'; j++) {
-        if (ch == 'h') help();
-      }
-    }
-  }
-  if (fn1 == NULL || fn2 == NULL) help();
-  printf("fitting %s against %s, type: %d\n", fn2, fn1, aligntype);
-  return 0;
+  argopt_t *ao = argopt_open(0);
+  argopt_regarg(ao, "!", &fn1, "file1");
+  argopt_regarg(ao, "!", &fn2, "file2");
+  argopt_regopt(ao, "-o", NULL, &fnout, "output");
+  argopt_regopt(ao, "-a", "%d", &aligntype, "type 0: C-alpha, 1: backbone");
+  argopt_regopt(ao, "-v", "%d", &verbose, "verbose level");
+  argopt_regopt_help(ao, "-h");
+  argopt_parse(ao, argc, argv);
+  if (aligntype < 0 || aligntype >= ALN_LAST) argopt_help(ao);
+  argopt_close(ao);
 }
 
 static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl)
@@ -109,10 +61,10 @@ static void pdbm_rottrans(pdbmodel_t *m, real rot[3][3], real trans[3])
   real x1[3];
   int i;
 
-  for (i = 0; i < m->n; i++) {
-    rv3_rot(x1, rot, m->at[i].x);
+  for (i = 0; i < m->natm; i++) {
+    rm3_mulvec(x1, rot, m->atm[i].x);
     rv3_inc(x1, trans);
-    rv3_copy(m->at[i].x, x1);
+    rv3_copy(m->atm[i].x, x1);
   }
 }
 
@@ -139,7 +91,7 @@ static real *mkweights(int alntype, int nr)
 int main(int argc, char **argv)
 {
   pdbmodel_t *m1, *m2;
-  real *w;
+  real *w, rmsd;
   rv3_t *x1, *x2;
   real rot[3][3], trans[3];
   int nr, n1, n2, n;
@@ -158,7 +110,8 @@ int main(int argc, char **argv)
     n = nr*3;
   } 
   w = mkweights(aligntype, nr);
-  rotfit3(x2, NULL, x1, w, n, rot, trans);
+  rmsd = rotfit3(x2, NULL, x1, w, n, rot, trans);
+  printf("rmsd = %g\n", rmsd);
   if (verbose) {
     rm3_print(rot, "Rotation", "%8.3f", 1);
     rv3_print(trans, "Translation", "%8.3f", 1);

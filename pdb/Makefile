@@ -7,8 +7,8 @@ all: $(bin)
 
 CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 
-test1: test1.c $(dep)
-	$(CC) -o $@ $< $(src) -lm
+test1: test1.c $(dep) 
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ out.pdb a.out

@@ -1,4 +1,4 @@
-#include "util.c"
+#include "util.h"
 #ifndef EIG_C__
 #define EIG_C__
 #include "eig.h"
@@ -108,7 +108,7 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
       delta = d[m]-d[m-1];
       sgn = ((delta > 0) ? 1: -1);
       delta /= e[m-1];
-      r = (real) hypotn(delta, 1);
+      r = (real) dblhypot(delta, 1);
       ks = d[m] + sgn*e[m-1]/(r + (real) fabs(delta));
   
       /* Rotations */
@@ -116,12 +116,12 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
        /* calculate c and s */
        if (j == i) {
          /* First rotation */
-         r = (real) hypotn(d[i]-ks, e[i]);
+         r = (real) dblhypot(d[i]-ks, e[i]);
          c = (d[i]-ks)/r;
          s = e[i]/r;
        } else {
          /* Givens rotations */
-         r = (real) hypotn(e[j-1], f);
+         r = (real) dblhypot(e[j-1], f);
          c = e[j-1]/r;
          s = f/r;
          e[j-1] = r;

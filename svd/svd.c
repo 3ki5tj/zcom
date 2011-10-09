@@ -1,4 +1,4 @@
-#include "util.c"
+#include "util.h"
 #ifndef SVD_C__
 #define SVD_C__
 
@@ -148,7 +148,7 @@ int svd(real *a, real *w, real *v, int m, int n)
           f = s * rv1[i];
           if (fabs(f) + anorm == anorm) continue;
           g = w[i];
-          h = hypotn(f, g);
+          h = dblhypot(f, g);
           w[i] = h; 
           h = 1.0 / h;
           c = g * h;
@@ -183,7 +183,7 @@ int svd(real *a, real *w, real *v, int m, int n)
       g = rv1[nm];
       h = rv1[k];
       f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-      g = hypotn(f, 1.0);
+      g = dblhypot(f, 1.0);
       if (f < 0.) g = -g;
       f = ((x - z) * (x + z) + h * (y/(f + g) - h)) / x;
     
@@ -195,7 +195,7 @@ int svd(real *a, real *w, real *v, int m, int n)
         y = w[i];
         h = s * g;
         g = c * g;
-        z = hypotn(f, h);
+        z = dblhypot(f, h);
         rv1[j] = z;
         c = f / z;
         s = h / z;
@@ -209,7 +209,7 @@ int svd(real *a, real *w, real *v, int m, int n)
           v[jj*n+j] = x * c + z * s;
           v[jj*n+i] = z * c - x * s;
         }
-        w[j] = z = hypotn(f, h);
+        w[j] = z = dblhypot(f, h);
         if (z > 0.) { c = f/z; s = h/z; }
         f = c * g + s * y;
         x = c * y - s * g;

@@ -66,8 +66,7 @@ int msaction = MS_NONE, msdown, msx, msy;
 
 /* last number is the radius */
 GLfloat stcolorrad[5] = {0.8f, 0.8f, 0.8f, 1.f, .5};
-GLfloat aacolorrad[21][5] = {
-  {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, /* default */
+GLfloat aacolorrad[20][5] = {
   {0.5f, 0.5f, 0.2f, 1.0f, 0.9f}, /* GLY */
   {0.6f, 0.6f, 0.6f, 1.0f, 1.0f}, /* ALA */
   {0.7f, 0.7f, 0.7f, 1.0f, 1.3f}, /* VAL */
@@ -78,16 +77,16 @@ GLfloat aacolorrad[21][5] = {
   {0.5f, 0.3f, 0.8f, 1.0f, 1.3f}, /* THR */
   {1.0f, 1.0f, 0.0f, 1.0f, 1.2f}, /* CYS */
   {0.6f, 0.6f, 0.0f, 1.0f, 1.4f}, /* MET */
-  {0.8f, 0.9f, 0.9f, 1.0f, 1.7f}, /* PHE */
-  {1.0f, 0.9f, 0.9f, 1.0f, 1.8f}, /* TYR */
-  {0.9f, 1.0f, 1.0f, 1.0f, 2.0f}, /* TRP */
   {0.2f, 1.0f, 0.2f, 1.0f, 1.4f}, /* ASN */
   {0.1f, 1.0f, 0.6f, 1.0f, 1.5f}, /* GLN */
   {1.0f, 0.0f, 0.0f, 1.0f, 1.4f}, /* ASP */
   {1.0f, 0.2f, 0.0f, 1.0f, 1.5f}, /* GLU */
   {0.0f, 0.4f, 1.0f, 1.0f, 1.5f}, /* LYS */
-  {0.0f, 0.4f, 0.8f, 1.0f, 1.6f}, /* HIS */
   {0.0f, 0.0f, 1.0f, 1.0f, 1.7f}, /* ARG */
+  {0.0f, 0.4f, 0.8f, 1.0f, 1.6f}, /* HIS */
+  {0.8f, 0.9f, 0.9f, 1.0f, 1.7f}, /* PHE */
+  {1.0f, 0.9f, 0.9f, 1.0f, 1.8f}, /* TYR */
+  {0.9f, 1.0f, 1.0f, 1.0f, 2.0f}, /* TRP */
 };
 
 static void timer(int ival)

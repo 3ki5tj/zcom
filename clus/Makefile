@@ -1,5 +1,5 @@
 CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm
-deps=def.h util.c util.h rng.h rng.c mds.c mds.h eig.c eig.h clus.c clus.h
+deps=def.h util.h rng.h rng.c mds.c mds.h eig.c eig.h clus.c clus.h
 
 bin=test1 test2 testload
 all: $(bin)

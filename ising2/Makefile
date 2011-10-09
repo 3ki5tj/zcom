@@ -3,7 +3,7 @@ CC = gcc -Wall -O0 -g3 -lm -pedantic
 CX = icc -Wall -O3 -g -lm -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = ising2.c
-dep = $(src) ising2.h rng.c rng.h util.c util.h Makefile
+dep = $(src) ising2.h rng.c rng.h util.h Makefile
 bin = testmc testem testexact
 
 all: $(bin)

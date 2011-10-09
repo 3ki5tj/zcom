@@ -1,0 +1,28 @@
+Offers several common macros 
+
+Memory allocation
+-----------------
+xnew(a, n)/xrenew(a, n)  for declare/reallocate an array of n
+
+Error reporting
+---------------
+die_if(n > 1000, "error: n %d is too large\n", n); 
+msg_if()/fatal();
+
+Files
+------
+xfopen(fp, fn, fmt, err)
+  is equivalent to 
+if ((fp = fopen(fn, fmt)) == NULL) { fprintf(stderr, "cannot open file"); err; }
+
+fexists();
+
+Math functions:
+---------------
+dblhypot(x, y):   sqrt(x*x + y*y);
+dblround(x, dx):  round x to a multiple of dx
+dblsqr(x):        returns x*x;
+lnadd(a, b):      returns log(exp(a) + exp(b));
+lndif(a, b);      returns log(exp(a) - exp(b));
+lnaddn(a, b);     returns log(exp(a) + b);
+

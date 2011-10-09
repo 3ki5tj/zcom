@@ -1,4 +1,4 @@
-#include "util.c"
+#include "util.h"
 #include "rng.c"
 #include "md.c"
 

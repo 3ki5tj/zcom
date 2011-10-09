@@ -1,5 +1,5 @@
 #include "rng.h"
-#include "util.c"
+#include "util.h"
 
 #ifndef ISING2_C__
 #define ISING2_C__
@@ -176,7 +176,7 @@ double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     lnc = lnadd(x, -x);
     lnd = lnaddn(lnc, 6.);
     lnz = lnd + log2;
-    *eav = -8.*exp(lnmin(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
+    *eav = -8.*exp(lndif(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
     *cv = bsqr * 384. * exp(lnaddn(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
     return lnz;
   } else if (fabs(beta) < 1e-6) { /* high T approx. normal branch unstable if beta < 1e-6 */
@@ -209,7 +209,7 @@ double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     g = lnadd(lncl, lnsl);
     f = lxh*g;
     lnz1 += lnadd(f, -f);
-    lnz2 += lnmin(f, -f);
+    lnz2 += lndif(f, -f);
 
     dg = exp(lnch2b - lnsl)*cd; /* g' = cl'/sl; */
     ex = exp(-f);
@@ -236,7 +236,7 @@ double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     }
     f = lxh*g;
     lnz3 += lnadd(f, -f); /* log [2 cosh(f)] */
-    lnz4 += (f < 0) ? lnmin(-f, f) : lnmin(f, -f); /* avoid neg. g0 */
+    lnz4 += (f < 0) ? lndif(-f, f) : lndif(f, -f); /* avoid neg. g0 */
    
     ex = exp(-f);
     th = 2./(1. + ex*ex) - 1.;

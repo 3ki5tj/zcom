@@ -1,5 +1,5 @@
 #include "rng.h"
-#include "util.c"
+#include "util.h"
 
 #ifndef POTTS2_C__
 #define POTTS2_C__

@@ -1,4 +1,6 @@
+#ifndef INLINE
 #define INLINE __inline static
+#endif
 
 #ifndef UTIL_H__
 #define UTIL_H__
@@ -29,9 +31,21 @@
     exit(1); } 
 #endif
 
-/* error handling */
-void perrmsg__(const char *file, int line, const char *why,
-    int err, const char *fmt, va_list args);
+/* print an error message */
+INLINE void perrmsg__(const char *file, int line, const char *why,
+    int err, const char *fmt, va_list args)
+{
+  if (err) fprintf(stderr, "error: ");
+  vfprintf(stderr, fmt, args);
+  if (fmt[strlen(fmt) - 1] != '\n')
+    fprintf(stderr, "\n"); /* add a new line if needed */
+  if (err) {
+    if (file != NULL) fprintf(stderr, "file: %s\n", file);
+    if (line > 0) fprintf(stderr, "line: %d\n", line);
+    if (why != NULL && strcmp(why, "1") != 0) 
+      fprintf(stderr, "cond: %s\n", why);
+  }
+}
 
 #ifdef HAVEVAM
 
@@ -47,13 +61,14 @@ INLINE void perrmsg_(const char *file, int line, const char *why,
     if (err) exit(1);
   }
 }
+
 #define die_if(cond, fmt, ...) \
   perrmsg_(__FILE__, __LINE__, #cond, cond, 1, fmt, ## __VA_ARGS__)
 #define msg_if(cond, fmt, ...) \
   perrmsg_(__FILE__, __LINE__, #cond, cond, 0, fmt, ## __VA_ARGS__)
 #define fatal(fmt, ...)  die_if(1, fmt, ## __VA_ARGS__)
 
-#else /* HAVEVAM */
+#else /* !HAVEVAM */
 
 #define PERRMSG__(c, x) {                     \
   va_list args;                               \
@@ -74,6 +89,10 @@ void fatal(const char *fmt, ...) PERRMSG__(1, 1)
 
 #endif /* HAVEVAM */
 
+#define xfopen(fp, fn, fmt, err) \
+  if ((fp = fopen(fn, fmt)) == NULL) { \
+    fprintf(stderr, "cannot open file %s\n", fn); err; }
+
 INLINE int fexists(const char *fn)
 {
   FILE *fp; 
@@ -82,7 +101,7 @@ INLINE int fexists(const char *fn)
 } 
 
 /* sqrt(x*x + y*y) */
-INLINE double hypotn(double x, double y)
+INLINE double dblhypot(double x, double y)
 {
   double t;
   x = fabs(x);
@@ -116,10 +135,10 @@ INLINE double lnadd(double a, double b)
 }
 
 /* log(exp(a)-exp(b)), only works for a>b */
-INLINE double lnmin(double a, double b)
+INLINE double lndif(double a, double b)
 {
   double c;
-  die_if (a < b, "lnmin: %g < %g\n", a, b);
+  die_if (a < b, "lndif: %g < %g\n", a, b);
   return ((c = a-b) > LN_BIG) ? a : a + log(1 - exp(-c));
 }
 

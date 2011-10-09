@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "rv3.h"
-#include "pdb.h"
+#include "pdb.c"
 
 int main(void)
 {
