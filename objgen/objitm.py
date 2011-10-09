@@ -746,7 +746,7 @@ class Item:
         cow.addln(r'fprintf(fp, "%s: %s of %s: ");', 
           varname, it.gtype, cnt)
       except TypeError:
-        cow.addln(r'fprintf(fp, "%s: %s of %s %%p (unknown type: %s)", %s);',
+        cow.addln(r'fprintf(fp, "%s: %s of %s %%p (user type: %s)", %s);',
           varname, it.gtype, cnt, etype, varname)
         isarr = 0
       if cnt == "0": isarr = 0

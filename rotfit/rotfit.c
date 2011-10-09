@@ -23,7 +23,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
       rv3_inc(xc, x[i]);
       rv3_inc(yc, y[i]);
     }
-    wtot = n;
+    wtot = (real) n;
   } else {
     for (wtot = 0., i = 0; i < n; i++) {
       rv3_sinc(xc, x[i], w[i]);

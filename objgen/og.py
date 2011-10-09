@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os, sys, re, filecmp, glob, tempfile, shutil
-from objgen import Parser
+from objgen import Parser, manual
 
 
 def handle(file, template = ""):
@@ -46,6 +46,10 @@ def handle(file, template = ""):
   os.remove(tmpfile)
 
 def main():
+  if "--help" in sys.argv or "-h" in sys.argv:
+    print manual
+    exit(0)
+
   if len(sys.argv) > 1: 
     files = [sys.argv[1]]
   else:

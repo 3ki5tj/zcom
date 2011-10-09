@@ -153,7 +153,7 @@ INLINE int iscontactatom(int level, const char *atnm)
  * */
 int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
 {
-  int ir, jr, i, j, im, jm, ica, jca, n = pm->n, nres = pm->nres;
+  int ir, jr, i, j, im, jm, ica, jca, n = pm->n, nres = pm->nres, ct;
   pdbatom_t *at = pm->at;
   real d, dmin, dca;
   int *ds;
@@ -179,10 +179,10 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
           if (ica && jca) dca = d; /* CA distance */
         }
       }
-      ds[ir*nres+jr] = ds[jr*nres+ir] = (dmin < rc) ? 1 : 0;
-      if (dbg && ds[ir*nres + jr]) /* print decision */
-        printf("%s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
-          at[im].resnm, ir+1, at[jm].resnm, jr+1, dca, dmin, 
+      ds[ir*nres+jr] = ds[jr*nres+ir] = ct = (dmin < rc) ? 1 : 0;
+      if (dbg > 1 || (dbg && ct))/* print decision */
+        printf("[%d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
+          ct, at[im].resnm, ir+1, at[jm].resnm, jr+1, dca, dmin, 
           at[im].atnm, im+1, at[jm].atnm, jm+1);
     }
   }

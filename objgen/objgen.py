@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-r'''
+manual = r'''
 a code generator for serializing objects
 
-Copyright (c) 2010 Cheng Zhang
+Copyright (c) 2010-2011 Cheng Zhang
 
 It uses a template, locates "typedef struct" code
 and try to generate io functions, 
@@ -18,10 +18,11 @@ or
   $cmd;  (lazy command mainly for switches)
   + cmd contains characters, numbers, and _ or -
   + the operator = can be replaced by :, it can also be := for
-    persistent commands
+    a persistent command, which not only affects this variable
+    but also all following ones
   + currently args cannot contain ; even within a string
     it should be replaced by \\;
-  + $# ... ; means a comment on commands
+  + $# ... ; means a comment, useful to comment on a command
   + if the terminal ; is missing, args extend to the end of line
 
 Commands of an object:
@@ -35,8 +36,8 @@ Commands of an object:
 
 Commands of an item:
   * $def:     default value for a variable, 
-              if the variable is a dynamic/static array, this is
-              value for array members
+              if the variable is a dynamic/static array, this value
+              applies to array members
 
   * $cnt:     declare a pointer variable as a dynamic array,
               ineffective for non-pointer variables
@@ -44,9 +45,10 @@ Commands of an item:
                 $cnt: m, n;
               allocates m*n elements, but should be understood,
               when needed, as m x n array
-              if $cnt = 0; no allocation is performed during
-              initialization, a free() is however performed
-              during close() if the pointer is not NULL.
+              Trick: to delay allocation during initialization, set $cnt = 0;
+              however free() is called during close() if the pointer 
+              is not NULL. If you use the trick, you must also set $mpicnt
+              to a proper value, if the array is an MPI variable.
 
   * $io:      declare I/O type, can be a combination of cbt,
               for configuration, binary and text respectively
@@ -107,12 +109,22 @@ Commands of an item:
   * $cfgargs: additional args for cfgopen() objects
               similarly $rbargs, $wbargs;
 
-  * $mpi:     MPI variable, every node has this variable,
+  * $mpi:     declare an MPI variable
               $mpi; if it's a dynamic array, space is allocated for non-masters
-              during initmpi(), then array on the master is broadcast
-              if it's an object pointer/array, the initmpi() function of 
-              the variable is recursively applied
-              $mpi:alloc; space is allocated for non-masters
+                  during initmpi(), then array on the master is broadcast
+                  if it's an object pointer/array, the initmpi() function of 
+                  the variable is recursively applied
+              $mpi:alloc; space is allocated for non-masters during initmpi()
+              $mpi:0; or no $mpi declaration: the pointer is set to NULL 
+                  for non-masters.
+
+  * $bcast:   declare a variable is to be regularly broadcasted, so it is
+              put in the bcast() function.
+              Note: this is to be distinguished from the initial bcast() in 
+              initmpi(), which only happens once
+
+  * $reduce:  declare a variable to be put in the reduce() function.
+              
 
 A fold is an embed object that has its own i/o routines
   * $fold:          follow by a fold-identifier

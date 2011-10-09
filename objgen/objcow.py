@@ -180,6 +180,9 @@ class CCodeWriter:
 
   def init_sarr(self, var, default, cnt, pp = None):
     ''' write code for initializing a static array '''
+    if default == None:
+      print "Warning: don't know how to initialize array %s" % var
+      return
     self.declare_var("int i", pp = pp) # declare index i
     self.addln("for (i = 0; i < %s; i++)", cnt)
     self.addln(self.sindent + "%s[i] = %s;", var, default)
