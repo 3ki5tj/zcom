@@ -10,8 +10,8 @@ int main(int argc, char **argv)
 
   ao = argopt_open(0);
   argopt_regarg(ao, "!", &fn, "inputfile");
-  argopt_regopt_help(ao, "-h");
-  argopt_regopt_version(ao, "--version");
+  argopt_reghelp(ao, "-h");
+  argopt_regversion(ao, "--version");
   argopt_regopt(ao, "--verbose", "%b", &verbose, "verbose");
   argopt_regopt(ao, "--freq", "%d", &freq, "frequency of saving files");
   argopt_regopt(ao, "-n", "!%d", &n, "an integer n");

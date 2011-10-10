@@ -115,10 +115,7 @@ int argopt_regarg(argopt_t *ao, const char *fmt, void *ptr, const char *desc)
     al->flags |= ARGOPT_MUST;
   }
   al->fmt = fmt;
-  if (ptr == NULL) {
-    printf("using null pointer for argument %s\n", desc);
-    exit(1);
-  }
+  die_if (ptr == NULL, "using null pointer for argument %s\n", desc);
   al->ptr = ptr;
   al->desc = desc;
   
@@ -137,10 +134,7 @@ int argopt_regopt(argopt_t *ao, const char *sflag,
   ol->sflag = sflag;
   ol->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
   ol->flags = 0;
-  if (ptr == NULL) {
-    printf("using null pointer for argument %s\n", desc);
-    exit(1);
-  }  
+  die_if (ptr == NULL, "using null pointer for argument %s\n", desc);
   ol->ptr = ptr;
   if (fmt && fmt[0] == '!') {
     fmt++;
@@ -149,7 +143,6 @@ int argopt_regopt(argopt_t *ao, const char *sflag,
   if (fmt && strcmp(fmt, "%b") == 0) {
     fmt = "%d";
     ol->flags |= ARGOPT_SWITCH;
-    *(int *) ptr = 0;
   }
   ol->fmt = fmt;
   ol->desc = desc;

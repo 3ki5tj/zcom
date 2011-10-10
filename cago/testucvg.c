@@ -18,7 +18,7 @@ static void doargs(int argc, char **argv)
   argopt_t *ao = argopt_open(0);
   ao->desc = "C-alpha GO model potential energy convergent";
   argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
-  argopt_regopt_help(ao, "-h");
+  argopt_reghelp(ao, "-h");
   argopt_regopt(ao, "-E", "%r", &epot_target, "target energy");
   argopt_regopt(ao, "-p","%d", &epot_target, "number of passes");
   argopt_parse(ao, argc, argv);

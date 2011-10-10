@@ -17,7 +17,7 @@ static void doargs(int argc, char **argv)
   argopt_t *ao = argopt_open(0);
 
   argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
-  argopt_regopt_help(ao, "-h");
+  argopt_reghelp(ao, "-h");
   argopt_regopt(ao, "-T", "%r", &tp, "Temperature");
   argopt_parse(ao, argc, argv);
   if (argopt_set(ao, tp)) tps = tp;

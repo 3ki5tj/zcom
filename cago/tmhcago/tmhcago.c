@@ -176,8 +176,8 @@ static void doargs(int argc, char **argv)
 {
   argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -maxh */
   argopt_regarg(ao, NULL, &fncfg, "cfgfile");
-  argopt_regopt_help(ao, "-h");
-  argopt_regopt_version(ao, "--version");
+  argopt_reghelp(ao, "-h");
+  argopt_regversion(ao, "--version");
   argopt_regopt(ao, "-v", "%b", &verbose, "verbose");
   argopt_regopt(ao, "-maxh", "%lf", &maxtime, "max. simulation hours");
   argopt_parse(ao, argc, argv);
