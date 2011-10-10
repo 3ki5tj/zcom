@@ -5,7 +5,7 @@ int main(int argc, char **argv)
   argopt_t *ao;
   const char *fn = NULL;
   int n = 0, freq = -1, verbose;
-  double x = 0;
+  double x = 1e-31;
   real y = 0;
 
   ao = argopt_open(0);

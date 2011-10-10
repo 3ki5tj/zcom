@@ -17,6 +17,7 @@ typedef struct {
   const char *val; /* raw string from command line */
   const char *desc; /* description */
   const char *fmt; /* sscanf format */
+  const char *pfmt; /* printf format, NULL: to guess */
   void *ptr; /* address to the target variable */
   unsigned flags;
 } opt_t;
@@ -47,7 +48,7 @@ int argopt_regopt(argopt_t *ao, const char *sflag,
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
 
 #define argopt_regopt_help(ao, sflag) argopt_regopt(ao, sflag, NULL, &ao->dum_, "$HELP")
-#define argopt_regopt_version(ao, sflag) argopt_regopt(ao, sflag, NULL, &ao->dum_, "$VERSION")
+#define argopt_regopt_version(ao, sflag) argopt_regopt(ao, sflag, "%b", &ao->dum_, "$VERSION")
 
 INLINE opt_t *argopt_getopt(argopt_t *ao, const void *p)
  { int i; for (i = 0; i < ao->nopt; i++) if (ao->opts[i].ptr == p) return ao->opts+i; return NULL; }

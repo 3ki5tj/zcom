@@ -41,14 +41,14 @@ static void argopt_version(argopt_t *ao)
 static void argopt_help(argopt_t *ao)
 {
   int i, len, maxlen;
-  opt_t *lo = ao->opts;
-  const char *sysopt[2] = {"print help message", "print version"}, *desc;
+  opt_t *lo;
+  const char *sysopt[2] = {"print help message", "print version"}, *desc, *fmt;
 
   printf("%s, version %d. Copyright (c) %s %d\n", 
       ao->desc ? ao->desc : ao->prog, 
       ao->version, (ao->author ? ao->author : ""), 
       ao->tm->tm_year + 1900);
-  printf("%s [OPTIONS]", ao->prog);
+  printf("USAGE\n  %s [OPTIONS]", ao->prog);
   for (i = 0; i < ao->narg; i++) {
     if (strchr(ao->args[i].desc, ' ')) 
       printf(" (%s)", ao->args[i].desc);
@@ -59,17 +59,42 @@ static void argopt_help(argopt_t *ao)
  
   printf("OPTIONS:\n") ;
   for (maxlen = 0, i = 0; i < ao->nopt; i++) {
-    len =  strlen(lo[i].sflag);
+    len =  strlen(ao->opts[i].sflag);
     if (len > maxlen) maxlen = len;
   }
   for (i = 0; i < ao->nopt; i++) {
-    desc = lo[i].desc;
+    lo = ao->opts + i;
+    desc = lo->desc;
     if (strcmp(desc, "$HELP") == 0)
       desc = sysopt[0];
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
-    printf("  %-*s : %s%s\n", maxlen, lo[i].sflag,
-        (!(lo[i].flags & ARGOPT_SWITCH) ? "followed by " : ""), desc);
+    printf("  %-*s : %s%s", maxlen, lo->sflag,
+        (!(lo->flags & ARGOPT_SWITCH) ? "followed by " : ""), desc);
+    if (lo->ptr && lo->ptr != &ao->dum_) { /* print default values */
+      printf(", default: ");
+      for (fmt = lo->fmt; fmt && *fmt && *fmt != '%'; fmt++) ;
+#define ELIF_PF_(fm, fmp, type) else if (strcmp(fmt, fm) == 0) printf((lo->pfmt ? lo->pfmt : fmp), *(type *)lo->ptr)
+      if (fmt == NULL || *fmt == '\0') printf("%s", *(char **)lo->ptr);
+      ELIF_PF_("%b", "%d", int); /* switch */
+      ELIF_PF_("%d", "%d", int);
+      ELIF_PF_("%u", "%u", unsigned);
+      ELIF_PF_("%x", "0x%x", unsigned);
+      ELIF_PF_("%ld", "%ld", long);
+      ELIF_PF_("%lu", "%lu", unsigned long);
+      ELIF_PF_("%lx", "0x%lx", unsigned long);
+#if 0  /* C99 only */
+      ELIF_PF_("%lld", "%lld", long long);
+      ELIF_PF_("%llu", "%llu", unsigned long long);
+      ELIF_PF_("%llx", "0x%llx", unsigned long long);
+#endif
+      ELIF_PF_("%f", "%g", float);
+      ELIF_PF_("%lf", "%g", double);
+      ELIF_PF_("%r", "%g", real);
+      else printf("unknown %s-->%%d: %d\n", fmt, *(int *)lo->ptr);
+#undef ELIF_PF_
+    }
+    printf("\n");
   }
   argopt_close(ao);
   exit(1);
