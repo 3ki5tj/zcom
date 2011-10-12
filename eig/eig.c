@@ -86,16 +86,16 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
 {
   const int itermax = 1000;
   int i, j, k, m, iter, sgn;
-  real ks = 0, r, c, s, delta, f, t1, t2;
+  real ks = 0, r, c, s, delta, f, t1, t2, tol;
  
   e[n-1] = 0;
- 
+  tol = (sizeof(real) == sizeof(float)) ? 1e-6f : 1e-12f;
   for (i = 0; i < n; i++) {
     /* for each eigenvalue */
     for (iter = 0; iter < itermax; iter++) {
       /* Look for a single small subdiagonal element to split the matrix */
       for (m = i; m < n-1; m++) {
-        if (fabs(e[m]) < (fabs(d[m+1])+fabs(d[m]))*1e-12)
+        if (fabs(e[m]) < (fabs(d[m+1])+fabs(d[m]))*tol)
           break;
       }
   

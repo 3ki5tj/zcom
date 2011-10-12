@@ -15,7 +15,7 @@ def mksmall(input, output, goodkeys):
       with a few modules, given by 'goodkeys' '''
 
   oldsrc = open(input, 'r').readlines()
-  goodkeys = transkeys( goodkeys, prefix )
+  goodkeys = transkeys(goodkeys, prefix)
   badkeys = getbadkeys(oldsrc, goodkeys)
   newsrc = []
   
@@ -24,14 +24,29 @@ def mksmall(input, output, goodkeys):
   ignlev = -1  # if >= 0, the current line is ignored
   toclev = -1
 
-  def haskey(ln, keys):
-    ''' if a line ln has any of keys '''
+  def hasbadkey(ln, badkeys):
+    ''' if a line ln has any of bad keys '''
     ln = ln.strip()
-    for key in keys:
+    for key in badkeys:
       if re.search("\s" + key + "$", ln):
         if verbose >= 1: print "IGNOR + %s, #%s: %s" % (level, lnum, lin),
         return 1
-    return 0
+    else: return 0
+
+  def looksgood(ln, goodkeys):
+    ''' if the line looks like a block starter but not containing a good key
+        Warning: the function is based on heuristics, not very reliable '''
+    ln = ln.strip()
+    tag = "^#ifdef\s+" + prefix
+    if not re.search(tag, ln): return 1
+    for key in goodkeys:
+      if re.search("\s+" + key + "$", ln):
+        return 1
+    else:
+      nm = re.sub(tag, "", ln).lower()
+      if " " in nm or nm in ("none", "all"): return 1
+      if verbose >= 1: print "IGNOR + %s, #%s: %s" % (level, lnum, lin),
+      return 0
 
   for line in oldsrc: # do line by line
     lin = line.lstrip()
@@ -45,13 +60,14 @@ def mksmall(input, output, goodkeys):
       if toclev < 0:
         if lin.startswith("#ifndef ZCOM_PICK"):
           toclev = level
-      elif ignlev < 0 and lin.startswith("#ifndef") and haskey(lin, badkeys):
+      elif ignlev < 0 and lin.startswith("#ifndef") and hasbadkey(lin, badkeys):
         ignlev = level
 
       # ignore
       if ignlev < 0:
         if level == 1 and lin.startswith("#ifdef"):
-          if haskey(lin, badkeys): ignlev = level
+          if hasbadkey(lin, badkeys) or not looksgood(lin, goodkeys):
+            ignlev = level 
         elif lin.find("_LEGACY") >= 0:
           ignlev = level
 

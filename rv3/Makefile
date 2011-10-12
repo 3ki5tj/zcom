@@ -10,7 +10,7 @@ $(bin): def.h rv3.h Makefile
 	$(CC) -o $@ $<
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o a.out
 
 .PHONY: all clean
 

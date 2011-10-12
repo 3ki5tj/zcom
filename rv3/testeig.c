@@ -1,14 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#define HAVEREAL 1
+typedef float real;
 #include "rv3.h"
 #include "include/eig.c"
 
 int main(void)
 {
-  real a[3][3] = {
-    {2., 0, 0}, 
-    {0, 1, 1},
-    {0, 1, 1}}, mat[3][3];
+  real a[3][3] = {{2.f, 0.f, 0.f}, {0.f, 1.f, 1.f}, {0.f, 1.f, 1.f}}, mat[3][3];
   real v[3] = {0, 0, 0}, vecs[3][3];
   int j;
   
