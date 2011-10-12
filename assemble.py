@@ -296,7 +296,8 @@ def builddeps(srclist):
   return newsrclist, sdep
 
 def mkanchors(shost, srclist):
-  ''' add anchor macros to host '''
+  ''' add anchor macros to host
+  srclist is an array of (mod, MACRO) '''
   
   srclist, lsdeps = builddeps(srclist)
   
@@ -311,7 +312,7 @@ def mkanchors(shost, srclist):
 
   # 2. find the location of dependence
   for i in range(a0+1, len(shost)):
-    if shost[i].find("build dependencies") >= 0:
+    if shost[i].find("/* build dependencies */") >= 0:
       a1 = i+1
       break
   else:

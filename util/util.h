@@ -7,8 +7,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
+#include <ctype.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 
 #ifndef xnew
@@ -122,6 +123,12 @@ INLINE double dblround(double x, double dx)
 
 INLINE double dblsqr(double x) { return x*x; }
 
+INLINE double dblmax(double x, double y) { return x > y ? x : y; }
+INLINE double dblmin(double x, double y) { return x < y ? x : y; }
+/* confine x within [xmin, xmax] */
+INLINE double dblconfine(double x, double xmin, double xmax)
+  { return x < xmin ? xmin : x > xmax ? xmax : x; }
+
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED
 #define LN_BIG 50.0
@@ -149,7 +156,86 @@ INLINE double lnaddn(double a, double b)
 }
 
 #undef LN_BIG
-#endif
+#endif  /* LNADD_DEFINED */
+
+/* string manipulation */
+#define ZSTR_XSPACEL  0x0001
+#define ZSTR_XSPACER  0x0002
+#define ZSTR_XSPACE   (ZSTR_XSPACEL|ZSTR_XSPACER)
+#define ZSTR_COPY     0x0004
+#define ZSTR_CAT      0x0008
+#define ZSTR_CASE     0x0100
+#define ZSTR_UPPER_   0x0200
+#define ZSTR_UPPER    (ZSTR_CASE|ZSTR_UPPER_)
+#define ZSTR_LOWER    ZSTR_CASE
+
+/* remove leading and trailing spaces */
+#define strip(s)  stripx(s, ZSTR_XSPACE)
+#define lstrip(s) stripx(s, ZSTR_XSPACEL)
+#define rstrip(s) stripx(s, ZSTR_XSPACER)
+INLINE char *stripx(char *s, unsigned flags)
+{
+  char *p;
+
+  if (flags & ZSTR_XSPACEL) { /* remove leading spaces */
+    for (p = s; isspace(*p); p++) ;
+    if (*p == '\0') *s = '\0';
+    else memmove(s, p, strlen(p)+1);
+  }
+  if (flags & ZSTR_XSPACER) /* remove trailing spaces */
+    for (p = s + strlen(s) - 1; p >= s && isspace(*p); p--)
+      *p = '\0';
+  return s;
+}
+
+/* in the follows, size_s means the buffer size of s, i.e., sizeof(s) for static strings */
+/* copy the string and convert it to upper/lower case */
+#define strcpy2u(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY|ZSTR_UPPER)
+#define strcpy2l(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY|ZSTR_LOWER)
+#define strcpy_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY)
+/* concatenate strings, the last parameter is the buffer size of s,
+ * unlike strncat(), in which it's the number of characters from *t* to be copied.  */
+#define strcat_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_CAT)
+/* safely copy/cat strings with case conversion
+ * unlike strncpy(), s is always null-terminated on return: it copies at most
+ * len nonblank characters, i.e., s[len] = '\0' for the longest output */
+INLINE char *strcnv(char *s, const char *t, size_t len, unsigned flags)
+{
+  size_t i = 0, j;
+  unsigned docase = flags & ZSTR_CASE, up = flags & ZSTR_UPPER_;
+
+  if (len == 0 || s == NULL || t == NULL) return s;
+  if (flags & ZSTR_CAT) while(s[i]) i++;
+  for (j = 0; i < len; i++, j++) {
+    if (docase && t[j]) {
+      if (up) s[i] = (char) (unsigned char) toupper((unsigned char) t[j]);
+      else    s[i] = (char) (unsigned char) tolower((unsigned char) t[j]);
+    } else s[i] = t[j];
+    if (t[j] == 0) break;
+  }
+  if (i == len) s[i] = '\0';
+  if (flags & ZSTR_XSPACE) stripx(s, flags); /* call strip */
+  return s;
+}
+
+/* compare strings without case */
+#define strcmpnc(s, t) strncmpnc(s, t, -1)
+INLINE int strncmpnc(const char *s, const char *t, int n)
+{
+  int i, cs, ct;
+
+  if (s == NULL || t == NULL) return 0;
+  for (i = 0; ; i++) {
+    if (i >= n) return 0;
+    cs = s[i];
+    ct = t[i];
+    if (cs == 0 || ct == 0) break;
+    cs = toupper( (unsigned char) cs );
+    ct = toupper( (unsigned char) ct );
+    if (cs != ct) break;
+  }
+  return cs-ct;
+}
 
 #endif
 

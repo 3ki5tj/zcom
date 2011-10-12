@@ -4,12 +4,17 @@ CX = icc -Wall -O3 -g -lm -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = tmhdos
+bin = tmhdos tmhdos_d
 
 all: $(bin)
 
-tmhdos: tmhdos.c $(dep)
+$(bin): $(dep)
+
+%: %.c
 	$(CX) -o $@ $< 
+
+%_d: %.c
+	$(CC) -o $@ $< 
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

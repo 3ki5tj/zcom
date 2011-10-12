@@ -14,6 +14,7 @@ typedef struct {
   int insert;
   char atnm[8];
   char resnm[8];
+  char elem[4];
   real *x; /* pointer to pdbmodel_t.x */
 } pdbatom_t; /* a single atom entry */
 
@@ -26,101 +27,12 @@ typedef struct {
   const char *file;
 } pdbmodel_t; /* raw data in a pdb model */
 
-/* indices for atoms in standard amino acids */
-#define AA_CA     0
-#define AA_N      1
-#define AA_H2     2
-#define AA_H3     3
-#define AA_C      4
-#define AA_O      5
-#define AA_OC1    5
-#define AA_OC2    6
-#define AA_OXT    6
-#define AA_H      7
-#define AA_H1     7
-#define AA_CB     8
-#define AA_HA1    8
-#define AA_HA     9
-#define AA_HA2    9
-#define AA_HA3    10
-#define AA_HB     10
-#define AA_HB1    10
-#define AA_CG2    11
-#define AA_HB2    11
-#define AA_CG     12
-#define AA_HB3    12
-#define AA_HG21   12
-#define AA_OG     12
-#define AA_SG     12
-#define AA_HD1    13
-#define AA_HG     13
-#define AA_HG13   13
-#define AA_ND1    13
-#define AA_OD1    13
-#define AA_OE1    13
-#define AA_OG1    13
-#define AA_SD     13
-#define AA_HD2    14
-#define AA_HD21   14
-#define AA_HE21   14
-#define AA_HE3    14
-#define AA_OD2    14
-#define AA_OE2    14
-#define AA_CD1    15
-#define AA_CG1    15
-#define AA_HG1    15
-#define AA_ND2    15
-#define AA_CD     16
-#define AA_CE1    16
-#define AA_HD22   16
-#define AA_NE1    16
-#define AA_CE2    17
-#define AA_HD11   17
-#define AA_HG2    17
-#define AA_HG22   17
-#define AA_HD12   18
-#define AA_HE1    18
-#define AA_HE22   18
-#define AA_HG23   18
-#define AA_NE     18
-#define AA_CD2    19
-#define AA_HG11   19
-#define AA_HG3    19
-#define AA_CZ2    20
-#define AA_HD13   20
-#define AA_HE     20
-#define AA_HE2    20
-#define AA_HG12   20
-#define AA_CE     21
-#define AA_CH2    21
-#define AA_CZ     21
-#define AA_HD23   21
-#define AA_HD3    21
-#define AA_NE2    21
-#define AA_HZ     22
-#define AA_HZ2    22
-#define AA_NH1    22
-#define AA_OH     22
-#define AA_HH     23
-#define AA_HH11   23
-#define AA_HZ3    23
-#define AA_HH12   24
-#define AA_HH2    24
-#define AA_NZ     24
-#define AA_CZ3    25
-#define AA_HZ1    25
-#define AA_NH2    25
-#define AA_CE3    26
-#define AA_HH21   26
-#define AA_HH22   27
-
-#define AA_MAXBIT 28
 
 typedef struct {
   int aa;  /* index of amino acid [0, 20) */
   int nat; /* number of atoms */
-  int id[AA_MAXBIT]; /* indices to the coordinate array */
-  unsigned flags;
+  int id[32]; /* indices to the coordinate array */
+  unsigned long flags;
   real *xca, *xn, *xc;
 } pdbaar_t; /* amino-acid residues */
 
@@ -143,19 +55,47 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg);
 /* protein pdb */
 pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
 #define pdbaac_free(c) { free(c->res); free(c->x); free(c); }
-#define pdbaac_x(c, i, nm) c->x[ c->res[i].id[AA_ ## nm] ]
+#define pdbaac_x(c, i, nm) pdbaac_getx(c, i, #nm)
 
-static const char pdb_aanames_[20][4] = {
-  "GLY", "ALA", "VAL", "LEU", "ILE", "PRO",
-  "SER", "THR", "CYS", "MET",
-  "ASN", "GLN", "ASP", "GLU", "LYS", "ARG", 
-  "HIS", "PHE", "TYR", "TRP"};
+#define AA_BACKBONE 0x7
+#define AA_H2   29
+#define AA_H3   30
+#define AA_OXT  31
+
+/* don't edit data in the structure, written by mkdb.py */
+struct tag_pdb_aadb {
+  const char *resnm;      /* residue name */
+  const char *atom[25];   /* atoms */
+  const char *sub[11];    /* substitutions */
+  unsigned long hvflags;  /* backbone and heavy atom flags */
+} pdb_aadb[20] = {
+{"GLY", {"CA", "N", "C", "O", "HA1", "HA2", "H", NULL}, {"HA3", "HA1", NULL}, 0xful},
+{"ALA", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "HB3", "HA", "H", NULL}, {NULL}, 0x1ful},
+{"VAL", {"CA", "N", "C", "O", "CB", "HB", "CG1", "HG11", "HG12", "HG13", "CG2", "HG21", "HG22", "HG23", "HA", "H", NULL}, {NULL}, 0x45ful},
+{"LEU", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG", "CD1", "HD11", "HD12", "HD13", "CD2", "HD21", "HD22", "HD23", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x229ful},
+{"ILE", {"CA", "N", "C", "O", "CB", "HB", "CG2", "HG21", "HG22", "HG23", "CG1", "HG11", "HG12", "CD", "HD1", "HD2", "HD3", "HA", "H", NULL}, {"HG13", "HG11", "CD1", "CD", "HD11", "HD1", "HD12", "HD2", "HD13", "HD3", NULL}, 0x245ful},
+{"PRO", {"CA", "N", "C", "O", "CD", "HD1", "HD2", "CG", "HG1", "HG2", "CB", "HB1", "HB2", "HA", NULL}, {"HB3", "HB1", "HG3", "HG1", "HD3", "HD1", NULL}, 0x49ful},
+{"SER", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "OG", "HG", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x9ful},
+{"THR", {"CA", "N", "C", "O", "CB", "HB", "CG2", "HG21", "HG22", "HG23", "OG1", "HG1", "HA", "H", NULL}, {NULL}, 0x45ful},
+{"CYS", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "SG", "HG", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x9ful},
+{"MET", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG1", "HG2", "SD", "CE", "HE1", "HE2", "HE3", "HA", "H", NULL}, {"HB3", "HB1", "HG3", "HG1", NULL}, 0xc9ful},
+{"ASN", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "OD1", "ND2", "HD21", "HD22", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x39ful},
+{"GLN", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG1", "HG2", "CD", "OE1", "NE2", "HE21", "HE22", "HA", "H", NULL}, {"HB3", "HB1", "HG3", "HG1", NULL}, 0x1c9ful},
+{"ASP", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "OD1", "OD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x39ful},
+{"GLU", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG1", "HG2", "CD", "OE1", "OE2", "HA", "H", NULL}, {"HB3", "HB1", "HG3", "HG1", NULL}, 0x1c9ful},
+{"LYS", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG1", "HG2", "CD", "HD1", "HD2", "CE", "HE1", "HE2", "NZ", "HZ1", "HZ2", "HZ3", "HA", "H", NULL}, {"HB3", "HB1", "HG3", "HG1", "HD3", "HD1", "HE3", "HE1", NULL}, 0x1249ful},
+{"ARG", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "HG1", "HG2", "CD", "HD1", "HD2", "NE", "HE", "CZ", "NH1", "HH11", "HH12", "NH2", "HH21", "HH22", "HA", "H", NULL}, {"HB3", "HB1", "HG3", "HG1", "HD3", "HD1", NULL}, 0x9a49ful},
+{"HIS", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "ND1", "HD1", "CE1", "HE1", "NE2", "HE2", "CD2", "HD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x559ful},
+{"PHE", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "CD1", "HD1", "CE1", "HE1", "CZ", "HZ", "CE2", "HE2", "CD2", "HD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x1559ful},
+{"TYR", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "CD1", "HD1", "CE1", "HE1", "CZ", "OH", "HH", "CE2", "HE2", "CD2", "HD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x2b59ful},
+{"TRP", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "CD1", "HD1", "NE1", "HE1", "CE2", "CZ2", "HZ2", "CH2", "HH2", "CZ3", "HZ3", "CE3", "HE3", "CD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x2ab59ful}};
+
 
 INLINE int pdbaaidx(const char *res)
 {
   int i;
   for (i = 0; i < 20; i++)
-    if (strcmp(res, pdb_aanames_[i]) == 0) 
+    if (strcmp(res, pdb_aadb[i].resnm) == 0) 
       return i;
   return -1;
 }
@@ -163,40 +103,66 @@ INLINE int pdbaaidx(const char *res)
 INLINE const char *pdbaaname(int i)
 {
   die_if (i < 0 || i >= 20, "invalid amino acid id %d\n", i);
-  return pdb_aanames_[i];
+  return pdb_aadb[i].resnm;
 }
+
+/* return the index of an atom from */
+INLINE int pdbaagetaid(int aa, const char *atnm)
+{
+  int k;
+  for (k = 0; pdb_aadb[aa].atom[k]; k++)
+    if (strcmp(pdb_aadb[aa].atom[k], atnm) == 0) return k;
+  return -1;
+}
+
+/* return the global atom index */
+INLINE int pdbaar_getaid(pdbaar_t *r, const char *atnm)
+  { int topid = pdbaagetaid(r->aa, atnm); return (topid < 0) ? -1 : r->id[topid]; }
+INLINE int pdbaac_getaid(pdbaac_t *c, int i, const char *atnm)
+  { return pdbaar_getaid(c->res + i, atnm); }
+/* return coordinates */
+INLINE real *pdbaac_getx(pdbaac_t *c, int i, const char *atnm)
+  { int id = pdbaac_getaid(c, i, atnm); return (id < 0) ? NULL : c->x[id]; }
 
 /* format atom name, out could be equal to atnm 
  * style 0: atom name first, e.g., "HE21", "CB", or style 1: "1HE2" or " CB " */
-INLINE char *pdbm_fmtatom(char *out, char *atnm, int style)
+INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
 {
-  size_t n = strlen(atnm), i;
-  char c;
+  size_t n, i;
+  char c, cn, atnm[5];
+  const char *p;
 
-  if (n > 4) { /* a mistake */
-    fprintf(stderr, "atom name [%s] too long!\n", atnm);
-    exit(1);
-  }
-  if (style == 0) {
-    if (isdigit(c = atnm[0])) { /* rotate the string, such that 1HE2 --> HE21; */
-      for (i = 1; i < n; i++) out[i-1] = atnm[i];
-      out[n-1] = c;
-      out[n] = '\0';
-    } else if (out != atnm) strcpy(out, atnm);
-  } else if (style == 1) {
+  die_if (style > 2 || style < 0, "bad format style %d\n", style);
+  
+  /* copy inp to a buffer without space */
+  for (p = inp; *p == ' '; p++) ;
+  for (n = 0; n < 4 && p[n] && p[n] != ' '; n++) atnm[n] = p[n];
+  atnm[n] = '\0';
+  die_if (n == 4 && p[n] && p[n] != ' ', "bad input atom name [%s]\n", atnm);
+  
+  if (style <= 1) { /* style 0: "H", "CA", "HE21", style 1: " H", " CA", "HE21" */
     if (n == 4) {
-      if (isalpha(atnm[0]) && isdigit(c = atnm[n-1])) { /* HE21 --> 1HE2 */
-        for (i = n-1; i > 0; i--) out[i] = atnm[i-1];
-        out[0] = c;
+      c = atnm[0];
+      if (isdigit(c)) { /* rotate the string, such that 1HE2 --> HE21; */
+        for (i = 1; i < n; i++) out[i-1] = atnm[i];
+        out[n-1] = c;
         out[n] = '\0';
-      } else if (out != atnm) strcpy(out, atnm);
-    } else { /* n < 4 */
-      if (atnm[0] != ' ') {
-        for (i = n; i > 0; i--) out[i] = atnm[i-1];
-        out[0] = ' ';
-      } else if (out != atnm) strcpy(out, atnm);
-      for (i = n+1; i < 4; i++) out[i] = ' ';
-      out[4] = '\0';
+      } else strcpy(out, atnm);
+    } else { /* n <= 3 */
+      if (style == 0) strcpy(out, atnm);
+      else { out[0] = ' '; strcpy(out+1, atnm); }
+    }
+  } else if (style == 2) { /* style 2: " H", " CA", "1HE2" */
+    if (n == 4) {
+      c = atnm[0];
+      cn = atnm[n - 1];
+      if (isalpha(c) && isdigit(cn)) { /* HE21 --> 1HE2 */
+        for (i = n-1; i > 0; i--) out[i] = atnm[i-1];
+        out[0] = cn;
+        out[n] = '\0';
+      } else strcpy(out, atnm);
+    } else { /* n <= 3 */
+      out[0] = ' '; strcpy(out+1, atnm);
     }
   }
   return out;

@@ -22,7 +22,21 @@ Math functions:
 dblhypot(x, y):   sqrt(x*x + y*y);
 dblround(x, dx):  round x to a multiple of dx
 dblsqr(x):        returns x*x;
+dblmax(x, y):     return the larger one
+dblmin(x, y):     return the smaller one
+dblconfine(x, xmin, xmax): returns x if it's in [xmin, xmax], otherwise boundary values.
 lnadd(a, b):      returns log(exp(a) + exp(b));
 lndif(a, b);      returns log(exp(a) - exp(b));
 lnaddn(a, b);     returns log(exp(a) + b);
 
+
+String manipulation
+--------------------
+originally the str module
+strip(), lstrip(), rstrip():      strip white spaces
+strcpy2u(), strcpy2l():           copy with case conversions
+strcpy_sf(), strcat_sf():         safely copy and cat
+strcmpnc(), strncmpnc:            compare strings without case
+
+NOTE:
+substr(s, t, start, len) == strcpy_sf(s, t+start, len+1)

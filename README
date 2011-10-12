@@ -11,8 +11,7 @@ Try to use symbolic links to files in this folder if possible,
 
 def:            definition of real and M_PI
 util:           useful but unclassified routines
-str:            utilities for string, compare, convert, strip
-ss:             safe string
+ss:             smart string
 endn:           handle endianness
 bio:            macros for read/write binary files
 rng:            random number generator
@@ -30,7 +29,7 @@ log:            log file
 av:             simple mean/deviation
 hist:           collect and write simple histograms (1d/2d)
 mds:            multidimensional scaling
-pdb:            read pdb
+pdb:            read/write pdb
 clus:           a Monte Carlo based clustering
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model

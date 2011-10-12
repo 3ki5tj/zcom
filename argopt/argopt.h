@@ -32,7 +32,7 @@ typedef struct {
   const struct tm *tm; /* compilation time */
   int version;
   unsigned flags;
-  int dum_;
+  int dum_[4]; /* space holder */
 } argopt_t;
 
 #define ARGOPT_MUST     0x0001  /* a mandatory argument or option */
@@ -42,18 +42,18 @@ typedef struct {
 
 argopt_t *argopt_open(unsigned flags);
 void argopt_close(argopt_t *ao);
-int argopt_regarg(argopt_t *ao, const char *fmt, void *ptr, const char *desc);
+#define argopt_regarg(ao, fmt, ptr, desc) argopt_regopt(ao, NULL, fmt, ptr, desc)
 int argopt_regopt(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc);
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
 
-#define argopt_reghelp(ao, sflag) argopt_regopt(ao, sflag, NULL, &ao->dum_, "$HELP")
-#define argopt_regversion(ao, sflag) argopt_regopt(ao, sflag, "%b", &ao->dum_, "$VERSION")
+#define argopt_reghelp(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$HELP")
+#define argopt_regversion(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$VERSION")
 
-INLINE opt_t *argopt_getopt(argopt_t *ao, const void *p)
- { int i; for (i = 0; i < ao->nopt; i++) if (ao->opts[i].ptr == p) return ao->opts+i; return NULL; }
-INLINE opt_t *argopt_getarg(argopt_t *ao, const void *p)
- { int i; for (i = 0; i < ao->narg; i++) if (ao->args[i].ptr == p) return ao->args+i; return NULL; }
+#define argopt_getopt(ao, p) argopt_searchls_(ao->opts, ao->nopt, p)
+#define argopt_getarg(ao, p) argopt_searchls_(ao->args, ao->narg, p)
+INLINE opt_t *argopt_searchls_(opt_t *ls, int n, const void *p)
+ { int i; for (i = 0; i < n; i++) if (ls[i].ptr == p) return ls+i; return NULL; }
 
 #define argopt_set(ao, var) argopt_set_(ao, &var, #var)
 INLINE int argopt_set_(argopt_t *ao, const void *p, const char *var)

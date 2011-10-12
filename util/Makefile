@@ -4,7 +4,7 @@ bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin): def.h argopt.h argopt.c Makefile
+$(bin): util.h util.c Makefile
 
 %: %.c
 	$(CC) -o $@ $<

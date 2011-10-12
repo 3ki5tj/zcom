@@ -12,27 +12,27 @@ argopt_t *argopt_open(unsigned flags)
   xnew(ao, 1);
   ao->flags = flags;
   ao->narg = ao->nopt = 0;
+  ao->args = ao->opts = NULL;
   tmcmpl = time(NULL);
   ao->tm = localtime( &tmcmpl );
-  xnew(ao->args, 1);
-  xnew(ao->opts, 1);
+  memset(ao->dum_, '\0', sizeof(ao->dum_));
   return ao;
 }
 
 void argopt_close(argopt_t *ao)
 {
-  if (ao->args) free(ao->args);
-  if (ao->opts) free(ao->opts);
+  if (ao->args) { free(ao->args); ao->args = NULL; }
+  if (ao->opts) { free(ao->opts); ao->opts = NULL; }
   free(ao);
 }
 
 /* print version and die */
 static void argopt_version(argopt_t *ao)
 {
-  printf("%s: %s, version %d. Copyright (c) %s %d\n", 
-      ao->prog, ao->desc ? ao->desc : "", 
-      ao->version, (ao->author ? ao->author : ""), 
-      ao->tm->tm_year + 1900);
+  printf("%s: %s, version %d\n", 
+      ao->prog, ao->desc ? ao->desc : "", ao->version);
+  if (ao->author && ao->tm)
+    printf("Copyright (c) %s %d\n", ao->author, ao->tm->tm_year + 1900);
   argopt_close(ao);
   exit(1);
 }
@@ -44,16 +44,20 @@ static void argopt_help(argopt_t *ao)
   opt_t *lo;
   const char *sysopt[2] = {"print help message", "print version"}, *desc, *fmt;
 
-  printf("%s, version %d. Copyright (c) %s %d\n", 
-      ao->desc ? ao->desc : ao->prog, 
-      ao->version, (ao->author ? ao->author : ""), 
-      ao->tm->tm_year + 1900);
-  printf("USAGE\n  %s [OPTIONS]", ao->prog);
+  printf("%s, version %d", 
+      ao->desc ? ao->desc : ao->prog, ao->version);
+  if (ao->author && ao->tm)
+    printf(", Copyright (c) %s %d", ao->author, ao->tm->tm_year + 1900);
+  printf("\nUSAGE\n  %s [OPTIONS]", ao->prog);
   for (i = 0; i < ao->narg; i++) {
-    if (strchr(ao->args[i].desc, ' ')) 
-      printf(" (%s)", ao->args[i].desc);
-    else
-      printf(" %s", ao->args[i].desc);
+    const char *bra = "", *ket = "";
+    lo = ao->args + i;
+    if (lo->flags & ARGOPT_MUST) {
+      if (strchr(lo->desc, ' ')) 
+        bra = "{", ket = "}";
+    } else
+      bra = "[", ket = "]";
+    printf(" %s%s%s", bra, lo->desc, ket);
   }
   printf("\n");
  
@@ -73,9 +77,9 @@ static void argopt_help(argopt_t *ao)
         (!(lo->flags & ARGOPT_SWITCH) ? "followed by " : ""), desc);
     if (lo->ptr && lo->ptr != &ao->dum_) { /* print default values */
       printf(", default: ");
-      for (fmt = lo->fmt; fmt && *fmt && *fmt != '%'; fmt++) ;
+      for (fmt = lo->fmt; *fmt && *fmt != '%'; fmt++) ;
 #define ELIF_PF_(fm, fmp, type) else if (strcmp(fmt, fm) == 0) printf((lo->pfmt ? lo->pfmt : fmp), *(type *)lo->ptr)
-      if (fmt == NULL || *fmt == '\0') printf("%s", *(char **)lo->ptr);
+      if (fmt == NULL || *fmt == '\0') printf("%s", (*(char **)lo->ptr) ? (*(char **)lo->ptr) : "NULL");
       ELIF_PF_("%b", "%d", int); /* switch */
       ELIF_PF_("%d", "%d", int);
       ELIF_PF_("%u", "%u", unsigned);
@@ -100,62 +104,50 @@ static void argopt_help(argopt_t *ao)
   exit(1);
 }
 
-/* register argument */
-int argopt_regarg(argopt_t *ao, const char *fmt, void *ptr, const char *desc)
-{
-  opt_t *al = ao->args + ao->narg;
-
-  al->isopt = 0;
-  al->ch = '\0'; /* arguments have no flags */
-  al->sflag = NULL;
-  
-  al->flags = 0;
-  if (fmt && fmt[0] == '!') {
-    fmt++;
-    al->flags |= ARGOPT_MUST;
-  }
-  al->fmt = fmt;
-  die_if (ptr == NULL, "using null pointer for argument %s\n", desc);
-  al->ptr = ptr;
-  al->desc = desc;
-  
-  ao->narg++;
-  xrenew(ao->args, ao->narg+1);
-  return ao->narg - 1;
-}
-
-/* register option: "%b" for a switch */
+/* register option: fmt = "%b" for a switch */
 int argopt_regopt(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc)
 {
-  opt_t *ol = ao->opts + ao->nopt;
+  opt_t *ol;
+  int n;
 
-  ol->isopt = 1;
+  if (sflag) { /* option */
+    n = ao->nopt++;
+    xrenew(ao->opts, ao->nopt);
+    ol = ao->opts + n;
+    ol->isopt = 1;
+    ol->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
+  } else { /* argument */
+    n = ao->narg++;
+    xrenew(ao->args, ao->narg);
+    ol = ao->args + n;
+    ol->isopt = 0;
+    ol->ch = '\0';
+  }
   ol->sflag = sflag;
-  ol->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
   ol->flags = 0;
-  die_if (ptr == NULL, "using null pointer for argument %s\n", desc);
+  die_if (ptr == NULL, "null pass to argopt with %s: %s\n", sflag, desc);
   ol->ptr = ptr;
-  if (fmt && fmt[0] == '!') {
+  if (fmt == NULL) fmt = "";
+  if (fmt[0] == '!') {
     fmt++;
     ol->flags |= ARGOPT_MUST;
   }
-  if (fmt && strcmp(fmt, "%b") == 0) {
+  if (strcmp(fmt, "%b") == 0) {
     fmt = "%d";
     ol->flags |= ARGOPT_SWITCH;
   }
   ol->fmt = fmt;
+  ol->pfmt = NULL;
   ol->desc = desc;
-
-  ao->nopt++;
-  xrenew(ao->opts, ao->nopt+1);
-  return ao->nopt - 1;
+  return n;
 }
 
 /* translate string values to actual ones through sscanf() */
 static int opt_getval_(opt_t *o)
 {
   const char *fmt = o->fmt;
+  
   if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
     *(const char **)o->ptr = o->val;
   } else { /* call sscanf */

@@ -5,6 +5,7 @@ typedef double real;
 #include "time.h"
 #define ZCOM_PICK
 #define ZCOM_CFG
+#define ZCOM_ARGOPT
 #define ZCOM_TRACE
 #define ZCOM_ABPRO
 #define ZCOM_TMH
@@ -217,36 +218,16 @@ static void guess_erange(abpro_t *ab, double tp0, double tp1,
       tp0, *erg0, edv0, tp1, *erg1, edv1, *emin, *emax, ab->emin); 
 }
 
-/* print help and exit */
-static void help(void)
-{
-  printf("%s [OPTIONS]\n", prog);
-  printf("OPTIONS:\n"
-      "  -maxh: followed by maximal hour\n");
-  exit(1);
-}
-
 /* handle input arguments */
-static int doargs(int argc, char **argv)
+static void doargs(int argc, char **argv)
 {
-  int i;
-
-  prog = argv[0];
-  for (i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-maxh") == 0) {
-      if (i == argc - 1) help();
-      i++;
-      maxtime = atof(argv[i])*3600.*0.95;
-    } else if (strcmp(argv[i], "-v") == 0) {
-      verbose = strlen(argv[i] + 1); /* number of v's, e.g., -vvv --> verbose = 3 */
-    } else if (strcmp(argv[i], "-h") == 0) {
-      help();
-    } else {
-      fprintf(stderr, "unknown option %s\n", argv[i]);
-      help();
-    }
-  }
-  return 0;
+  double maxh = 1e9;
+  argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -h */
+  argopt_regopt(ao, "-maxh", "%lf", &maxh, "maximal hours");
+  argopt_reghelp(ao, "-h");
+  argopt_parse(ao, argc, argv);
+  maxtime = maxh*3600*0.95;
+  argopt_close(ao);
 }
 
 int main(int argc, char **argv)

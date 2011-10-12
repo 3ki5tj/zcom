@@ -10,7 +10,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   pdbmodel_t *m;
   pdbatom_t *atm;
   int i, j, ir, iro;
-  char s[256], resnm[8];
+  char s[256], resnm[8] = "";
   float x[3];
 
   xfopen(fp, fname, "r", return NULL);
@@ -21,10 +21,8 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   xnew(m->atm, m->nalloc);
   xnew(m->x,   m->nalloc);
   /* read through pdb */
-  /*nline = 0; */
   ir = -1;
   while (fgets(s, sizeof s, fp)) {
-    /*nline++; */
     if (strncmp(s, "TER", 3) == 0 ||
         strncmp(s, "ENDMDL", 6) == 0 || 
         strncmp(s, "END", 3) == 0)
@@ -43,34 +41,30 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     atm->aid = i;
     atm->insert = s[26];
 
-#define sncpy_(dest, src, n) { \
-  char *p; \
-  memcpy(dest, src, n); \
-  *(dest+n) = '\0'; \
-  for (p = dest; isspace(*p); p++) ; \
-  if (*p == '\0') *dest = '\0'; \
-  else memmove(dest, p, strlen(p)+1); \
-  for (p = dest + strlen(dest) - 1; p >= dest && isspace(*p); p--) *p = '\0'; }
-
     /* atom name */
-    sncpy_(atm->atnm, s+12, 4);
+    strcnv(atm->atnm, s+12, 4, ZSTR_COPY|ZSTR_XSPACE);
     pdbm_fmtatom(atm->atnm, atm->atnm, 0);
     /* residue name */
-    sncpy_(atm->resnm, s+17, 3);
-#undef sncpy_
+    strcnv(atm->resnm, s+17, 3, ZSTR_COPY|ZSTR_XSPACE);
     /* residue number */
     sscanf(s+22, "%d", &(atm->rid));
-    if (ir == atm->rid && strcmp(atm->resnm, resnm) != 0) {
-      /*
-      fprintf(stderr, "residue %d conflicts %s --> %s at line %d, file %s\n",
-          ir, resnm, atm->resnm, nline, fname);
-      */
+    if (ir == atm->rid && resnm[0] && strcmp(atm->resnm, resnm) != 0) {
+      fprintf(stderr, "atom %d, %s, residue %d conflicts %s --> %s, file %s\n",
+          i, atm->atnm, ir, resnm, atm->resnm, fname);
     }
     strcpy(resnm, atm->resnm);
     ir = atm->rid;
     /* coordinates */
     sscanf(s+30, "%f%f%f", x, x+1, x+2);
     rv3_make(m->x[i], x[0], x[1], x[2]);
+    /* element name */
+    if (strlen(s) >= 78) {
+      strcnv(atm->elem, s+76, 2, ZSTR_COPY|ZSTR_XSPACE);
+      if (atm->elem[0] == '\0') { /* guess */
+        atm->elem[0] = atm->atnm[0];
+        atm->elem[1] = '\0';
+      }
+    }
     m->natm++;
   }
   for (i = 0; i < m->natm; i++) /* set atom x */
@@ -86,8 +80,8 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
       m->atm[j].rid = ir;
     }
     if (verbose >= 2)
-      printf("%d to %d is set for residue %s, %d to %d\n",
-        i+1, j+1, m->atm[i].resnm, iro, ir+1);
+      printf("atoms %d to %d --> residue %s, %d (%d)\n",
+        i+1, j, m->atm[i].resnm, iro, ir+1);
     i = j;
   }
   m->nres = ir;
@@ -106,21 +100,22 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
 /* write data to file fn */
 int pdbm_write(pdbmodel_t *m, const char *fn)
 {
-  int i, aid, atp;
+  int i, aid, ATMFMT = 1;
   char atnm[8] = "";
   FILE *fp;
   pdbatom_t *atm;
   real *x;
 
+  if (m->natm <= 0) return 1;
   xfopen(fp, fn, "w", return 1);
   for (aid = 1, i = 0; i < m->natm; i++) {
     atm = m->atm + i;
-    atp = atm->atnm[0];
-    pdbm_fmtatom(atnm, atm->atnm, 1);
+    pdbm_fmtatom(atnm, atm->atnm, ATMFMT);
     x = m->x[i];
-    fprintf(fp, "ATOM  %5d %4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           %c  \n", 
-        aid++, atnm, atm->resnm, atm->rid+1, x[0], x[1], x[2], atp);
+    fprintf(fp, "ATOM  %5d %-4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00          %2s  \n", 
+        aid++, atnm, atm->resnm, atm->rid+1, x[0], x[1], x[2], atm->elem);
   }
+  fprintf(fp, "TER   %5d      %-4sA%4d%54s\n", m->natm+1, atm->resnm, atm->rid+1, "");
   fprintf(fp, "END%77s\n", " ");
   fclose(fp);
   return 0;
@@ -185,27 +180,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
   pdbatom_t *atm;
   pdbaac_t *c;
   pdbaar_t *r;
-  int i, k;
-  const char *nm;
-  static struct { unsigned bit; const char *nm; } aaatomtypes[] = {
-  {AA_CA,   "CA"  }, {AA_N,    "N"   }, {AA_H2,   "H2"  }, {AA_H3,   "H3"  }, {AA_C,    "C"   }, 
-  {AA_O,    "O"   }, {AA_OC1,  "OC1" }, {AA_OC2,  "OC2" }, {AA_OXT,  "OXT" }, {AA_H,    "H"   }, 
-  {AA_H1,   "H1"  }, {AA_CB,   "CB"  }, {AA_HA1,  "HA1" }, {AA_HA,   "HA"  }, {AA_HA2,  "HA2" }, 
-  {AA_HA3,  "HA3" }, {AA_HB,   "HB"  }, {AA_HB1,  "HB1" }, {AA_CG2,  "CG2" }, {AA_HB2,  "HB2" }, 
-  {AA_CG,   "CG"  }, {AA_HB3,  "HB3" }, {AA_HG21, "HG21"}, {AA_OG,   "OG"  }, {AA_SG,   "SG"  }, 
-  {AA_HD1,  "HD1" }, {AA_HG,   "HG"  }, {AA_HG13, "HG13"}, {AA_ND1,  "ND1" }, {AA_OD1,  "OD1" }, 
-  {AA_OE1,  "OE1" }, {AA_OG1,  "OG1" }, {AA_SD,   "SD"  }, {AA_HD2,  "HD2" }, {AA_HD21, "HD21"}, 
-  {AA_HE21, "HE21"}, {AA_HE3,  "HE3" }, {AA_OD2,  "OD2" }, {AA_OE2,  "OE2" }, {AA_CD2,  "CD2" }, 
-  {AA_CG1,  "CG1" }, {AA_HG1,  "HG1" }, {AA_ND2,  "ND2" }, {AA_CD,   "CD"  }, {AA_CD1,  "CD1" }, 
-  {AA_CE1,  "CE1" }, {AA_HD22, "HD22"}, {AA_HG2,  "HG2" }, {AA_HG22, "HG22"}, {AA_NE1,  "NE1" }, 
-  {AA_CE2,  "CE2" }, {AA_HD11, "HD11"}, {AA_HG23, "HG23"}, {AA_HG3,  "HG3" }, {AA_HD12, "HD12"}, 
-  {AA_HE1,  "HE1" }, {AA_HE22, "HE22"}, {AA_HG11, "HG11"}, {AA_NE,   "NE"  }, {AA_CZ2,  "CZ2" }, 
-  {AA_HD13, "HD13"}, {AA_HE,   "HE"  }, {AA_HE2,  "HE2" }, {AA_HG12, "HG12"}, {AA_CE,   "CE"  }, 
-  {AA_CH2,  "CH2" }, {AA_CZ,   "CZ"  }, {AA_HD23, "HD23"}, {AA_HD3,  "HD3" }, {AA_NE2,  "NE2" }, 
-  {AA_HZ,   "HZ"  }, {AA_HZ2,  "HZ2" }, {AA_NH1,  "NH1" }, {AA_OH,   "OH"  }, {AA_HH,   "HH"  }, 
-  {AA_HH11, "HH11"}, {AA_HZ3,  "HZ3" }, {AA_HH12, "HH12"}, {AA_HH2,  "HH2" }, {AA_NZ,   "NZ"  }, 
-  {AA_CZ3,  "CZ3" }, {AA_HZ1,  "HZ1" }, {AA_NH2,  "NH2" }, {AA_CE3,  "CE3" }, {AA_HH21, "HH21"}, 
-  {AA_HH22, "HH22"}, {-1, NULL}};
+  int i, k, match;
+  unsigned long hvflags;
 
   xnew(c, 1);
   c->nres = m->nres;
@@ -226,27 +202,58 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     }
 
     /* match index */
-    for (k = 0; (nm = aaatomtypes[k].nm) != NULL; k++) {
-      int bit = aaatomtypes[k].bit;
-      if (strcmp(atm->atnm, nm) == 0) {
-        r->id[bit] = i;
-        r->flags |= 1u << bit;
+    match = 0;
+    for (k = 0; pdb_aadb[r->aa].atom[k] != NULL; k++)
+      if (strcmp(atm->atnm, pdb_aadb[r->aa].atom[k]) == 0) {
+        r->id[k] = i;
+        r->flags |= 1ul << k;
+        match = 1;
         break;
       }
-    }
-    if (nm == NULL) {
-      printf("Error: unknown atom %s-%d res %s-%d\n", atm->atnm, i, atm->resnm, atm->rid);
-    }
+    if (!match) { /* check terminals */
+#define AAMAPIT_(lead, str, nm) lead (strcmp(atm->atnm, str) == 0) \
+    { int aid = pdbaagetaid(r->aa, #nm); r->id[aid] = i; r->flags |= 1ul << (unsigned long) aid; match = 1; }
+#define AAMATCH_(lead, str, nm) lead (strcmp(atm->atnm, str) == 0) \
+    { r->id[AA_ ## nm] = i; r->flags |= 1ul << AA_##nm; match = 1; }
+      AAMAPIT_(if, "H1", H)
+      AAMATCH_(else if, "H2",   H2)
+      AAMATCH_(else if, "H3",   H3)
+      AAMATCH_(else if, "OXT",  OXT)
+      AAMAPIT_(else if, "OC1",  O)
+      AAMATCH_(else if, "OC2",  OXT)
+      AAMAPIT_(else if, "O1",   O)
+      AAMATCH_(else if, "O2",   OXT)
+      else { /* check substitutions */
+        for (k = 0; pdb_aadb[r->aa].sub[k] != NULL; k += 2)
+          if (strcmp(atm->atnm, pdb_aadb[r->aa].sub[k]) == 0) {
+            int aid = pdbaagetaid(r->aa, pdb_aadb[r->aa].sub[k+1]);
+            r->id[aid] = i;
+            r->flags |= 1ul << (unsigned) aid;
+            match = 1;
+            break;
+          }
+      }
+    }        
+    if (!match)
+      printf("unknown atom %s:%d res %s%d\n", atm->atnm, i+1, atm->resnm, atm->rid+1);
   }
+
+#define pdbaac_pmiss_(xflags) { \
+  unsigned long miss = (r->flags ^ xflags) & xflags; \
+  fprintf(stderr, "file %s, residue %s%d misses atom(s): ", c->file, pdbaaname(r->aa), i+1); \
+  for (k = 0; pdb_aadb[r->aa].atom[k] != NULL; k++) { \
+    if (miss & (1ul << k)) fprintf(stderr, "%s ", pdb_aadb[r->aa].atom[k]); } \
+  fprintf(stderr, "\n"); }
 
   /* checking integrity */
   for (i = 0; i < c->nres; i++) {
-    unsigned bbflags = (1 << AA_CA)|(1 << AA_N)|(1 << AA_C);
     r = c->res + i;
-    if ((r->flags & bbflags) != bbflags) {
-      if (verbose)
-        fprintf(stderr, "%s: coordinates of residue %d/%d (%s) is incomplete (0x%X).\n",
-          c->file, i+1, c->nres, pdbaaname(r->aa), r->flags);
+    hvflags = pdb_aadb[r->aa].hvflags;
+    if ((r->flags & AA_BACKBONE) != AA_BACKBONE) {
+      pdbaac_pmiss_(AA_BACKBONE);
+      goto ERR;
+    } else if ((r->flags & hvflags) != hvflags) {
+      pdbaac_pmiss_(hvflags);
     }
     r->xn = pdbaac_x(c, i, N);
     r->xca = pdbaac_x(c, i, CA);
@@ -294,7 +301,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
   }
   return c;
 ERR:
-  free(c->res);
+  if (c->res) free(c->res);
+  if (c->x) free(c->x);
   free(c);
   return NULL;
 }

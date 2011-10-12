@@ -42,7 +42,7 @@ int main(void)
     printf("%3d: %6u, %s\n", i, strlen(s), s);
   }
   sscpy(s, "new");
-  ssshr(s);
+  ssshrink(s);
   ssdelall();
   
   test_ssfgets();

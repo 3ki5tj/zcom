@@ -1,4 +1,16 @@
-#include "str.h"
+#include "util.h"
+
+static void test_substr(void)
+{
+  const char *s = "Hello, world";
+  char t[5];
+  int start = 2, len = 4;
+
+  printf("s = [%s]\n", s);
+  substr(t, s, start, len);
+  printf("substr(t, s, %d, %d) --> t = [%s]\n",
+      start, len, t);
+}
 
 static void test_strcmpnc(void)
 {
@@ -7,10 +19,10 @@ static void test_strcmpnc(void)
 
   printf("\nTesting strcmpnc...\n");
   printf("s = [%s], t = [%s]\n", s, t);
-  printf("strcmp(s,t) = %d, strcmpnc(s,t)=%d\n",
+  printf("strcmp(s,t) == %d, strcmpnc(s,t) == %d\n",
       strcmp(s,t), strcmpnc(s,t));
   printf("s2 = [%s], t2 = [%s]\n", s2, t2);
-  printf("strncmp(s2,t2,4) = %d, strncmpnc(s2,t2,4) = %d\n",
+  printf("strncmp(s2,t2,4) == %d, strncmpnc(s2,t2,4) == %d\n",
       strncmp(s2,t2,4), strncmpnc(s2,t2,4));
   printf("\n");
 }
@@ -32,6 +44,7 @@ int main(void)
 {
   test_strcmpnc();
   test_strip();
+  test_substr();
   return 0;
 }
 
