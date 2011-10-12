@@ -278,8 +278,10 @@ static void keypress(unsigned char c, int x, int y)
   (void) x; (void) y;
   if (c == 27) exit(0);
   for (i = 0; i < MENULAST; i++)
-    if (c == menukey[i].key)
+    if (c == menukey[i].key) {
       menu(menukey[i].id);
+      return;
+    }
 }
 
 static void mouse(int button, int state, int x, int y)
@@ -340,11 +342,7 @@ static void initgui(void)
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
-
   reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-  gluLookAt(0.0, 0.0, 5.0,  /* eye is at (0,0,5)  */
-    0.0, 0.0, 0.0,      /* center is at (0,0,0) */
-    0.0, 1.0, 0.);      /* up is in positive Y direction */  
 }
 
 int main(int argc, char **argv)

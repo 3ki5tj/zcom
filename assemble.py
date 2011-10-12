@@ -322,7 +322,18 @@ def mkanchors(shost, srclist):
   ls1 = []
   ls2 = []
   for mod, macro in srclist:
-    ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]
+    # determine if a module is an ANSI one
+    ansi = 1
+    readme = os.path.join(mod, "README")
+    if os.path.exists(readme):
+      for s in open(readme).readlines():
+        s = s.strip()
+        if s and s[0] == "#" and s[1:].strip().startswith("ADVANCED"):
+          ansi = 0
+          break
+    # add to ZCOM_PICK block only for an ANSI block
+    if ansi:
+      ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]
     ls2 += ["#ifdef  %s\n" % macro, "#ifndef %s__\n" % macro, "#define %s__\n" %macro,
         "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro, "\n"]
 
@@ -332,13 +343,15 @@ def mkanchors(shost, srclist):
 def integrate(srclist, host, output):
   ''' integrate source code to output according to host '''
 
-  # 1. load the template host0
+  # 1a. load the template host0
   fnr = os.path.splitext(host)
   host0  = fnr[0] + ".0" + fnr[1]
   if not output: output = host
   if verbose > 0:
     print "Output: %s, template: %s" % (output, host0)
   host_src = open(host0, 'r').readlines()
+
+  # 1b. add anchors and dependencies
   host_src, srclist = mkanchors(host_src, srclist)
 
   modcnt = 0

@@ -38,6 +38,8 @@ abpro:          AB beads protein model
 cago:           C-alpha Go model
 tmh:            tempering with modified Hamiltonian
 
+glez:           common uses for GLUT
+
 zcom.h:         a combination of useful routines
 zcom.0.h:       template that creates zcom.h
 add2host.py     add modules to zcom.h using the template zcom.0.h
