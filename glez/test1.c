@@ -32,7 +32,7 @@ int main(int argc, char **argv)
   glutCreateWindow("GLEZ test");
   glutDisplayFunc(display);
   glezReshapeFunc(NULL);
-  glezMenuKeyFunc(NULL, NULL, NULL, 0);
+  glezMenuKeyFunc(NULL, NULL, NULL);
   glezMouseFunc(NULL);
   glezMotionFunc(NULL);
   initgui();

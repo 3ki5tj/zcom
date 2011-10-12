@@ -51,45 +51,39 @@ void glez_menufunc(int id)
 
 void glez_keyboardfunc(unsigned char c, int x, int y)
 {
-  int i;
+  int i, j;
   glez_menukey_t *mk;
 
   (void) x; (void) y;
   if (c == 27) exit(0);
-  mk = glez_user_menukey;
-  for (i = 0; i < glez_user_menukey_n; i++)
-    if (c == mk[i].key) {
-      glez_menufunc(mk[i].id);
-      return;
-    }
-  mk = glez_menukey;
-  for (i = 0; mk[i].key; i++)
-    if (c == mk[i].key) {
-      glez_menufunc(mk[i].id);
-      return;
-    }
+  for (j = 0; j < 2; j++) {
+    mk = (j == 0) ? glez_user_menukey : glez_menukey;
+    if (mk == NULL) continue;
+    for (i = 0; i < mk[i].key; i++)
+      if (c == mk[i].key) {
+        glez_menufunc(mk[i].id);
+        return;
+      }
+  }
   if (glez_user_keyboardfunc) (*glez_user_keyboardfunc)(c, x, y);
 }
 
 void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
-    glez_menukey_t *mk, int n)
+    glez_menukey_t *mk)
 {
-  int i;
+  int i, j;
   char s[256];
 
   glez_user_menufunc = menuf;
   glez_user_keyboardfunc = keyf;
   glez_user_menukey = mk;
-  glez_user_menukey_n = n;
   glutCreateMenu(glez_menufunc);
-  for (i = 0; i < n; i++) { /* add user menus first */
-    sprintf(s, "%s, key: %c\n", mk[i].desc, mk[i].key);
-    glutAddMenuEntry(s, mk[i].id);
-  }
-  mk = glez_menukey;
-  for (i = 0; mk[i].key; i++) {
-    sprintf(s, "%s, key: %c\n", mk[i].desc, mk[i].key);
-    glutAddMenuEntry(s, mk[i].id);
+  for (j = 0; j < 2; j++) {
+    for (i = 0; mk[i].key && mk[i].desc; i++) { /* add user menus first */
+      sprintf(s, "%s, key: %c\n", mk[i].desc, mk[i].key);
+      glutAddMenuEntry(s, mk[i].id);
+    }
+    mk = glez_menukey; /* switch to system menu */
   }
   glutAttachMenu(GLUT_RIGHT_BUTTON);
   glutKeyboardFunc(glez_keyboardfunc);
@@ -106,7 +100,6 @@ void glez_mouse(int button, int state, int x, int y)
     }
   } else if (--glez_msdown <= 0) {
     glez_msdown = 0;
-    glez_msaction = GLEZ_MSNONE;
   }
   glez_x = x;
   glez_y = y;

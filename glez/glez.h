@@ -4,7 +4,7 @@
 #include <GL/glut.h>
 
 int glez_x, glez_y; /* current position */
-int glez_msdown, glez_msaction; /* mouse state */
+int glez_msdown; /* mouse state */
 float glez_zoomscale = 1.0f;
 
 typedef struct { 
@@ -13,7 +13,6 @@ typedef struct {
   const char *desc;
 } glez_menukey_t;
 
-int glez_user_menukey_n;
 glez_menukey_t *glez_user_menukey;
 
 enum { GLEZ_MENU0 = 1000, 
@@ -45,7 +44,7 @@ void glez_menufunc(int id);
 void (*glez_user_keyboardfunc)(unsigned char c, int x, int y);
 void glez_keyboardfunc(unsigned char c, int x, int y);
 void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
-    glez_menukey_t *mk, int n);
+    glez_menukey_t *mk);
 
 void (*glez_user_mouse)(int button, int state, int w, int h);
 void glez_mouse(int button, int state, int x, int y);
