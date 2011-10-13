@@ -146,15 +146,23 @@ static void display(void)
 enum {T_MINUS, T_PLUS, SPEED_MINUS, SPEED_PLUS,
   BALL_MINUS, BALL_PLUS, STICK_MINUS, STICK_PLUS};
 
-glez_menukey_t menukey[] = {
+glez_menukey_t menukey_ctrl[] = {
   {T_MINUS,     't', "- temperature"},
   {T_PLUS,      'T', "+ temperature"},
   {SPEED_MINUS, 'p', "- speed"},
   {SPEED_PLUS,  'P', "+ speed"},
+  {-1, '\0', NULL}};
+
+glez_menukey_t menukey_look[] = {
   {BALL_MINUS,  'b', "- ball size"},
   {BALL_PLUS,   'B', "+ ball size"},
   {STICK_MINUS, 'k', "- stick size"},
   {STICK_PLUS,  'K', "+ stick size"},
+  {-1, '\0', NULL}};
+
+glez_menukey_t menukey[] = {
+  {0, 0, "Control", menukey_ctrl},
+  {0, 0, "Look",    menukey_look},
   {-1, '\0', NULL}};
 
 static void menu(int id)
@@ -175,8 +183,8 @@ static void menu(int id)
     s1 = stcolorrad[4] + (id == STICK_PLUS ? 0.02 : -0.02);
     if (s1 >= 0.02) stcolorrad[4] = (GLfloat) s1;
   }
-  printf("%s: T %.2f, speed %d, ball %g, stick %g\n", 
-      menukey[id].desc, tp, speed, ballfudge, stcolorrad[4]);
+  printf("T %.2f, speed %d, ball %g, stick %g\n", 
+      tp, speed, ballfudge, stcolorrad[4]);
 }
 
 static void initgui(void)
@@ -189,20 +197,13 @@ static void initgui(void)
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
-  glez_reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
 
 int main(int argc, char **argv)
 {
-  glutInit(&argc, argv);
-  glutInitWindowSize(800, 800);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutCreateWindow("C-alpha Go model");
-  glezReshapeFunc(NULL);
-  glutDisplayFunc(display);
+  glezInitWindow(&argc, argv, "C-alpha Go model");
   glezMenuKeyFunc(menu, NULL, menukey);
-  glezMouseFunc(NULL);
-  glezMotionFunc(NULL);
+  glutDisplayFunc(display);
   doargs(argc, argv);
   if (initmd() != 0) exit(1);
   initgui();

@@ -3,56 +3,72 @@
 #define GLEZ_H__
 #include <GL/glut.h>
 
-int glez_x, glez_y; /* current position */
-int glez_msdown; /* mouse state */
-float glez_zoomscale = 1.0f;
+static int glez_x, glez_y; /* current position */
+static int glez_msdown; /* mouse state */
 
-typedef struct { 
+typedef struct tag_glez_menukey_t { 
   int id;
-  unsigned char key;
-  const char *desc;
+  int key;
+  const char *str;
+  struct tag_glez_menukey_t *sub; /* pointer to sub menus */
 } glez_menukey_t;
 
-glez_menukey_t *glez_user_menukey;
+static glez_menukey_t *glez_user_menukey;
 
-enum { GLEZ_MENU0 = 1000, 
+enum { GLEZ_MENU0 = 1000,
+  GLEZ_MOVXM, GLEZ_MOVXP, GLEZ_MOVYM, GLEZ_MOVYP, GLEZ_MOVZM, GLEZ_MOVZP,
   GLEZ_ROTXM, GLEZ_ROTXP, GLEZ_ROTYM, GLEZ_ROTYP, GLEZ_ROTZM, GLEZ_ROTZP, 
   GLEZ_SCLM, GLEZ_SCLP, GLEZ_FULLS, GLEZ_QUIT, GLEZ_MENU1 };
 
-/* common menu-key pairs */
+/* rotation sub-menu */
+glez_menukey_t glez_menukey_rot[] = {
+  {GLEZ_ROTXM,  'x', "Rotate around -x", NULL},
+  {GLEZ_ROTXP,  'X', "Rotate around +x", NULL},
+  {GLEZ_ROTYM,  'y', "Rotate around -y", NULL},
+  {GLEZ_ROTYP,  'Y', "Rotate around +y", NULL},
+  {GLEZ_ROTZM,  'z', "Rotate around -z", NULL},
+  {GLEZ_ROTZP,  'Z', "Rotate around +z", NULL},
+  {-1, '\0', NULL, NULL}};
+
+/* scaling sub-menu */
+glez_menukey_t glez_menukey_scl[] = {
+  {GLEZ_SCLM,   's', "Zoom out", NULL},
+  {GLEZ_SCLP,   'S', "Zoom in", NULL},
+  {GLEZ_FULLS,  'f', "Toggle fullscreen", NULL},
+  {-1, '\0', NULL, NULL}};
+
+glez_menukey_t glez_menukey_mov[] = {
+  {GLEZ_MOVXM,  'l', "Move toward -x", NULL},
+  {GLEZ_MOVXP,  'r', "Move toward +x", NULL},
+  {GLEZ_MOVYM,  'd', "Move toward -y", NULL},
+  {GLEZ_MOVYP,  'u', "Move toward +y", NULL},
+  {GLEZ_MOVZM,  'f', "Move toward -y", NULL},
+  {GLEZ_MOVZP,  'n', "Move toward +y", NULL},
+  {-1, '\0', NULL, NULL}};
+
+/* main menu */
 glez_menukey_t glez_menukey[] = {
-  {GLEZ_ROTXM,  'x', "Rotate around -x"},
-  {GLEZ_ROTXP,  'X', "Rotate around +x"},
-  {GLEZ_ROTYM,  'y', "Rotate around -y"},
-  {GLEZ_ROTYP,  'Y', "Rotate around +y"},
-  {GLEZ_ROTZM,  'z', "Rotate around -z"},
-  {GLEZ_ROTZP,  'Z', "Rotate around +z"},
-  {GLEZ_SCLM,   's', "Zoom out"},
-  {GLEZ_SCLP,   'S', "Zoom in"},
-  {GLEZ_FULLS,  'f', "Toggle fullscreen"},
-  {GLEZ_QUIT,   'q', "Quit"},
-  {-1, '\0', NULL}};
+  {0,           0, "Move",   glez_menukey_mov},
+  {0,           0, "Rotate", glez_menukey_rot},
+  {0,           0, "Zoom",   glez_menukey_scl},
+  {GLEZ_QUIT, 'q', "Quit",   NULL},
+  {-1, '\0', NULL, NULL}};
 
-enum {GLEZ_MSNONE, GLEZ_MSZOOM, GLEZ_MSROTATE};
+void glezInitWindow(int *argc, char **argv, const char *name);
 
-void (*glez_user_reshape)(int w, int h);
-void glez_reshape(int w, int h);
-#define glezReshapeFunc(f)  { glez_user_reshape = f;  glutReshapeFunc(glez_reshape); }
+static void (*glez_user_reshapefunc)(int w, int h) = NULL;
+#define glezReshapeFunc(f)  { glez_user_reshapefunc = f;  glutReshapeFunc(glez_reshapefunc); }
 
-void (*glez_user_menufunc)(int id);
-void glez_menufunc(int id);
-void (*glez_user_keyboardfunc)(unsigned char c, int x, int y);
-void glez_keyboardfunc(unsigned char c, int x, int y);
+static void (*glez_user_menufunc)(int id) = NULL;
+static void (*glez_user_keyboardfunc)(unsigned char c, int x, int y) = NULL;
 void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
     glez_menukey_t *mk);
 
-void (*glez_user_mouse)(int button, int state, int w, int h);
-void glez_mouse(int button, int state, int x, int y);
-#define glezMouseFunc(f)    { glez_user_mouse   = f;  glutMouseFunc(glez_mouse); }
+static void (*glez_user_mousefunc)(int button, int state, int w, int h) = NULL;
+#define glezMouseFunc(f)    { glez_user_mousefunc = f;  glutMouseFunc(glez_mousefunc); }
 
-void (*glez_user_motion)(int w, int h);
-void glez_motion(int x, int y); 
-#define glezMotionFunc(f)   { glez_user_motion  = f;  glutMotionFunc(glez_motion); }
+static void (*glez_user_motionfunc)(int w, int h) = NULL;
+#define glezMotionFunc(f)   { glez_user_motionfunc = f;  glutMotionFunc(glez_motionfunc); }
 
 void glez_fullscreen(void);
 

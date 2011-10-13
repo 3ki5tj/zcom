@@ -328,9 +328,14 @@ def mkanchors(shost, srclist):
     if os.path.exists(readme):
       for s in open(readme).readlines():
         s = s.strip()
-        if s and s[0] == "#" and s[1:].strip().startswith("ADVANCED"):
-          ansi = 0
-          break
+        if not s or s[0] != "#": continue
+        s = s[1:].strip()
+        keys = ["ADVANCED", "NONANSI", "NON-ANSI", ]
+        for key in keys:
+          if s.startswith(key):
+            ansi = 0
+            break
+        if not ansi: break
     # add to ZCOM_PICK block only for an ANSI block
     if ansi:
       ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]

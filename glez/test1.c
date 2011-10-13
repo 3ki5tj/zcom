@@ -21,20 +21,12 @@ static void initgui(void)
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
-  glez_reshape(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
 }
 
 int main(int argc, char **argv)
 {
-  glutInit(&argc, argv);
-  glutInitWindowSize(800, 800);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutCreateWindow("GLEZ test");
+  glezInitWindow(&argc, argv, "GLEZ test");
   glutDisplayFunc(display);
-  glezReshapeFunc(NULL);
-  glezMenuKeyFunc(NULL, NULL, NULL);
-  glezMouseFunc(NULL);
-  glezMotionFunc(NULL);
   initgui();
   glutMainLoop(); 
   return 0;
