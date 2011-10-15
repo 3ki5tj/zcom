@@ -19,13 +19,7 @@ int log_printf(logfile_t *log, char *fmt, ...)
   va_list args;
 
   if (log == NULL) return 1;
-
-  if (log->fp == NULL)
-    log->fp = fopen(log->fname, "w");
-  if (log->fp == NULL) {
-    fprintf(stderr, "log [%s] cannot be opened.\n", log->fname);
-    return 1;
-  }
+  if (log->fp == NULL) xfopen(log->fp, log->fname, "w", return 1);
   if ((log->flag & LOG_NOWRITEFILE) == 0) {
     va_start(args, fmt);
     vfprintf(log->fp, fmt, args);
