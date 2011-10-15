@@ -21,8 +21,5 @@ int log_printf(logfile_t *log, char *fmt, ...);
 int log_hardflush(logfile_t *log);
 void log_close(logfile_t *log);
 
-#define wtrace_buf wtrace
-int wtrace(const char *, ...);
-
 #endif
 
