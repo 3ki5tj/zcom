@@ -1,10 +1,17 @@
-all: test
+INCLUDE=-I./include
+CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm $(INCLUDE)
 
-test: test.c log.c ss.c
-	$(CC) -o $@ $^ 
+bin=$(patsubst %.c,%, $(wildcard test*.c))
+
+all: $(bin)
+
+$(bin): ss.h ss.c log.h log.c Makefile
+
+%: %.c
+	$(CC) -o $@ $<
 
 clean:
-	rm -f test *~ *.o *.log
+	rm -f $(bin) *~ *.o a.out my.log LOG TRACE
 
 .PHONY: all clean
 

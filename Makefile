@@ -4,7 +4,7 @@ usbdir = /media/RII
 prj = zcom
 
 subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
-	  argopt cfg trace log av hist mds pdb clus ising2 potts2 md lj abpro cago tmh
+	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj abpro cago tmh
 
 $(prj).h::
 	cd abpro && ./mk2d.py && cd ..

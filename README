@@ -24,7 +24,6 @@ rotfit:         fit two structures via rotation and translation
 savgol:         compute Savitzky-Golay coeffcients
 specfunc:       special functions
 cfg:            configuration file
-trace:          write trace
 log:            log file
 av:             simple mean/deviation
 hist:           collect and write simple histograms (1d/2d)

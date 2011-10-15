@@ -2,11 +2,13 @@
 #define LOG_H__
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 
 typedef struct {
   FILE *fp;
-  char *fname;
+  const char *fname;
   int flag;
 } logfile_t;
 
@@ -14,10 +16,13 @@ typedef struct {
 #define LOG_FLUSHAFTER   0x02
 #define LOG_NOWRITEFILE  0x10
 
-logfile_t *logopen(char *filenm);
-int logprintf(logfile_t *log, char *fmt, ...);
-int loghardflush(logfile_t *log);
-void logclose(logfile_t *log);
+logfile_t *log_open(const char *filenm);
+int log_printf(logfile_t *log, char *fmt, ...);
+int log_hardflush(logfile_t *log);
+void log_close(logfile_t *log);
+
+#define wtrace_buf wtrace
+int wtrace(const char *, ...);
 
 #endif
 

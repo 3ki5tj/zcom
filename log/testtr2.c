@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "trace.h"
+#include "log.c"
 
 int main(void)
 {
@@ -21,7 +21,6 @@ int main(void)
 
   wtrace_buf("%@freq=",  500);
   test(wtrace,     1321, 100);
-  test(wtrace_buf, 1321, 100);
 
   return 0;
 }
