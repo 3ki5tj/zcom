@@ -57,28 +57,28 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   rm3_mult(r, v, u);
   detm = rm3_det(r);
 
-#define rotfit3_dump_() { \
-    printf("fatal error!, detm = %g\n", detm); \
-    rv3_print(sig, "sig", "%8.3f", 1); \
-    rm3_print(r, "r", "%8.3f", 1); \
+#define rotfit3_dump_(title) { const char *rfmt = "%14.8f"; \
+    printf("rotfit " title " fatal error: detm = %g\n", detm); \
+    rm3_print(r, "r", rfmt, 1); \
     printf("det(r) = %g\n", rm3_det(r)); \
-    rm3_mult(r, u, v); rm3_print(r, "rx", "%8.3f", 1); \
+    rm3_mult(r, u, v); rm3_print(r, "rx", rfmt, 1); \
     printf("det(rx) = %g\n", rm3_det(r)); \
-    rm3_print(u, "u", "%8.3f", 1); \
+    rm3_print(u, "u", rfmt, 1); \
     printf("det(u) = %g\n", rm3_det(u)); \
-    rm3_print(v, "v", "%8.3f", 1); \
+    rm3_print(v, "v", rfmt, 1); \
     printf("det(v) = %g\n", rm3_det(v)); \
-    rm3_print(s, "s", "%12.3f", 1); \
+    rm3_print(s, "s", rfmt, 1); \
     printf("det(s) = %g\n", rm3_det(s)); \
+    rv3_print(sig, "sig", rfmt, 1); \
     exit(1); }
-  if (fabs(fabs(detm) - 1) > 0.1) rotfit3_dump_();
+  if (fabs(fabs(detm) - 1) > 0.01) rotfit3_dump_("bad svd");
   if (detm < 0) { /* to avoid a reflection */
     rm3_trans(u);
     rv3_neg(u[2]); /* flip the last eigenvector */
     rm3_mul(r, v, u);
     dev -= 2*(sig[0]+sig[1]-sig[2]);
     detm = rm3_det(r);
-    if (fabs(fabs(detm) - 1) > 0.1) rotfit3_dump_(); 
+    if (fabs(fabs(detm) - 1) > 0.01) rotfit3_dump_("bad inv.");
 #undef rotfit3_dump_
   } else {
     dev -= 2*(sig[0]+sig[1]+sig[2]); /* -2 Tr(R x y^T) */

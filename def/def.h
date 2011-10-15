@@ -1,5 +1,6 @@
 #ifndef DEF_H__
 #define DEF_H__
+#include <float.h>
 
 /* define a real type */
 #ifdef HAVE_REAL

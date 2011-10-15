@@ -1,4 +1,5 @@
-CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm
+INCLUDE=-I./include
+CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm $(INCLUDE)
 
 bin=$(patsubst %.c,%, $(wildcard test*.c))
 
