@@ -7,7 +7,7 @@ import os, sys, re, shutil, getopt, filecmp
 verbose = 0
 fninput = "zcom.h"
 fnoutput = "zcom1.h"
-keys = ['def', 'util', 'rng', 'cfg', 'trace', 'endn', 'ss']
+keys = ['def', 'util', 'ss', 'rng', 'cfg', 'log', 'endn']
 prefix = "ZCOM_"
 
 def mksmall(input, output, goodkeys):
@@ -68,7 +68,7 @@ def mksmall(input, output, goodkeys):
         if level == 1 and lin.startswith("#ifdef"):
           if hasbadkey(lin, badkeys) or not looksgood(lin, goodkeys):
             ignlev = level 
-        elif lin.find("_LEGACY") >= 0:
+        elif lin.find("_LEGACY") >= 0 or lin.strip().endswith("DEBUG"):
           ignlev = level
 
     if ignlev < 0: newsrc += [line]

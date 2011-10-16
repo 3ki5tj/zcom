@@ -57,8 +57,8 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   rm3_mult(r, v, u);
   detm = rm3_det(r);
 
-#define rotfit3_dump_(title) { const char *rfmt = "%14.8f"; \
-    printf("rotfit " title " fatal error: detm = %g\n", detm); \
+#define rotfit3_dump_(title) { const char *rfmt = "%22.14e"; \
+    printf("rotfit " title " fatal error: detm = %g, n = %d\n", detm, n); \
     rm3_print(r, "r", rfmt, 1); \
     printf("det(r) = %g\n", rm3_det(r)); \
     rm3_mult(r, u, v); rm3_print(r, "rx", rfmt, 1); \

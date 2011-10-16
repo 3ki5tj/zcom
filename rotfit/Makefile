@@ -1,8 +1,17 @@
-CC = gcc -Wall -Wextra -pedantic -O0 -g3 -lm
-#CC = icc -Wall -lm -O0 -g3
+INCLUDE=-I./include
+CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm $(INCLUDE)
 
-test1: test1.c rotfit.c rotfit.h Makefile 
-	$(CC) $< -o $@
+bin=$(patsubst %.c,%, $(wildcard test*.c))
 
-clean: 
-	rm -rf *~ *.o *.obj *.exe *.ncb *.plg *.dat *.opt test1 Debug
+all: $(bin)
+
+$(bin): def.h rv3.h rotfit.c rotfit.h Makefile
+
+%: %.c
+	$(CC) -o $@ $<
+
+clean:
+	rm -f $(bin) *~ *.o a.out
+
+.PHONY: all clean
+

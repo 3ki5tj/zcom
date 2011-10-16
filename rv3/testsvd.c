@@ -1,23 +1,38 @@
 #include <stdio.h>
+/*
 #define HAVEREAL 1
 typedef float real;
+*/
+
+#define RV3_DEBUG
+
 #include "rv3.h"
 #include "svd.c"
-  
+
+/*
+//real a[3][3] = {{1, 2, 0},{2, 4, 0}, {0, 0, 5}};
+//real a[3][3] = {{1, 2, 0},{2, 4, 0}, {0, 0, 5+1e-8}};
+//real a[3][3] = {{1, 2, 0},{2, 4, 0}, {0, 0, 5+1e-9}};
+//real a[3][3] = {{1, 2, 0},{2, 4, 0}, {0, 0, 5-1e-8}};
+*/
+
 
 real a[3][3] = {{1, 2, 3},{4, 5, 6}, {7, 8, 9}};
 
-/*
-real a[3][3] = {{1, -1, 0}, {-1, 1, 0}, {0, 0, 2}};
 
-real a[3][3] = {{1.463, -5.472, -14.393}, {-29.442, 27.743, 4.775}, {-77.255, 6.995, 17.999}};
+/*
+real a[3][3] = {
+{   -0.05425476794102,    0.05788731990739,    0.00650199809425},
+{    0.15857706314977,   -0.16919436821669,   -0.01900418712532},
+{    0.06902557678025,   -0.07364708755577,   -0.00827216087566 }};
 */
+
 real u[3][3], sig[3], v[3][3], r[3][3];
 real detu, detv, detr;
 
 static void dump(void)
 {
-  const char *rfmt = "%12.6f";
+  const char *rfmt = "%16.10f";
   real usvt[3][3];
   int i;
 
@@ -34,7 +49,7 @@ static void dump(void)
   rm3_mul(usvt, u, v);
   rm3_print(usvt, "USV^T", rfmt, 1);
   printf("det: u %g, v %g, r %g\n", detu, detv, detr);
-  rv3_print(sig, "S", rfmt, 1);
+  rv3_print(sig, "S", "%20.14f", 1);
 }
 
 int main(void)

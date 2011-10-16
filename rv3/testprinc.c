@@ -47,18 +47,18 @@ static void calcmmt(real mat[3][3], real xc[3], real x[][3], int n)
 int main(void)
 {
   real x[N][3] = {{0., 0., 0.}}, mat[3][3], xc[3];
-  real v[3] = {0, 0, 0}, vec[3];
+  real v[3] = {0, 0, 0}, vecs[3][3] = {{0}};
   real x0[3], x1[3];
 
   mkhelix(x, N); 
   calcmmt(mat, xc, x, N);
   rm3_eigval(v, mat);
-  rm3_eigvec(vec, mat, v[0]);
+  rm3_eigvecs(vecs, mat, v[0], 2e-7);
   printf("val: %g, %g, %g; vec = {%g, %g, %g}\n", 
-      v[0], v[1], v[2], vec[0], vec[1], vec[2]);
+      v[0], v[1], v[2], vecs[0][0], vecs[0][1], vecs[0][2]);
   printf("xc = %g, %g, %g\n", xc[0], xc[1], xc[2]);
-  rv3_lincomb2(x0, xc, vec, 1., -sqrt(v[0])*sqrt(3));
-  rv3_lincomb2(x1, xc, vec, 1., +sqrt(v[0])*sqrt(3));
+  rv3_lincomb2(x0, xc, vecs[0], 1., -sqrt(v[0])*sqrt(3));
+  rv3_lincomb2(x1, xc, vecs[0], 1., +sqrt(v[0])*sqrt(3));
   printf("%g, %g, %g;   %g, %g, %g\n", x0[0], x0[1], x0[2], x1[0], x1[1], x1[2]);
   return 0;
 }

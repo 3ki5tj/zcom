@@ -26,6 +26,34 @@
 #include <math.h>
 #include <float.h>
 
+#define rv3_fprint_(fp, r, nm, fmt, nl) { int i_; \
+  if (nm) fprintf(fp, "%s: ", nm); \
+  for (i_ = 0; i_ < 3; i_++) fprintf(fp, fmt, r[i_]); \
+  fprintf(fp, "%c", (nl ? '\n' : ';')); }
+
+#define rm3_fprint_(fp, m, nm, fmt, nl) { int i_, j_; \
+  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' ')); \
+  for (i_ = 0; i_ < 3; i_++) { \
+    for (j_ = 0; j_ < 3; j_++) \
+      fprintf(fp, fmt, m[i_][j_]); \
+    fprintf(fp, "%s", (nl ? "\n" : "; ")); } }
+
+#define dv3_print(r, nm, fmt, nl) dv3_fprint(stdout, r, nm, fmt, nl)
+INLINE void dv3_fprint(FILE *fp, double *r, const char *nm, const char *fmt, int nl)
+  rv3_fprint_(fp, r, nm, fmt, nl)
+
+#define dm3_print(m, nm, fmt, nl) dm3_fprint(stdout, m, nm, fmt, nl)
+INLINE void dm3_fprint(FILE *fp, double (*m)[3], const char *nm, const char *fmt, int nl)
+  rm3_fprint_(fp, m, nm, fmt, nl)
+
+#define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
+INLINE void rv3_fprint(FILE *fp, real *r, const char *nm, const char *fmt, int nl)
+  rv3_fprint_(fp, r, nm, fmt, nl)
+
+#define rm3_print(m, nm, fmt, nl) rm3_fprint(stdout, m, nm, fmt, nl)
+INLINE void rm3_fprint(FILE *fp, real (*m)[3], const char *nm, const char *fmt, int nl)
+  rm3_fprint_(fp, m, nm, fmt, nl)
+
 /* due to possible pointer overlap, be careful when to use 'const' */
 
 INLINE double *dv3_make(double *x, double a, double b, double c)
@@ -36,6 +64,8 @@ INLINE double *dv3_zero(double *x) { return dv3_make(x, 0, 0, 0); }
 INLINE double *dv3_copy(double *x, const double *src)
   { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
 #define dv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
+INLINE void dv3_swap(double *x, double *y)
+  { double z[3]; dv3_copy(z, x); dv3_copy(x, y); dv3_copy(y, z); }
 
 INLINE double dv3_sqr (const double *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
 INLINE double dv3_norm(const double *x) { return (double)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
@@ -116,6 +146,9 @@ INLINE double *dv3_normalize(double *x)
   return x;
 }
 
+INLINE double *dv3_makenorm(double *v, double x, double y, double z)
+  { return dv3_normalize( dv3_make(v, x, y, z) ); }
+
 INLINE double *dv3_diff(double * RESTRICT diff, const double *a, const double *b)
 {
   diff[0] = a[0] - b[0];
@@ -168,6 +201,8 @@ INLINE real *rv3_copy(real *x, const real *src)
   { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
 /* use macro to avoid const qualifier of src */
 #define rv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
+INLINE void rv3_swap(real *x, real *y)
+  { real z[3]; rv3_copy(z, x); rv3_copy(x, y); rv3_copy(y, z); }
 
 INLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
 INLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
@@ -249,6 +284,9 @@ INLINE real *rv3_normalize(real *x)
   if (r > 0.f) rv3_smul(x, 1.f/r);
   return x;
 }
+
+INLINE real *rv3_makenorm(real *v, real x, real y, real z)
+  { return rv3_normalize( rv3_make(v, x, y, z) ); }
 
 /* for in-place difference use rv3_dec */
 INLINE real *rv3_diff(real * RESTRICT diff, const real *a, const real *b)
@@ -717,7 +755,7 @@ INLINE double *dm3_mulvec(double *c, double a[3][3], const double *v)
 }
 
 /* c = a^T v */
-INLINE double *dm3_multvec(double *c, double a[3][3], const double *v)
+INLINE double *dm3_tmulvec(double *c, double a[3][3], const double *v)
 {
   c[0] = a[0][0]*v[0] + a[1][0]*v[1] + a[2][0]*v[2];
   c[1] = a[0][1]*v[0] + a[1][1]*v[1] + a[2][1]*v[2];
@@ -872,7 +910,7 @@ INLINE real *rm3_mulvec(real *c, real a[3][3], const real *v)
 }
 
 /* c = a^T v */
-INLINE real *rm3_multvec(real *c, real a[3][3], const real *v)
+INLINE real *rm3_tmulvec(real *c, real a[3][3], const real *v)
 {
   c[0] = a[0][0]*v[0] + a[1][0]*v[1] + a[2][0]*v[2];
   c[1] = a[0][1]*v[0] + a[1][1]*v[1] + a[2][1]*v[2];
@@ -920,7 +958,7 @@ INLINE double *dm3_eigval(double v[3], double a[3][3])
   a22 = a[2][2] - m;
   q = ( a00 * (a11*a22 - a[1][2]*a[2][1])
       + a[0][1] * (a[1][2]*a[2][0] - a[1][0]*a22)
-      + a[0][2] * (a[1][0]*a[2][1] - a11*a[2][0]) ) * .5;
+      + a[0][2] * (a[1][0]*a[2][1] - a11*a[2][0]) ) / 2.0;
   p = (a00*a00 + a11*a11 + a22*a22) / 6.0
     + (a[0][1]*a[1][0] + a[1][2]*a[2][1] + a[2][0]*a[0][2]) / 3.0;
   pr = sqrt(p);
@@ -938,96 +976,206 @@ INLINE double *dm3_eigval(double v[3], double a[3][3])
     v[0] = m + 2.0 * pr * cos(phi);  /* largest */
     v[1] = m + 2.0 * pr * cos(phi - 2*M_PI/3); /* second largest */
     v[2] = m + 2.0 * pr * cos(phi + 2*M_PI/3); /* smallest */
+#ifdef RV3_DEBUG
+    dv3_print(v, "roots", "%20.14f", 1);
+    printf("m %20.14f, 1+q/pr3 %22.14e, pr %20.14f, phi %20.14f, %20.14f deg\n", m, 1+q/pr3, pr, phi/M_PI*180, 120 - phi/M_PI*180);
+#endif
   }
   return v;
 }
 
-/* double precision eigenvector */
-INLINE double *dm3_eigvec(double vec[3], double m[3][3], double val)
+/* sort s to descending order, order u and v correspondingly */
+INLINE void dv3_sort3(double s[3], double (*u)[3], double (*v)[3])
 {
-  double m00 = m[0][0] - val, m11 = m[1][1] - val, m22, det0, det1, det2;
-  /* we used a really small tolerance, so it's essentiallly test against zero */
-  double rmin = DBL_MIN;
-  int i;
+  double tmp;
 
-  vec[2] = 1.0; /* assume z = 1, and solve x and y components */
-  if (fabs(det2 = m00*m11 - m[0][1]*m[1][0]) > rmin) { /* use row 0 and 1 */
-    dv3_make(vec, (m[0][1]*m[1][2] - m11*m[0][2])/det2, (m[1][0]*m[0][2] - m00*m[1][2])/det2, 1.0);
-    return dv3_normalize(vec);
+  if (s[2] > s[1]) { 
+    tmp = s[1]; s[1] = s[2]; s[2] = tmp;
+    if (u) dv3_swap(u[1], u[2]);
+    if (v) dv3_swap(v[1], v[2]);
   }
-  m22 = m[2][2] - val;  /* rows 0 and 1 are identical, try rows 0 and 2 */
-  if (fabs(det1 = m00*m[2][1] - m[0][1]*m[2][0]) > rmin) {
-    dv3_make(vec, (m[0][1]*m22 - m[0][2]*m[2][1])/det1, (m[0][2]*m[2][0] - m00*m22)/det1, 1.0);
-    return dv3_normalize(vec);
+  if (s[1] > s[0]) {
+    tmp = s[0]; s[0] = s[1]; s[1] = tmp;
+    if (u) dv3_swap(u[0], u[1]);
+    if (v) dv3_swap(v[0], v[1]);
   }
-  /* three-rows are all degenerate, e.g., {{1, 1, 0}, {1, 1, 1}, {1, 1, 3}}
-   * assume the z-component is 0 */
-  det0 = m00*m00 + m[0][1]*m[0][1];
-  det1 = m[1][0]*m[1][0] + m[1][1]*m[1][1];
-  det2 = m[2][0]*m[2][0] + m[2][1]*m[2][1];
-  i = 0;
-  if (det1 > det0) { det0 = det1; i = 1; }
-  if (det2 > det0) { det0 = det2; i = 2; }
-  if (det0 > rmin) {
-    det0 = sqrt(det0);
-    if (i == 0) dv3_make(vec, m[0][1]/det0, -m00/det0, 0.0);
-    else dv3_make(vec, m[i][1]/det0, -m[i][0]/det0, 0.0);
+  if (s[2] > s[1]) {
+    tmp = s[1]; s[1] = s[2]; s[2] = tmp;
+    if (u) dv3_swap(u[1], u[2]);
+    if (v) dv3_swap(v[1], v[2]);
+  }
+}
+
+/* return the pivot row for column c, row index starts from r0 */
+INLINE int dm3_pivot_(double m[3][3], int r0, int c, double *max)
+{ 
+  int i, r = r0; 
+  double tmp;
+
+  for (*max = fabs(m[r = r0][c]), i = r0 + 1; i < 3; i++) 
+    if ((tmp = fabs(m[i][c])) > *max) r = i, *max = tmp;
+  return r;
+}
+ 
+/* solve matrix equation a x = 0, matrix 'a' is destroyed
+ * solutions are saved as *row* vectors in 'x'
+ * return the number of solutions */
+INLINE int dm3_solvezero(double a[3][3], double (*x)[3], double tol)
+{
+  double max;
+  int i, j, k, ns = 0;
+
+  k = dm3_pivot_(a, 0, 0, &max); /* pivot for column 0 */
+  if (max <= tol) { /* found the first eigenvector */
+    dv3_make(x[ns++], 1, 0, 0);
+    k = dm3_pivot_(a, 0, 1, &max); /* pivot for column 1 */
+    if (max <= tol) {
+      dv3_make(x[ns++], 0, 1, 0);
+      k = dm3_pivot_(a, 0, 2, &max);
+      if (max <= tol) dv3_make(x[ns++], 0, 0, 1);
+    } else {
+      if (k != 0) dv3_swap(a[0], a[k]);
+      a[0][2] /= a[0][1]; /* normalize row 0, a[0][1] = 1; */
+      for (i = 1; i < 3; i++) a[i][2] -= a[i][1]*a[0][2];
+      dm3_pivot_(a, 1, 2, &max);
+      if (max <= tol) dv3_makenorm(x[ns++], 0, a[0][2], -1);
+    }
   } else {
-    dv3_make(vec, 1.0, 0.0, 0.0);
+    if (k != 0) dv3_swap(a[0], a[k]);
+    a[0][1] /= a[0][0]; a[0][2] /= a[0][0]; /* normalize row 0, a[0][0] = 1 */
+    for (i = 1; i < 3; i++)
+      for (j = 1; j < 3; j++) /* a[i][0] = 0 now */
+        a[i][j] -= a[i][0]*a[0][j];
+    k = dm3_pivot_(a, 1, 1, &max); /* pivot for column 1 */
+    if (max <= tol) { /* column 1 is empty */
+      dv3_makenorm(x[ns++], -a[0][1], 1, 0);
+      k = dm3_pivot_(a, 1, 2, &max);
+      if (max <= tol) /* column 2 is empty too */
+        dv3_makenorm(x[ns++], -a[0][2], 0, 1);
+    } else {
+      if (k != 1) dv3_swap(a[1], a[k]);
+      a[1][2] /= a[1][1]; /* normalize row 1, a[1][1] = 1 */
+      a[2][2] -= a[2][1]*a[1][2];
+      if (fabs(a[2][2]) > tol) return 0; /* no solutions */
+      a[0][2] -= a[0][1]*a[1][2];
+      dv3_makenorm(x[ns++], -a[0][2], -a[1][2], 1);
+    }
   }
-  return vec;
+  return ns;
+}
+
+/* given an eigenvalue, return the corresponding eigenvectors */
+INLINE int dm3_eigvecs(double (*vecs)[3], double mat[3][3], double val, double tol)
+{
+  double m[3][3];
+
+  dm3_copy(m, mat); /* make a matrix */
+  m[0][0] -= val; m[1][1] -= val; m[2][2] -= val;
+  return dm3_solvezero(m, vecs, tol);
 }
 
 /* given the matrix 'mat' and its eigenvalues 'v' return eigenvalues 'vecs' */
-INLINE dv3_t *dm3_eigvecs(double vecs[3][3], double mat[3][3], double v[3], int nt, double tol)
+INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int nt)
 {
-  double v0 = fabs(v[0]), v1 = fabs(v[1]), v2 = fabs(v[2]);
-  
-  dm3_eigvec(vecs[0], mat, v[0]);
-  if ( fabs(v[0] - v[1]) > tol*(v0 + v1) ) { /* if the first two eigenvalues are different */
-    dm3_eigvec(vecs[1], mat, v[1]);
-    dv3_cross(vecs[2], vecs[0], vecs[1]);
-  } else if ( fabs(v[0] - v[2]) > tol*(v0 + v2) ) { /* v[2] != v[0] */
-    dm3_eigvec(vecs[2], mat, v[2]);
-    dv3_cross(vecs[1], vecs[2], vecs[0]);
-  } else { /* three identical eigenvalues */
-    dv3_make(vecs[1], 0, 1, 0);
-    dv3_cross(vecs[2], vecs[0], vecs[1]);
+  double vs[5][3], sq, tol, nv; /* for safty, vs needs 5 rows */
+  int n, nn, i;
+ 
+  dm3_eigval(v, mat);
+  for (sq = 0, i = 0; i < 3; i++) sq += dv3_sqr(mat[i]);
+  /* errors of the eigenvalues from the cubic equation can reach sqrt(eps)
+   * use a large tolerance */
+  tol = 3.0 * sqrt(sq * DBL_EPSILON);
+
+  for (nn = i = 0; i < 3; i++) {
+    n = dm3_eigvecs(vs+nn, mat, v[nn], tol);
+    if (n == 0) goto ERR;
+    if ((nn += n) >= 3) break;
   }
+  
+  /* NOTE: make sure eigenvectors are orthogonal */
+  dv3_normalize( dv3_cross(vs[2], vs[0], vs[1]) );
+  dv3_normalize( dv3_cross(vs[1], vs[2], vs[0]) );
+
+  dm3_copy(vecs, vs);
+  for (i = 0; i < 3; i++) {
+    nv = dv3_dot(dm3_mulvec(vs[i], mat, vecs[i]), vecs[i]);
+    if (fabs(nv - v[i]) > tol) {
+      fprintf(stderr, "corrupted eigenvalue i %d, %g vs. %g\n", i, nv, v[i]);
+      goto ERR;
+    }
+    v[i] = nv;
+#ifdef RV3_DEBUG
+    printf("Eigenvalue: %22.14f vs %22.14f\n", v[i], dv3_dot(vs[i], vecs[i]));
+    dv3_print(vecs[i], "vi", "%20.12e", 1);
+#endif
+  }
+  dv3_sort3(v, vecs, NULL);
+
   if (nt) return vecs; else return dm3_trans(vecs);
+ERR:
+  printf("fatal: bad eigenvalues, n = %d\n", n);
+  dm3_print(mat, "matrix", "%20.14f", 1);
+  dv3_print(v, "eigenvalues", "%20.14f", 1);
+  exit(1);
+  return NULL;
 }
 
-/* SVD decomposition of a 3x3 matrix a = u s v^T */
-INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3], double tol)
+/* SVD decomposition of a 3x3 matrix A = U S V^T */
+INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
 {
-  int i;
-  double ata[3][3];
+  int i, rank;
+  double ata[3][3], us[3][3];
 
   /* 1. compute A^T A and its eigenvectors */
   dm3_tmul(ata, a, a);
-  dm3_eigval(s, ata);
-  for (i = 0; i < 3; i++) if (s[i] < 0) s[i] = 0;
-  dm3_eigvecs(v, ata, s, 1, tol);
+  dm3_eigsys(s, v, ata, 1);
+#ifdef RV3_DEBUG
+  dv3_print(s, "S^2 ", "%22.14e", 1);
+  dm3_print(ata, "A^T A ",  "%20.14f", 1);
+  dm3_print(v, "V^T ",  "%20.14f", 1);
+#endif
 
   /* 2. U^T = S^{-1} V^T A^T, and each row of U^T is an eigenvector
    * since eigenvectors are to be normalized, S^{-1} is unnecessary */
-  if (s[0] < FLT_MIN) { /* too small, very likely a zero matrix */
+  if (s[0] <= 0.0) {
+    rank = 0;
     dm3_copy(u, v);
   } else {
-    i = 1 + (s[1] > s[0]*tol) + (s[2] > s[0]*tol);
+    double tol = 3.*sqrt(DBL_EPSILON);
+    /* the test i = 1 + (s[1] > s[0]*tol) + (s[2] > s[0]*tol); */
     dm3_mult(u, v, a);
-    if (i <= 2) { /* signs of vectors of zero eigenvalues doesn't matter */
-      if (i == 1) {
+    for (i = 0; i < 3; i++) {
+      dv3_copy(us[i], u[i]); /* save a copy of V^T A^T before normalizing it */
+      s[i] = dv3_norm(u[i]);
+      if (s[i] > 0.0) dv3_smul(u[i], 1.0/s[i]);
+    }
+    rank = 1;
+    rank += (fabs(dv3_dot(u[0], u[1])) < tol && s[1] > tol);
+    rank += (fabs(dv3_dot(u[0], u[2])) < tol && fabs(dv3_dot(u[1], u[2])) < tol && s[2] > tol);
+#ifdef RV3_DEBUG
+    printf("\n\nrank %d, u0.u1 %g, u1.u2 %g, tol %g\n", rank, dv3_dot(u[0], u[1]), dv3_dot(u[1], u[2]), tol);
+    dm3_print(u, "U^T ", "%22.14e", 1);
+    dm3_print(us, "Us^T ", "%22.14e", 1);
+    dv3_print(s, "S ", "%22.14e", 1);
+    dm3_print(a, "A ",  "%20.14f", 1);
+    printf("rank = %d, u0.u0 %g, u0.u1 %g, u0.u2 %g, u1.u1 %g, u1.u2 %g, u2.u2 %g, det(u) %g\n\n\n", rank, 
+        dv3_sqr(u[0]), dv3_dot(u[0], u[1]), dv3_dot(u[0], u[2]), dv3_sqr(u[1]), dv3_dot(u[1], u[2]), dv3_sqr(u[2]), dm3_det(u));
+#endif
+    if (rank <= 2) {
+      if (rank == 1) {
         double z[3] = {0, 0, 0}, w[3];
         dv3_make(w, fabs(u[0][0]), fabs(u[0][1]), fabs(u[0][2]));
         z[w[0] < w[1] ? (w[2] < w[0] ? 2 : 0) : (w[2] < w[1] ? 2 : 1)] = 1.0f;
-        dv3_cross(u[1], z, u[0]);
+        dv3_normalize( dv3_cross(u[1], z, u[0]) );
+        s[1] = dv3_dot(u[1], us[1]); /* S = U^T (V^T A^T)^T is more accurate than sqrt(A^T A) */
+        if (s[1] < 0) { s[1] = -s[1]; dv3_neg(u[1]); }
       }
-      dv3_cross(u[2], u[0], u[1]);
+      dv3_normalize( dv3_cross(u[2], u[0], u[1]) );
+      s[2] = dv3_dot(u[2], us[2]);
+      if (s[2] < 0) { s[2] = -s[2]; dv3_neg(u[2]); }
     }
-    for (i = 0; i < 3; i++) dv3_normalize(u[i]);
+    dv3_sort3(s, u, v);
   }
-  for (i = 0; i < 3; i++) s[i] = sqrt(s[i]);
   dm3_trans(v);
   dm3_trans(u);
 }
@@ -1047,35 +1195,46 @@ INLINE real *rm3_eigval(real v[3], real a[3][3])
   } 
 }
 
-/* given matrix a and eigenvalue lm, return eigenvector 
- * internal calculation uses double precision */
-INLINE real *rm3_eigvec(real vec[3], real m[3][3], real val)
+/* solve A x = 0 */
+INLINE int rm3_solvezero(real a[3][3], real (*x)[3], real tol)
 {
   if (sizeof(real) == sizeof(double)) {
-    return (real *) dm3_eigvec((double *) vec, (dv3_t *) m, val);
+    return dm3_solvezero((dv3_t *) a, (dv3_t *) x, tol);
   } else {
-    double dvec[3], dm[3][3];
-    
-    dm3_fromrm3(dm, m);
-    dm3_eigvec(dvec, dm, val);
-    return rv3_fromdv3(vec, dvec);
+    double da[3][3], dx[3][3];
+    int n, i;
+    dm3_fromrm3(da, a);
+    n = dm3_solvezero(da, dx, tol);
+    for (i = 0; i < n; i++)
+      rv3_fromdv3(x[i], dx[i]);
+    return n;
   }
+}
+
+/* given an eigenvalue, return the corresponding eigenvectors */
+INLINE int rm3_eigvecs(real (*vecs)[3], real mat[3][3], real val, real tol)
+{
+  real m[3][3];
+
+  rm3_copy(m, mat); /* make a matrix */
+  m[0][0] -= val; m[1][1] -= val; m[2][2] -= val;
+  return rm3_solvezero(m, vecs, tol);
 }
 
 /* compute eigenvectors for the eigenvalues
  * ideally, eigenvalues should be sorted in magnitude-descending order
  * by default, vecs are transposed as a set of column vectors
  * set 'nt' != 0 to disable it: so vecs[0] is the first eigenvector  */
-INLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int nt)
+INLINE rv3_t *rm3_eigsys(real v[3], real vecs[3][3], real mat[3][3], int nt)
 {
   if (sizeof(real) == sizeof(double)) {
-    return (rv3_t *) dm3_eigvecs((dv3_t *) vecs, (dv3_t *) mat, (double *) v, nt, DBL_EPSILON*10.0);
+    return (rv3_t *) dm3_eigsys((double *) v, (dv3_t *) vecs, (dv3_t *) mat, nt);
   } else {
     double dvecs[3][3], dmat[3][3], dv[3];
 
     dm3_fromrm3(dmat, mat);
-    dv3_fromrv3(dv, v);
-    dm3_eigvecs(dvecs, dmat, dv, nt, FLT_EPSILON*10.0);
+    dm3_eigsys(dv, dvecs, dmat, nt);
+    rv3_fromdv3(v, dv);
     return rm3_fromdm3(vecs, dvecs);
   } 
 }
@@ -1084,12 +1243,12 @@ INLINE rv3_t *rm3_eigvecs(real vecs[3][3], real mat[3][3], real v[3], int nt)
 INLINE void rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 {
   if (sizeof(real) == sizeof(double)) {
-    dm3_svd((dv3_t *) a, (dv3_t *) u, (double *) s, (dv3_t *) v, DBL_EPSILON*10.0);
+    dm3_svd((dv3_t *) a, (dv3_t *) u, (double *) s, (dv3_t *) v);
   } else {
     double da[3][3], du[3][3], ds[3], dv[3][3];
     
     dm3_fromrm3(da, a);
-    dm3_svd(da, du, ds, dv, FLT_EPSILON*10.0);
+    dm3_svd(da, du, ds, dv);
     rm3_fromdm3(u, du);
     rm3_fromdm3(v, dv);
     rv3_fromdv3(s, ds);
@@ -1124,31 +1283,6 @@ INLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
   rm3_mkrot(m, u, ang);
   rm3_mulvec(v1, m, v0);
   return v1;
-}
-
-#define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
-INLINE void rv3_fprint(FILE *fp, const real *r, const char *nm,
-    const char *fmt, int nl)
-{
-  int i;
-  if (nm) fprintf(fp, "%s: ", nm);
-  for (i = 0; i < 3; i++)
-    fprintf(fp, fmt, r[i], nl);
-  fprintf(fp, "%c", (nl ? '\n' : ';'));
-}
-
-#define rm3_print(r, nm, fmt, nl) rm3_fprint(stdout, r, nm, fmt, nl)
-INLINE void rm3_fprint(FILE *fp, real r[3][3], const char *nm,
-    const char *fmt, int nl)
-{
-  int i, j;
-  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' '));
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
-      fprintf(fp, fmt, r[i][j], nl);
-    }
-    fprintf(fp, "%s", (nl ? "\n" : "; "));
-  }
 }
 
 #endif /* RV3_H__ */
