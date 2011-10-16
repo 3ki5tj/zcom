@@ -8,7 +8,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
     real (*r)[3], real *t)
 {
   int i;
-  real wtot = 0, sq, dev = 0, detm;
+  real wtot = 0, sq, dev = 0, dev0, detm;
   rv3_t xc, yc, xs, ys, sig, t_;
   real u[3][3], v[3][3], s[3][3] = {{0,0,0},{0,0,0},{0,0,0}}, xy[3][3], r_[3][3];
 
@@ -49,6 +49,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
       dev += sq; /* Tr(x^T x + y^T y) */
     }
   }
+  dev0 = dev;
 
   /* 3. SVD decompose S = u sig v^T */
   rm3_svd(s, u, sig, v);
@@ -87,10 +88,12 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   rv3_diff(t, yc, rm3_mulvec(xs, r, xc)); /* t = yc - R xc */
 
   /* 5. compute the rotated structure */
-  if (xf) {
+  if (xf || dev < dev0*0.01) { /* if there's a large cancellation recompute the deviation */
+    real xfit[3];
     for (dev = 0, i = 0; i < n; i++) {
-      rv3_add(xf[i], rm3_mulvec(xs, r, x[i]), t); /* xf = R x + t */
-      sq = rv3_dist2(y[i], xf[i]);
+      rv3_add(xfit, rm3_mulvec(xs, r, x[i]), t); /* xf = R x + t */
+      sq = rv3_dist2(y[i], xfit);
+      if (xf) rv3_copy(xf[i], xfit);
       dev +=  (w ? w[i]*sq : sq); /* recompute the deviation */
     }
   }

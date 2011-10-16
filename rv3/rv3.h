@@ -947,7 +947,8 @@ INLINE rv3_t *rm3_inv(real b[3][3], real a[3][3])
   return b;
 }
 
-/* double precision eigenvalue of a 3x3 matrix */
+/* compute eigenvalues of a 3x3 matrix
+ * solving a cubic equation */
 INLINE double *dm3_eigval(double v[3], double a[3][3])
 {
   double m, p, q, pr, pr3, a00, a11, a22;
@@ -961,6 +962,7 @@ INLINE double *dm3_eigval(double v[3], double a[3][3])
       + a[0][2] * (a[1][0]*a[2][1] - a11*a[2][0]) ) / 2.0;
   p = (a00*a00 + a11*a11 + a22*a22) / 6.0
     + (a[0][1]*a[1][0] + a[1][2]*a[2][1] + a[2][0]*a[0][2]) / 3.0;
+  /* solve x^3 - 3 p x  - 2 q = 0 */
   pr = sqrt(p);
   pr3 = p*pr;
   if (pr3 <= fabs(q)) {
@@ -977,8 +979,13 @@ INLINE double *dm3_eigval(double v[3], double a[3][3])
     v[1] = m + 2.0 * pr * cos(phi - 2*M_PI/3); /* second largest */
     v[2] = m + 2.0 * pr * cos(phi + 2*M_PI/3); /* smallest */
 #ifdef RV3_DEBUG
-    dv3_print(v, "roots", "%20.14f", 1);
-    printf("m %20.14f, 1+q/pr3 %22.14e, pr %20.14f, phi %20.14f, %20.14f deg\n", m, 1+q/pr3, pr, phi/M_PI*180, 120 - phi/M_PI*180);
+    { int i; double vi, y[3], dy[3];
+      for (i = 0; i < 3; i++) { vi = v[i] - m; y[i] = vi*(vi*vi - 3*p) - 2 * q; dy[i] = 3*(vi*vi - p); }
+      dv3_print(v,  "roots   ", "%26.14e", 1);
+      dv3_print(y,  "residues", "%26.14e", 1);
+      dv3_print(dy, "slope   ", "%26.14e", 1);
+      printf("m %20.14f, q/pr3 %22.14e, pr %20.14f, phi %20.14f, %20.14f deg\n", m, q/pr3, pr, phi/M_PI*180, 120 - phi/M_PI*180);
+    }
 #endif
   }
   return v;
@@ -1056,7 +1063,12 @@ INLINE int dm3_solvezero(double a[3][3], double (*x)[3], double tol)
       if (k != 1) dv3_swap(a[1], a[k]);
       a[1][2] /= a[1][1]; /* normalize row 1, a[1][1] = 1 */
       a[2][2] -= a[2][1]*a[1][2];
-      if (fabs(a[2][2]) > tol) return 0; /* no solutions */
+      if (fabs(a[2][2]) > tol) {
+#ifdef RV3_DEBUG
+        printf("a22 %g vs tol %g\n", a[2][2], tol);
+#endif
+        return 0; /* no solutions */
+      }
       a[0][2] -= a[0][1]*a[1][2];
       dv3_makenorm(x[ns++], -a[0][2], -a[1][2], 1);
     }
@@ -1084,7 +1096,7 @@ INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int n
   for (sq = 0, i = 0; i < 3; i++) sq += dv3_sqr(mat[i]);
   /* errors of the eigenvalues from the cubic equation can reach sqrt(eps)
    * use a large tolerance */
-  tol = 3.0 * sqrt(sq * DBL_EPSILON);
+  tol = 10.0 * sqrt(sq * DBL_EPSILON);
 
   for (nn = i = 0; i < 3; i++) {
     n = dm3_eigvecs(vs+nn, mat, v[nn], tol);
@@ -1103,19 +1115,22 @@ INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int n
       fprintf(stderr, "corrupted eigenvalue i %d, %g vs. %g\n", i, nv, v[i]);
       goto ERR;
     }
-    v[i] = nv;
 #ifdef RV3_DEBUG
-    printf("Eigenvalue: %22.14f vs %22.14f\n", v[i], dv3_dot(vs[i], vecs[i]));
-    dv3_print(vecs[i], "vi", "%20.12e", 1);
+    printf("Eigenvalue: %22.14f vs %22.14f (corrected)\n", v[i], nv);
+    dv3_print(vecs[i], "eigenvector i", "%20.12e", 1);
 #endif
+    v[i] = nv;
   }
+#ifdef RV3_DEBUG
+  printf("det(V) = %g\n", dm3_det(vecs));
+#endif
   dv3_sort3(v, vecs, NULL);
 
   if (nt) return vecs; else return dm3_trans(vecs);
 ERR:
-  printf("fatal: bad eigenvalues, n = %d\n", n);
-  dm3_print(mat, "matrix", "%20.14f", 1);
-  dv3_print(v, "eigenvalues", "%20.14f", 1);
+  printf("fatal: bad eigenvalues, n %d, nn %d\n", n, nn);
+  dm3_print(mat, "matrix", "%24.16e", 1);
+  dv3_print(v, "eigenvalues", "%24.16e", 1);
   exit(1);
   return NULL;
 }
@@ -1141,7 +1156,7 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
     rank = 0;
     dm3_copy(u, v);
   } else {
-    double tol = 3.*sqrt(DBL_EPSILON);
+    double tol = 10. * sqrt(DBL_EPSILON);
     /* the test i = 1 + (s[1] > s[0]*tol) + (s[2] > s[0]*tol); */
     dm3_mult(u, v, a);
     for (i = 0; i < 3; i++) {
@@ -1153,13 +1168,12 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
     rank += (fabs(dv3_dot(u[0], u[1])) < tol && s[1] > tol);
     rank += (fabs(dv3_dot(u[0], u[2])) < tol && fabs(dv3_dot(u[1], u[2])) < tol && s[2] > tol);
 #ifdef RV3_DEBUG
-    printf("\n\nrank %d, u0.u1 %g, u1.u2 %g, tol %g\n", rank, dv3_dot(u[0], u[1]), dv3_dot(u[1], u[2]), tol);
     dm3_print(u, "U^T ", "%22.14e", 1);
     dm3_print(us, "Us^T ", "%22.14e", 1);
     dv3_print(s, "S ", "%22.14e", 1);
     dm3_print(a, "A ",  "%20.14f", 1);
-    printf("rank = %d, u0.u0 %g, u0.u1 %g, u0.u2 %g, u1.u1 %g, u1.u2 %g, u2.u2 %g, det(u) %g\n\n\n", rank, 
-        dv3_sqr(u[0]), dv3_dot(u[0], u[1]), dv3_dot(u[0], u[2]), dv3_sqr(u[1]), dv3_dot(u[1], u[2]), dv3_sqr(u[2]), dm3_det(u));
+    printf("rank = %d, tol %g, det %g, u0.u0 %g, u0.u1 %g, u0.u2 %g, u1.u1 %g, u1.u2 %g, u2.u2 %g\n\n\n", rank, tol, dm3_det(u), 
+        dv3_sqr(u[0]), dv3_dot(u[0], u[1]), dv3_dot(u[0], u[2]), dv3_sqr(u[1]), dv3_dot(u[1], u[2]), dv3_sqr(u[2]));
 #endif
     if (rank <= 2) {
       if (rank == 1) {
@@ -1175,6 +1189,9 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
       if (s[2] < 0) { s[2] = -s[2]; dv3_neg(u[2]); }
     }
     dv3_sort3(s, u, v);
+#ifdef RV3_DEBUG
+    printf("det(U) %g, det(V) %g\n", dm3_det(u), dm3_det(v));
+#endif
   }
   dm3_trans(v);
   dm3_trans(u);
