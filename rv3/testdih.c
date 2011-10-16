@@ -3,6 +3,7 @@
 
 typedef float real;
 #define HAVEREAL 1
+
 #include "rv3.h" 
 
 #define R2D (180.0/M_PI)

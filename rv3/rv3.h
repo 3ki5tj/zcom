@@ -1141,7 +1141,7 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
   int i, rank;
   double ata[3][3], us[3][3];
 
-  /* 1. compute A^T A and its eigenvectors */
+  /* 1. compute A^T A and its eigenvectors, which is V */
   dm3_tmul(ata, a, a);
   dm3_eigsys(s, v, ata, 1);
 #ifdef RV3_DEBUG
@@ -1177,12 +1177,14 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
 #endif
     if (rank <= 2) {
       if (rank == 1) {
-        double z[3] = {0, 0, 0}, w[3];
-        dv3_make(w, fabs(u[0][0]), fabs(u[0][1]), fabs(u[0][2]));
-        z[w[0] < w[1] ? (w[2] < w[0] ? 2 : 0) : (w[2] < w[1] ? 2 : 1)] = 1.0f;
+        double z[3] = {0, 0, 0}, w, tmp;
+        w = fabs(u[0][i = 0]);
+        if ((tmp = fabs(u[0][1])) < w) w = tmp, i = 1;
+        if ((tmp = fabs(u[0][2])) < w) i = 2;
+        z[i] = 1.0f; /* select the smallest element in u[0] as z */
         dv3_normalize( dv3_cross(u[1], z, u[0]) );
         s[1] = dv3_dot(u[1], us[1]); /* S = U^T (V^T A^T)^T is more accurate than sqrt(A^T A) */
-        if (s[1] < 0) { s[1] = -s[1]; dv3_neg(u[1]); }
+        if (s[1] < 0) { s[1] = -s[1]; dv3_neg(u[1]); } /* make sure s[1] > 0 */
       }
       dv3_normalize( dv3_cross(u[2], u[0], u[1]) );
       s[2] = dv3_dot(u[2], us[2]);
