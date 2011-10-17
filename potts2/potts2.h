@@ -1,4 +1,5 @@
 #define INLINE __inline static
+#include "util.h"
 #ifndef POTTS2_H__
 #define POTTS2_H__
 
@@ -21,11 +22,26 @@ typedef struct {
 } potts_t;
 
 int pt2_em(potts_t *pt);
-int pt2_check(potts_t *pt);
 int pt2_load(potts_t *pt, const char *fname);
 int pt2_save(const potts_t *pt, const char *fname);
 potts_t *pt2_open(int l, int q);
 void pt2_close(potts_t *pt);
+
+INLINE int pt2_check(potts_t *pt)
+{
+  int i, e, *mg, q = pt->q;
+
+  for (i = 0; i < pt->n; i++) /* check spin value */
+    die_if (pt->s[i] < 0 || pt->s[i] >= q, "s[%d] %d, q %d\n", i, pt->s[i], q);
+  e = pt->E;
+  xnew(mg, q);
+  for (i = 0; i < q; i++) mg[i] = pt->M[i];
+  die_if (e != pt2_em(pt), "error: E = %d, should be %d\n", e, pt->E);
+  for (i = 0; i < q; i++)
+    die_if (mg[i] != pt->M[i], "error: M(%d) = %d, should be %d", i, mg[i], pt->M[i]);
+  free(mg);
+  return 0;
+}
 
 #define PT2_SETPROBA(pt, bet) { \
   double x_ = exp(-bet), prd_; \

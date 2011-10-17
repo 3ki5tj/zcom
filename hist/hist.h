@@ -1,6 +1,6 @@
+#include "util.h"
 #ifndef HIST_H__
 #define HIST_H__
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,19 +56,69 @@ typedef struct {
   double (*fnorm)(int, int, double, double, void *);
 } hist_t;
 
-#define hs_init(m,x0,x1,dx) hs_initx(m,x0,x1,dx,NULL,NULL,NULL)
+#define hs_open(m,x0,x1,dx) hs_openx(m,x0,x1,dx,NULL,NULL,NULL)
 #define hs_save(hs,fn,flags) hs_savex(hs,fn,NULL,flags)
 #define hs_load(hs,fn,flags) hs_loadx(hs,fn,NULL,flags)
 
-hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
+INLINE hist_t *hs_openx(int rows, double xmin, double xmax, double dx,
     int (*fwh)(FILE *, void *), int (*frh)(const char*, void *),
-    double (*fnorm)(int, int, double, double, void *));
-void hs_free(hist_t *hs);
-int hs_savex(const hist_t *hs, const char *fname, void *pdata, unsigned flags);
-int hs_loadx(hist_t *hs, const char *fname, void *pdata, unsigned flags);
-int hs_add(hist_t *hs, const double *x, double w, unsigned flags);
-int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags);
+    double (*fnorm)(int, int, double, double, void *))
+{
+  hist_t *hs;
 
+  xnew(hs, 1);
+  hs->rows = rows;
+  hs->xmin = xmin;
+  hs->dx   = dx;
+  hs->n = (int)((xmax - xmin)/dx + 0.99999999);
+  xnew(hs->arr, hs->n*hs->rows);
+  hs->fwheader = fwh;
+  hs->frheader = frh;
+  hs->fnorm = fnorm;
+  return hs;
+}  
+
+INLINE void hs_close(hist_t *hs)
+{
+  if (!hs) return;
+  if (hs->arr) free(hs->arr);
+  memset(hs, 0, sizeof(*hs));
+  free(hs);
+}
+
+INLINE void hs_check(const hist_t *hs)
+{
+  die_if (hs == NULL, "hs is %p", (void *) hs);
+  die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0,
+    "hist: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
+}
+
+INLINE int hs_savex(const hist_t *hs, const char *fn, void *pdata, unsigned flags)
+{
+  hs_check(hs);
+  return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags, 
+      hs->fwheader, hs->fnorm, pdata, fn);
+}
+
+INLINE int hs_loadx(hist_t *hs, const char *fn, void *pdata, unsigned flags)
+{
+  hs_check(hs);
+  return histloadx(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags,
+      hs->frheader, hs->fnorm, pdata, fn);
+}
+
+INLINE int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
+{
+  hs_check(hs);
+  return histadd(x, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
+}
+
+INLINE int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
+{
+  hs_check(hs);
+  die_if (r >= hs->rows || r < 0, "bad row index %d\n", r);
+  return histadd(&x, w, hs->arr + r*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
+}
 
 /* two dimensional version */
 int hist2save(const double *h, int rows, int n, double xmin, double dx,
@@ -87,11 +137,60 @@ typedef struct {
   double dx;
 } hist2_t;
 
-hist2_t *hs2_init(int rows, double xmin, double xmax, double dx);
-void hs2_free(hist2_t *hs);
-int hs2_save(const hist2_t *hs, const char *fname, unsigned flags);
-int hs2_load(hist2_t *hs, const char *fname, unsigned flags);
-int hs2_add(hist2_t *hs, const double *x, const double *y, int skip, double w, unsigned flags);
-int hs2_add1(hist2_t *hs, int r, double x, double y, double w, unsigned flags);
+INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx)
+{
+  hist2_t *hs2;
+
+  xnew(hs2, 1);
+  hs2->rows = rows;
+  hs2->xmin = xmin;
+  hs2->dx   = dx;
+  hs2->n = (int)((xmax - xmin)/dx + 0.99999999);
+  xnew(hs2->arr, hs2->n*hs2->n*hs2->rows);
+  return hs2;
+}
+
+INLINE void hs2_close(hist2_t *hs2)
+{
+  if (hs2) {
+    if (hs2->arr) free(hs2->arr);
+    memset(hs2, 0, sizeof(*hs2));
+    free(hs2);
+  }
+}
+
+INLINE void hs2_check(const hist2_t *hs)
+{
+  die_if (hs == NULL, "hist2 is %p", (void *) hs);
+  die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0, 
+    "hist2: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
+}
+
+INLINE int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+      flags, fn);
+}
+
+INLINE int hs2_load(hist2_t *hs, const char *fn, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+      flags, fn);
+}
+
+INLINE int hs2_add(hist2_t *hs, const double *x, const double *y, int skip, double w, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
+}
+
+INLINE int hs2_add1(hist2_t *hs, int r, double x, double y, double w, unsigned flags)
+{
+  hs2_check(hs);
+  return hist2add(&x, &y, 1, w, hs->arr+r*hs->n*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
+}
+
 #endif
 

@@ -7,7 +7,11 @@ static void test_substr(void)
   int start = 2, len = 4;
 
   printf("s = [%s]\n", s);
+/*
+  substr() is currently removed for potential name conflict
   substr(t, s, start, len);
+*/
+  strcpy_sf(t, s + start, len + 1);
   printf("substr(t, s, %d, %d) --> t = [%s]\n",
       start, len, t);
 }

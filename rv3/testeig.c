@@ -7,9 +7,9 @@ typedef float real;
 #include "rv3.h"
 #include "include/eig.c"
 
-int simple = 0;   /* simple test of a single matrix a */
+int simple = 1;   /* simple test of a single matrix a */
 int sptest = 0;   /* do speed test */
-int rndtest = 1;  /* random matrix test */
+int rndtest = 0;  /* random matrix test */
 
 /*
 real a[3][3] = {{2.f, 0.f, 0.f}, {0.f, 1.f, 1.f}, {0.f, 1.f, 1.f}};

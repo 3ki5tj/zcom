@@ -4,13 +4,13 @@
 
 #ifndef UTIL_H__
 #define UTIL_H__
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <float.h>
 
 #ifndef xnew
 #define xnew(x, n) \
@@ -117,8 +117,8 @@ INLINE double dblhypot(double x, double y)
 /* round x to a multiple dx  */
 INLINE double dblround(double x, double dx)
 {
-  if (x > 0) return dx * (int)(x/dx+.5-1e-14);
-  else return -dx * (int)(-x/dx+.5-1e-14);
+  if (x*dx > 0) return dx * (int)(x/dx + (.5 - DBL_EPSILON));
+  else return -dx * (int)(-x/dx + (.5 - DBL_EPSILON));
 }
 
 INLINE double dblsqr(double x) { return x*x; }

@@ -7,7 +7,7 @@ typedef double real;
 #define ZCOM_ARGOPT
 #define ZCOM_CFG
 #define ZCOM_AV
-#define ZCOM_TRACE
+#define ZCOM_LOG
 #define ZCOM_CAGO
 #define ZCOM_TMH
 #include "zcom.h"
@@ -126,6 +126,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
 {
   int it = 0, stop = 0;
   double t, amp, ampadj, dhde;
+  logfile_t *log = log_open("TRACE");
 
   ampadj = amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
@@ -150,7 +151,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
     }
 
     if ((int)fmod(t, nsttrace) == 0) {
-      wtrace_buf("%g %g %g %g %d %d %g\n",
+      log_printf(log, "%g %g %g %g %d %d %g\n",
           t, go->epot, tmh->tp, go->rmsd, tmh->iec, tmh->itp, dhde);
       if (verbose) fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
           t, go->epot, tmh->tp, tmh->iec, tmh->itp, dhde, "");
@@ -167,8 +168,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
     }
     if (stop) break;
   }
-  /* finish */
-  wtrace_buf(NULL, NULL);
+  log_close(log);
   return 0;
 }
 

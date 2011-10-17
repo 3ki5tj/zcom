@@ -8,14 +8,16 @@ bin = tmhpt
 
 all: $(bin)
 
-tmhpt: tmhpt.c $(dep)
+$(bin): $(dep)
+
+%: %.c
 	$(CX) -o $@ $< 
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE
+	rm -rf *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE pt.pos pt.log bin obj pt2.depend
 
 .PHONY: clean all
 

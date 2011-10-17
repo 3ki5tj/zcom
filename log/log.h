@@ -1,3 +1,6 @@
+#ifndef INLINE
+#define INLINE __inline static
+#endif
 #ifndef LOG_H__
 #define LOG_H__
 
@@ -18,10 +21,18 @@ typedef struct {
 
 logfile_t *log_open(const char *filenm);
 int log_printf(logfile_t *log, char *fmt, ...);
-int log_hardflush(logfile_t *log);
 void log_close(logfile_t *log);
 
-#ifdef HAVEVAM
+/* close & reopen log file to make sure that stuff is written to disk */
+INLINE int log_hardflush(logfile_t *log)
+{
+  if (log->fp == NULL || log->fname == NULL) return 1;
+  fclose(log->fp);
+  xfopen(log->fp, log->fname, "a", return 1);
+  return 0;
+}
+
+#if defined(HAVEVAM) && defined(NEED_WTRACE)
 logfile_t log_stock_[1] = {{ NULL, "TRACE", 0 }};
 #define wtrace(fmt, ...) { \
   if (fmt) log_printf(log_stock_, fmt, ##__VA_ARGS__); \

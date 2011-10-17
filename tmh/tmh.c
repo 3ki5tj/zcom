@@ -8,218 +8,189 @@
 /* tempering with modified Hamiltonian */
 #include "tmh.h"
 
-/* 0: cold; 1: hot */
-tmh_t *tmh_open(double tp0, double tp1, double dtp, 
+/* 0: low energy; 1: high energy */
+tmh_t *tmh_open(double tp0, double tp1, double dtp,
     double erg0, double erg1, double derg,
     double emin, double emax, double de,
     double ensexp, int dhdeorder)
 {
-  tmh_t *tmh;
+  tmh_t *m;
   int i;
 
-  xnew(tmh, 1);
+  xnew(m, 1);
 
   /* energy histogram range */
-  tmh->de = de;
+  m->de = de;
   die_if(emin >= emax, "Error: emin %g >= emax %g\n", emin, emax);
-  tmh->emin = emin;
-  tmh->emax = emin + dblround(emax - emin, de);
-  tmh->en = (int)((tmh->emax - tmh->emin)/de + .5); /* number of energy bins */
+  m->emin = emin;
+  m->emax = emin + dblround(emax - emin, de);
+  m->en = (int)((m->emax - m->emin)/de + .5); /* number of energy bins */
 
   /* the updating energy range */
   die_if(erg0 >= erg1, "Error: erg0 %g >= erg1 %g\n", erg0, erg1);
-  tmh->derg = derg;
-  tmh->erg0 = erg0;
-  tmh->erg1 = erg0 + dblround(erg1 - erg0, derg);
-  tmh->ergn = (int)((tmh->erg1 - tmh->erg0)/tmh->derg + .5);
+  m->derg = derg;
+  m->erg0 = erg0;
+  m->erg1 = erg0 + dblround(erg1 - erg0, derg);
+  m->ergn = (int)((m->erg1 - m->erg0)/m->derg + .5);
 
-  /* dhde parameters */ 
-  tmh->dhdeorder = dhdeorder; 
-  tmh->dhdemin = 0.1;
-  tmh->dhdemax = 10.0;
-  xnew(tmh->dhde, tmh->ergn + 1);
-  for (i = 0; i <= tmh->ergn; i++)
-    tmh->dhde[i] = 1.;
+  /* dhde parameters */
+  m->dhdeorder = dhdeorder;
+  m->dhdemin = 0.1;
+  m->dhdemax = 10.0;
+  xnew(m->dhde, m->ergn + 1);
+  for (i = 0; i <= m->ergn; i++)
+    m->dhde[i] = 1.;
 
-  die_if(tp0 >= tp1, "Error: T0 %g >= T1 %g\n", tp0, tp1);
-  if (dtp <= 0) {
-    tmh->tp0 = tp0;
-    tmh->tp1 = tp1;
-    tmh->tpn = tmh->ergn;
-    tmh->dtp = (tmh->tp1 - tmh->tp0)/tmh->tpn * (1. + 1e-12);
+  die_if((tp1 - tp0)*dtp < 0, "Error: tp0 %g, tp1 %g, dtp %g\n", tp0, tp1, dtp);
+  if (fabs(dtp) > 0) { /* dtp is explicitly specified */
+    m->dtp = dtp;
+    m->tp0 = dblround(tp0, dtp); /* round tp0, tp1 to multiples of dtp */
+    m->tp1 = dblround(tp1, dtp);
+    m->tpn = (int)((m->tp1 - m->tp0)/m->dtp + .5);
   } else {
-    tmh->dtp = dtp;
-    tmh->tp0 = dblround(tp0, dtp);
-    tmh->tp1 = dblround(tp1, dtp);
-    tmh->tpn = (int)((tmh->tp1 - tmh->tp0)/tmh->dtp + .5);
+    m->tp0 = tp0;
+    m->tp1 = tp1;
+    m->tpn = m->ergn;
+    m->dtp = (m->tp1 - m->tp0)/m->tpn * (1. + 1e-12);
   }
-  xnew(tmh->tpehis, tmh->tpn*tmh->en);
+  xnew(m->tpehis, m->tpn*m->en);
 
-  tmh->ensexp = ensexp;
-  tmh_settp(tmh, (tmh->tp0+tmh->tp1)*.5);
-  tmh->dergdt = (tmh->erg1 - tmh->erg0)/(tmh->tp1 - tmh->tp0);
+  m->ensexp = ensexp;
+  tmh_settp(m, (m->tp0+m->tp1)*.5);
+  m->dergdt = (m->erg1 - m->erg0)/(m->tp1 - m->tp0);
 
-  xnew(tmh->lnz, tmh->tpn);
-  xnew(tmh->lng, tmh->en);
-  xnew(tmh->mh, tmh->en+1);
+  xnew(m->lnz, m->tpn);
+  xnew(m->lng, m->en);
+  xnew(m->mh, m->en+1);
 
-  return tmh;
+  return m;
 }
 
-void tmh_close(tmh_t *tmh)
+void tmh_close(tmh_t *m)
 {
-  if (tmh != NULL) {
-    free(tmh->dhde);
-    free(tmh->tpehis);
-    free(tmh->lnz);
-    free(tmh->lng);
-    free(tmh->mh);
-    free(tmh);
+  if (m != NULL) {
+    free(m->dhde);
+    free(m->tpehis);
+    free(m->lnz);
+    free(m->lng);
+    free(m->mh);
+    free(m);
   }
 }
 
-static double tmh_hdif0(tmh_t *tmh, double eh, double el)
+/* compute dH = H(e1) - H(e0) from integrating the dhde curve */
+static double tmh_hdif(tmh_t *m, double e1, double e0)
 {
-  int ie, iel, ieh;
-  double dh;
+  int ie, iel, ieh, sgn;
+  double dh = 0, de, k, el0, eh0, el, eh;
 
-  if (eh < tmh->erg0) { /* first energy bin */
-    dh = (eh - el)*tmh->dhde[0];
-  } else if (el > tmh->erg1) { /* last energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ergn];
+  /* ensure e1 > e0 */
+  if (e1 < e0) { eh = e0; el = e1; sgn = -1; }
+  else { eh = e1; el = e0; sgn = 1; }
+
+  if (eh < m->erg0) { /* first energy bin */
+    dh = (eh - el) * m->dhde[0];
+  } else if (el > m->erg1) { /* last energy bin */
+    dh = (eh - el) * m->dhde[m->ergn];
   } else {
-    dh = 0.;
-    /* overhead index */
-    if (el < tmh->erg0) {
-      dh += (tmh->erg0 - el)*tmh->dhde[0];
-      el = tmh->erg0 + 1e-8;
-    }
-    if (eh >= tmh->erg1) {
-      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ergn];
-      eh = tmh->erg1 - 1e-8;
-    }
     /* energy index */
-    iel = (int)((el - tmh->erg0)/tmh->derg);
-    ieh = (int)((eh - tmh->erg0)/tmh->derg);
-    if (iel == ieh) {
-      dh += (eh - el)*tmh->dhde[iel];
-    } else if (iel < ieh) {
-      /* dh at the two terminal energy bin */
-      dh += (tmh->erg0 + (iel+1)*tmh->derg - el) * tmh->dhde[iel]
-          + (eh - (tmh->erg0 + tmh->derg*ieh)) * tmh->dhde[ieh];
-      /* integrate dH/dE */
-      for (ie = iel+1; ie < ieh; ie++)
-        dh += tmh->dhde[ie]*tmh->derg;
+    if (el < m->erg0) {
+      dh += (m->erg0 - el) * m->dhde[0];
+      el = m->erg0 + 1e-8;
+      iel = 0;
+    } else {
+      iel = (int)((el - m->erg0) / m->derg);
+    }
+    if (eh >= m->erg1) {
+      dh += (eh - m->erg1) * m->dhde[m->ergn];
+      eh = m->erg1 - 1e-8;
+      ieh = m->ergn - 1;
+    } else {
+      ieh = (int)((eh - m->erg0) / m->derg);
+    }
+    if (m->dhdeorder == 0) { /* zeroth order: dhde is constant within a bin */
+      if (iel == ieh) {
+        dh += (eh - el) * m->dhde[iel];
+      } else if (iel < ieh) {
+        /* dh at the two terminal energy bin */
+        dh += (m->erg0 + (iel+1)*m->derg - el) * m->dhde[iel]
+            + (eh - (m->erg0 + m->derg*ieh)) * m->dhde[ieh];
+        for (ie = iel+1; ie < ieh; ie++) /* integrate dH/dE */
+          dh += m->dhde[ie] * m->derg;
+      }
+    } else { /* first order: dhde is linear to erg */
+      if (iel == ieh) {
+        k = (m->dhde[iel+1] - m->dhde[iel]) / m->derg;
+        el0 = m->erg0 + iel * m->derg;
+        dh += (eh - el) * (m->dhde[iel] + k * (.5f*(el+eh) - el0));
+      } else if (iel < ieh) {
+        /* dh at the two terminal energy bin */
+        el0 = m->erg0 + (iel + 1) * m->derg;
+        de = el0 - el;
+        k = (m->dhde[iel + 1] - m->dhde[iel]) / m->derg;
+        dh += de * (m->dhde[iel + 1] - .5 * k * de);
+        eh0 = m->erg0 + m->derg * ieh;
+        de = eh - eh0;
+        k = (m->dhde[ieh + 1] - m->dhde[ieh]) / m->derg;
+        dh += de * (m->dhde[ieh] + .5 * k * de);
+        for (ie = iel + 1; ie < ieh; ie++) /* integrate dH/dE */
+          dh += .5 * (m->dhde[ie] + m->dhde[ie+1]) * m->derg;
+      }
     }
   }
-  return dh; 
-}
-
-static double tmh_hdif1(tmh_t *tmh, double eh, double el)
-{
-  int ie, iel, ieh;
-  double dh, de, k, el0, eh0;
-
-  if (eh < tmh->erg0) { /* first energy bin */
-    dh = (eh - el)*tmh->dhde[0];
-  } else if (el > tmh->erg1) { /* last energy bin */
-    dh = (eh - el)*tmh->dhde[tmh->ergn];
-  } else {
-    dh = 0.;
-    if (el < tmh->erg0) {
-      dh += (tmh->erg0 - el)*tmh->dhde[0];
-      el = tmh->erg0 + 1e-8;
-    }
-    if (eh >= tmh->erg1) {
-      dh += (eh - tmh->erg1)*tmh->dhde[tmh->ergn];
-      eh = tmh->erg1 - 1e-8;
-    }
-    /* energy index */
-    iel = (int)((el - tmh->erg0)/tmh->derg);
-    ieh = (int)((eh - tmh->erg0)/tmh->derg);
-    if (iel == ieh) {
-      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->derg;
-      el0 = tmh->erg0 + iel*tmh->derg;
-      dh += (eh - el)*(tmh->dhde[iel] + k * (.5f*(el+eh) - el0));
-    } else if (iel < ieh) {
-      /* dh at the two terminal energy bin */
-      el0 = tmh->erg0 + (iel+1)*tmh->derg; 
-      de = el0 - el;
-      k = (tmh->dhde[iel+1] - tmh->dhde[iel])/tmh->derg;
-      dh += de * (tmh->dhde[iel+1] - k*.5*de);
-      eh0 = tmh->erg0 + tmh->derg*ieh;
-      de = eh - eh0;
-      k = (tmh->dhde[ieh+1] - tmh->dhde[ieh])/tmh->derg;
-      dh += de * (tmh->dhde[ieh] + k*.5*de);
-      /* integrate dH/dE */
-      for (ie = iel+1; ie < ieh; ie++)
-        dh += .5*(tmh->dhde[ie] + tmh->dhde[ie+1])*tmh->derg;
-    }
-  }
-  return dh; 
-}
-
-/* d(H) = H(e1) - H(e0), */
-double tmh_hdif(tmh_t *tmh, double e1, double e0)
-{
-  int sgn;
-  double tmp;
-
-  /* to make sure e1 > e0 */
-  if (e1 < e0) {
-    sgn = -1;
-    tmp = e1, e1 = e0, e0 = tmp;
-  } else sgn = 1;
-
-  return sgn * ((tmh->dhdeorder == 0) ?
-    tmh_hdif0(tmh, e1, e0) : tmh_hdif1(tmh, e1, e0));
+  return dh * sgn;
 }
 
 /* temperature move using a Langevin equation */
-int tmh_tlgvmove(tmh_t *tmh, double enow, double lgvdt)
+int tmh_tlgvmove(tmh_t *m, double enow, double lgvdt)
 {
-  double derg, tpp, bexp = 2.-tmh->ensexp, amp;
-  int lgvtype = 1;
-  derg = tmh_hdif(tmh, enow, tmh->ec);
-  if (lgvtype == 0) {
-    amp = sqrt(2*lgvdt);
-    tpp = 1.0 / ( 1.0/(tmh->tp) - (derg+bexp*tmh->tp)*lgvdt + grand0()*amp );
-  } else {
-    amp = tmh->tp*sqrt(2*lgvdt);
-    tpp = tmh->tp + (derg+bexp*tmh->tp)*lgvdt + grand0()*amp;
-  }
-  if (tpp > tmh->tp0 && tpp < tmh->tp1) {
-    tmh_settp(tmh, tpp);
-    return 1;
+  double dh, op, bexp, amp;
+
+  dh = tmh_hdif(m, enow, m->ec);
+  if (m->dtp > 0) { /* temperature-like move */
+    amp = m->tp * sqrt(2 * lgvdt);
+    bexp = 2. - m->ensexp;
+    op = m->tp + (dh + bexp * m->tp)*lgvdt + grand0()*amp;
+    if (op >= m->tp0 && op <= m->tp1) { /* successful move */
+      tmh_settp(m, op);
+      return 1;
+    }
+  } else { /* beta-like move */
+    amp = sqrt(2 * lgvdt);
+    op = m->tp - (dh + m->ensexp*m->tp)*lgvdt + grand0()*amp;
+    if (op <= m->tp0 && op >= m->tp1) {
+      tmh_settp(m, op);
+      return 1;
+    }
   }
   return 0;
 }
 
 /* write dhde and overall energy distribution */
-int tmh_savedhde(tmh_t *tmh, const char *fn, double amp, double t)
+int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t)
 {
-  int ie; 
+  int ie;
   FILE *fp;
 
   if ((fp = fopen(fn, "w")) == NULL) {
     fprintf(stderr, "cannot write file %s\n", fn);
     return -1;
   }
-  fprintf(fp, "# 2 %g %g %d %g %g %d %g %g %d %g %d %g %g %g\n", 
-      tmh->erg0, tmh->derg, tmh->ergn,
-      tmh->emin, tmh->de,   tmh->en,
-      tmh->tp0,  tmh->dtp,  tmh->tpn,
-      tmh->ensexp, tmh->dhdeorder,
-      amp, t, tmh->tp);
-  for (ie = 0; ie <= tmh->ergn; ie++) {
-    fprintf(fp, "%g %g\n", tmh->erg0 + ie*tmh->derg, tmh->dhde[ie]);
+  fprintf(fp, "# 2 %g %g %d %g %g %d %g %g %d %g %d %g %g %g\n",
+      m->erg0, m->derg, m->ergn,
+      m->emin, m->de,   m->en,
+      m->tp0,  m->dtp,  m->tpn,
+      m->ensexp, m->dhdeorder,
+      amp, t, m->tp);
+  for (ie = 0; ie <= m->ergn; ie++) {
+    fprintf(fp, "%g %g\n", m->erg0 + ie*m->derg, m->dhde[ie]);
   }
   fclose(fp);
   return 0;
 }
 
 /* read dhde and overall energy distribution */
-int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
+int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
 {
   int ie, ergn, en, ver, tpn, dhdeorder, next;
   FILE *fp;
@@ -234,17 +205,17 @@ int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
     fprintf(stderr, "cannot read the first line %s\n", fn);
     goto ERR;
   }
-  if (7 != sscanf(s, " # %d%lf%lf%d%lf%lf%d%n", 
+  if (7 != sscanf(s, " # %d%lf%lf%d%lf%lf%d%n",
         &ver, &erg0, &derg, &ergn, &emin, &de, &en, &next)) {
     fprintf(stderr, "corrupted info line %s", s);
     goto ERR;
   }
-  if (ver < 1 || 
-      ergn != tmh->ergn || fabs(derg - tmh->derg) > 1e-5 || fabs(erg0 - tmh->erg0) > 1e-5 ||
-      en != tmh->en || fabs(de - tmh->de) > 1e-5 || fabs(emin - tmh->emin) > 1e-5) {
+  if (ver < 1 ||
+      ergn != m->ergn || fabs(derg - m->derg) > 1e-5 || fabs(erg0 - m->erg0) > 1e-5 ||
+      en != m->en || fabs(de - m->de) > 1e-5 || fabs(emin - m->emin) > 1e-5) {
     fprintf(stderr, "bad energy ergn %d %d, erg0 %g %g, derg %g %g, en %d %d, emin %g %g, de %g %g\n",
-        ergn, tmh->ergn, erg0, tmh->erg0, derg, tmh->derg,
-        en, tmh->en, emin, tmh->emin, de, tmh->de);
+        ergn, m->ergn, erg0, m->erg0, derg, m->derg,
+        en, m->en, emin, m->emin, de, m->de);
     goto ERR;
   }
   p = s + next;
@@ -254,18 +225,18 @@ int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
       goto ERR;
     }
     p += next;
-    if (tpn != tmh->tpn || fabs(tp0 - tmh->tp0) > 1e-6 || fabs(dtp - tmh->dtp) > 1e-6) {
+    if (tpn != m->tpn || fabs(tp0 - m->tp0) > 1e-6 || fabs(dtp - m->dtp) > 1e-6) {
       fprintf(stderr, "bad temperature range tpn %d %d, tp0 %g %g, dtp %g %g\n",
-          tpn, tmh->tpn, tp0, tmh->tp0, dtp, tmh->dtp);
+          tpn, m->tpn, tp0, m->tp0, dtp, m->dtp);
       goto ERR;
     }
   }
-  if (3 != sscanf(p, "%lf%lf%lf", amp, t, &tmh->tp)) {
+  if (3 != sscanf(p, "%lf%lf%lf", amp, t, &m->tp)) {
     fprintf(stderr, "corrupted info line p3 %s", s);
     goto ERR;
   }
 
-  for (ie = 0; ie < tmh->ergn; ie++) {
+  for (ie = 0; ie < m->ergn; ie++) {
     if (fgets(s, sizeof s, fp) == NULL) {
       fprintf(stderr, "cannot read line %d\n", ie);
       goto ERR;
@@ -274,12 +245,12 @@ int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t)
       fprintf(stderr, "cannot read energy and dhde at %d\n, s = %s", ie, s);
       goto ERR;
     }
-    erg0 = tmh->erg0 + ie*tmh->derg;
-    if (fabs(erg0 - erg) > tmh->derg*.1) {
+    erg0 = m->erg0 + ie*m->derg;
+    if (fabs(erg0 - erg) > m->derg*.1) {
       fprintf(stderr, "energy %g, should be %g\n", erg, erg0);
       goto ERR;
     }
-    tmh->dhde[ie] = dhde;
+    m->dhde[ie] = dhde;
   }
   fclose(fp);
   return 0;
@@ -289,9 +260,9 @@ ERR:
 }
 
 /* get energy range from dhde file */
-int tmh_loaderange(const char *fn, 
+int tmh_loaderange(const char *fn,
     double *tp0, double *tp1, double *dtp,
-    double *erg0, double *erg1, double *derg, 
+    double *erg0, double *erg1, double *derg,
     double *emin, double *emax, double *de,
     double *ensexp, int *dhdeorder)
 {
@@ -308,14 +279,14 @@ int tmh_loaderange(const char *fn,
     goto ERR;
   }
 
-  if (7 != sscanf(s, " # %d%lf%lf%d%lf%lf%d%n", 
+  if (7 != sscanf(s, " # %d%lf%lf%d%lf%lf%d%n",
         &ver, erg0, derg, &ergn, emin, de, &en, &next) || ver < 1) {
     fprintf(stderr, "corrupted info line %s", s);
     goto ERR;
   }
   *erg1 = *erg0 + ergn*(*derg);
   *emax = *emin + en*(*de);
-  
+
   if (ver >= 2) { /* additional information */
     if (5 != sscanf(s+next, "%lf%lf%d%lf%d", tp0, dtp, &tpn, ensexp, dhdeorder)) {
       fprintf(stderr, "corrupted info line %s", s);
@@ -323,7 +294,7 @@ int tmh_loaderange(const char *fn,
     }
     *tp1 = *tp0 + tpn * (*dtp);
   }
-    
+
   fclose(fp);
   return 0;
 ERR:
@@ -332,7 +303,7 @@ ERR:
 }
 
 /* write temperature histogram */
-int tmh_savetp(tmh_t *tmh, const char *fn)
+int tmh_savetp(tmh_t *m, const char *fn)
 {
   int i, j;
   double *eh, erg, cnt, esm, e2sm, eav, edv;
@@ -342,11 +313,11 @@ int tmh_savetp(tmh_t *tmh, const char *fn)
     fprintf(stderr, "cannot write file %s\n", fn);
     return -1;
   }
-  fprintf(fp, "# %g %g %d\n", tmh->tp0, tmh->dtp, tmh->tpn);
-  for (i = 0; i < tmh->tpn; i++) {
-    eh = tmh->tpehis + i*tmh->en;
-    for (cnt = esm = e2sm = 0., j = 0; j < tmh->en; j++) {
-      erg = tmh->emin + (j + .5) * tmh->de;
+  fprintf(fp, "# %g %g %d\n", m->tp0, m->dtp, m->tpn);
+  for (i = 0; i < m->tpn; i++) {
+    eh = m->tpehis + i*m->en;
+    for (cnt = esm = e2sm = 0., j = 0; j < m->en; j++) {
+      erg = m->emin + (j + .5) * m->de;
       cnt += eh[j];
       esm += eh[j]*erg;
       e2sm += eh[j]*(erg*erg);
@@ -357,62 +328,62 @@ int tmh_savetp(tmh_t *tmh, const char *fn)
     } else {
       eav = edv = 0.;
     }
-    fprintf(fp, "%g %g %g %g\n", 
-        tmh->tp0 + (i+.5)*tmh->dtp, cnt, eav, edv);
+    fprintf(fp, "%g %g %g %g\n",
+        m->tp0 + (i+.5)*m->dtp, cnt, eav, edv);
   }
   fclose(fp);
   return 0;
 }
 
-int tmh_save(tmh_t *tmh, const char *fntp, const char *fnehis, 
+int tmh_save(tmh_t *m, const char *fntp, const char *fnehis,
     const char *fndhde, double amp, double t)
 {
-  tmh_savetp(tmh, fntp);
-  tmh_savedhde(tmh, fndhde, amp, t);
-  tmh_saveehis(tmh, fnehis);
+  tmh_savetp(m, fntp);
+  tmh_savedhde(m, fndhde, amp, t);
+  tmh_saveehis(m, fnehis);
   return 0;
 }
 
-int tmh_load(tmh_t *tmh, const char *fnehis, 
+int tmh_load(tmh_t *m, const char *fnehis,
     const char *fndhde, double *amp, double *t)
 {
-  if (tmh_loaddhde(tmh, fndhde, amp, t) != 0) return -1;
-  if (tmh_loadehis(tmh, fnehis) != 0) return -1;
+  if (tmh_loaddhde(m, fndhde, amp, t) != 0) return -1;
+  if (tmh_loadehis(m, fnehis) != 0) return -1;
   return 0;
 }
 
 /* calculate the modified Hamiltonian */
-static int tmh_calcmh(tmh_t *tmh)
+static int tmh_calcmh(tmh_t *m)
 {
   int i, ie;
   double erg, hm, dh;
 
-  hm = tmh->emin;
-  for (i = 0; i < tmh->en; i++) {
-    erg = tmh->emin + (i+.5)*tmh->de;
-    if (erg <= tmh->erg0) {
-      dh = tmh->dhde[0];
-    } else if (erg >= tmh->erg1) {
-      dh = tmh->dhde[tmh->ergn];
+  hm = m->emin;
+  for (i = 0; i < m->en; i++) {
+    erg = m->emin + (i+.5)*m->de;
+    if (erg <= m->erg0) {
+      dh = m->dhde[0];
+    } else if (erg >= m->erg1) {
+      dh = m->dhde[m->ergn];
     } else {
-      ie = (int)((erg - tmh->erg0)/tmh->derg);
-      die_if (ie < 0 || ie >= tmh->ergn,
+      ie = (int)((erg - m->erg0)/m->derg);
+      die_if (ie < 0 || ie >= m->ergn,
           "ie %d, erg %g, erg0 %g, derg %g",
-          ie, erg, tmh->erg0, tmh->derg);
-      dh = tmh_getdhde(tmh, erg, ie);
+          ie, erg, m->erg0, m->derg);
+      dh = tmh_getdhde(m, erg, ie);
     }
-    dh *= tmh->de;
-    tmh->mh[i] = hm + .5*dh;
+    dh *= m->de;
+    m->mh[i] = hm + .5*dh;
     hm += dh;
   }
   return 0;
 }
 
 /* iteratively compute the density of states */
-int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
+int tmh_calcdos(tmh_t *m, int itmax, double tol,
     const char *fndos, const char *fnlnz)
 {
-  int i, j, it, ie0, ie1, en = tmh->en, tpn = tmh->tpn;
+  int i, j, it, ie0, ie1, en = m->en, tpn = m->tpn;
   double x, dif, lnz0, db;
   double *lnn, *lnm, *bet, *lnz1;
   const double LOG0 = -1e10;
@@ -422,17 +393,17 @@ int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
 
   /* determine nonempty energy range for more efficient loops */
   for (ie0 = 0; ie0 < en; ie0++) {
-    for (j = 0; j < tmh->tpn; j++)
-      if (tmh->tpehis[j*en + ie0] > 0.) break;
-    if (j < tmh->tpn) break;
+    for (j = 0; j < m->tpn; j++)
+      if (m->tpehis[j*en + ie0] > 0.) break;
+    if (j < m->tpn) break;
   }
   for (ie1 = en; ie1 > ie0; ie1--) {
-    for (j = 0; j < tmh->tpn; j++) 
-      if (tmh->tpehis[j*en + ie1-1] > 0.) break;
-    if (j < tmh->tpn) break;
+    for (j = 0; j < m->tpn; j++)
+      if (m->tpehis[j*en + ie1-1] > 0.) break;
+    if (j < m->tpn) break;
   }
 
-  /* n[j] is the total number of visits to temperature j 
+  /* n[j] is the total number of visits to temperature j
    * m[i] is the total number of visits to energy i */
   xnew(lnn, tpn);
   xnew(lnm, en);
@@ -440,36 +411,36 @@ int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
   for (j = 0; j < tpn; j++) {
     lnn[j] = 0.;
     for (i = ie0; i < ie1; i++) {
-      x = tmh->tpehis[j*en + i];
+      x = m->tpehis[j*en + i];
       lnn[j] += x;
       lnm[i] += x;
     }
   }
-  for (j = 0; j < tpn; j++) 
+  for (j = 0; j < tpn; j++)
     lnn[j] = (lnn[j] > 0.) ? log(lnn[j]) : LOG0;
   for (i = 0; i < en; i++)
     lnm[i] = (lnm[i] > 0.) ? log(lnm[i]) : LOG0;
 
   xnew(bet, tpn);
-  for (j = 0; j < tpn; j++) 
-    bet[j] = 1.0/(tmh->tp0 + (j+.5)*tmh->dtp);
+  for (j = 0; j < tpn; j++)
+    bet[j] = 1.0/(m->tp0 + (j+.5)*m->dtp);
 
   /* get mh and lnz */
-  for (i = 0; i < en; i++) tmh->lng[i] = LOG0;
-  tmh_calcmh(tmh);
+  for (i = 0; i < en; i++) m->lng[i] = LOG0;
+  tmh_calcmh(m);
   /* estimate initial lnz */
   for (lnz0 = 0., j = 0; j < tpn; j++) {
-    x = tmh->erg0 + (j+.5)*tmh->dtp * tmh->dergdt;
-    i = (int)((x - tmh->emin)/tmh->de);
+    x = m->erg0 + (j+.5)*m->dtp * m->dergdt;
+    i = (int)((x - m->emin)/m->de);
     die_if (i < 0 || i >= en, "i %d, x %g\n", i, x);
-    db = 1.0/(tmh->tp0 + (j+1)*tmh->dtp)
-       - 1.0/(tmh->tp0 + j*tmh->dtp);
-    x = tmh->mh[i]*db;
-    tmh->lnz[j] = lnz0 - x*.5;
+    db = 1.0/(m->tp0 + (j+1)*m->dtp)
+       - 1.0/(m->tp0 + j*m->dtp);
+    x = m->mh[i]*db;
+    m->lnz[j] = lnz0 - x*.5;
     lnz0 -= x;
   }
-  for (j = tpn - 1; j >= 0; j--) 
-     tmh->lnz[j] -= tmh->lnz[0];
+  for (j = tpn - 1; j >= 0; j--)
+     m->lnz[j] -= m->lnz[0];
 
   xnew(lnz1, tpn);
 
@@ -478,35 +449,35 @@ int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
     /* compute the density of states */
     for (i = ie0; i < ie1; i++) {
       for (x = LOG0, j = 0; j < tpn; j++) {
-        x = lnadd(x, lnn[j] - bet[j]*tmh->mh[i] - tmh->lnz[j]);
+        x = lnadd(x, lnn[j] - bet[j]*m->mh[i] - m->lnz[j]);
       }
-      tmh->lng[i] = (lnm[i] < LOG0+.1) ? LOG0 : (lnm[i] - x);
+      m->lng[i] = (lnm[i] < LOG0+.1) ? LOG0 : (lnm[i] - x);
     }
-    
+
     /* update partition function */
     for (j = 0; j < tpn; j++) {
       for (x = LOG0, i = ie0; i < ie1; i++)
-        x = lnadd(x, tmh->lng[i] - bet[j]*tmh->mh[i]);
+        x = lnadd(x, m->lng[i] - bet[j]*m->mh[i]);
       lnz1[j] = x;
     }
-    for (j = tpn - 1; j >= 0; j--) 
+    for (j = tpn - 1; j >= 0; j--)
       lnz1[j] -= lnz1[0];
 
     /* check difference */
     for (dif = 0., j = 1; j < tpn; j++) {
-      x = fabs(tmh->lnz[j] - lnz1[j]);
+      x = fabs(m->lnz[j] - lnz1[j]);
       if (x > dif) dif = x;
     }
-    for (j = 0; j < tpn; j++) tmh->lnz[j] = lnz1[j];
+    for (j = 0; j < tpn; j++) m->lnz[j] = lnz1[j];
     if (dif < tol) break;
   }
-  
+
   /* write dos */
   if (fndos && (fp = fopen(fndos, "w")) != NULL) {
     for (i = ie0; i < ie1; i++) {
-      x = tmh->emin + (i + .5)*tmh->de;
-      fprintf(fp, "%g %g %g %g\n", x, tmh->lng[i] - tmh->lng[ie0], 
-          exp(lnm[i]), tmh->mh[i]);
+      x = m->emin + (i + .5)*m->de;
+      fprintf(fp, "%g %g %g %g\n", x, m->lng[i] - m->lng[ie0],
+          exp(lnm[i]), m->mh[i]);
     }
     fclose(fp);
   }
@@ -514,7 +485,7 @@ int tmh_calcdos(tmh_t *tmh, int itmax, double tol,
   /* write lnz */
   if (fnlnz && (fp = fopen(fnlnz, "w")) != NULL) {
     for (j = 0; j < tpn; j++) {
-      fprintf(fp, "%g %g %g\n", bet[j], tmh->lnz[j], exp(lnn[j]));
+      fprintf(fp, "%g %g %g\n", bet[j], m->lnz[j], exp(lnn[j]));
     }
     fclose(fp);
   }

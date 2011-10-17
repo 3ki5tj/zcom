@@ -1,18 +1,6 @@
 #ifndef HIST_C__
 #define HIST_C__
-
 #include "hist.h"
-
-#ifndef xnew
-#define xnew(x, n) \
-  if ((n) <= 0) { \
-    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) (n), #x); \
-    exit(1); \
-  } else if ((x = calloc(n, sizeof(*(x)))) == NULL) { \
-    fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
-    exit(1); } 
-#endif
-
 /* compute sum, average and standard deviation*/
 static double *gethistsums_(const double *h, int rows, int n, 
     double xmin, double dx)
@@ -352,77 +340,6 @@ int histadd(const double *xarr, double w, double *h, int rows,
   return good;
 }
 
-/* OO wrappers */
-static void hs_check(const hist_t *hs)
-{
-  if (hs == NULL) {
-    fprintf(stderr, "hist is NULL\n");
-    exit(1);
-  }
-  if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
-    fprintf(stderr, "hist: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
-    exit(1);
-  }
-}
-
-hist_t *hs_initx(int rows, double xmin, double xmax, double dx,
-    int (*fwh)(FILE *, void *), int (*frh)(const char*, void *),
-    double (*fnorm)(int, int, double, double, void *))
-{
-  hist_t *hs;
-
-  xnew(hs, 1);
-  hs->rows = rows;
-  hs->xmin = xmin;
-  hs->dx   = dx;
-  hs->n = (int)((xmax - xmin)/dx + 0.99999999);
-  xnew(hs->arr, hs->n*hs->rows);
-  hs->fwheader = fwh;
-  hs->frheader = frh;
-  hs->fnorm = fnorm;
-  return hs;
-}  
-
-void hs_free(hist_t *hs)
-{
-  if (hs) {
-    if (hs->arr) free(hs->arr);
-    memset(hs, 0, sizeof(*hs));
-    free(hs);
-  }
-}
-
-int hs_savex(const hist_t *hs, const char *fn, void *pdata, unsigned flags)
-{
-  hs_check(hs);
-  return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags, 
-      hs->fwheader, hs->fnorm, pdata, fn);
-}
-
-int hs_loadx(hist_t *hs, const char *fn, void *pdata, unsigned flags)
-{
-  hs_check(hs);
-  return histloadx(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags,
-      hs->frheader, hs->fnorm, pdata, fn);
-}
-
-int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
-{
-  hs_check(hs);
-  return histadd(x, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
-}
-
-int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
-{
-  hs_check(hs);
-  if (r >= hs->rows || r < 0) {
-    fprintf(stderr, "bad row index %d\n", r);
-    exit(1);
-  }
-  return histadd(&x, w, hs->arr + r*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
-}
-
-
 /* write 'rows' 2d n^2 histograms to file */
 int hist2save(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fn)
@@ -675,65 +592,6 @@ int hist2add(const double *xarr, const double *yarr, int skip,
   return good;
 }
 
-static void hs2_check(const hist2_t *hs)
-{
-  if (hs == NULL) {
-    fprintf(stderr, "hist2 is NULL\n");
-    exit(1);
-  }
-  if (hs->arr == NULL || hs->rows == 0 || hs->n == 0) {
-    fprintf(stderr, "hist2: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
-    exit(1);
-  }
-}
-
-hist2_t *hs2_init(int rows, double xmin, double xmax, double dx)
-{
-  hist2_t *hs2;
-
-  xnew(hs2, 1);
-  hs2->rows = rows;
-  hs2->xmin = xmin;
-  hs2->dx   = dx;
-  hs2->n = (int)((xmax - xmin)/dx + 0.99999999);
-  xnew(hs2->arr, hs2->n*hs2->n*hs2->rows);
-  return hs2;
-}
-
-void hs2_free(hist2_t *hs2)
-{
-  if (hs2) {
-    if (hs2->arr) free(hs2->arr);
-    memset(hs2, 0, sizeof(*hs2));
-    free(hs2);
-  }
-}
-
-int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)
-{
-  hs2_check(hs);
-  return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
-      flags, fn);
-}
-
-int hs2_load(hist2_t *hs, const char *fn, unsigned flags)
-{
-  hs2_check(hs);
-  return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
-      flags, fn);
-}
-
-int hs2_add(hist2_t *hs, const double *x, const double *y, int skip, double w, unsigned flags)
-{
-  hs2_check(hs);
-  return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
-}
-
-int hs2_add1(hist2_t *hs, int r, double x, double y, double w, unsigned flags)
-{
-  hs2_check(hs);
-  return hist2add(&x, &y, 1, w, hs->arr+r*hs->n*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
-}
 
 #endif /* ZCOM_HIST__ */
 

@@ -19,21 +19,20 @@
   Usage:
 
   1.  It is designed quick programming.
-      For simple use, just include this file and all functions will be available.
-      But there might be compiler warnings for unused functions.
+      For simple use, include this file and all functions will be available.
+      But there might be many compiler warnings for unused functions.
 
-  2.  You should be able to include this file multiple times in a single file
-      without a problem (otherwise a bug!).
+  2.  You can include this file multiple times in a single file.
 
   3.  Function are static by default. To export functions,
-      e.g., to make it easier to debug, or to avoid warning of unused functions,
+      e.g., to make it easier to debug, or to avoid warnings of unused functions,
       define ZCOM_XFUNCS before the first inclusion.
 
-  4.  To hand-pick specific set of modules,
+  4.  To hand-pick specific set of modules, e.g.,
         #define ZCOM_PICK
         #define ZCOM_RNG
         #define ZCOM_ARGOPT
-      before including this file. Other modules will not be compiled.
+      before including this file, so other modules are skipped.
 
   5.  If the compiler supports keywords inline and restrict,
         #define INLINE inline

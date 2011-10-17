@@ -1,6 +1,4 @@
 #include "rng.h"
-#include "util.h"
-
 #ifndef POTTS2_C__
 #define POTTS2_C__
 
@@ -25,38 +23,6 @@ int pt2_em(potts_t *pt)
       pt->M[s]++;
     }
   return pt->E;
-}
-
-int pt2_check(potts_t *pt)
-{
-  int i, e, *mg, q;
-
-  q = pt->q;
-  for (i = 0; i < pt->n; i++) /* check spin value */
-    if (pt->s[i] < 0 || pt->s[i] >= q) {
-      fprintf(stderr, "error: s[%d] = %d\n", i, pt->s[i]);
-      return -1;
-    }
-  e = pt->E;
-  xnew(mg, pt->q);
-  for (i = 0; i < pt->q; i++)
-    mg[i] = pt->M[i];
-  if (e != pt2_em(pt)) { /* check energy */
-    fprintf(stderr, "error: E = %d, should be %d\n", 
-        e, pt->E);
-    free(mg);
-    return -1;
-  }
-  for (i = 0; i < pt->q; i++) {
-    if (mg[i] != pt->M[i]) {
-      fprintf(stderr, "error: M(%d) = %d, should be %d",
-          i, mg[i], pt->M[i]);
-      free(mg);
-      return -1;
-    }
-  }
-  free(mg);
-  return 0;
 }
 
 /* pick a random site (return its id)

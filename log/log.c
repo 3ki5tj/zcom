@@ -35,15 +35,6 @@ int log_printf(logfile_t *log, char *fmt, ...)
   return 0;
 }
 
-/* close & reopen log file to make sure that stuff is written to disk */
-int log_hardflush(logfile_t *log)
-{
-  if (log->fp == NULL || log->fname == NULL) return 1;
-  fclose(log->fp);
-  xfopen(log->fp, log->fname, "a", return 1);
-  return 0;
-}
-
 void log_close(logfile_t *log)
 {
   if (log == NULL) return;

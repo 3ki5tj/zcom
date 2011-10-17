@@ -1,5 +1,5 @@
 #include "hist.c"
-#include "test/rv3.h"
+#include "include/rv3.h"
 
 #define XMIN 0.0
 #define XMAX 2.0
@@ -75,7 +75,7 @@ int main(void)
   den_t den[1];
   hist_t *hs;
 
-  hs = hs_initx(1, XMIN, XMAX, XDEL, fwheader, frheader, rdfnorm);
+  hs = hs_openx(1, XMIN, XMAX, XDEL, fwheader, frheader, rdfnorm);
 
   /* generate histogram */
   genhist(hs, 17, 1., den);
@@ -91,7 +91,7 @@ int main(void)
   /* write again */
   hs_savex(hs, "RDF2", den, HIST_ADDAHALF|HIST_KEEPHIST);
   hs_savex(hs, "rdf2.dat", den, HIST_ADDAHALF);
-  hs_free(hs);
+  hs_close(hs);
   return 0; 
 }
 

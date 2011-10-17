@@ -8,7 +8,6 @@ typedef struct {
   double s, sx, sx2; /* sum, sum x, variance */
 } av_t;
 
-void av_add(av_t *av, double w, double x);
 INLINE void av_clear(av_t *av) { av->s = av->sx = av->sx2 = 0; }
 INLINE double av_getave(const av_t *av) { return (av && av->s > 0) ? av->sx/av->s : 0; }
 INLINE double av_getvar(const av_t *av) { return (av && av->s > 0) ? av->sx2/av->s : 0; }

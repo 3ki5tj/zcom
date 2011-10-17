@@ -28,108 +28,109 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
     double erg0, double erg1, double derg,
     double emin, double emax, double de,
     double ensexp, int dhdeorder);
-void tmh_close(tmh_t *tmh);
-double tmh_hdif(tmh_t *tmh, double eb, double ea);
-int tmh_tlgvmove(tmh_t *tmh, double enow, double lgvdt);
-int tmh_savedhde(tmh_t *tmh, const char *fn, double amp, double t);
-int tmh_loaddhde(tmh_t *tmh, const char *fn, double *amp, double *t);
-int tmh_savetp(tmh_t *tmh, const char *fn);
-int tmh_save(tmh_t *tmh, const char *fntp, const char *fnehis, 
+void tmh_close(tmh_t *m);
+double tmh_hdif(tmh_t *m, double eb, double ea);
+int tmh_tlgvmove(tmh_t *m, double enow, double lgvdt);
+int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t);
+int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t);
+int tmh_savetp(tmh_t *m, const char *fn);
+int tmh_save(tmh_t *m, const char *fntp, const char *fnehis, 
     const char *fndhde, double amp, double t);
-int tmh_load(tmh_t *tmh, const char *fnehis, 
+int tmh_load(tmh_t *m, const char *fnehis, 
     const char *fndhde, double *amp, double *t);
 int tmh_loaderange(const char *fn, 
     double *tp0, double *tp1, double *dtp,
     double *erg0, double *erg1, double *derg, 
     double *emin, double *emax, double *de,
     double *ensexp, int *dhdeorder);
-int tmh_calcdos(tmh_t *tmh, int itmax, double tol, 
+int tmh_calcdos(tmh_t *m, int itmax, double tol, 
     const char *fndos, const char *fnlnz);
 
 /* set the current temperature */
-INLINE void tmh_settp(tmh_t *tmh, double tp)
+INLINE void tmh_settp(tmh_t *m, double tp)
 {
 #ifndef TMH_NOCHECK
-  die_if (tp > tmh->tp1 || tp < tmh->tp0, "temperature %g not in(%g, %g)", tp, tmh->tp0, tmh->tp1);
+  die_if ((m->tp1 - tp) * m->dtp < 0.0 || (tp - m->tp0) * m->dtp < 0.0, 
+      "temperature %g not in (%g, %g), dtp %g", tp, m->tp0, m->tp1, m->dtp);
 #endif
-  tmh->tp = tp;
-  tmh->itp = (int)((tmh->tp - tmh->tp0)/tmh->dtp);
-  tmh->ec = tmh->erg0 + (tmh->tp - tmh->tp0)*tmh->dergdt;
-  tmh->iec = (int)((tmh->ec - tmh->erg0)/tmh->derg);
+  m->tp = tp;
+  m->itp = (int)((m->tp - m->tp0)/m->dtp);
+  m->ec = m->erg0 + (m->tp - m->tp0)*m->dergdt;
+  m->iec = (int)((m->ec - m->erg0)/m->derg);
 }
 
 /* retrieve local dhde */
-INLINE double tmh_getdhde(tmh_t *tmh, double e, int ie)
+INLINE double tmh_getdhde(tmh_t *m, double e, int ie)
 {
-  if (tmh->dhdeorder == 0) {
+  if (m->dhdeorder == 0) {
 #ifndef TMH_NOCHECK
-    die_if (ie < 0 || ie >= tmh->en, "overflow ie %d en %d\n", ie, tmh->en);
+    die_if (ie < 0 || ie >= m->en, "overflow ie %d en %d\n", ie, m->en);
 #endif
-    return tmh->dhde[ie];
+    return m->dhde[ie];
   } else {
-    double lam = (e - (tmh->erg0 + ie*tmh->derg))/tmh->derg;
+    double lam = (e - (m->erg0 + ie*m->derg))/m->derg;
 #ifndef TMH_NOCHECK
     die_if (lam < 0. || lam > 1., 
         "cannot interpolate, e %g, %d, %g %g %g\n",
-        e, ie, tmh->erg0 + ie*tmh->derg, tmh->erg0, tmh->derg);
+        e, ie, m->erg0 + ie*m->derg, m->erg0, m->derg);
 #endif
-    return tmh->dhde[ie]*(1-lam) + tmh->dhde[ie+1]*lam;
+    return m->dhde[ie]*(1-lam) + m->dhde[ie+1]*lam;
   }
 }
 
 /* update dhde curve */
-INLINE void tmh_dhdeupdate(tmh_t *tmh, double erg, double amp)
+INLINE void tmh_dhdeupdate(tmh_t *m, double erg, double amp)
 {
-  double del = amp * (erg - tmh->ec);
+  double del = amp * (erg - m->ec);
 
 #ifdef TMH_NOCHECK
-  #define TMH_UPDHDE(i, del) tmh->dhde[i] += del; 
+  #define TMH_UPDHDE(i, del) m->dhde[i] += del; 
 #else
   #define TMH_UPDHDE(i, del) { \
-  tmh->dhde[i] += del; \
-  if (tmh->dhde[i] < tmh->dhdemin) \
-    tmh->dhde[i] = tmh->dhdemin; \
-  else if (tmh->dhde[i] > tmh->dhdemax) \
-    tmh->dhde[i] = tmh->dhdemax; }
+  m->dhde[i] += del; \
+  if (m->dhde[i] < m->dhdemin) \
+    m->dhde[i] = m->dhdemin; \
+  else if (m->dhde[i] > m->dhdemax) \
+    m->dhde[i] = m->dhdemax; }
 #endif
 
-  if (tmh->dhdeorder == 0) {
-    TMH_UPDHDE(tmh->iec, del);
-    if (tmh->iec == tmh->ergn - 1) /* last bin */
-      tmh->dhde[tmh->ergn] = tmh->dhde[tmh->iec];
+  if (m->dhdeorder == 0) {
+    TMH_UPDHDE(m->iec, del);
+    if (m->iec == m->ergn - 1) /* last bin */
+      m->dhde[m->ergn] = m->dhde[m->iec];
   } else {
     del *= .5;
-    TMH_UPDHDE(tmh->iec, del);
-    TMH_UPDHDE(tmh->iec+1, del);
+    TMH_UPDHDE(m->iec, del);
+    TMH_UPDHDE(m->iec+1, del);
   }
 }
 
-INLINE void tmh_eadd(tmh_t *tmh, double erg)
+INLINE void tmh_eadd(tmh_t *m, double erg)
 {
   int ie;
 #ifndef TMH_NOCHECK
-  if (erg < tmh->emin || erg > tmh->emax) return;
+  if (erg < m->emin || erg > m->emax) return;
 #endif
-  ie = (int)((erg - tmh->emin)/tmh->de);
+  ie = (int)((erg - m->emin)/m->de);
 #ifndef TMH_NOCHECK
-  die_if (ie < 0 || ie >= tmh->en, "ie = %d, erg %g emin %g de %g output range\n", 
-      ie, erg, tmh->emin, tmh->de);  
-  die_if (tmh->itp > tmh->tpn, "itp = %d, tpn = %d, tp = %g, dtp = %g\n", 
-      tmh->itp, tmh->tpn, tmh->tp, tmh->dtp);
+  die_if (ie < 0 || ie >= m->en, "ie = %d, erg %g emin %g de %g output range\n", 
+      ie, erg, m->emin, m->de);  
+  die_if (m->itp > m->tpn, "itp = %d, tpn = %d, tp = %g, dtp = %g\n", 
+      m->itp, m->tpn, m->tp, m->dtp);
 #endif
-  tmh->tpehis[tmh->itp*tmh->en + ie] += 1.;
+  m->tpehis[m->itp*m->en + ie] += 1.;
 }
 
-INLINE int tmh_saveehis(tmh_t *tmh, const char *fn)
+INLINE int tmh_saveehis(tmh_t *m, const char *fn)
 {
-  return histsave(tmh->tpehis, tmh->tpn, 
-      tmh->en, tmh->emin, tmh->de, HIST_ADDAHALF|HIST_OVERALL, fn);
+  return histsave(m->tpehis, m->tpn, 
+      m->en, m->emin, m->de, HIST_ADDAHALF|HIST_OVERALL, fn);
 }
 
-INLINE int tmh_loadehis(tmh_t *tmh, const char *fn)
+INLINE int tmh_loadehis(tmh_t *m, const char *fn)
 {
-  return histload(tmh->tpehis, tmh->tpn, 
-      tmh->en, tmh->emin, tmh->de, HIST_ADDAHALF, fn);
+  return histload(m->tpehis, m->tpn, 
+      m->en, m->emin, m->de, HIST_ADDAHALF, fn);
 }
 
 
