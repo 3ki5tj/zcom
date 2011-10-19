@@ -8,7 +8,6 @@
 /* tempering with modified Hamiltonian */
 #include "tmh.h"
 
-/* 0: low energy; 1: high energy */
 tmh_t *tmh_open(double tp0, double tp1, double dtp,
     double erg0, double erg1, double derg,
     double emin, double emax, double de,
@@ -18,6 +17,8 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   int i;
 
   xnew(m, 1);
+
+  m->scl = 1; /* Hamiltonian scaling factor */
 
   /* energy histogram range */
   m->de = de;
@@ -78,104 +79,13 @@ void tmh_close(tmh_t *m)
   }
 }
 
-/* compute dH = H(e1) - H(e0) from integrating the dhde curve */
-static double tmh_hdif(tmh_t *m, double e1, double e0)
-{
-  int ie, iel, ieh, sgn;
-  double dh = 0, de, k, el0, eh0, el, eh;
-
-  /* ensure e1 > e0 */
-  if (e1 < e0) { eh = e0; el = e1; sgn = -1; }
-  else { eh = e1; el = e0; sgn = 1; }
-
-  if (eh < m->erg0) { /* first energy bin */
-    dh = (eh - el) * m->dhde[0];
-  } else if (el > m->erg1) { /* last energy bin */
-    dh = (eh - el) * m->dhde[m->ergn];
-  } else {
-    /* energy index */
-    if (el < m->erg0) {
-      dh += (m->erg0 - el) * m->dhde[0];
-      el = m->erg0 + 1e-8;
-      iel = 0;
-    } else {
-      iel = (int)((el - m->erg0) / m->derg);
-    }
-    if (eh >= m->erg1) {
-      dh += (eh - m->erg1) * m->dhde[m->ergn];
-      eh = m->erg1 - 1e-8;
-      ieh = m->ergn - 1;
-    } else {
-      ieh = (int)((eh - m->erg0) / m->derg);
-    }
-    if (m->dhdeorder == 0) { /* zeroth order: dhde is constant within a bin */
-      if (iel == ieh) {
-        dh += (eh - el) * m->dhde[iel];
-      } else if (iel < ieh) {
-        /* dh at the two terminal energy bin */
-        dh += (m->erg0 + (iel+1)*m->derg - el) * m->dhde[iel]
-            + (eh - (m->erg0 + m->derg*ieh)) * m->dhde[ieh];
-        for (ie = iel+1; ie < ieh; ie++) /* integrate dH/dE */
-          dh += m->dhde[ie] * m->derg;
-      }
-    } else { /* first order: dhde is linear to erg */
-      if (iel == ieh) {
-        k = (m->dhde[iel+1] - m->dhde[iel]) / m->derg;
-        el0 = m->erg0 + iel * m->derg;
-        dh += (eh - el) * (m->dhde[iel] + k * (.5f*(el+eh) - el0));
-      } else if (iel < ieh) {
-        /* dh at the two terminal energy bin */
-        el0 = m->erg0 + (iel + 1) * m->derg;
-        de = el0 - el;
-        k = (m->dhde[iel + 1] - m->dhde[iel]) / m->derg;
-        dh += de * (m->dhde[iel + 1] - .5 * k * de);
-        eh0 = m->erg0 + m->derg * ieh;
-        de = eh - eh0;
-        k = (m->dhde[ieh + 1] - m->dhde[ieh]) / m->derg;
-        dh += de * (m->dhde[ieh] + .5 * k * de);
-        for (ie = iel + 1; ie < ieh; ie++) /* integrate dH/dE */
-          dh += .5 * (m->dhde[ie] + m->dhde[ie+1]) * m->derg;
-      }
-    }
-  }
-  return dh * sgn;
-}
-
-/* temperature move using a Langevin equation */
-int tmh_tlgvmove(tmh_t *m, double enow, double lgvdt)
-{
-  double dh, op, bexp, amp;
-
-  dh = tmh_hdif(m, enow, m->ec);
-  if (m->dtp > 0) { /* temperature-like move */
-    amp = m->tp * sqrt(2 * lgvdt);
-    bexp = 2. - m->ensexp;
-    op = m->tp + (dh + bexp * m->tp)*lgvdt + grand0()*amp;
-    if (op >= m->tp0 && op <= m->tp1) { /* successful move */
-      tmh_settp(m, op);
-      return 1;
-    }
-  } else { /* beta-like move */
-    amp = sqrt(2 * lgvdt);
-    op = m->tp - (dh + m->ensexp*m->tp)*lgvdt + grand0()*amp;
-    if (op <= m->tp0 && op >= m->tp1) {
-      tmh_settp(m, op);
-      return 1;
-    }
-  }
-  return 0;
-}
-
 /* write dhde and overall energy distribution */
 int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t)
 {
   int ie;
   FILE *fp;
 
-  if ((fp = fopen(fn, "w")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "w", return -1);
   fprintf(fp, "# 2 %g %g %d %g %g %d %g %g %d %g %d %g %g %g\n",
       m->erg0, m->derg, m->ergn,
       m->emin, m->de,   m->en,
@@ -197,10 +107,7 @@ int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
   char s[1024], *p;
   double emin, de, derg, erg, erg0, tp0, dtp, dhde, ensexp;
 
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "cannot read the first line %s\n", fn);
     goto ERR;
@@ -270,10 +177,7 @@ int tmh_loaderange(const char *fn,
   FILE *fp;
   char s[1024];
 
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "cannot read the first line %s\n", fn);
     goto ERR;
@@ -309,10 +213,7 @@ int tmh_savetp(tmh_t *m, const char *fn)
   double *eh, erg, cnt, esm, e2sm, eav, edv;
   FILE *fp;
 
-  if ((fp = fopen(fn, "w")) == NULL) {
-    fprintf(stderr, "cannot write file %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "w", return -1);
   fprintf(fp, "# %g %g %d\n", m->tp0, m->dtp, m->tpn);
   for (i = 0; i < m->tpn; i++) {
     eh = m->tpehis + i*m->en;
@@ -335,45 +236,17 @@ int tmh_savetp(tmh_t *m, const char *fn)
   return 0;
 }
 
-int tmh_save(tmh_t *m, const char *fntp, const char *fnehis,
-    const char *fndhde, double amp, double t)
-{
-  tmh_savetp(m, fntp);
-  tmh_savedhde(m, fndhde, amp, t);
-  tmh_saveehis(m, fnehis);
-  return 0;
-}
-
-int tmh_load(tmh_t *m, const char *fnehis,
-    const char *fndhde, double *amp, double *t)
-{
-  if (tmh_loaddhde(m, fndhde, amp, t) != 0) return -1;
-  if (tmh_loadehis(m, fnehis) != 0) return -1;
-  return 0;
-}
-
 /* calculate the modified Hamiltonian */
 static int tmh_calcmh(tmh_t *m)
 {
-  int i, ie;
-  double erg, hm, dh;
+  int i, en = m->en;
+  double erg, hm, dh, de = m->de, emin = m->emin;
 
-  hm = m->emin;
-  for (i = 0; i < m->en; i++) {
-    erg = m->emin + (i+.5)*m->de;
-    if (erg <= m->erg0) {
-      dh = m->dhde[0];
-    } else if (erg >= m->erg1) {
-      dh = m->dhde[m->ergn];
-    } else {
-      ie = (int)((erg - m->erg0)/m->derg);
-      die_if (ie < 0 || ie >= m->ergn,
-          "ie %d, erg %g, erg0 %g, derg %g",
-          ie, erg, m->erg0, m->derg);
-      dh = tmh_getdhde(m, erg, ie);
-    }
-    dh *= m->de;
-    m->mh[i] = hm + .5*dh;
+  hm = emin;
+  for (i = 0; i < en; i++) {
+    erg = emin + (i + .5) * de;
+    dh = de * tmh_getdhde(m, erg);
+    m->mh[i] = hm + .5 * dh;
     hm += dh;
   }
   return 0;
@@ -422,8 +295,11 @@ int tmh_calcdos(tmh_t *m, int itmax, double tol,
     lnm[i] = (lnm[i] > 0.) ? log(lnm[i]) : LOG0;
 
   xnew(bet, tpn);
-  for (j = 0; j < tpn; j++)
-    bet[j] = 1.0/(m->tp0 + (j+.5)*m->dtp);
+  for (j = 0; j < tpn; j++) {
+    double tp = m->tp0 + (j + .5) * m->dtp;
+    if (m->dtp > 0.) bet[j] = m->scl / tp;
+    else bet[j] = m->scl * tp;
+  }
 
   /* get mh and lnz */
   for (i = 0; i < en; i++) m->lng[i] = LOG0;

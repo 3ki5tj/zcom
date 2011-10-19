@@ -130,7 +130,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
 
   ampadj = amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
-    dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
+    dhde = tmh_getdhde(tmh, go->epot) * tmh_tps / tmh->tp;
     cago_vv(go, (real)dhde, mddt);
     if (it == 0) cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, (real)(tmh_tps), thermdt);
@@ -146,8 +146,8 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
       if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
       ampadj = amp*tmh->tp0/tmh->tp;
     }
-    if ((int)fmod(t, 10000) == 0) {
-      printf("t %g, tp %g, epot %g, rmsd %g, dhde = %g\n", t, tmh->tp, go->epot, go->rmsd, dhde);
+    if ((int) fmod(t, 10000) == 0) {
+      printf("t %8g, T %6.3f, U %8.3f, rmsd %6.3f, dhde = %6.3f\n", t, tmh->tp, go->epot, go->rmsd, dhde);
     }
 
     if ((int)fmod(t, nsttrace) == 0) {

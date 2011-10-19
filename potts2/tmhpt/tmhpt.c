@@ -15,6 +15,7 @@
 #include "zcom.h"
 
 const char *fntp = "tmhpt.t", *fndhde = "tmhpt.e", *fnehis = "tmhpt.ehis", *fnpos = "pt.pos";
+int bstyle = 1; /* use beta instead of T */
 
 /* regular metropolis move */
 static int mcmove(potts_t *pt)
@@ -31,12 +32,12 @@ static int mcmove(potts_t *pt)
 }
 
 /* constant temperature MC run */
-static double mcrun(potts_t *pt, double tp, double *dev, double *ar,
+static double mcrun(potts_t *pt, double beta, double *dev, double *ar,
     int tequil, int tmax, const char *label)
 {
   int t, acc = 0;
-  double beta = 1.0/tp, erg;
-  av_t eav[1] = {0, 0, 0};
+  double erg;
+  av_t eav[1] = {{0, 0, 0}};
 
   PT2_SETPROBA(pt, beta);
   for (t = 0; t < tequil; t++)
@@ -47,13 +48,13 @@ static double mcrun(potts_t *pt, double tp, double *dev, double *ar,
   }
   erg = av_getave(eav); *dev = av_getdev(eav);
   *ar = 1.0*acc/tmax;
-  printf("%6s:  tp = %g, eav = %g (%g), edev = %g (%g), ar %g\n", 
-        label, tp, erg, erg/pt->n, *dev, *dev/pt->n, *ar);
+  printf("%6s:  T %8.4f, eav = %12.3f (%8.4f), edev = %10.4f (%6.4f), ar %5.3f%%\n", 
+        label, 1/beta, erg, erg/pt->n, *dev, *dev/pt->n, *ar * 100.0);
   return erg;
 }
 
 /* energy move under a biased potential */
-static void tmhmove(tmh_t *m, potts_t *pt)
+static void tmhmove(tmh_t *m, potts_t *pt, double beta)
 {
   int id, so, sn, eo, en, de, nb[PT2_Q];
   double dh;
@@ -64,24 +65,26 @@ static void tmhmove(tmh_t *m, potts_t *pt)
   eo = pt->E;
   en = eo + de;
   dh = tmh_hdif(m, en, eo); /* modified Hamiltonian */
-  if (dh <= 0 || rnd0() < exp(-dh/m->tp))
+  if (dh <= 0 || rnd0() < exp(-dh*beta))
     PT2_FLIP(pt, id, so, sn, nb);
 }
 
 static int tmhrun(tmh_t *m, potts_t *pt, double trun, double t)
 {
   logfile_t *log = log_open("pt.log");
-  double amp, ampmax = 2e-7, ampc = 0.02, lgvdt = 1e-5;
+  double amp, ampmax = 2e-7, ampc = 0.02, lgvdt = 1e-5, bet;
   int it;
 
-  tmh_settp(m, m->tp1 - 1e-6);
+  tmh_settp(m, m->tp1 + bstyle*1e-8);
+  bet = bstyle ? m->tp : 1/m->tp;
   for (amp = ampmax, it = 1; t <= trun; t++, it++) {
-    tmhmove(m, pt);
+    tmhmove(m, pt, bet);
     tmh_eadd(m, pt->E);
     tmh_dhdeupdate(m, pt->E, amp);
 
     if (it % 10 == 0) {
       tmh_tlgvmove(m, pt->E, lgvdt);
+      bet = bstyle ? m->tp : 1/m->tp;
 
       if ((amp = ampc/t) > ampmax) amp = ampmax; /* update amplitude */
   
@@ -98,27 +101,34 @@ int main(void)
 {
   potts_t *pt;
   tmh_t *m;
-  double x, erg0, edev0, erg1, edev1, ar0, ar1, tp0 = 0.67, tp1 = 0.77, dtp = 0.001;
+  double x, erg0, edev0, erg1, edev1, ar0, ar1;
+  double op0, op1, dop;
+  double tp0 = 0.67, tp1 = 0.77, dtp = 0.001;
+  double beta0 = 1.50, beta1 = 1.33, dbeta = -0.001;
   double emin = EMIN, emax = EMAX, de = EDEL, derg = 32, amp, t0, ensexp = 2.0;
   int tequil = 200000, tmcrun = 2000000, trun = 1000000*200;
   int initload = 0, dhdeorder = 0;
 
   pt = pt2_open(L, PT2_Q);
+  if (bstyle) { op0 = beta0, op1 = beta1, dop = dbeta; } 
+  else { op0 = tp0, op1 = tp1, dop = dtp;}
   if (initload) {
     die_if (pt2_load(pt, fnpos) != 0, "bad %s\n", fnpos);
-    if (0 != tmh_loaderange(fndhde, &tp0, &tp1, &dtp, 
+    if (0 != tmh_loaderange(fndhde, &op0, &op1, &dop, 
           &erg0, &erg1, &derg, &emin, &emax, &de, &ensexp, &dhdeorder))
       return -1;
   } else {
     /* determine the energies at the two end temperatures */
-    erg0 = mcrun(pt, tp0, &edev0, &ar0, tequil, tmcrun, "low T");
-    erg1 = mcrun(pt, tp1, &edev1, &ar1, tequil, tmcrun, "high T");
+    if (!bstyle) { beta0 = 1.0/tp0, beta1 = 1.0/tp1; }
+    erg0 = mcrun(pt, beta0, &edev0, &ar0, tequil, tmcrun, "low T");
+    erg1 = mcrun(pt, beta1, &edev1, &ar1, tequil, tmcrun, "high T");
     x = (erg1 - erg0)*.10;
     erg0 += x;
     erg1 -= x;
+    erg0 = dblround(erg0, derg);
   }
 
-  m = tmh_open(tp0, tp1, dtp, erg0, erg1, derg, EMIN, EMAX, EDEL, ensexp, dhdeorder);
+  m = tmh_open(op0, op1, dop, erg0, erg1, derg, EMIN, EMAX, EDEL, ensexp, dhdeorder);
   printf("erange (%g, %g), active (%g, %g)\n", m->emin, m->emax, m->erg0, m->erg1);
 
   if (initload) {

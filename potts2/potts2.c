@@ -34,9 +34,7 @@ int pt2_load(potts_t *pt, const char *fname)
   int i, lx, ly, n, c;
   char s[80];
 
-  if ((fp = fopen(fname, "r")) == NULL) {
-    return -1;
-  }
+  xfopen(fp, fname, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "missing first line %s\n", fname);
     return -1;
@@ -71,10 +69,7 @@ int pt2_save(const potts_t *pt, const char *fname)
   FILE *fp;
   int i, j, l, *p;
 
-  if ((fp = fopen(fname, "w")) == NULL) {
-    fprintf(stderr, "cannot write %s\n", fname);
-    return -1;
-  }
+  xfopen(fp, fname, "w", return -1);
   l = pt->l;
   fprintf(fp, "%d %d %d %d\n", pt->d, l, l, pt->n);
   for (p = pt->s, i = 0; i < l; i++) {

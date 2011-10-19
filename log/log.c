@@ -10,7 +10,7 @@ logfile_t *log_open(const char *fn)
   xnew(log, 1);
   if (fn == NULL) fn = "LOG";
   log->fname = fn;
-  log->flag = 0;
+  log->flags = 0;
   return log;
 }
 
@@ -20,17 +20,17 @@ int log_printf(logfile_t *log, char *fmt, ...)
 
   if (log == NULL) return 1;
   if (log->fp == NULL) xfopen(log->fp, log->fname, "w", return 1);
-  if ((log->flag & LOG_NOWRITEFILE) == 0) {
+  if ((log->flags & LOG_NOWRITEFILE) == 0) {
     va_start(args, fmt);
     vfprintf(log->fp, fmt, args);
     va_end(args);
   }
-  if (log->flag & LOG_WRITESCREEN) {
+  if (log->flags & LOG_WRITESCREEN) {
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
   }
-  if (log->flag & LOG_FLUSHAFTER)
+  if (log->flags & LOG_FLUSHAFTER)
     fflush(log->fp);
   return 0;
 }

@@ -14,6 +14,7 @@ typedef double real;
 const char *fntp = "tmhab.t", *fndhde = "tmhab.e", *fnehis = "tmhab.ehis";
 const char *fnpos = "ab.pos";
 const char *fncfg = "tmhab.cfg";
+const char *fnlog = "TRACE";
 double nsteps = 1000000*1000;
 int seqid = 10, d = 3, model = 2, tmh_dhdeorder = 1;
 double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
@@ -43,7 +44,6 @@ time_t time0, time1;
 
 int tmh_srand = 0; /* seed for initial random configuration */
 
-const char *prog = "tmhab";
 int verbose = 0;
 
 #define CFGGETI(x) { ret = cfgget(cfg, &x, #x, "%d");  printf("%s: %d\n", #x, x); }
@@ -145,7 +145,8 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 
   amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
-    dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
+    //dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
+    dhde = tmh_getdhde(tmh, ab->epot) * tmh_tps / tmh->tp;
     if (usebrownian == 2) {
       ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
     } else if (usebrownian == 1) {
@@ -224,9 +225,11 @@ static void doargs(int argc, char **argv)
   double maxh = 1e9;
   argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -h */
   argopt_regopt(ao, "-maxh", "%lf", &maxh, "maximal hours");
+  argopt_regopt(ao, "-cfg", NULL, &fncfg, "configuration file");
+  argopt_regopt(ao, "-g", NULL, &fnlog, "log file");
   argopt_reghelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-  maxtime = maxh*3600*0.95;
+  maxtime = maxh * 3600 * 0.95;
   argopt_close(ao);
 }
 

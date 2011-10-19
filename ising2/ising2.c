@@ -78,9 +78,7 @@ int is2_load(ising_t *is, const char *fname)
   int i, lx, ly, n, c;
   char s[80];
 
-  if ((fp = fopen(fname, "r")) == NULL) {
-    return -1;
-  }
+  xfopen(fp, fname, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "missing first line %s\n", fname);
     return -1;
@@ -107,10 +105,7 @@ int is2_save(const ising_t *is, const char *fname)
   FILE *fp;
   int i, j, l, *p;
 
-  if ((fp = fopen(fname, "w")) == NULL) {
-    fprintf(stderr, "cannot write %s\n", fname);
-    return -1;
-  }
+  xfopen(fp, fname, "w", return -1);
   l = is->l;
   fprintf(fp, "%d %d %d %d\n", is->d, l, l, is->n);
   for (p = is->s, i = 0; i < l; i++) {

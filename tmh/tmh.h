@@ -1,6 +1,10 @@
 #ifndef TMH_H__
 #define TMH_H__
 
+/* 0: low energy; 1: high energy 
+ * if tp0 < tp1: tp is a temperature-like quantity, and rho ~ exp[ -H(erg)/tp ]; 
+ * if tp0 > tp1: tp is a beta-like quantity, and rho ~ exp[ -H(erg)*tp ] 
+ * */
 typedef struct {
   double tp, ec; /* current temperature, and the expected energy there */
   int itp, iec; /* indices of tp and ec */
@@ -12,6 +16,7 @@ typedef struct {
   double erg0, erg1; /* energy range (erg0, erg1) */
   double derg; /* bin size for the updating energy range */
   int ergn; /* number of the updating energy bins */
+  double scl; /* prefactor in effective Hamiltonian */
   double dergdt; /* (erg1 - erg0)/(tp1 - tp0) */
   int dhdeorder; /* order of dhde interpolation */
   double dhdemin; /* minimal of dhde */
@@ -29,15 +34,9 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
     double emin, double emax, double de,
     double ensexp, int dhdeorder);
 void tmh_close(tmh_t *m);
-double tmh_hdif(tmh_t *m, double eb, double ea);
-int tmh_tlgvmove(tmh_t *m, double enow, double lgvdt);
 int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t);
 int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t);
 int tmh_savetp(tmh_t *m, const char *fn);
-int tmh_save(tmh_t *m, const char *fntp, const char *fnehis, 
-    const char *fndhde, double amp, double t);
-int tmh_load(tmh_t *m, const char *fnehis, 
-    const char *fndhde, double *amp, double *t);
 int tmh_loaderange(const char *fn, 
     double *tp0, double *tp1, double *dtp,
     double *erg0, double *erg1, double *derg, 
@@ -59,26 +58,21 @@ INLINE void tmh_settp(tmh_t *m, double tp)
   m->iec = (int)((m->ec - m->erg0)/m->derg);
 }
 
-/* retrieve local dhde */
-INLINE double tmh_getdhde(tmh_t *m, double e, int ie)
+/* return dH/dE at given energy 'erg', which should be the current potential energy */
+INLINE double tmh_getdhde(tmh_t *m, double erg)
 {
-  if (m->dhdeorder == 0) {
-#ifndef TMH_NOCHECK
-    die_if (ie < 0 || ie >= m->en, "overflow ie %d en %d\n", ie, m->en);
-#endif
-    return m->dhde[ie];
-  } else {
-    double lam = (e - (m->erg0 + ie*m->derg))/m->derg;
-#ifndef TMH_NOCHECK
-    die_if (lam < 0. || lam > 1., 
-        "cannot interpolate, e %g, %d, %g %g %g\n",
-        e, ie, m->erg0 + ie*m->derg, m->erg0, m->derg);
-#endif
-    return m->dhde[ie]*(1-lam) + m->dhde[ie+1]*lam;
-  }
+  double erg0 = m->erg0, erg1 = m->erg1, derg = m->derg, *dhde = m->dhde, x, ix;
+  int ergn = m->ergn, ie;
+
+  if (erg <= erg0) return dhde[0];
+  else if (erg >= erg1) return dhde[ergn];
+  x = modf((erg - erg0) / derg, &ix);
+  ie = (int) ix;
+  return m->dhdeorder == 0 ? dhde[ie] : dhde[ie] * (1 - x) + dhde[ie + 1] * x;
 }
 
-/* update dhde curve */
+/* update dH/dE curve
+ * Note: the location of updating correspond to m->ec instead of erg */
 INLINE void tmh_dhdeupdate(tmh_t *m, double erg, double amp)
 {
   double del = amp * (erg - m->ec);
@@ -101,7 +95,7 @@ INLINE void tmh_dhdeupdate(tmh_t *m, double erg, double amp)
   } else {
     del *= .5;
     TMH_UPDHDE(m->iec, del);
-    TMH_UPDHDE(m->iec+1, del);
+    TMH_UPDHDE(m->iec + 1, del);
   }
 }
 
@@ -121,6 +115,103 @@ INLINE void tmh_eadd(tmh_t *m, double erg)
   m->tpehis[m->itp*m->en + ie] += 1.;
 }
 
+/* compute dH = H(e1) - H(e0) from integrating the dhde curve */
+INLINE double tmh_hdif(tmh_t *m, double e1, double e0)
+{
+  int ie, iel, ieh, sgn;
+  double dh = 0, de, k, el0, eh0, el, eh;
+
+  /* ensure e1 > e0 */
+  if (e1 < e0) { eh = e0; el = e1; sgn = -1; }
+  else { eh = e1; el = e0; sgn = 1; }
+
+  if (eh < m->erg0) { /* first energy bin */
+    dh = (eh - el) * m->dhde[0];
+  } else if (el > m->erg1) { /* last energy bin */
+    dh = (eh - el) * m->dhde[m->ergn];
+  } else {
+    /* energy index */
+    if (el < m->erg0) {
+      dh += (m->erg0 - el) * m->dhde[0];
+      el = m->erg0 + 1e-8;
+      iel = 0;
+    } else {
+      iel = (int)((el - m->erg0) / m->derg);
+    }
+    if (eh >= m->erg1) {
+      dh += (eh - m->erg1) * m->dhde[m->ergn];
+      eh = m->erg1 - 1e-8;
+      ieh = m->ergn - 1;
+    } else {
+      ieh = (int)((eh - m->erg0) / m->derg);
+    }
+    if (m->dhdeorder == 0) { /* zeroth order: dhde is constant within a bin */
+      if (iel == ieh) {
+        dh += (eh - el) * m->dhde[iel];
+      } else if (iel < ieh) {
+        /* dh at the two terminal energy bin */
+        dh += (m->erg0 + (iel+1)*m->derg - el) * m->dhde[iel]
+            + (eh - (m->erg0 + m->derg*ieh)) * m->dhde[ieh];
+        for (ie = iel+1; ie < ieh; ie++) /* integrate dH/dE */
+          dh += m->dhde[ie] * m->derg;
+      }
+    } else { /* first order: dhde is linear to erg */
+      if (iel == ieh) {
+        k = (m->dhde[iel+1] - m->dhde[iel]) / m->derg;
+        el0 = m->erg0 + iel * m->derg;
+        dh += (eh - el) * (m->dhde[iel] + k * (.5f*(el+eh) - el0));
+      } else if (iel < ieh) {
+        /* dh at the two terminal energy bin */
+        el0 = m->erg0 + (iel + 1) * m->derg;
+        de = el0 - el;
+        k = (m->dhde[iel + 1] - m->dhde[iel]) / m->derg;
+        dh += de * (m->dhde[iel + 1] - .5 * k * de);
+        eh0 = m->erg0 + m->derg * ieh;
+        de = eh - eh0;
+        k = (m->dhde[ieh + 1] - m->dhde[ieh]) / m->derg;
+        dh += de * (m->dhde[ieh] + .5 * k * de);
+        for (ie = iel + 1; ie < ieh; ie++) /* integrate dH/dE */
+          dh += .5 * (m->dhde[ie] + m->dhde[ie + 1]) * m->derg;
+      }
+    }
+  }
+  return dh * sgn;
+}
+
+/* temperature move using a Langevin equation */
+#define tmh_tlgvmove(m, enow, lgvdt) tmh_lgvmove(m, enow, lgvdt)
+INLINE int tmh_lgvmove(tmh_t *m, double enow, double lgvdt)
+{
+  double dh, bexp, amp, scl = m->scl;
+
+  dh = tmh_hdif(m, enow, m->ec);
+  if (m->dtp > 0) { /* temperature-like move */
+    double tp, tp2, tpl = m->tp0, tph = m->tp1;
+
+    tp = m->tp / scl;
+    amp = tp * sqrt(2 * lgvdt);
+    bexp = 2. - m->ensexp;
+    tp2 = tp + (dh + bexp * tp) * lgvdt + grand0() * amp;
+    tp2 *= scl;
+    if (tp2 >= tpl && tp2 <= tph) {
+      tmh_settp(m, tp2);
+      return 1;
+    }
+  } else { /* beta-like move */
+    double bet, bet2, betl = m->tp1, beth = m->tp0;
+
+    bet = m->tp * scl;
+    amp = sqrt(2 * lgvdt);
+    bet2 = bet - (dh + m->ensexp * bet) * lgvdt + grand0() * amp;
+    bet2 /= scl;
+    if (bet2 >= betl && bet2 <= beth) {
+      tmh_settp(m, bet2);
+      return 1;
+    }
+  }
+  return 0;
+}
+
 INLINE int tmh_saveehis(tmh_t *m, const char *fn)
 {
   return histsave(m->tpehis, m->tpn, 
@@ -133,6 +224,22 @@ INLINE int tmh_loadehis(tmh_t *m, const char *fn)
       m->en, m->emin, m->de, HIST_ADDAHALF, fn);
 }
 
+INLINE int tmh_save(tmh_t *m, const char *fntp, const char *fnehis,
+    const char *fndhde, double amp, double t)
+{
+  tmh_savetp(m, fntp);
+  tmh_savedhde(m, fndhde, amp, t);
+  tmh_saveehis(m, fnehis);
+  return 0;
+}
+
+INLINE int tmh_load(tmh_t *m, const char *fnehis,
+    const char *fndhde, double *amp, double *t)
+{
+  if (tmh_loaddhde(m, fndhde, amp, t) != 0) return -1;
+  if (tmh_loadehis(m, fnehis) != 0) return -1;
+  return 0;
+}
 
 #endif /* TMH_H__ */
 

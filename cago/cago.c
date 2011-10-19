@@ -286,10 +286,7 @@ int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   int i, n = go->n;
 
   if (fn == NULL) fn = "cago.pos";
-  if ((fp = fopen(fn, "w")) == 0) {
-    fprintf(stderr, "cannot open file [%s]\n", fn);
-    return 1;
-  }
+  xfopen(fp, fn, "w", return -1);
 
   fprintf(fp, "# %d %d\n", go->n, (v != NULL));
   for (i = 0; i < n; i++) {
@@ -312,10 +309,7 @@ int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   real vtmp[3], *vi;
 
   if (fn == NULL) fn = "ab.pos";
-  if ((fp = fopen(fn, "r")) == 0) {
-    fprintf(stderr, "cannot open file [%s]\n", fn);
-    return 1;
-  }
+  xfopen(fp, fn, "r", return -1);
 
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
     fprintf(stderr, "Warning: %s has no information line\n", fn);
@@ -353,7 +347,7 @@ int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
 ERR:
   fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fn, i, s);
   fclose(fp);
-  return 1;
+  return -1;
 }
 
 /* output pdb format */
@@ -362,10 +356,7 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
   FILE *fp;
   int i, n = go->n;
 
-  if ((fp = fopen(fn, "w")) == 0) {
-    fprintf(stderr, "cannot open file [%s]\n", fn);
-    return 1;
-  }
+  xfopen(fp, fn, "w", return -1);
   for (i = 0; i < n; i++)
     fprintf(fp, "ATOM  %5d  CA  %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           C  \n", 
         i+1, pdbaaname(go->aa[i]), i+1, x[i][0], x[i][1], x[i][2]);

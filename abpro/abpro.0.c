@@ -174,10 +174,7 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
   int i, j, d = ab->d, n = ab->n;
 
   if (fname == NULL) fname = "ab.pos";
-  if ((fp = fopen(fname, "w")) == 0) {
-    fprintf(stderr, "cannot open file [%s]\n", fname);
-    return 1;
-  }
+  xfopen(fp, fname, "w", return -1);
 
   fprintf(fp, "# %d %d %d %d %d\n", d, ab->model, ab->seqid, ab->n, (v != NULL));
   for (i = 0; i < n; i++) {
@@ -201,10 +198,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
   real vtmp[3], *vi;
 
   if (fname == NULL) fname = "ab.pos";
-  if ((fp = fopen(fname, "r")) == 0) {
-    fprintf(stderr, "cannot open file [%s]\n", fname);
-    return 1;
-  }
+  xfopen(fp, fname, "r", return -1);
 
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
     fprintf(stderr, "Warning: %s has no information line\n", fname);

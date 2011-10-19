@@ -12,7 +12,7 @@
 typedef struct {
   FILE *fp;
   const char *fname;
-  unsigned flag;
+  unsigned flags;
 } logfile_t;
 
 #define LOG_WRITESCREEN  0x01

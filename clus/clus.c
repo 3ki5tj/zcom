@@ -858,10 +858,7 @@ int cls_write(clsys_t *cls, const char *fn,
   clus_t *ci;
   double wtot;
 
-  if ((fp = fopen(fn, "w")) == NULL) {
-    fprintf(stderr, "cannot open file %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "w", return -1);
 
   /* basic information */
   fprintf(fp, "# %d %d %g %d\n", cls->np, cls->nc, cls->mu0, version);
@@ -925,10 +922,7 @@ clsys_t *cls_read(const char *fn,
   float **dismat;
   double *wt, wtot, mu, x, y;
 
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot open file %s\n", fn);
-    return NULL;
-  }
+  xfopen(fp, fn, "r", return NULL);
   
   /* read in basic information */
   die_if (NULL == fgets(buf, sizeof buf, fp), "%s: no first line\n", fn);

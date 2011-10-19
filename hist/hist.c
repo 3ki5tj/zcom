@@ -85,11 +85,7 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
   double *smtot, *htot = NULL;
 
   filename = (fn != NULL) ? fn : "HIST";
-
-  if ((fp = fopen(filename, "w")) == NULL) {
-    printf("cannot write history file [%s].\n", filename);
-    return 1;
-  }
+  xfopen(fp, filename, "w", return -1);
   
   sums = gethistsums_(h, rows, n, xmin, dx);
  
@@ -203,10 +199,7 @@ int histloadx(double *hist, int rows, int n, double xmin, double dx,
   unsigned fflags;
   double x, y, y2, fac, delta, *arr, *sums = NULL;
     
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot read %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "r", return -1);
   
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
@@ -352,11 +345,7 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
   double *sums, fac, delta;
 
   filename = (fn != NULL) ? fn : "HIST2";
-
-  if ((fp = fopen(filename, "w")) == NULL) {
-    printf("cannot write history file [%s].\n", filename);
-    return 1;
-  }
+  xfopen(fp, filename, "w", return 1);
   
   n2 = n*n;
   sums = gethist2sums_(h, rows, n, xmin, dx);
@@ -464,10 +453,7 @@ int hist2load(double *hist, int rows, int n, double xmin, double dx,
   unsigned fflags;
   double x, y, g, g2, fac, delta, *arr, *sums = NULL;
     
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot read %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "r", return -1);
   
   n2 = n*n;
   /* check the first line */
