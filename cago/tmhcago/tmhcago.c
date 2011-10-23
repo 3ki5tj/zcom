@@ -2,7 +2,7 @@
 /* typedef float real; */
 typedef double real;
 
-#include "time.h"
+#include <time.h>
 #define ZCOM_PICK
 #define ZCOM_ARGOPT
 #define ZCOM_CFG
@@ -11,6 +11,8 @@ typedef double real;
 #define ZCOM_CAGO
 #define ZCOM_TMH
 #include "zcom.h"
+
+double boltz = 0.008314511212/4.184; /* boltzmann constant */
 
 /* ca-go parameters */
 real cago_kb = 200.f; /* bond */
@@ -73,6 +75,8 @@ static int loadcfg(const char *fn)
   ret = cfgget(cfg, &fnpdb, "pdb", "%s");
   printf("pdb file [%s]\n", fnpdb);
 
+  CFGGETD(boltz);
+
   /* ca-go parameters */
   CFGGETR(cago_kb);
   CFGGETR(cago_ka);
@@ -125,27 +129,20 @@ static int loadcfg(const char *fn)
 static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
 {
   int it = 0, stop = 0;
-  double t, amp, ampadj, dhde;
+  double t, dhde;
   logfile_t *log = log_open("TRACE");
 
-  ampadj = amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
-    dhde = tmh_getdhde(tmh, go->epot) * tmh_tps / tmh->tp;
-    cago_vv(go, (real)dhde, mddt);
-    if (it == 0) cago_rmcom(go, go->x, go->v);
-    cago_vrescale(go, (real)(tmh_tps), thermdt);
+    for (it = 0; it < 10; it++) {
+      dhde = tmh_getdhde(tmh, go->epot) * tmh_tps / tmh->tp;
+      cago_vv(go, (real)dhde, mddt);
+      cago_vrescale(go, (real)(boltz * tmh_tps), thermdt);
+    }
+    cago_rmcom(go, go->x, go->v);
     go->rmsd = cago_rotfit(go, go->x, NULL);
 
-    tmh_eadd(tmh, go->epot);
-    tmh_dhdeupdate(tmh, go->epot, ampadj);
-
-    if (++it % 10 == 0) {
-      it = 0;
-      tmh_tlgvmove(tmh, go->epot, tmh_lgvdt);
-      /* update amplitude */
-      if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
-      ampadj = amp*tmh->tp0/tmh->tp;
-    }
+    /* tweak amplitude ~ 1/tp */
+    tmh_ezmove(tmh, go->epot, tmh_tps/tmh->tp, tmh_lgvdt);
     if ((int) fmod(t, 10000) == 0) {
       printf("t %8g, T %6.3f, U %8.3f, rmsd %6.3f, dhde = %6.3f\n", t, tmh->tp, go->epot, go->rmsd, dhde);
     }
@@ -163,7 +160,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
     }
     if ((int)fmod(t, nstsave) == 0 || stop) {
       mtsave(NULL);
-      tmh_save(tmh, fntp, fnehis, fndhde, amp, t);
+      tmh_save(tmh, fntp, fnehis, fndhde, tmh->wl->lnf, t);
       cago_writepos(go, go->x, go->v, fnpos);
     }
     if (stop) break;
@@ -182,7 +179,7 @@ static void doargs(int argc, char **argv)
   argopt_regopt(ao, "-maxh", "%lf", &maxtime, "max. simulation hours");
   argopt_parse(ao, argc, argv);
   if (argopt_set(ao, maxtime)) maxtime *= 3600.*.98;
-  argopt_close(ao); 
+  argopt_close(ao);
 }
 
 int main(int argc, char **argv)
@@ -216,12 +213,14 @@ int main(int argc, char **argv)
           &tmh_ensexp, &tmh_dhdeorder))
       return -1;
   } else { /* fresh new run */
-    if (tmh_guesserange) 
+    if (tmh_guesserange)
         printf("this feature is not supported\n"), exit(1);
   }
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg,
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
+  tmh_initwlcvg(tmh, tmh_ampmax, sqrt(0.1), 0.95 /* percutoff */, tmh_ampc);
+  tmh->scl = 1.0/boltz;
   printf("erange (%g, %g), active (%g, %g)\n",
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;

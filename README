@@ -30,13 +30,15 @@ hist:           collect and write simple histograms (1d/2d)
 mds:            multidimensional scaling
 pdb:            read/write pdb
 clus:           a Monte Carlo based clustering
+md:             common molecular dynamics routines
+wl:             Wang-Laudau related
+tmh:            tempering with modified Hamiltonian
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model
-md:             common molecular dynamics routines
+lj:             Lennard Jones liquid
 abpro:          AB beads protein model
 cago:           C-alpha Go model
-tmh:            tempering with modified Hamiltonian
-
+--
 glez:           common uses for GLUT
 
 zcom.h:         a combination of useful routines

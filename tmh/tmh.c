@@ -1,7 +1,7 @@
 #include "util.h"
 #include "hist.c"
 #include "rng.c"
-
+#include "wl.c"
 #ifndef TMH_C__
 #define TMH_C__
 
@@ -64,19 +64,20 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   xnew(m->lng, m->en);
   xnew(m->mh, m->en+1);
 
+  m->wl = NULL;
   return m;
 }
 
 void tmh_close(tmh_t *m)
 {
-  if (m != NULL) {
-    free(m->dhde);
-    free(m->tpehis);
-    free(m->lnz);
-    free(m->lng);
-    free(m->mh);
-    free(m);
-  }
+  if (m == NULL) return;
+  free(m->dhde);
+  free(m->tpehis);
+  free(m->lnz);
+  free(m->lng);
+  free(m->mh);
+  if (m->wl) wlcvg_close(m->wl);
+  free(m);
 }
 
 /* write dhde and overall energy distribution */
@@ -84,14 +85,20 @@ int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t)
 {
   int ie;
   FILE *fp;
+  double nupd = t, lnfwl = amp, lnfc = amp*t;
 
   xfopen(fp, fn, "w", return -1);
-  fprintf(fp, "# 2 %g %g %d %g %g %d %g %g %d %g %d %g %g %g\n",
+  if (m->wl) {
+    nupd = m->wl->nupd;
+    lnfwl = m->wl->lnfwl;
+    lnfc = m->wl->lnfc;
+  }
+  fprintf(fp, "# 3 %g %g %d %g %g %d %g %g %d %g %d %g %g %g %.f %g %g\n",
       m->erg0, m->derg, m->ergn,
       m->emin, m->de,   m->en,
       m->tp0,  m->dtp,  m->tpn,
       m->ensexp, m->dhdeorder,
-      amp, t, m->tp);
+      amp, t, m->tp, nupd, lnfwl, lnfc);
   for (ie = 0; ie <= m->ergn; ie++) {
     fprintf(fp, "%g %g\n", m->erg0 + ie*m->derg, m->dhde[ie]);
   }
@@ -138,9 +145,17 @@ int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
       goto ERR;
     }
   }
-  if (3 != sscanf(p, "%lf%lf%lf", amp, t, &m->tp)) {
+  if (3 != sscanf(p, "%lf%lf%lf%n", amp, t, &m->tp, &next)) {
     fprintf(stderr, "corrupted info line p3 %s", s);
     goto ERR;
+  }
+  p += next;
+  if (m->wl) {
+    double nupd = *t, lnfwl = *amp, lnfc = (*amp) * (*t);
+    if (ver >= 3 && 3 == sscanf(p, "%lf%lf%lf%n", &nupd, &lnfwl, &lnfc, &next))
+      p += next;
+    if (!(m->wl->flags & WLCVG_UPDLNFC)) lnfc = m->wl->lnfc;
+    wlcvg_setnupd(m->wl, nupd, lnfwl, lnfc);
   }
 
   for (ie = 0; ie < m->ergn; ie++) {
@@ -210,27 +225,22 @@ ERR:
 int tmh_savetp(tmh_t *m, const char *fn)
 {
   int i, j;
-  double *eh, erg, cnt, esm, e2sm, eav, edv;
+  double *eh, erg;
+  av_t av[1];
   FILE *fp;
 
   xfopen(fp, fn, "w", return -1);
   fprintf(fp, "# %g %g %d\n", m->tp0, m->dtp, m->tpn);
   for (i = 0; i < m->tpn; i++) {
     eh = m->tpehis + i*m->en;
-    for (cnt = esm = e2sm = 0., j = 0; j < m->en; j++) {
+    av_clear(av);
+    for (j = 0; j < m->en; j++) {
       erg = m->emin + (j + .5) * m->de;
-      cnt += eh[j];
-      esm += eh[j]*erg;
-      e2sm += eh[j]*(erg*erg);
+      av_addw(av, erg, eh[j]);
     }
-    if (cnt > 1e-8) {
-      eav = esm/cnt;
-      edv = sqrt(e2sm/cnt - eav*eav);
-    } else {
-      eav = edv = 0.;
-    }
+    erg = av_getave(av);
     fprintf(fp, "%g %g %g %g\n",
-        m->tp0 + (i+.5)*m->dtp, cnt, eav, edv);
+        m->tp0 + (i+.5)*m->dtp, av->s, erg, av_getdev(av));
   }
   fclose(fp);
   return 0;
@@ -252,8 +262,9 @@ static int tmh_calcmh(tmh_t *m)
   return 0;
 }
 
-/* iteratively compute the density of states */
-int tmh_calcdos(tmh_t *m, int itmax, double tol,
+/* iteratively compute the density of states
+ * we inline the function as it's rarely used */
+INLINE int tmh_calcdos(tmh_t *m, int itmax, double tol,
     const char *fndos, const char *fnlnz)
 {
   int i, j, it, ie0, ie1, en = m->en, tpn = m->tpn;

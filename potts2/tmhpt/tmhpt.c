@@ -80,10 +80,10 @@ static int tmhrun(tmh_t *m, potts_t *pt, double trun, double t)
   for (amp = ampmax, it = 1; t <= trun; t++, it++) {
     tmhmove(m, pt, bet);
     tmh_eadd(m, pt->E);
-    tmh_dhdeupdate(m, pt->E, amp);
+    tmh_updatedhde(m, pt->E, amp);
 
     if (it % 10 == 0) {
-      tmh_tlgvmove(m, pt->E, lgvdt);
+      tmh_langvmove(m, tmh_hdif(m, pt->E, m->ec), lgvdt);
       bet = bstyle ? m->tp : 1/m->tp;
 
       if ((amp = ampc/t) > ampmax) amp = ampmax; /* update amplitude */

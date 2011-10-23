@@ -1,3 +1,4 @@
+#include "wl.c"
 #ifndef TMH_H__
 #define TMH_H__
 
@@ -27,6 +28,8 @@ typedef struct {
   double *lnz; /* partition function */
   double *lng; /* density of states */
   double *mh; /* modified Hamiltonian  */
+
+  wlcvg_t *wl; /* Wang-Landau convergence */
 } tmh_t;
 
 tmh_t *tmh_open(double tp0, double tp1, double dtp,
@@ -73,7 +76,7 @@ INLINE double tmh_getdhde(tmh_t *m, double erg)
 
 /* update dH/dE curve
  * Note: the location of updating correspond to m->ec instead of erg */
-INLINE void tmh_dhdeupdate(tmh_t *m, double erg, double amp)
+INLINE void tmh_updatedhde(tmh_t *m, double erg, double amp)
 {
   double del = amp * (erg - m->ec);
 
@@ -179,12 +182,12 @@ INLINE double tmh_hdif(tmh_t *m, double e1, double e0)
 }
 
 /* temperature move using a Langevin equation */
-#define tmh_tlgvmove(m, enow, lgvdt) tmh_lgvmove(m, enow, lgvdt)
-INLINE int tmh_lgvmove(tmh_t *m, double enow, double lgvdt)
+#define tmh_lgvmove(m, enow, lgvdt) \
+  tmh_langvmove(m, tmh_hdif(m, enow, m->ec), lgvdt)
+INLINE int tmh_langvmove(tmh_t *m, double dh, double lgvdt)
 {
-  double dh, bexp, amp, scl = m->scl;
+  double bexp, amp, scl = m->scl;
 
-  dh = tmh_hdif(m, enow, m->ec);
   if (m->dtp > 0) { /* temperature-like move */
     double tp, tp2, tpl = m->tp0, tph = m->tp1;
 
@@ -210,6 +213,28 @@ INLINE int tmh_lgvmove(tmh_t *m, double enow, double lgvdt)
     }
   }
   return 0;
+}
+
+/* initialize amplitude of updating */
+INLINE void tmh_initwlcvg(tmh_t *m, double ampmax, double ampfac, double perc,
+    double ampc)
+{
+  double tp0, tp1, dtp;
+
+  if (m->dtp > 0) { tp0 = m->tp0; tp1 = m->tp1; dtp = m->dtp; }
+  else { tp0 = m->tp1; tp1 = m->tp0; dtp = -m->dtp; }
+  m->wl = wlcvg_open(ampmax, ampfac, perc, ampc, tp0, tp1, dtp);
+}
+
+/* easy temperature move
+ * famp: tweaking factor */
+INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
+{
+  tmh_eadd(m, epot);
+  die_if (m->wl == NULL, "call tmh_initamp first, %p\n", (void *) m->wl);
+  wlcvg_update(m->wl, m->tp); /* compute updating amplitude */
+  tmh_updatedhde(m, epot, m->wl->lnf * famp);
+  return tmh_lgvmove(m, epot, lgvdt);
 }
 
 INLINE int tmh_saveehis(tmh_t *m, const char *fn)

@@ -59,6 +59,7 @@ typedef struct {
 #define hs_open(m,x0,x1,dx) hs_openx(m,x0,x1,dx,NULL,NULL,NULL)
 #define hs_save(hs,fn,flags) hs_savex(hs,fn,NULL,flags)
 #define hs_load(hs,fn,flags) hs_loadx(hs,fn,NULL,flags)
+#define hs_clear(hs) dblcleararr(hs->arr, hs->rows * hs->n)
 
 INLINE hist_t *hs_openx(int rows, double xmin, double xmax, double dx,
     int (*fwh)(FILE *, void *), int (*frh)(const char*, void *),
@@ -137,6 +138,8 @@ typedef struct {
   double dx;
 } hist2_t;
 
+#define hs2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->n)
+
 INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx)
 {
   hist2_t *hs2;
@@ -146,7 +149,7 @@ INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx)
   hs2->xmin = xmin;
   hs2->dx   = dx;
   hs2->n = (int)((xmax - xmin)/dx + 0.99999999);
-  xnew(hs2->arr, hs2->n*hs2->n*hs2->rows);
+  xnew(hs2->arr, hs2->n * hs2->n * hs2->rows);
   return hs2;
 }
 

@@ -101,6 +101,14 @@ INLINE int fexists(const char *fn)
   else { fclose(fp); return 1; }
 } 
 
+#ifndef xtpswap
+#define xtpswap(tp, x, y) { tp dum_; dum_ = (x); (x) = (y); (y) = dum_; }
+#endif
+
+#ifndef dblswap
+#define dblswap(x, y) xtpswap(double, x, y)
+#endif
+
 /* sqrt(x*x + y*y) */
 INLINE double dblhypot(double x, double y)
 {
@@ -128,6 +136,9 @@ INLINE double dblmin(double x, double y) { return x < y ? x : y; }
 /* confine x within [xmin, xmax] */
 INLINE double dblconfine(double x, double xmin, double xmax)
   { return x < xmin ? xmin : x > xmax ? xmax : x; }
+
+INLINE void dblcleararr(double *x, int n)
+  { int i; for (i = 0; i < n; i++) x[i] = 0.0; }
 
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED

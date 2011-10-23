@@ -1,7 +1,11 @@
 #include "rv3.h"
 #ifndef GLEZ_H__
 #define GLEZ_H__
+#if defined(Macintosh) || defined(__APPLE__)
+#include <GLUT/glut.h>
+#else
 #include <GL/glut.h>
+#endif
 
 static int glez_x, glez_y; /* current position */
 static int glez_msdown; /* mouse state */

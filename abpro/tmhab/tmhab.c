@@ -8,6 +8,7 @@ typedef double real;
 #define ZCOM_ARGOPT
 #define ZCOM_LOG
 #define ZCOM_ABPRO
+#define ZCOM_AV
 #define ZCOM_TMH
 #include "zcom.h"
 
@@ -111,9 +112,11 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
     int teql, int tmax, int trep)
 {
   int t;
-  double esm = 0., e2sm = 0;
+  av_t av[1];
+  double eav, dev;
 
   ab->t = 0.; /* reset time */
+  av_clear(av);
   for (t = 1; t <= teql+tmax; t++) {
     if (usebrownian) {
       ab_brownian(ab, (real)tp, 1.f, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
@@ -122,28 +125,24 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
       if (t % 10 == 0) ab_rmcom(ab, ab->x, ab->v);
       ab_vrescale(ab, (real)tp, (real)thermdt);
     }
-    if (t > teql) {
-      esm += ab->epot;
-      e2sm += ab->epot * ab->epot;
-    }
+    if (t > teql) av_add(av, ab->epot);
     if (trep > 0 && t % trep == 0) {
       fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g\n", ab->t, tp, ab->epot, ab->ekin);
     }
   }
-  esm /= tmax;
-  e2sm = sqrt(e2sm/tmax - esm * esm);
-  printf("tp %g, eav %g, edev %g\n", tp, esm, e2sm);
-  if (edev != NULL) *edev = e2sm;
-  return esm;
+  eav = av_getave(av);
+  dev = av_getdev(av);
+  printf("tp %g, eav %g, dev %g\n", tp, eav, dev);
+  if (edev != NULL) *edev = dev;
+  return eav;
 }
 
 static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 {
-  int it = 0, stop = 0;
-  double t, amp, dhde;
+  int it = 0, nstmv = 10, stop = 0;
+  double t, dhde;
   logfile_t *log = log_open("TRACE");
 
-  amp = tmh_ampmax;
   for (t = step0; t <= nsteps; t++) {
     //dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
     dhde = tmh_getdhde(tmh, ab->epot) * tmh_tps / tmh->tp;
@@ -157,19 +156,15 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
       ab_vrescale(ab, (real)(tmh_tps), (real)thermdt);
     }
     
-    tmh_eadd(tmh, ab->epot);
-    tmh_dhdeupdate(tmh, ab->epot, amp);
-
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
       if (ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
         printf("emin = %10.6f from %10.6f t %g tp %g.%30s\n", ab->emin, ab->epot, t, tmh->tp, "");
     }
-    if (++it % 10 == 0) {
+    if (++it % nstmv == 0) {
       it = 0;
-      tmh_tlgvmove(tmh, ab->epot, tmh_lgvdt);
-      /* update amplitude */
-      if ((amp = tmh_ampc/t) > tmh_ampmax) amp = tmh_ampmax;
+      /* tweak updating factor by tps/tp */
+      tmh_ezmove(tmh, ab->epot, tmh_tps/tmh->tp, tmh_lgvdt);
     }
   
     if ((int)fmod(t, nsttrace) == 0) {
@@ -185,7 +180,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     }
     if ((int)fmod(t, nstsave) == 0 || stop) {
       mtsave(NULL);
-      tmh_save(tmh, fntp, fnehis, fndhde, amp, t);
+      tmh_save(tmh, fntp, fnehis, fndhde, tmh->wl->lnf, t);
       ab_writepos(ab, ab->x, ab->v, fnpos);
     }
     if (stop) break;
@@ -269,6 +264,7 @@ int main(int argc, char **argv)
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg, 
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
+  tmh_initwlcvg(tmh, tmh_ampmax, sqrt(0.1), 0.0, tmh_ampc);
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;

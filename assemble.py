@@ -194,8 +194,9 @@ def checkcycl(deps):
         top += 1
         x = dl[j]
         if x in st[:top]:
-          print "cyclic dependence is detected from %s, stack %s" % (x, st[:top])
-          return x + 1
+          i = st[:top].index(x)
+          ls = st[i:top] + [x]
+          return ls
         st[top] = x
         jt[top] = 0
         #print "adding %d on level %d" % (x, top)
@@ -224,9 +225,11 @@ def builddeps(srclist):
       if os.path.exists(file_h) or os.path.exists(file1_h) or os.path.exists(file1_c): 
         depsX[i] += [j,]
     #if (len(deps[i])): print mod, deps[i]
-  i = checkcycl(depsX)
-  if i != 0:
-    print "Error due to cyclic dependence! at %d (%s)" % (i, srclist[i][0])
+  ls = checkcycl(depsX)
+  if ls != 0:
+    print "Error due to cyclic dependence!"
+    for i in ls:
+      print "%d (%s) -> " % (i, srclist[i][0]),
     raise Exception
 
   # 2. sort modules according to dependencies
