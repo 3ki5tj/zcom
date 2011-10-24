@@ -23,6 +23,8 @@ real mddt = 5e-3f;
 real thermdt = 5e-3f;
 int usebrownian = 0;
 real brdt = 5e-4;
+int localevel = 1; /* local geometry optimization: aba */
+unsigned milcshake = AB_MILCSHAKE;
 
 double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
@@ -69,6 +71,7 @@ static int loadcfg(const char *fn)
   CFGGETR(thermdt);
   CFGGETI(usebrownian);
   CFGGETR(brdt);
+  CFGGETI(localevel);
 
   CFGGETD(tmh_tp0);
   CFGGETD(tmh_tp1);
@@ -119,9 +122,9 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
   av_clear(av);
   for (t = 1; t <= teql+tmax; t++) {
     if (usebrownian) {
-      ab_brownian(ab, (real)tp, 1.f, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
+      ab_brownian(ab, (real)tp, 1.f, (real)brdt, AB_SOFTFORCE|milcshake);
     } else {
-      ab_vv(ab, 1.f, (real)mddt, AB_SOFTFORCE|AB_MILCSHAKE);
+      ab_vv(ab, 1.f, (real)mddt, AB_SOFTFORCE|milcshake);
       if (t % 10 == 0) ab_rmcom(ab, ab->x, ab->v);
       ab_vrescale(ab, (real)tp, (real)thermdt);
     }
@@ -147,11 +150,11 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     //dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
     dhde = tmh_getdhde(tmh, ab->epot) * tmh_tps / tmh->tp;
     if (usebrownian == 2) {
-      ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
+      ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|milcshake);
     } else if (usebrownian == 1) {
-      ab_brownian(ab, (real)tmh_tps, (real)dhde, (real)brdt, AB_SOFTFORCE|AB_MILCSHAKE);
+      ab_brownian(ab, (real)tmh_tps, (real)dhde, (real)brdt, AB_SOFTFORCE|milcshake);
     } else {
-      ab_vv(ab, (real)dhde, (real)mddt, AB_SOFTFORCE|AB_MILCSHAKE);
+      ab_vv(ab, (real)dhde, (real)mddt, AB_SOFTFORCE|milcshake);
       if (it == 0) ab_rmcom(ab, ab->x, ab->v);
       ab_vrescale(ab, (real)(tmh_tps), (real)thermdt);
     }
@@ -163,6 +166,8 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     }
     if (++it % nstmv == 0) {
       it = 0;
+      if (ab->lgcon && ab->lgact < ab->lgcnt)
+        ab_updconstr(ab);
       /* tweak updating factor by tps/tp */
       tmh_ezmove(tmh, ab->epot, tmh_tps/tmh->tp, tmh_lgvdt);
     }
@@ -244,6 +249,10 @@ int main(int argc, char **argv)
   isctn = fexists(fndhde);
 
   ab = ab_open(seqid, d, model, 0.1);
+  if (localevel) {
+    ab_initconstr(ab, localevel);
+    milcshake &= ~AB_MILCSHAKE;
+  }
   if (isctn) { /* load previous data */
     if (0 != ab_readpos(ab, ab->x, ab->v, fnpos))
       return -1;

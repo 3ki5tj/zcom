@@ -1,6 +1,5 @@
 /* check energy and force */
 #define HAVE_REAL 1
-//typedef float real;
 typedef double real;
 
 #define ZCOM_PICK
@@ -16,15 +15,14 @@ int verbose = 0;
 int milcshake = 0;
 int sh_itmax = 100000;
 double sh_tol = 1e-10;
+int localgeom = 0;
+int localevel = 1;
 
 static int getinfo(const char *fn, int *d, int *model, int *seqid)
 {
   FILE *fp;
 
-  if ((fp = fopen(fn, "r")) == NULL) {
-    fprintf(stderr, "cannot open %s\n", fn);
-    return -1;
-  }
+  xfopen(fp, fn, "r", return -1);
   if (3 != fscanf(fp, "# %d %d %d", d, model, seqid)) {
     fprintf(stderr, "cannot scan basic info from %s\n", fn);
     fclose(fp);
@@ -47,13 +45,15 @@ static void doargs(int argc, char **argv)
   argopt_regopt(ao, "-w", "%b", &overwrite, "overwrite the file, if significantly minimized");
   argopt_regopt(ao, "-W", "%b", &Overwrite, "always overwrite the file");
   argopt_regopt(ao, "-m", "%b", &milcshake, "use MILCSHAKE");
+  argopt_regopt(ao, "-q", "%d", &localevel, "local geometry level");
+  argopt_regopt(ao, "-l", "%b", &localgeom, "display local geometry info.");
   argopt_regopt(ao, "-v", "%b", &verbose, "be verbose");
   argopt_reghelp(ao, "-h");
   argopt_parse(ao, argc, argv);
   if (Overwrite) overwrite = 2;
   argopt_close(ao);
 }
-  
+
 int main(int argc, char **argv)
 {
   abpro_t *ab;
@@ -82,6 +82,18 @@ int main(int argc, char **argv)
   if ((fabs(E - Em) > 1e-6 && overwrite) || overwrite > 1) {
     printf("update configuration...\n");
     ab_writepos(ab, ab->lmx, NULL, fnpos);
+  }
+  if (localgeom) {
+    ab_printcontact(ab);
+    ab_initconstr(ab, localevel);
+    ab_updconstr(ab);
+    printf("established %d/%d constraints, model %d, %dD\n", ab->lgact, ab->lgcnt, ab->model, ab->d);
+    flags = verbose ? AB_VERBOSE : 0;
+    E = ab_localmin(ab, ab->x, 1000, tol, 100, sh_tol, flags);
+    ab->lgcon = 0; /* turn off */
+    flags |= milcshake ? AB_MILCSHAKE : 0;
+    Em = ab_localmin(ab, ab->x, itmax, tol, sh_itmax, sh_tol, flags);
+    printf("local geometry: E %.8f (with constraints) -> %.8f\n", E, Em);
   }
   ab_close(ab);
   return 0;

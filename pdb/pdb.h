@@ -94,6 +94,8 @@ struct tag_pdb_aadb {
 INLINE int pdbaaidx(const char *res)
 {
   int i;
+  if (strcmp(res, "HID") == 0 || strcmp(res, "HIE") == 0 || strcmp(res, "HIP") == 0)
+    res = "HIS"; /* quick fix for HIS */
   for (i = 0; i < 20; i++)
     if (strcmp(res, pdb_aadb[i].resnm) == 0) 
       return i;

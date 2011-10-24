@@ -1,15 +1,24 @@
+#include "util.h"
 #include "rv3.h"
 #include "rv2.h"
-#include "md.h"
+#include "rng.c"
+#include "md.c"
 #ifndef ABPRO_H__
 #define ABPRO_H__
+
+typedef struct {
+  int i, j;
+  int on; /* reference is turned on */
+  real dx0[3]; /* difference */
+  real rref, r2ref; /* reference distance */
+} lgconstr_t;
 
 typedef struct {
   int d; /* dimension */
   int model; /* 1 or 2 */
   int seqid; /* model sequence id */
   int n; /* number of atoms */
-  int dof; /* number of degrees of freedom */
+  int dof, dof0; /* number of degrees of freedom */
   real clj[2][2], sla, slb;
   int *type; /* 0: A, 1: B */
   real *x, *x1, *dx;
@@ -18,6 +27,11 @@ typedef struct {
   real *lmx, *xmin;
   real emin, epot, ekin, tkin;
   double t;
+
+  int lgcon; /* enable local constraints */
+  int lgcnt; /* total local constraints */
+  int lgact; /* active local constraints */
+  lgconstr_t *lgc;
 } abpro_t;
 
 #define AB_VERBOSE    0x0001

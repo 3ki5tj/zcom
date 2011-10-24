@@ -12,6 +12,7 @@ abemin: abemin.c $(dep)
 	$(CX) -o $@ $< 
 
 zcom.h::
+	cd .. && make abpro.c && cd abemin
 	cd ../.. && python ./assemble.py -a -v -1
 
 install: $(bin)

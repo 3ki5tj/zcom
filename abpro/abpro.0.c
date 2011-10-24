@@ -1,7 +1,3 @@
-#include "util.h"
-#include "rng.c"
-#include "md.c"
-
 #ifndef ABPRO_C__
 #define ABPRO_C__
 /* AB beads protein models */
@@ -11,7 +7,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-
 #include "abpro.h"
 
 /* initialization
@@ -30,7 +25,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   ab->d = d;
 
   ab->model = model;
-  if (model == 1) {
+  if (model == 1) { /* initialize model */
     ab->clj[0][0] = 1; ab->clj[1][1] = .5f;
     ab->clj[0][1] = ab->clj[1][0] = -.5f;
     ab->sla = ab->slb = 24;
@@ -71,7 +66,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   }
 
   /* number of degrees of freedom */
-  ab->dof = (ab->d == 2) ? (ab->n - 2) : (2*ab->n - 5);
+  ab->dof = ab->dof0 = (ab->d == 2) ? (ab->n - 2) : (2*ab->n - 5);
   if (verbose) {
     printf("n = %3d, d = %d, dof = %3d: ", ab->n, ab->d, ab->dof);
     for (i = 0; i < ab->n; i++)
@@ -247,19 +242,29 @@ ERR:
   return 1;
 }
 
+/* shake with additional constraints */
 static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
-  int i, again, it, n = ab->n;
-  real dxi[3], g, r2, r2bad;
-  rv3_t *dx0 = (rv3_t *)ab->dx;
+  int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
+  real dxi[3], g, r2, r2bad, r2ref, tmp, *lgdx0;
+  rv3_t *dx0 = (rv3_t *) ab->dx;
   const real glow = .5, r2max = 4.0;
+  lgconstr_t *lgc = ab->lgc;
 
+  /* pre-compute reference difference */
   for (i = 0; i < n-1; i++)
     rv3_diff(dx0[i], x0[i+1], x0[i]);
 
+  for (k = 0; lgcon && k < lgcnt; k++) { /* local constraints */
+    if (!lgc[k].on) continue;
+    i = lgc[k].i;
+    j = lgc[k].j;
+    rv3_diff(lgc[k].dx0, x0[j], x0[i]);
+  }
+
   for (it = 0; it < itmax; it++) {
-    for (again = 0, i = 0; i < n-1; i++) {
+    for (again = 0, i = 0; i < n-1; i++) { /* standard constaints */
       r2 = rv3_sqr(rv3_diff(dxi, x1[i+1], x1[i]));
       if (r2 > r2max) { /* too large, impossible to correct */
         if (verbose)
@@ -276,12 +281,36 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
             fprintf(stderr, "shake: bad alignment %d-%d, %g, dot = %g\n", i,i+1, sqrt(r2), g);
           g = (g > 0) ? glow : -glow;
         }
-        g = (1-r2)/(4*g);
+        g = (1 - r2) / (4 * g);
         rv3_sinc(x1[i],   dx0[i], -g);
         rv3_sinc(x1[i+1], dx0[i],  g);
         if (v) { /* add a force of dx/dt */
           rv3_sinc(v[i],   dx0[i], -g/dt);
           rv3_sinc(v[i+1], dx0[i],  g/dt);
+        }
+      }
+    }
+
+    /* local constraints */
+    for (k = 0; lgcon && k < lgcnt; k++) {
+      if (!lgc[k].on) continue;
+      i = lgc[k].i;
+      j = lgc[k].j;
+      r2 = rv3_sqr(rv3_diff(dxi, x1[j], x1[i]));
+      tmp = (r2ref = lgc[k].r2ref) * r2max;
+      if (r2 > tmp) r2 = tmp;
+      if (fabs(r2 - r2ref) > tol * r2ref) {
+        if (!again) again = 1;
+        g = rv3_dot(dxi, lgc[k].dx0);
+        tmp = glow * r2ref;
+        if (fabs(g) < tmp) g = g > 0 ? tmp : -tmp;
+        g = (r2ref - r2) / (4 * g);
+        lgdx0 = lgc[k].dx0;
+        rv3_sinc(x1[i], lgdx0, -g);
+        rv3_sinc(x1[j], lgdx0, +g);
+        if (v) {
+          rv3_sinc(v[i], lgdx0, -g/dt);
+          rv3_sinc(v[j], lgdx0, +g/dt);
         }
       }
     }
@@ -298,6 +327,7 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   return 0;
 }
 
+
 /* shake x1 according to x0 */
 int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
@@ -312,12 +342,20 @@ int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
 static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v, 
     int itmax, double tol, int verbose)
 {
-  int i, again, it, n = ab->n;
-  real dv[3], g, rvbad;
-  rv3_t *dx = (rv3_t *)ab->dx;
+  int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
+  real dv[3], g, rvbad, *lgdx0;
+  rv3_t *dx = (rv3_t *) ab->dx;
+  lgconstr_t *lgc = ab->lgc;
 
   for (i = 0; i < n-1; i++)
     rv3_diff(dx[i], x0[i+1], x0[i]);
+
+  for (k = 0; lgcon && k < lgcnt; k++) { /* local constraints */
+    if (!lgc[k].on) continue;
+    i = lgc[k].i;
+    j = lgc[k].j;
+    rv3_diff(lgc[k].dx0, x0[j], x0[i]);
+  }
 
   for (it = 0; it < itmax; it++) {
     for (again = 0, i = 0; i < n-1; i++) {
@@ -329,6 +367,21 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
         rv3_sinc(v[i+1], dx[i], -g);
       }
     }
+
+    for (k = 0; lgcon && k < lgcnt; k++) { /* local constraints */
+      if (!lgc[k].on) continue;
+      i = lgc[k].i;
+      j = lgc[k].j;
+      rv3_diff(dv, v[j], v[i]);
+      lgdx0 = lgc[k].dx0;
+      g = .5f * rv3_dot(lgdx0, dv);
+      if (fabs(g) > tol) {
+        if (!again) again = 1;
+        rv3_sinc(v[i], lgdx0, +g);
+        rv3_sinc(v[j], lgdx0, -g);
+      }
+    }
+    
     if (!again) break;
   }
   if (it >= itmax) {
@@ -839,5 +892,74 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   return 0;
 } 
 
+/* local geometry acceleration */
+/* print contact */
+INLINE void ab_printcontact(abpro_t *ab)
+{
+  int i, di, n = ab->n, d = ab->d, cnt = 0;
+  real dr, dr0 = (real) pow(2.0, 1.0/6);
+
+  for (di = 2; di <= 3; di++) { /* (i, i + di) */
+    if (di == 2) printf("ABA:\n"); else printf("ABBA\n");
+    for (i = 0; i < n - di; i++) {
+      if (ab->type[i] != 0 || ab->type[i + di] != 0) continue;
+      if (d == 3) dr = rv3_dist(ab->x + i*3, ab->x + (i + di)*3);
+      else dr = rv2_dist(ab->x + i*2, ab->x + (i + di)*2);
+      printf("%3d: %3d - %3d: %9.6f - %9.6f = %9.6f\n", ++cnt, i, i + di, dr, dr0, dr - dr0);
+    }
+  }
+}
+
+/* initialize local constraints,
+ * level 1: aba, 2: abba, 3: both */
+INLINE void ab_initconstr(abpro_t *ab, int level)
+{
+  int i, di, n = ab->n;
+  real dr0 = (real) pow(2.0, 1.0/6);
+
+  if (level < 0) {
+    level = 3; /* turn on all optimizations */
+    if (ab->model == 2) level &= ~2;
+  }
+  if (ab->d == 2 || level == 0) return;
+  ab->lgcnt = 0;
+  xnew(ab->lgc, 1);
+  for (di = 2; di <= 3; di++) {
+    if ( !(level & (di - 1)) ) continue;
+
+    for (i = 0; i < n - di; i++) {
+      if (ab->type[i] != 0 || ab->type[i + di] != 0) continue;
+      xrenew(ab->lgc, ab->lgcnt + 1);
+      ab->lgc[ab->lgcnt].i = i;
+      ab->lgc[ab->lgcnt].j = i + di;
+      ab->lgc[ab->lgcnt].on = 0;
+      ab->lgc[ab->lgcnt].rref = dr0;
+      ab->lgc[ab->lgcnt].r2ref = dr0 * dr0;
+      ab->lgcnt++;
+    }
+  }
+  ab->lgcon = 1; /* turn on constraints by default */
+  ab->lgact = 0; /* no constraint is active yet */
+}
+
+/* update constraints if atoms are close enough*/
+INLINE void ab_updconstr(abpro_t *ab)
+{
+  int i, j, k, lgcnt = ab->lgcnt;
+  real dr2;
+
+  if (!ab->lgcon) return;
+  for (k = 0; k < lgcnt; k++) { /* try to turn on constraints */
+    if (ab->lgc[k].on) continue;
+    i = ab->lgc[k].i;
+    j = ab->lgc[k].j;
+    dr2 = rv3_dist2(ab->x + 3*i, ab->x + 3*j);
+    if (fabs(dr2 - ab->lgc[k].r2ref) < 0.3) {
+      ab->lgc[k].on = 1;
+      ab->lgact++;
+    }
+  }
+  ab->dof = ab->dof0 - ab->lgact;
+}
 #endif
 
