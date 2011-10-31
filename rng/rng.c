@@ -101,7 +101,8 @@ uint32_t mtrand(void)
 #undef MT_UMASK
 #undef MT_LMASK
 
-/* Gaussian distribution with zero mean and unit variance */
+/* Gaussian distribution with zero mean and unit variance
+ * using ratio method */
 double grand0(void)
 {
   double x, y, u, v, q;

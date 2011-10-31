@@ -1,12 +1,12 @@
-#include "ss.h"
+#include "util.h"
+#include "ss.c"
 
 #ifndef CFG_C__
 #define CFG_C__
-
 /*
  * =====================================================================
  *
- * Configuration file
+ * simple configuration file
  *
  * =====================================================================
  *
@@ -26,14 +26,10 @@
 static int cfgload_(cfgdata_t *cfg, const char *filenm)
 {
   FILE *fp;
-  size_t i, j, size = 0;
+  size_t i, j, n, size = 0;
   char *p, *q, *lin;
 
-  if ((fp = fopen(filenm, "r")) == NULL) {
-    fprintf(stderr,"cannot open the configuration file [%s]\n", filenm);
-    return 1;
-  }
-
+  xfopen(fp, filenm, "r", return -1);
   if (ssfgetall(cfg->buf, &size, fp) == NULL) {
     fprintf(stderr, "error reading file %s\n", filenm);
     return 4;
@@ -45,58 +41,50 @@ static int cfgload_(cfgdata_t *cfg, const char *filenm)
   printf("the cfg is loaded, size=%d\n", size);
 #endif
 
-  /* count the number of lines for allocating the key-table */
-  for (i = 0, cfg->n = 0; i < size; i++) {
+  /* count the number of lines (before allocating the key-table) */
+  for (i = 0, n = 0; i < size; i++) {
     if (cfg->buf[i] == '\n' || cfg->buf[i] == '\r') {
       if (i > 0 && cfg->buf[i-1] == '\\') {
-        /* allow multiple-line splicing by replacing cr, lf with spaces
+        /* multiple-line splicing by replacing cr, lf with spaces
            parse should be aware of these additional spaces */
-        cfg->buf[i-1] = ' ';
-        cfg->buf[i] = ' ';
+        cfg->buf[i-1] = cfg->buf[i] = ' ';
       } else {
         cfg->buf[i] = '\0';
-        (cfg->n)++;
+        n++;
       }
 
-      for (j = i+1; j < size; j++) {
-        /* we replace immediately followed cr & lf by spaces for
-           efficiency (to avoid a large key table for blank lines) */
-        if ( isspace_(cfg->buf[j]) ) {
-          cfg->buf[j] = ' ';
-        } else {
-          break;
-        }
-        /* note: parser should be insensitive to leading spaces */
-      }
+      /* we replace following cr & lf's by spaces for efficiency
+         as the size of the key table == the number of blank lines */
+      for (j = i+1; j < size && isspace_(cfg->buf[j]); j++)
+        cfg->buf[j] = ' ';
 #ifdef CFGDBG_
       if (j-1 >= i+1) printf("j=%d to %d are replaced by spaces\n", i+1, j-1);
 #endif
     }
   }
 #ifdef CFGDBG_
-  printf("# of lines: %d\n", cfg->n);
+  printf("# of lines: %d\n", n);
 #endif
 
-  cfg->key   = calloc(cfg->n, sizeof(char*));
-  cfg->value = calloc(cfg->n, sizeof(char*));
+  xnew(cfg->key, n);
+  xnew(cfg->val, n);
+  xnew(cfg->used, n);
 
-  /* load lines into the keytable, not parsed yet */
-  for (p = q = cfg->buf, j = 0, i = 0; i < size; i++) {
+  /* load lines into the keytable */
+  for (p = cfg->buf, j = 0, i = 0; i < size; i++) {
     if (cfg->buf[i] == '\0') {
-      cfg->key[j] = p;
-      j++;
-      p = cfg->buf+i+1;
-      /* we may still have spaces left over, but no need to continue */
-      if (j > cfg->n) break;
+      cfg->key[j++] = p;
+      if (j >= n) break;
+      p = cfg->buf + i + 1;
     }
   }
-  cfg->n = j;
+  n = j;
 #ifdef CFGDBG_
-  fprintf(stderr, "load %d lines.\n", cfg->n);
+  fprintf(stderr, "load %d lines.\n", n);
 #endif
 
   /* now parse lines: separate values from keys */
-  for (j = 0; j < cfg->n; j++) {
+  for (j = 0; j < n; j++) {
     lin = cfg->key[j];
 
     /* remove the the leading spaces */
@@ -109,8 +97,8 @@ static int cfgload_(cfgdata_t *cfg, const char *filenm)
     }
 
     /* remove trailing space and ';' */
-    for (q = lin+strlen(lin)-1;
-         q >= lin && (isspace_(*q)||*q == ';'); q--) *q = '\0';
+    for (q = lin + strlen(lin) - 1;
+         q >= lin && (isspace_(*q) || *q == ';'); q--) *q = '\0';
 
     if ((q = strchr(lin, '=')) == NULL) { /* skip a line without '=' */
       cfg->key[j] = NULL;
@@ -122,18 +110,19 @@ static int cfgload_(cfgdata_t *cfg, const char *filenm)
     p  = q + 1;
     for (--q; isspace_(*q); q--) *q = '\0';
     for (; (*p) && isspace_(*p); p++) ; /* skip leading space, 'p' -> value */
-    cfg->value[j] = p;
+    cfg->val[j] = p;
   }
 
 #ifdef CFGDBG_
-  for (j = 0; j < cfg->n; j++) {
+  for (j = 0; j < n; j++) {
     if (cfg->key[j] != NULL)
-      printf("key=%s, value=%s\n", cfg->key[j], cfg->value[j]);
+      printf("key=%s, value=%s\n", cfg->key[j], cfg->val[j]);
   }
-  printf("%d lines\n", cfg->n);
+  printf("%d lines\n", n);
   getchar();
-
 #endif
+
+  cfg->n = (int) n;
   return 0;
 }
 
@@ -161,12 +150,12 @@ void cfgclose(cfgdata_t *cfg)
 {
   int canfree = cfg->canfree; /* save the value before memset */
 
-  free(cfg->value);
+  free(cfg->used);
+  free(cfg->val);
   free(cfg->key);
   ssdelete(cfg->buf);
   memset(cfg, 0, sizeof(*cfg));
-  if (canfree) /* free cfg if it is created by cfgopen */
-    free(cfg);
+  if (canfree) free(cfg); /* free cfg if it is created by cfgopen */
 }
 
 
@@ -182,28 +171,55 @@ void cfgclose(cfgdata_t *cfg)
  * */
 int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt)
 {
-  size_t j;
+  int j;
 
-  if (cfg == NULL) return 1;
-
-  if (cfg->key == NULL || var == NULL || key == NULL || fmt == NULL) {
+  if (cfg == NULL || cfg->key == NULL || var == NULL || key == NULL || fmt == NULL) {
     fprintf(stderr, "cfgget: NULL pointer.\n");
     return 1;
   }
 
   for (j = 0; j < cfg->n; j++)
     if (cfg->key[j] != NULL && strcmp(cfg->key[j], key) == 0) {
+      cfg->used[j] = 1;
       if (strcmp(fmt, "%s") == 0) { /* string case */
-        sscpy( *(char **)var, cfg->value[j]); /* make a copy and return */
+        sscpy( *(char **)var, cfg->val[j]); /* make a copy and return */
         return 0;
       } else { /* use sscanf for other cases, like int, float,... */
-        if (EOF == sscanf(cfg->value[j], fmt, var))
-          return 2; /* input error */
-        else
-          return 0;
+        return (EOF == sscanf(cfg->val[j], fmt, var)) ? 2 : 0;
       }
     }
   return 1; /* no match */
+}
+
+unsigned cfgcheck(cfgdata_t *cfg, unsigned flags)
+{
+  int i, j, n = cfg->n;
+  unsigned verbose = (flags & CFG_VERBOSE), ret = 0;
+
+  if (flags & CFG_CHECKDUP) { /* check duplicated keys */
+    for (i = 0; i < n; i++) {
+      if (cfg->key[i] == NULL) continue;
+      for (j = i+1; j < n; j++) {
+        if (cfg->key[j] == NULL) continue;
+        if (strcmp(cfg->key[i], cfg->key[j]) == 0) {
+          if (verbose)
+            fprintf(stderr, "duplicated setup, key %s: %s vs %s\n",
+                cfg->key[i], cfg->val[i], cfg->val[j]);
+          ret |= CFG_CHECKDUP;
+        }
+      }
+    }
+  }
+  
+  if (flags & CFG_CHECKUSE) {
+    for (i = 0; i < n; i++) {
+      if (cfg->key[i] == NULL || cfg->used[i]) continue;
+      if (verbose)
+        fprintf(stderr, "unused key %s: %s\n", cfg->key[i], cfg->val[i]);
+      ret |= CFG_CHECKUSE;
+    }
+  }
+  return ret;
 }
 
 #ifdef CFG_LEGACY

@@ -10,7 +10,7 @@ CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 $(bin): $(dep)
 
 %:: %.c
-	$(CC) -o $@ $< $(src) -lm
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~

@@ -7,15 +7,22 @@
 #include <ctype.h>
 
 typedef struct {
-  size_t n;           /* number of lines */
-  int    canfree;     /* whether the struct is dynamically allocated */
-  char **key,**value; /* key[i] = value[i] */
-  char  *buf;         /* the whole configuration file */
+  int    n;       /* number of lines */
+  int    canfree; /* whether the struct is dynamically allocated */
+  char **key;     /* key[0..n-1] */
+  char **val;     /* val[0..n-1] */
+  int   *used;    /* a key is used */
+  char  *buf;     /* the entire configuration file */
 } cfgdata_t;
+
+#define CFG_CHECKDUP 0x0100
+#define CFG_CHECKUSE 0x0200
+#define CFG_VERBOSE  0x1000
 
 cfgdata_t *cfgopen(const char *filenm);
 void cfgclose(cfgdata_t *cfg);
 int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
+unsigned cfgcheck(cfgdata_t *cfg, unsigned flags);
 
 #endif  /* CFG_H__ */
 

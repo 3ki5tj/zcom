@@ -46,7 +46,7 @@ static real elem2mass(const char *elem)
   for (k = 0; elemtab[k].name != NULL; k++)
     if (strcmp(elem, elemtab[k].name) == 0)
       return (real) elemtab[k].mass;
-  fprintf(stderr, "unknown element %s\n", elem);
+  fprintf(stderr, "unknown element [%s]\n", elem);
   return 12.0f;
 }
 
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
   pdbm_free(m2);
   if (w1) free(w1);
   if (w2) free(w2);
-  if (aligntype != 9) {
+  if (aligntype <= 1) {
     free(x1);  free(x2);
   }
   return 0;

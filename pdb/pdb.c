@@ -58,12 +58,12 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     sscanf(s+30, "%f%f%f", x, x+1, x+2);
     rv3_make(m->x[i], x[0], x[1], x[2]);
     /* element name */
-    if (strlen(s) >= 78) {
+    atm->elem[0] = '\0';
+    if (strlen(s) >= 78)
       strcnv(atm->elem, s+76, 2, ZSTR_COPY|ZSTR_XSPACE);
-      if (atm->elem[0] == '\0') { /* guess */
-        atm->elem[0] = atm->atnm[0];
-        atm->elem[1] = '\0';
-      }
+    if (atm->elem[0] == '\0') { /* guess */
+      atm->elem[0] = atm->atnm[0];
+      atm->elem[1] = '\0';
     }
     m->natm++;
   }

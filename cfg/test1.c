@@ -1,4 +1,4 @@
-#include "cfg.h"
+#include "cfg.c"
 
 int main(void)
 {
@@ -19,7 +19,9 @@ int main(void)
 
   printf("nr=%d, (%g,%g), cnt=%d\n", nr, tmin, tmax, cnt);
   printf("scode=\"%s\"\n", p);
+  cfgcheck(cfg, CFG_VERBOSE|CFG_CHECKDUP|CFG_CHECKUSE);
   cfgclose(cfg);
+  ssdelall();
   return 0;
 }
 
