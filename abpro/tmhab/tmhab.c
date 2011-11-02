@@ -23,7 +23,7 @@ real mddt = 5e-3f;
 real thermdt = 5e-3f;
 int usebrownian = 0;
 real brdt = 5e-4;
-int localevel = 1; /* local geometry optimization: aba */
+int lgclevel = 0; /* local geometry optimization: aba */
 unsigned milcshake = AB_MILCSHAKE;
 
 double tmh_ensexp = 0.0;
@@ -71,7 +71,7 @@ static int loadcfg(const char *fn)
   CFGGETR(thermdt);
   CFGGETI(usebrownian);
   CFGGETR(brdt);
-  CFGGETI(localevel);
+  CFGGETI(lgclevel);
 
   CFGGETD(tmh_tp0);
   CFGGETD(tmh_tp1);
@@ -106,6 +106,7 @@ static int loadcfg(const char *fn)
   CFGGETD(nsttrace);
   CFGGETD(nstsave);
 
+  cfgcheck(cfg, CFG_VERBOSE|CFG_CHECKDUP|CFG_CHECKUSE);
   cfgclose(cfg);
   return 0;
 }
@@ -124,13 +125,16 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
     if (usebrownian) {
       ab_brownian(ab, (real)tp, 1.f, (real)brdt, AB_SOFTFORCE|milcshake);
     } else {
-      ab_vv(ab, 1.f, (real)mddt, AB_SOFTFORCE|milcshake);
+      ab_vv(ab, (real)( tmh_tps/tp ), (real)mddt, AB_SOFTFORCE|milcshake);
       if (t % 10 == 0) ab_rmcom(ab, ab->x, ab->v);
-      ab_vrescale(ab, (real)tp, (real)thermdt);
+      ab_vrescale(ab, (real) tmh_tps, (real)thermdt);
     }
+    if (t % 1000 == 0 && ab->lgcon && ab->lgact < ab->lgcnt)
+      ab_updconstr(ab);    
     if (t > teql) av_add(av, ab->epot);
     if (trep > 0 && t % trep == 0) {
-      fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g\n", ab->t, tp, ab->epot, ab->ekin);
+      fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g, lgc %d/%d\n", 
+          ab->t, tp, ab->epot, ab->ekin, ab->lgact, ab->lgcnt);
     }
   }
   eav = av_getave(av);
@@ -249,9 +253,9 @@ int main(int argc, char **argv)
   isctn = fexists(fndhde);
 
   ab = ab_open(seqid, d, model, 0.1);
-  if (localevel) {
-    ab_initconstr(ab, localevel);
-    milcshake &= ~AB_MILCSHAKE;
+  if (lgclevel) {
+    ab_initconstr(ab, lgclevel);
+    milcshake = 0;
   }
   if (isctn) { /* load previous data */
     if (0 != ab_readpos(ab, ab->x, ab->v, fnpos))

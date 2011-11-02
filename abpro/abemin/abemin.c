@@ -5,6 +5,7 @@ typedef double real;
 #define ZCOM_PICK
 #define ZCOM_ABPRO
 #define ZCOM_ARGOPT
+#define ZCOM_AV
 #include "zcom.h"
 
 const char *fnpos = NULL;
@@ -18,6 +19,7 @@ double sh_tol = 1e-10;
 int localgeom = 0;
 int localevel = 1;
 
+/* get dimension and model from file */
 static int getinfo(const char *fn, int *d, int *model, int *seqid)
 {
   FILE *fp;
@@ -54,6 +56,28 @@ static void doargs(int argc, char **argv)
   argopt_close(ao);
 }
 
+/* print contact */
+static void ab_printcontact(abpro_t *ab)
+{
+  int i, di, n = ab->n, d = ab->d, cnt = 0;
+  real dr, dr0 = (real) pow(2.0, 1.0/6);
+  av_t av[1];
+
+  for (di = 2; di <= 3; di++) { /* (i, i + di) */
+    av_clear(av);
+    if (di == 2) printf("ABA:\n"); else printf("ABBA\n");
+    for (i = 0; i < n - di; i++) {
+      if (ab->type[i] != 0 || ab->type[i + di] != 0) continue;
+      if (d == 3) dr = rv3_dist(ab->x + i*3, ab->x + (i + di)*3);
+      else dr = rv2_dist(ab->x + i*2, ab->x + (i + di)*2);
+      av_add(av, dr);
+      printf("%3d: %3d - %3d: %9.6f - %9.6f = %9.6f\n", ++cnt, i, i + di, dr, dr0, dr - dr0);
+    }
+    printf("average distance %9.6f +/- %9.6f\n", 
+        av_getave(av), av_getdev(av));
+  }
+}
+
 int main(int argc, char **argv)
 {
   abpro_t *ab;
@@ -85,8 +109,8 @@ int main(int argc, char **argv)
   }
   if (localgeom) {
     ab_printcontact(ab);
-    ab_initconstr(ab, localevel);
-    ab_updconstr(ab);
+    ab_initconstr(ab, localevel); /* initialize constraints */
+    ab_updconstr(ab); /* add constraints */
     printf("established %d/%d constraints, model %d, %dD\n", ab->lgact, ab->lgcnt, ab->model, ab->d);
     flags = verbose ? AB_VERBOSE : 0;
     E = ab_localmin(ab, ab->x, 1000, tol, 100, sh_tol, flags);

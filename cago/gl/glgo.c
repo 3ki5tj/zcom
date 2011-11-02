@@ -62,7 +62,7 @@ real ballfudge = 0.8f;
 /* last number is the radius */
 GLfloat stcolorrad[5] = {0.8f, 0.8f, 0.8f, 1.f, .5};
 GLfloat aacolorrad[20][5] = {
-  {0.5f, 0.5f, 0.2f, 1.0f, 0.9f}, /* GLY */
+  {1.0f, 1.0f, 1.0f, 1.0f, 0.9f}, /* GLY */
   {0.6f, 0.6f, 0.6f, 1.0f, 1.0f}, /* ALA */
   {0.7f, 0.7f, 0.7f, 1.0f, 1.3f}, /* VAL */
   {0.8f, 0.8f, 0.8f, 1.0f, 1.4f}, /* LEU */

@@ -9,3 +9,42 @@ abemin.c  Energy minimization
 
 Note: 
 * remove ab_checkxv() to testcn.c
+
+Local geometric constraints (LGC)
+=================================
+
+What: use SHAKE to constrain local ABA and ABBA.
+Only use for 3d models.
+For model 1: ABA and ABBA can be used
+For model 2: ABA can be used
+
+To see if LGC is applicable, use
+  abemin -l 
+to check the energy of a few low energy states
+
+Variables
+---------
+ab {
+  lgcon;    enables LGC
+  lgcnt;    total number of possible constraints
+  lgact;    number of active constraints
+  lgc[0..lgcnt-1];  array of constraints
+}
+ab->dof (degrees of freedom also changes during the 
+process building of constraints)
+dof = dof0 - lgact;
+
+
+Functions
+---------
+* ab_initconstr(ab, level)
+    setup possible constraints
+    level 0: none; 1: ABA; 2: ABBA; 3: both
+* ab_updconstr(ab)
+    try to turn on constraints, if the involved
+    atoms are close enough
+* ab_shake3d() uses LGC;
+* ab_localmin() uses LGC if ab->lgcon;
+
+* ab_printcontact(ab);
+    print contact information, move to  abemin

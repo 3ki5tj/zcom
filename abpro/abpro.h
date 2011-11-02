@@ -8,9 +8,9 @@
 
 typedef struct {
   int i, j;
-  int on; /* reference is turned on */
+  int on; /* constraint is active */
   real dx0[3]; /* difference */
-  real rref, r2ref; /* reference distance */
+  real r2ref; /* square of the reference distance */
 } lgconstr_t;
 
 typedef struct {

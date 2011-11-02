@@ -10,7 +10,7 @@
 #include "abpro.h"
 
 /* initialization
- * seqid: 8: 34, 9: 55, 10: 89*/
+ * seqid: 8: 34, 9: 55, 10: 89 */
 abpro_t *ab_open(int seqid, int d, int model, real randdev)
 {
   abpro_t *ab;
@@ -256,7 +256,8 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   for (i = 0; i < n-1; i++)
     rv3_diff(dx0[i], x0[i+1], x0[i]);
 
-  for (k = 0; lgcon && k < lgcnt; k++) { /* local constraints */
+  /* compute distance in x0 for local constraints */
+  for (k = 0; lgcon && k < lgcnt; k++) {
     if (!lgc[k].on) continue;
     i = lgc[k].i;
     j = lgc[k].j;
@@ -892,30 +893,14 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   return 0;
 } 
 
-/* local geometry acceleration */
-/* print contact */
-INLINE void ab_printcontact(abpro_t *ab)
-{
-  int i, di, n = ab->n, d = ab->d, cnt = 0;
-  real dr, dr0 = (real) pow(2.0, 1.0/6);
-
-  for (di = 2; di <= 3; di++) { /* (i, i + di) */
-    if (di == 2) printf("ABA:\n"); else printf("ABBA\n");
-    for (i = 0; i < n - di; i++) {
-      if (ab->type[i] != 0 || ab->type[i + di] != 0) continue;
-      if (d == 3) dr = rv3_dist(ab->x + i*3, ab->x + (i + di)*3);
-      else dr = rv2_dist(ab->x + i*2, ab->x + (i + di)*2);
-      printf("%3d: %3d - %3d: %9.6f - %9.6f = %9.6f\n", ++cnt, i, i + di, dr, dr0, dr - dr0);
-    }
-  }
-}
+/* local geometric constraints (LGC) */
 
 /* initialize local constraints,
  * level 1: aba, 2: abba, 3: both */
 INLINE void ab_initconstr(abpro_t *ab, int level)
 {
   int i, di, n = ab->n;
-  real dr0 = (real) pow(2.0, 1.0/6);
+  real dr0, rref[2][2] = {{1.115f, 1.16f}, {1.09f, 1.2f}}; /* empirical constraint distances */
 
   if (level < 0) {
     level = 3; /* turn on all optimizations */
@@ -924,8 +909,9 @@ INLINE void ab_initconstr(abpro_t *ab, int level)
   if (ab->d == 2 || level == 0) return;
   ab->lgcnt = 0;
   xnew(ab->lgc, 1);
-  for (di = 2; di <= 3; di++) {
+  for (di = 2; di <= 3; di++) { /* loop over ABA and ABBA */
     if ( !(level & (di - 1)) ) continue;
+    dr0 = rref[ab->model - 1][di - 2];
 
     for (i = 0; i < n - di; i++) {
       if (ab->type[i] != 0 || ab->type[i + di] != 0) continue;
@@ -933,7 +919,6 @@ INLINE void ab_initconstr(abpro_t *ab, int level)
       ab->lgc[ab->lgcnt].i = i;
       ab->lgc[ab->lgcnt].j = i + di;
       ab->lgc[ab->lgcnt].on = 0;
-      ab->lgc[ab->lgcnt].rref = dr0;
       ab->lgc[ab->lgcnt].r2ref = dr0 * dr0;
       ab->lgcnt++;
     }

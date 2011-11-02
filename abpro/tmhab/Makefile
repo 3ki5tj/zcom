@@ -1,17 +1,21 @@
 CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99
 # optimized compiling
-CX = icc -Wall -O3 -g -lm -vec_report0
+CX = icc -Wall -O3 -g -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = tmhab
+bin = tmhab tmhab_d
 
 all: $(bin)
 
 tmhab: tmhab.c $(dep)
+	$(CX) -o $@ $< 
+
+tmhab_d: tmhab.c $(dep)
 	$(CC) -o $@ $< 
 
 zcom.h::
+	cd .. && python ./mk2d.py && cd tmhab
 	cd ../.. && python ./assemble.py -a -v -1
 
 clean:
