@@ -55,7 +55,7 @@ def do_thisdir(dir, verbose):
   return (0, ene)
 
 def do_model(pfx, filter, inscratch, verbose):
-  ''' pfx is a model directory like 3dm2, 2dm1, 3dm1 i
+  ''' pfx is a model directory like 3dm2, 2dm1, 3dm1 
       filter is 89* or 55* '''
   dirs = sorted(  [f for f in glob.glob(os.path.join(pfx, filter)) if os.path.isdir(f)]  )
   if not len(dirs): return

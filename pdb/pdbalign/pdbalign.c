@@ -83,6 +83,7 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
       w[3*i+2] = 12;
     }
   } else if (aligntype == ALN_ALL || aligntype == ALN_HEAVY) {
+    int nhvy = 0;
     x = m->x; /* use the buffer in pm */
     n = m->natm;
     xnew(w, n);
@@ -91,7 +92,9 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
       if (aligntype == ALN_HEAVY && 
          (strcmp(m->atm[i].elem, "H") == 0 || strcmp(m->atm[i].elem, "D") == 0))
         w[i] = 0.f; /* annihilate hydrogen atoms */
+      else nhvy++;
     }
+    printf("%d heavy atoms / %d all atoms\n", nhvy, n);
   } else fatal("unknown alignment type %d\n", aligntype);
   *pmdl = m;
   *pn = n;

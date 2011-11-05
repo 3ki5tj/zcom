@@ -15,7 +15,7 @@ typedef double real;
 const char *fntp = "tmhab.t", *fndhde = "tmhab.e", *fnehis = "tmhab.ehis";
 const char *fnpos = "ab.pos";
 const char *fncfg = "tmhab.cfg";
-const char *fnlog = "TRACE";
+const char *fnlog = "tmhab.tr";
 double nsteps = 1000000*1000;
 int seqid = 10, d = 3, model = 2, tmh_dhdeorder = 1;
 double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
@@ -148,10 +148,9 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 {
   int it = 0, nstmv = 10, stop = 0;
   double t, dhde;
-  logfile_t *log = log_open("TRACE");
+  logfile_t *log = log_open(fnlog);
 
   for (t = step0; t <= nsteps; t++) {
-    //dhde = tmh_getdhde(tmh, tmh->ec, tmh->iec)*tmh_tps/tmh->tp;
     dhde = tmh_getdhde(tmh, ab->epot) * tmh_tps / tmh->tp;
     if (usebrownian == 2) {
       ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|milcshake);
@@ -165,8 +164,11 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     
     if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
+      int lgcon = ab->lgcon;
+      ab->lgcon = 0; /* turn off LGC during energy minimization */
       if (ab_localmin(ab, ab->x, 0, 0., 0, 0., AB_LMREGISTER|AB_LMWRITE) < em)
         printf("emin = %10.6f from %10.6f t %g tp %g.%30s\n", ab->emin, ab->epot, t, tmh->tp, "");
+      ab->lgcon = lgcon;
     }
     if (++it % nstmv == 0) {
       it = 0;

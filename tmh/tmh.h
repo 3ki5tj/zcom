@@ -102,6 +102,14 @@ INLINE void tmh_updatedhde(tmh_t *m, double erg, double amp)
   }
 }
 
+/* update dH/dE curve with a diffusive force */
+INLINE void tmh_diffusedhde(tmh_t *m, double amp)
+{
+  die_if (m->dhdeorder == 0, "not for order %d", m->dhdeorder);
+  if (m->iec > 0) TMH_UPDHDE(m->iec, amp);
+  if (m->iec < m->ergn) TMH_UPDHDE(m->iec + 1, -amp);
+}
+
 INLINE void tmh_eadd(tmh_t *m, double erg)
 {
   int ie;
