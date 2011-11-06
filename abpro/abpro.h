@@ -5,6 +5,9 @@
 #include "md.c"
 #ifndef ABPRO_H__
 #define ABPRO_H__
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 typedef struct {
   int i, j;
@@ -32,6 +35,14 @@ typedef struct {
   int lgcnt; /* total local constraints */
   int lgact; /* active local constraints */
   lgconstr_t *lgc;
+
+#define AB_XXCNT 6 
+  real *xx[AB_XXCNT]; /* extra memory allocations, each of the size of x */
+
+#ifdef _OPENMP
+  int nthreads; /* number of threads */
+  real *f_l; /* local force */
+#endif
 } abpro_t;
 
 #define AB_VERBOSE    0x0001

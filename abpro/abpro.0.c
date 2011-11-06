@@ -83,6 +83,14 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   xnew(ab->lmx, nd);
   xnew(ab->xmin, nd);
 
+  xnew(ab->xx[0], nd * AB_XXCNT);
+  for (i = 1; i < AB_XXCNT; i++)
+    ab->xx[i] = ab->xx[0] + i * nd;
+
+#ifdef _OPENMP
+  ab->nthreads = omp_get_num_threads();
+  xnew(ab->f_l, nd * ab->nthreads);
+#endif
   ab_initpos(ab, ab->x, randdev);
   ab->emin = ab->epot = ab_force(ab, ab->f, ab->x, 0);
   return ab;
@@ -116,20 +124,20 @@ int ab_initpos(abpro_t *ab, real *x, real del)
 /* close ab */
 void ab_close(abpro_t *ab)
 {
-  if (ab) {
-    ab_milcshake(ab, NULL, NULL, NULL, 0, 0, 0, 0);
-    ab_milcrattle(ab, NULL, NULL);
-    ab_localmin(ab, NULL, 0, 0., 0, 0., 0);
-    free(ab->type);
-    free(ab->x);
-    free(ab->x1);
-    free(ab->dx);
-    free(ab->v);
-    free(ab->f);
-    free(ab->lmx);
-    free(ab->xmin);
-    free(ab);
-  }
+  if (!ab) return;
+  free(ab->type);
+  free(ab->x);
+  free(ab->x1);
+  free(ab->dx);
+  free(ab->v);
+  free(ab->f);
+  free(ab->lmx);
+  free(ab->xmin);
+  free(ab->xx[0]);
+#ifdef _OPENMP
+  free(ab->f_l);
+#endif
+  free(ab);
 }
 
 /* check connectivity */
@@ -410,21 +418,9 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
   int i, again, it, n = ab->n, nl;
-  static real *dl, *dm, *du, *lam, *rhs;
-  static rv3_t *x, *dx0, *dx1;
+  rv3_t *dx0 = (rv3_t *) ab->xx[0], *dx1 = (rv3_t *) ab->xx[1], *x = (rv3_t *) ab->xx[2];
+  real *dl = ab->xx[3], *dm = dl + n, *du = dm + n, *lam = du + n, *rhs = lam + n;
   real y;
-
-  if (dl == NULL) {
-    if (x0 == NULL) return 0;
-    xnew(dl, n); xnew(dm, n); xnew(du, n);
-    xnew(lam, n); xnew(rhs, n); 
-    xnew(dx0, n); xnew(dx1, n); xnew(x, n);
-  } else if (x0 == NULL) {
-    free(dl); free(dm); free(du);
-    free(lam); free(rhs);
-    free(dx0); free(dx1); free(x);
-    return 0;
-  }
 
   nl = n - 1;
   for (i = 0; i < nl; i++) {
@@ -513,20 +509,8 @@ int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
 static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
 {
   int i, n = ab->n, nl;
-  static real *dl, *dm, *du, *lam, *rhs;
-  static rv3_t *dx, *dv;
-
-  if (dl == NULL) {
-    if (x == NULL) return 0;
-    xnew(dl, n); xnew(dm, n); xnew(du, n);
-    xnew(lam, n); xnew(rhs, n); 
-    xnew(dx, n); xnew(dv, n);
-  } else if (x == NULL) {
-    free(dl); free(dm); free(du);
-    free(lam); free(rhs);
-    free(dx); free(dv);
-    return 0;
-  }
+  rv3_t *dx = (rv3_t *) ab->xx[0], *dv = (rv3_t *) ab->xx[1];
+  real *dl = ab->xx[2], *dm = dl + n, *du = dm + n, *lam = du + n, *rhs = lam + n;
 
   nl = n - 1;
   for (i = 0; i < nl; i++) {
@@ -581,7 +565,7 @@ static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
   real dr, dr2, dr6, U = 0;
-  rv3_t *dx = (rv3_t *)ab->dx;
+  rv3_t *dx = (rv3_t *) ab->dx;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
@@ -764,20 +748,9 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
 {
   int t, i, j, id, n = ab->n, d = ab->d;
   real up, u = 0, step = 0.02, del, mem = 1;
-  static real *x[2], *f[2], *v;
+  real **x = ab->xx, **f = ab->xx + 2, *v = ab->xx[4];
   const real DELMAX = 0.20f;
 
-  if (v == NULL) {
-    if (r == NULL) return 0;
-    xnew(x[0], n*d*sizeof(real));
-    xnew(x[1], n*d*sizeof(real));
-    xnew(f[0], n*d*sizeof(real));
-    xnew(f[1], n*d*sizeof(real));
-    xnew(v, n*d*sizeof(real));
-  } else if (r == NULL) {
-    free(x[0]); free(x[1]); free(f[0]); free(f[1]); free(v);
-    return 0;
-  }
   if (itmax <= 0) itmax = 10000;
   if (tol <= 0.) tol = 1e-12;
   /* to make a working copy */
@@ -788,7 +761,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
   for (t = 1; t <= itmax; t++) {
     for (i = 0; i < n; i++)
       for (j = 0; j < d; j++) {
-        del = v[i*d+j] = v[i*d+j]*mem+f[id][i*d+j]*step;
+        del = v[i*d+j] = v[i*d+j] * mem + f[id][i*d+j] * step;
         if (del > DELMAX) del = DELMAX; else if (del < -DELMAX) del = -DELMAX;
         x[!id][i*d+j] = x[id][i*d+j]+del;
       }
