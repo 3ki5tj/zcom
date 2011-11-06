@@ -1,4 +1,4 @@
-/* velocity verlet */
+/* molecular dynamics */
 #define HAVE_REAL 1
 /*
 typedef float real;
@@ -7,13 +7,14 @@ typedef double real;
 #include "abpro.c"
 
 int doconstr = 1;
+int br = 0;
 
 int main(void)
 {
   abpro_t *ab;
   int id = 10, d = 3, model = 1;
   int it, itmax = 1000000;
-  real dt = 2e-3f, tp = 0.3f, thermdt = 0.01f; 
+  real brdt = 1e-4f, mddt = 2e-3f, tp = 0.3f, thermdt = 0.01f; 
   double smt = 0, sme = 0;
   unsigned flags = AB_SOFTFORCE;
 
@@ -25,9 +26,13 @@ int main(void)
   }
   
   for (it = 1; it <= itmax; it++) {
-    ab_vv(ab, 1.f, dt, flags);
-    if (it % 10 == 0) ab_rmcom(ab, ab->x, ab->v);
-    ab_vrescale(ab, tp, thermdt);
+    if (br) {
+      ab_brownian(ab, tp, 1.f, brdt, flags);
+    } else {
+      ab_vv(ab, 1.f, mddt, flags);
+      ab_rmcom(ab, ab->x, ab->v);
+      ab_vrescale(ab, tp, thermdt);
+    }
     if (it % 1000 == 0 && ab->lgcon && ab->lgact < ab->lgcnt)
       ab_updconstr(ab);
     if (it % 10000 == 0) {
@@ -38,7 +43,7 @@ int main(void)
     sme += ab->epot;
   }
   printf("tkin = %g, epot = %g\n", smt/itmax, sme/itmax);
-  ab_writepos(ab, ab->x, ab->v, "ab.pos");
+  ab_writepos(ab, ab->x, br ? NULL : ab->v, "ab.pos");
   ab_close(ab);
   return 0;
 }

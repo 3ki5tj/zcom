@@ -1,6 +1,8 @@
 /* check energy and force */
 #define HAVE_REAL 1
-//typedef float real;
+/*
+typedef float real;
+*/
 typedef double real;
 #include "abpro.c"
 
