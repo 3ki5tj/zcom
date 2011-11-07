@@ -10,6 +10,10 @@ abemin.c  Energy minimization
 Note: 
 * remove ab_checkxv() to testcn.c
 
+Force calculation
+=================
+No cutoff is used
+
 Local geometric constraints (LGC)
 =================================
 
@@ -48,3 +52,17 @@ Functions
 
 * ab_printcontact(ab);
     print contact information, move to  abemin
+
+
+OpenMP optimization
+====================
+force() routines has been parallelized.
+  only nonbonded interaction
+  bonded interaction involves 
+
+shake3d()
+  parallel only for successive bonds
+  useful only for large systems
+  although linear, there are many rounds of iterations,
+  so the parallelism is useful
+

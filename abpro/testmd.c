@@ -6,7 +6,7 @@ typedef float real;
 typedef double real;
 #include "abpro.c"
 
-int doconstr = 0;
+int doconstr = 1;
 int br = 0;
 
 int main(void)

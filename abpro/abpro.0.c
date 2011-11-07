@@ -303,8 +303,10 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
   real dxi[3], g, r2, r2bad, r2ref, tmp, *lgdx0;
   rv3_t *dx0 = (rv3_t *) ab->dx;
-  const real glow = .5, r2max = 4.0;
+  static const real glow = .5, r2max = 4.0;
   lgconstr_t *lgc = ab->lgc;
+
+#pragma omp threadprivate(r2max, glow)
 
   /* pre-compute reference difference */
   for (i = 0; i < n-1; i++)
@@ -320,12 +322,24 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 
   for (it = 0; it < itmax; it++) {
     again = 0;
+#pragma omp parallel firstprivate(n) private(i, r2, dxi, g)
+   {
+#ifdef _OPENMP
+    int ip = omp_get_thread_num();
+    int np = omp_get_num_threads();
+    int n1 = n - 1;
+    int sz = (n1 + np - 1)/np;
+    int imin = ip * sz, imax = (ip + 1) * sz;
+    if (imax > n1) imax = n1;
+#else
+    int imin = 0, imax = n - 1;
+#endif
 
-    for (i = 0; i < n-1; i++) { /* standard constaints */
+    for (i = imin; i < imax; i++) { /* standard constaints */
       r2 = rv3_sqr(rv3_diff(dxi, x1[i+1], x1[i]));
       if (r2 > r2max) { /* too large, impossible to correct */
         if (verbose)
-          fprintf(stderr, "shake: large distance %d-%d, %g\n", i,i+1, sqrt(r2));
+          fprintf(stderr, "shake: r(%d, %d) = %g\n", i,i+1, sqrt(r2));
         r2 = r2max; 
       }
 
@@ -340,14 +354,21 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
         }
         g = (1 - r2) / (4 * g);
         rv3_sinc(x1[i],   dx0[i], -g);
-        rv3_sinc(x1[i+1], dx0[i],  g);
-        if (v) { /* add a force of dx/dt */
-          rv3_sinc(v[i],   dx0[i], -g/dt);
-          rv3_sinc(v[i+1], dx0[i],  g/dt);
+        if (v) rv3_sinc(v[i], dx0[i], -g/dt);
+        if (i == imax - 1) {
+#pragma omp critical
+         {
+          rv3_sinc(x1[i+1], dx0[i],  g);
+          if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
+         }
+        } else {
+          rv3_sinc(x1[i+1], dx0[i],  g);
+          if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
         }
       }
     }
-
+   } /* end of parallel code */
+    
     /* local constraints */
     if (lgcon) {
       for (k = 0; k < lgcnt; k++) {
@@ -373,6 +394,7 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
         }
       }
     }
+    
     if (!again) break;
   }
   
