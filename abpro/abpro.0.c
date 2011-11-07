@@ -9,12 +9,18 @@
 #include <math.h>
 #include "abpro.h"
 
+#ifdef _OPENMP
+/* compare pair by thread id */
+static int ab_prcmp(const void *a, const void *b)
+{ return ((abpairid_t *) a)->tid - ((abpairid_t *) b)->tid; }
+#endif
+
 /* initialization
  * seqid: 8: 34, 9: 55, 10: 89 */
 abpro_t *ab_open(int seqid, int d, int model, real randdev)
 {
   abpro_t *ab;
-  int i, nd;
+  int i, j, nd;
   double x;
   const int verbose = 0;
 
@@ -46,7 +52,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   if (seqid < 2) {
     ab->type[0] = seqid;
   } else {
-    int *s[2], sl[2], who, j;
+    int *s[2], sl[2], who;
     xnew(s[0], ab->n);
     xnew(s[1], ab->n);
     s[0][0] = 0; sl[0] = 1;
@@ -88,8 +94,48 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
     ab->xx[i] = ab->xx[0] + i * nd;
 
 #ifdef _OPENMP
-  ab->nthreads = omp_get_num_threads();
-  xnew(ab->f_l, nd * ab->nthreads);
+  {
+    int sz, ir, jr, k;
+    abpairid_t *pr;
+    
+    ab->nthreads = omp_get_max_threads();
+    xnew(ab->f_l, nd * ab->nthreads);
+  
+    /* partition home atoms, for thread i: [ab->homeid[i], ab->homeid[i+1]) */
+    xnew(ab->homeid, ab->nthreads + 1);
+    sz = (ab->n + ab->nthreads - 1) / ab->nthreads; /* chunck size */
+    for (i = 0; i < ab->nthreads; i++)
+      ab->homeid[ i ] = sz * i;
+    ab->homeid[ ab->nthreads ] = ab->n;
+ 
+    /* make a list of pairs */
+    xnew(ab->pair, ab->n * (ab->n - 1) / 2 * sizeof(*ab->pair));
+    pr = ab->pair;
+    for (i = 0; i < ab->n - 2; i++) {
+      for (ir = 0; ir < ab->nthreads; ir++) /* home thread */
+        if (i >= ab->homeid[ ir ] && i < ab->homeid[ ir+1 ]) break;
+      for (j = i + 2; j < ab->n; j++) {
+        for (jr = ir; jr < ab->nthreads; jr++) /* home thread */
+          if (j >= ab->homeid[ jr ] && j < ab->homeid[ jr+1 ]) break;
+        pr->i = i;
+        pr->j = j;
+        pr->c = ab->clj[ ab->type[i] ][ ab->type[j] ];
+        pr->tid =  (jr > ir && (i + j) % 2 == 0) ? jr : ir;
+        pr++;
+      }
+    }
+    ab->paircnt = pr - ab->pair;
+    qsort(ab->pair, ab->paircnt, sizeof(*ab->pair), &ab_prcmp);
+
+    /* set up pairid, [pairid[tid], pairid[tid + 1]) pairs for thread tid */
+    xnew(ab->pairid, ab->nthreads + 1);
+    for (k = 0, ir = 0; ir < ab->nthreads; ir++) {
+      for (; k < ab->paircnt; k++)
+        if (ab->pair[k].tid == ir) break;
+      ab->pairid[ir] = k;
+    }
+    ab->pairid[ ab->nthreads ] = ab->paircnt;
+  }
 #endif
   ab_initpos(ab, ab->x, randdev);
   ab->emin = ab->epot = ab_force(ab, ab->f, ab->x, 0);
@@ -219,7 +265,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
   else
     fmt = "%f%n";
   for (i = 0; i < n; i++) {
-    fgets(s, sizeof s, fp);
+    if (fgets(s, sizeof s, fp) == NULL) goto ERR;
     if (strlen(s) < 10) goto ERR;
     for (p = s, j = 0; j < d; j++, p += next) {
       if (1 != sscanf(p, fmt, x+i*d+j, &next)) {
@@ -273,7 +319,9 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   }
 
   for (it = 0; it < itmax; it++) {
-    for (again = 0, i = 0; i < n-1; i++) { /* standard constaints */
+    again = 0;
+
+    for (i = 0; i < n-1; i++) { /* standard constaints */
       r2 = rv3_sqr(rv3_diff(dxi, x1[i+1], x1[i]));
       if (r2 > r2max) { /* too large, impossible to correct */
         if (verbose)
@@ -301,30 +349,33 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     }
 
     /* local constraints */
-    for (k = 0; lgcon && k < lgcnt; k++) {
-      if (!lgc[k].on) continue;
-      i = lgc[k].i;
-      j = lgc[k].j;
-      r2 = rv3_sqr(rv3_diff(dxi, x1[j], x1[i]));
-      tmp = (r2ref = lgc[k].r2ref) * r2max;
-      if (r2 > tmp) r2 = tmp;
-      if (fabs(r2 - r2ref) > tol * r2ref) {
-        if (!again) again = 1;
-        g = rv3_dot(dxi, lgc[k].dx0);
-        tmp = glow * r2ref;
-        if (fabs(g) < tmp) g = g > 0 ? tmp : -tmp;
-        g = (r2ref - r2) / (4 * g);
-        lgdx0 = lgc[k].dx0;
-        rv3_sinc(x1[i], lgdx0, -g);
-        rv3_sinc(x1[j], lgdx0, +g);
-        if (v) {
-          rv3_sinc(v[i], lgdx0, -g/dt);
-          rv3_sinc(v[j], lgdx0, +g/dt);
+    if (lgcon) {
+      for (k = 0; k < lgcnt; k++) {
+        if (!lgc[k].on) continue;
+        i = lgc[k].i;
+        j = lgc[k].j;
+        r2 = rv3_sqr(rv3_diff(dxi, x1[j], x1[i]));
+        tmp = (r2ref = lgc[k].r2ref) * r2max;
+        if (r2 > tmp) r2 = tmp;
+        if (fabs(r2 - r2ref) > tol * r2ref) {
+          if (!again) again = 1;
+          g = rv3_dot(dxi, lgc[k].dx0);
+          tmp = glow * r2ref;
+          if (fabs(g) < tmp) g = g > 0 ? tmp : -tmp;
+          g = (r2ref - r2) / (4 * g);
+          lgdx0 = lgc[k].dx0;
+          rv3_sinc(x1[i], lgdx0, -g);
+          rv3_sinc(x1[j], lgdx0, +g);
+          if (v) {
+            rv3_sinc(v[i], lgdx0, -g/dt);
+            rv3_sinc(v[j], lgdx0, +g/dt);
+          }
         }
       }
     }
     if (!again) break;
   }
+  
   if (it >= itmax) {
     if (verbose) {
       const char *fnf = "shakefail.pos";
@@ -333,6 +384,7 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     }
     return -1;
   }
+
   return 0;
 }
 
@@ -425,9 +477,8 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   nl = n - 1;
   for (i = 0; i < nl; i++) {
     rv3_diff(dx1[i], x1[i], x1[i+1]);
-  }
-  for (i = 0; i < nl; i++) {
     rv3_diff(dx0[i], x0[i], x0[i+1]);
+    rhs[i] = 1 - rv3_sqr(dx1[i]);
   }
 
   /* dm[0..nl-1], du[0..nl-2], dl[1..nl-1] */
@@ -438,8 +489,6 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     dm[i] =  4*rv3_dot(dx1[i], dx0[i]);
     du[i] = -2*rv3_dot(dx1[i], dx0[i+1]); /* no dx0[nl], but doesn't matter */ 
   }
-  for (i = 0; i < nl; i++)
-    rhs[i] = 1 - rv3_sqr(dx1[i]);
 
   /* solve matrix equation D lam = rhs
    * first LU decompose D; 
@@ -564,60 +613,63 @@ int ab_milcrattle(abpro_t *ab, const real *x, real *v)
 static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
-  real dr, dr2, dr6, U = 0;
+  real ua = 0, ulj = 0;
   rv3_t *dx = (rv3_t *) ab->dx;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
 
   for (i = 0; i < n - 2; i++)
-    U += 1.f - rv3_dot(dx[i+1], dx[i]);
-  U *= 0.25f;
+    ua += 1.f - rv3_dot(dx[i+1], dx[i]);
 
+#pragma omp parallel for reduction(+:ulj) private(i, j)
   for (i = 0; i < n - 2; i++) {
+    real dr, dr2, dr6;
     for (j = i+2; j < n; j++) {
       dr2 = rv3_dist2(r[j], r[i]);
       if (soft && dr2 < 1.f) {
         dr = (real) sqrt(dr2);
-        U += (52 - 48*dr) - ab->clj[ab->type[i]][ab->type[j]]*(28 - 24*dr);
+        ulj += (52 - 48*dr) - ab->clj[ab->type[i]][ab->type[j]]*(28 - 24*dr);
       } else {
         dr2 = 1/dr2;
         dr6 = dr2*dr2*dr2;
-        U += 4*dr6*(dr6 - ab->clj[ab->type[i]][ab->type[j]]);
+        ulj += 4*dr6*(dr6 - ab->clj[ab->type[i]][ab->type[j]]);
       }
     }
   }
-  return U;
+  return ua * .25f  + ulj;
 }
 
 static real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
-  real dr2, dr6, U = 0;
-  rv3_t *dx = (rv3_t *)ab->dx;
+  real ua = 0, ud = 0, ulj = 0;
+  rv3_t *dx = (rv3_t *) ab->dx;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
 
   for (i = 1; i < n-1; i++)
-    U += rv3_dot(dx[i], dx[i-1]);
+    ua += rv3_dot(dx[i], dx[i-1]);
 
   for (i = 1; i < n-2; i++)
-    U -= .5f * rv3_dot(dx[i+1], dx[i-1]);
+    ud -= .5f * rv3_dot(dx[i+1], dx[i-1]);
 
+#pragma omp parallel for reduction(+:ulj) private(i, j)
   for (i = 0; i < n-2; i++) {
+    real dr2, dr6;
     for (j = i+2; j < n; j++) {
       dr2 = rv3_dist2(r[j], r[i]);
       if (soft && dr2 < 1.f) {
-        U += ab->clj[ab->type[i]][ab->type[j]]*(ab->sla - ab->slb*(real)sqrt(dr2));
+        ulj += ab->clj[ab->type[i]][ab->type[j]]*(ab->sla - ab->slb*(real)sqrt(dr2));
       } else {
         dr2 = 1.f/dr2;
         dr6 = dr2*dr2*dr2;
-        U += 4.f*ab->clj[ab->type[i]][ab->type[j]]*dr6*(dr6 - 1.f);
+        ulj += 4.f*ab->clj[ab->type[i]][ab->type[j]]*dr6*(dr6 - 1.f);
       }
     }
   }
-  return U;
+  return ua + ud + ulj;
 }
 
 real ab_energy(abpro_t *ab, const real *r, int soft)
@@ -630,102 +682,170 @@ real ab_energy(abpro_t *ab, const real *r, int soft)
     return ab_energy2dm1(ab, (crv2_t *)r, soft);
 }
 
-static real ab_force3dm1(abpro_t *ab, rv3_t *f, crv3_t *r, int soft)
+static real ab_force3dm1(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
-  real c, ff, dr2, dr6, U = 0.f;
-  real *dxp, *dxm;
-  rv3_t *dx = (rv3_t *)ab->dx, dxi;
-
-  for (i = 0; i < n; i++) rv3_zero(f[i]);
+  rv3_t *dx = (rv3_t *) ab->dx;
+  real U = 0.0f, ua = 0.0f, *dxm, *dxp;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
 
-  for (i = 1; i < n-1; i++) {
+  for (i = 0; i < n; i++) rv3_zero(f_g[i]);
+  for (i = 1; i < n - 1; i++) {
     dxp = dx[i];
     dxm = dx[i-1];
-    U += 1.f - rv3_dot(dxp, dxm);
-    rv3_sinc(f[i-1], dxp, -.25f);
-    rv3_sinc(f[i],   dxp,  .25f);
-    rv3_sinc(f[i],   dxm, -.25f);
-    rv3_sinc(f[i+1], dxm,  .25f);
+    ua += 1.f - rv3_dot(dxp, dxm);
+    rv3_sinc(f_g[i-1], dxp, -.25f);
+    rv3_sinc(f_g[i],   dxp,  .25f);
+    rv3_sinc(f_g[i],   dxm, -.25f);
+    rv3_sinc(f_g[i+1], dxm,  .25f);
   }
-  U *= 0.25f;
 
-  for (i = 0; i < n-2; i++) {
-    for (j = i+2; j < n; j++) {
-      dr2 = rv3_sqr( rv3_diff(dxi, r[j], r[i]) );
-      c = ab->clj[ab->type[i]][ab->type[j]];
+#pragma omp parallel firstprivate(n) private(i, j)
+{ /* parallel code starts here */
+  real dr2, dr6, ff, c;
+  rv3_t *f, dxi;
+  real ulj = 0.f;
 
-      if (soft && dr2 < 1.) {
-        dr2 = (real) sqrt(dr2);
-        U += (52.f - 28.f*c) - 24.f*dr2*(2.f-c);
-        ff = 24.f*(2.f - c)/dr2;
-      } else {
-        dr2 = 1.f/dr2;
-        dr6 = dr2*dr2*dr2;
-        U += 4.f*dr6*(dr6 - c);
-        ff = 24.f*dr2*dr6*(dr6*2.f - c);
-      }
-      rv3_sinc(f[i], dxi, -ff);
-      rv3_sinc(f[j], dxi, +ff);
+#ifdef _OPENMP
+  int ip = omp_get_thread_num();
+  int np = omp_get_num_threads();
+  int imin = ab->homeid[ip], imax = ab->homeid[ip + 1];
+  int ipr, ipr0 = ab->pairid[ip], ipr1 = ab->pairid[ip + 1];
+  rv3_t *f_l = (rv3_t *) ab->f_l;
+  f = f_l + n * ip; /* point to the proper local force */
+  /* clear the local force */
+  for (i = 0; i < n; i++) rv3_zero(f[i]);
+#else
+  f = f_g;
+#endif
+  
+#ifdef _OPENMP
+  for (ipr = ipr0; ipr < ipr1; ipr++) { 
+    i = ab->pair[ipr].i;
+    j = ab->pair[ipr].j;
+    c = ab->pair[ipr].c;
+#else
+  for (i = 0; i < n - 2; i++) 
+  for (j = i + 2; j < n; j++) {
+    c = ab->clj[ ab->type[i] ][ ab->type[j] ];
+#endif
+  
+    dr2 = rv3_sqr( rv3_diff(dxi, r[i], r[j]) );
+
+    if (soft && dr2 < 1.) {
+      dr2 = (real) sqrt(dr2);
+      ulj += (52.f - 28.f*c) - 24.f*dr2*(2.f-c);
+      ff = 24.f*(2.f - c)/dr2;
+    } else {
+      dr2 = 1.f/dr2;
+      dr6 = dr2*dr2*dr2;
+      ulj += 4.f*dr6*(dr6 - c);
+      ff = 24.f*dr2*dr6*(dr6*2.f - c);
     }
+    rv3_sinc(f[i], dxi, +ff);
+    rv3_sinc(f[j], dxi, -ff);
   }
-  return U;
+#ifdef _OPENMP
+#pragma omp barrier
+  for (i = imin; i < imax; i++) /* collect global force, f_l flushed by barrier */
+    for (j = 0; j < np; j++) { 
+      rv3_inc(f_g[i], f_l[n*j + i]);
+    }
+#endif
+#pragma omp atomic 
+  U += ulj;
+} /* parallel code stops */
+  return ua * 0.25f + U;
 }
 
-static real ab_force3dm2(abpro_t *ab, rv3_t *f, crv3_t *r, int soft)
+static real ab_force3dm2(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
 {
-  real ff, dr2, dr6, U = 0;
-  real *dxm, *dxp, c;
   int i, j, n = ab->n;
-  rv3_t *dx = (rv3_t *)ab->dx, dxi;
-
-  for (i = 0; i < n; i++) rv3_zero(f[i]);
+  rv3_t *dx = (rv3_t *) ab->dx;
+  real U = 0.f, ua = 0.f, ud = 0.f, *dxm, *dxp;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
 
+  for (i = 0; i < n; i++) rv3_zero(f_g[i]);
+
   for (i = 1; i < n-1; i++) {
     dxp = dx[i];
     dxm = dx[i-1];
-    rv3_inc(f[i-1], dxp);
-    rv3_dec(f[i],   dxp);
-    rv3_inc(f[i],   dxm);
-    rv3_dec(f[i+1], dxm);
-    U += rv3_dot(dxp, dxm);
+    rv3_inc(f_g[i-1], dxp);
+    rv3_dec(f_g[i],   dxp);
+    rv3_inc(f_g[i],   dxm);
+    rv3_dec(f_g[i+1], dxm);
+    ua += rv3_dot(dxp, dxm);
   }
-
+  
   for (i = 1; i < n-2; i++) {
     dxp = dx[i+1];
     dxm = dx[i-1];
-    rv3_sinc(f[i-1], dxp, -.5f);
-    rv3_sinc(f[i],   dxp,  .5f);
-    rv3_sinc(f[i+1], dxm, -.5f);
-    rv3_sinc(f[i+2], dxm,  .5f);
-    U -= .5f*rv3_dot(dxp, dxm);
+    rv3_sinc(f_g[i-1], dxp, -.5f);
+    rv3_sinc(f_g[i],   dxp,  .5f);
+    rv3_sinc(f_g[i+1], dxm, -.5f);
+    rv3_sinc(f_g[i+2], dxm,  .5f);
+    ud -= .5f*rv3_dot(dxp, dxm);
   }
 
-  for (i = 0; i < n - 2; i++) {
-    for (j = i+2; j < n; j++) {
-      c = ab->clj[ab->type[i]][ab->type[j]];
-      dr2 = rv3_sqr( rv3_diff(dxi, r[j], r[i]) );
-      if (soft && dr2 < 1.f) {
-        dr2 = (real) sqrt(dr2);
-        U += c*(ab->sla - ab->slb*dr2);
-        ff = (ab->slb*c)/dr2;
-      } else {
-        dr2 = 1.f/dr2;
-        dr6 = dr2*dr2*dr2;
-        U += 4.f*c*dr6*(dr6 - 1.f);
-        ff = 48.f*c*dr2*dr6*(dr6 - .5f);
-      }
-      rv3_sinc(f[i], dxi, -ff);
-      rv3_sinc(f[j], dxi,  ff);
+#pragma omp parallel firstprivate(n) private(i, j) 
+{ /* parallel code starts here */
+  real dr2, dr6, ff, c;
+  rv3_t *f, dxi;
+  real ulj = 0.f;
+
+#ifdef _OPENMP
+  int ip = omp_get_thread_num();
+  int np = omp_get_num_threads();
+  int imin = ab->homeid[ip], imax = ab->homeid[ip + 1];
+  int ipr, ipr0 = ab->pairid[ip], ipr1 = ab->pairid[ip + 1];
+  rv3_t *f_l = (rv3_t *) ab->f_l;
+  f = f_l + n * ip; /* point to the proper local force */
+  /* clear the local force */
+  for (i = 0; i < n; i++) rv3_zero(f[i]);
+#else
+  f = f_g;
+#endif
+
+#ifdef _OPENMP
+  for (ipr = ipr0; ipr < ipr1; ipr++) { 
+    i = ab->pair[ipr].i;
+    j = ab->pair[ipr].j;
+    c = ab->pair[ipr].c;
+#else
+  for (i = 0; i < n - 2; i++) 
+  for (j = i + 2; j < n; j++) {
+    c = ab->clj[ ab->type[i] ][ ab->type[j] ];
+#endif
+
+    dr2 = rv3_sqr( rv3_diff(dxi, r[i], r[j]) );
+
+    if (soft && dr2 < 1.f) {
+      dr2 = (real) sqrt(dr2);
+      ulj += c*(ab->sla - ab->slb*dr2);
+      ff = (ab->slb*c)/dr2;
+    } else {
+      dr2 = 1.f/dr2;
+      dr6 = dr2*dr2*dr2;
+      ulj += 4.f*c*dr6*(dr6 - 1.f);
+      ff = 48.f*c*dr2*dr6*(dr6 - .5f);
     }
+    rv3_sinc(f[i], dxi, +ff);
+    rv3_sinc(f[j], dxi, -ff);
   }
-  return U;
+#ifdef _OPENMP
+#pragma omp barrier
+  for (i = imin; i < imax; i++) /* collect global force, barrier flushes f_l */
+    for (j = 0; j < np; j++) 
+      rv3_inc(f_g[i], f_l[n*j + i]);
+#endif
+#pragma omp atomic 
+  U += ulj;
+}
+  return ua + ud + U;
 }
 
 /* compute force f */
@@ -804,6 +924,7 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
   real dth = .5f*dt*fscal;
   rv3_t *v = (rv3_t *)ab->v, *x = (rv3_t *)ab->x, *x1 = (rv3_t *)ab->x1, *f = (rv3_t *)ab->f;
 
+#pragma omp parallel for schedule(static)
   for (i = 0; i < n; i++) { /* vv part 1 */
     rv3_sinc(v[i], f[i], dth);
     rv3_lincomb2(x1[i], x[i], v[i], 1, dt);
@@ -818,6 +939,7 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
 
   ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
   
+#pragma omp parallel for schedule(static)
   for (i = 0; i < n; i++) { /* vv part 2 */
     rv3_sinc(v[i], f[i], dth);
   }

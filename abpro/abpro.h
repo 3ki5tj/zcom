@@ -17,6 +17,12 @@ typedef struct {
 } lgconstr_t;
 
 typedef struct {
+  int i, j;
+  int tid; /* thread */
+  real c;
+} abpairid_t; /* pair index */
+
+typedef struct {
   int d; /* dimension */
   int model; /* 1 or 2 */
   int seqid; /* model sequence id */
@@ -42,6 +48,10 @@ typedef struct {
 #ifdef _OPENMP
   int nthreads; /* number of threads */
   real *f_l; /* local force */
+  int *homeid; /* [homeid[tid], homeid[tid + 1]): atoms belongs to thread id */
+  int paircnt; /* number of pairs */
+  abpairid_t *pair; /* the entire pair */
+  int *pairid; /* [pairid[tid], pairid[tid + 1]): pairs belong to thread tid */ 
 #endif
 } abpro_t;
 

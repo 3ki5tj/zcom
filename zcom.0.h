@@ -114,6 +114,7 @@
 #ifdef __INTEL_COMPILER
   #pragma warning(disable:981) /* unspecified order warning */
   #pragma warning(disable:177) /* unreferenced function */
+  #pragma warning(disable:161) /* unrecognized #pragma, for omp */
 #endif
 
 #ifdef _MSC_VER
