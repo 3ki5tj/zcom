@@ -41,9 +41,9 @@ static void doargs(int argc, char **argv)
   ao->desc = "Energy minimize a structure";
   argopt_regarg(ao, NULL, &fnpos, "input.pos");
   argopt_regopt(ao, "-n", "%d", &itmax, "max. # of iterations");
-  argopt_regopt(ao, "-t", "%f", &tol, "tolerance of energy minimizer");
+  argopt_regopt(ao, "-t", "%lf", &tol, "tolerance of energy minimizer");
   argopt_regopt(ao, "-N", "%d", &sh_itmax, "max. # of iterations of SHAKE");
-  argopt_regopt(ao, "-T", "%f", &sh_tol, "SHAKE tolerance");
+  argopt_regopt(ao, "-T", "%lf", &sh_tol, "SHAKE tolerance");
   argopt_regopt(ao, "-w", "%b", &overwrite, "overwrite the file, if significantly minimized");
   argopt_regopt(ao, "-W", "%b", &Overwrite, "always overwrite the file");
   argopt_regopt(ao, "-m", "%b", &milcshake, "use MILCSHAKE");

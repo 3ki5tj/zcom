@@ -116,7 +116,7 @@ def do_args():
 ''' main function '''
 do_args()
 path = os.path.abspath(".")
-if path.find("project") >= 0:
+if path.find("project") >= 0 or path.find("disk") >= 0:
   do_prj()
 else:
   do_scratch()

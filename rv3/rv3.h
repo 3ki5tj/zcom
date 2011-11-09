@@ -396,6 +396,55 @@ INLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real *
   return rv3_dot(u, m);
 }
 
+/* light weight dihedral */
+INLINE real rv3_dih(const real xi[], const real xj[], const real xk[], const real xl[],
+    real gi[], real gj[], real gk[], real gl[])
+{
+  real tol, phi, cosphi = 1.f;
+  real nxkj, nxkj2, m2, n2;
+  real xij[3], xkj[3], xkl[3], uvec[3], vvec[3], svec[3];
+  real m[3], n[3]; /* the planar vector of xij x xkj,  and xkj x xkj */
+
+  rv3_diff(xij, xi, xj);
+  rv3_diff(xkj, xk, xj);
+  rv3_diff(xkl, xk, xl);
+  nxkj2 = rv3_sqr(xkj);
+  nxkj = (real) sqrt(nxkj2);
+  tol = (sizeof(real) == sizeof(float)) ? nxkj2 * 6e-8f : nxkj2 * 1e-16f;
+
+  rv3_cross(m, xij, xkj);
+  m2 = rv3_sqr(m);
+  rv3_cross(n, xkj, xkl);
+  n2 = rv3_sqr(n);
+  if (m2 > tol && n2 > tol) {
+    cosphi = rv3_dot(m, n)/(real)sqrt(m2*n2);
+    if (cosphi >= 1.f) cosphi = 1.f;
+    else if (cosphi < -1.f) cosphi = -1.f;
+  }
+  phi = (real) acos(cosphi);
+  if (rv3_dot(n, xij) < 0.0) phi = -phi;
+
+  /* optionally calculate the gradient */
+  if (gi != NULL) {
+    if (m2 > tol && n2 > tol) {
+      rv3_smul2(gi, m, nxkj/m2);
+      rv3_smul2(gl, n, -nxkj/n2);
+      rv3_smul2(uvec, gi, rv3_dot(xij, xkj)/nxkj2);
+      rv3_smul2(vvec, gl, rv3_dot(xkl, xkj)/nxkj2);
+      rv3_diff(svec, uvec, vvec);
+      rv3_diff(gj, svec, gi);
+      rv3_nadd(gk, svec, gl);
+    } else { /* clear the gradients */
+      rv3_zero(gi);
+      rv3_zero(gj);
+      rv3_zero(gk);
+      rv3_zero(gl);
+    }
+  }
+  return phi;
+}
+
+
 /* structure for dihedral calculation */
 typedef struct {
   int  szreal; /* sizeof real */
@@ -430,6 +479,8 @@ typedef struct {
 #define DIH_ALL   (DIH_FOUR|DIH_GRAD|DIH_DIV)
 /* only I and L, so no divergence */
 #define DIH_ENDS  (DIH_GRAD|DIH_I|DIH_L)
+/* polymer convention, 0 == trans */
+#define DIH_POLYMER 0x1000
 
 /* compute the dihedral angle, gradient g and divegence
  * of the field v conjugate to gradient (v.g = 1)
@@ -502,8 +553,12 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
   }
   phi = (real) acos(cosphi);
   vol = rv3_dot(n, xij);
-  sgn = ((vol > 0.0f) ? 1.0f : (-1.0f));
+  sgn = (vol > 0.0f) ? 1.0f : -1.0f;
   phi *= sgn;
+  if (flags & DIH_POLYMER) { /* switch to polymer convention, 0 == trans */
+    if (phi > 0) phi -= M_PI;
+    else phi += M_PI;
+  }
   if (dih != NULL) {
     dih->phi = phi;
     dih->sgn = sgn;
@@ -518,9 +573,7 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
 
     /* calculate the gradient of the dihedral */
     if (m2 > tol && n2 > tol) {
-      real vgi[3], vgj[3], vgk[3], vgl[3];
-      real uvec[3], vvec[3], svec[3], p, q;
-      real gi2, gj2, gk2, gl2, g2all, invg2;
+      real uvec[3], vvec[3], svec[3], g2all, invg2;
       unsigned doi, doj, dok, dol;
 
       doi = (flags & DIH_I);
@@ -528,36 +581,21 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
       dok = (flags & DIH_K);
       dol = (flags & DIH_L);
 
-      scl = nxkj/m2;
-      rv3_smul2(vgi, m, scl);
-      scl = -nxkj/n2;
-      rv3_smul2(vgl, n, scl);
+      rv3_smul2(dih->g[0], m,  nxkj/m2);
+      rv3_smul2(dih->g[3], n, -nxkj/n2);
 
-      p = rv3_dot(xij, xkj);
-      p /= nxkj2;
-      rv3_smul2(uvec, vgi, p);
-      q = rv3_dot(xkl, xkj);
-      q /= nxkj2;
-      rv3_smul2(vvec, vgl, q);
+      rv3_smul2(uvec, dih->g[0], rv3_dot(xij, xkj)/nxkj2);
+      rv3_smul2(vvec, dih->g[3], rv3_dot(xkl, xkj)/nxkj2);
       rv3_diff(svec, uvec, vvec);
 
-      rv3_diff(vgj, svec, vgi);
-      rv3_nadd(vgk, vgl, svec);
+      rv3_diff(dih->g[1], svec, dih->g[0]);
+      rv3_nadd(dih->g[2], svec, dih->g[3]);
 
-      rv3_copy(dih->g[0], vgi);
-      rv3_copy(dih->g[1], vgj);
-      rv3_copy(dih->g[2], vgk);
-      rv3_copy(dih->g[3], vgl);
-
-      gi2 = rv3_sqr(vgi);
-      gj2 = rv3_sqr(vgj);
-      gk2 = rv3_sqr(vgk);
-      gl2 = rv3_sqr(vgl);
       g2all = 0.0f;
-      if (doi) g2all += gi2;
-      if (doj) g2all += gj2;
-      if (dok) g2all += gk2;
-      if (dol) g2all += gl2;
+      if (doi) g2all += rv3_sqr(dih->g[0]);
+      if (doj) g2all += rv3_sqr(dih->g[1]);
+      if (dok) g2all += rv3_sqr(dih->g[2]);
+      if (dol) g2all += rv3_sqr(dih->g[3]);
       dih->g2 = g2all;
       invg2 = 1.0f/g2all;
 
@@ -584,14 +622,14 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
         ijlj = ijvkj*ljvkj;
         kikl = kivkj*klvkj;
 
-        gjxij = rv3_dot(vgj, xij);
-        gjxkl = rv3_dot(vgj, xkl);
-        gjmvv = rv3_dot(vgj, mvv);
-        gjnvv = rv3_dot(vgj, nvv);
-        gkxij = rv3_dot(vgk, xij);
-        gkxkl = rv3_dot(vgk, xkl);
-        gkmvv = rv3_dot(vgk, mvv);
-        gknvv = rv3_dot(vgk, nvv);
+        gjxij = rv3_dot(dih->g[1], xij);
+        gjxkl = rv3_dot(dih->g[1], xkl);
+        gjmvv = rv3_dot(dih->g[1], mvv);
+        gjnvv = rv3_dot(dih->g[1], nvv);
+        gkxij = rv3_dot(dih->g[2], xij);
+        gkxkl = rv3_dot(dih->g[2], xkl);
+        gkmvv = rv3_dot(dih->g[2], mvv);
+        gknvv = rv3_dot(dih->g[2], nvv);
 
         tmp1 = nxkj2*sinmn;
         tmp2 = tmp1/m2;

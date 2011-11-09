@@ -19,9 +19,45 @@ typedef struct {
 #define LOG_FLUSHAFTER   0x02
 #define LOG_NOWRITEFILE  0x10
 
-logfile_t *log_open(const char *filenm);
-int log_printf(logfile_t *log, char *fmt, ...);
-void log_close(logfile_t *log);
+INLINE logfile_t *log_open(const char *fn)
+{
+  logfile_t *log;
+
+  xnew(log, 1);
+  if (fn == NULL) fn = "LOG";
+  log->fname = fn;
+  log->flags = 0;
+  return log;
+}
+
+INLINE int log_printf(logfile_t *log, char *fmt, ...)
+{
+  va_list args;
+
+  if (log == NULL) return 1;
+  if (log->fp == NULL) xfopen(log->fp, log->fname, "w", return 1);
+  if ((log->flags & LOG_NOWRITEFILE) == 0) {
+    va_start(args, fmt);
+    vfprintf(log->fp, fmt, args);
+    va_end(args);
+  }
+  if (log->flags & LOG_WRITESCREEN) {
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+  }
+  if (log->flags & LOG_FLUSHAFTER)
+    fflush(log->fp);
+  return 0;
+}
+
+INLINE void log_close(logfile_t *log)
+{
+  if (log == NULL) return;
+  if (log->fp != NULL) { fclose(log->fp); log->fp = NULL; }
+  free(log);
+}
+
 
 /* close & reopen log file to make sure that stuff is written to disk */
 INLINE int log_hardflush(logfile_t *log)
