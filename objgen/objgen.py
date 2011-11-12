@@ -35,7 +35,9 @@ Commands of an object:
                     instead of accepting an existing handle
 
 Commands of an item:
-  * $def:     default value for a variable, 
+  * $def:     default value for a variable,
+              for a string variable, the default string should be double quoted,
+              e.g., $def: "input.txt";
               if the variable is a dynamic/static array, this value
               applies to array members
 
@@ -592,14 +594,19 @@ class Object:
       for dep in deps:
         itdep = self.var2item(dep)
         if not itdep:
-          print "dependencies variable %s of %s is not found!" % (dep, it.decl.name)
+          print "dependent variable %s of %s is not found!" % (dep, it.decl.name)
           raise Exception
         if itdep not in items: continue
         idep += [items.index(itdep)]
       ideps[i] = idep
-    idx = sortidx(ideps)
-    #print '\n\n'.join(["%3d: %s" % (i, items[idx[i]].getraw()) for i in range(nitems)] )
-    #print idx; raw_input()
+    
+    import depls
+    idx, cycl = depls.depsort(ideps)
+    if cycl:
+      print "cyclic dependencies detected"
+      for i in cycl:
+        print items[i].decl.name + " <--"
+      raise Exception
     return [items[idx[i]] for i in range(nitems)]
 
   def gen_code(self):

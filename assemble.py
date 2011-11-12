@@ -7,7 +7,7 @@ C++ compments are also removed
 '''
 
 import os, shutil, getopt, sys
-import rmdbg
+import rmdbg, depls
 
 '''
 module attributes, set before use
@@ -159,48 +159,6 @@ def strpbrk(s, char_set):
   except:
     return -1
 
-def checkcycl(deps):
-  ''' check cyclic dependencies starting from i0 '''
-
-  n = len(deps)
-  good = [0]*n # no dependency problem
-  while 1:
-    # find an dep. node
-    for i in range(n):
-      if len(deps[i]) and not good[i]: break
-    else: return 0 # all nodes are indep.
-
-    # make a stack
-    st = [-1]*(n+1)
-    jt = [-1]*(n+1)
-    top = 0
-    st[top] = i
-    jt[top] = 0 # index of child nodes of st[top]
-    # tree search using a stack 
-    while top >= 0:
-      i = st[top]
-      j = jt[top]
-      dl = deps[i]
-      #print "top %d: %d, deps %s, j = %d" % (top, i, dl, j); raw_input()
-      if j >= len(dl): # exhausted this level
-        # now anything depending on i is good
-        good[i] = 1 #print "checking %d" % i
-        top -= 1
-        if top >= 0:
-          jt[top] += 1
-      elif good[ dl[j] ]:
-        jt[top] += 1 # skip it
-      else: # go deep into a child (dependence)
-        top += 1
-        x = dl[j]
-        if x in st[:top]:
-          i = st[:top].index(x)
-          ls = st[i:top] + [x]
-          return ls
-        st[top] = x
-        jt[top] = 0
-        #print "adding %d on level %d" % (x, top)
-  return 0
 
 def builddeps(srclist):
   ''' build dependencies '''
@@ -225,43 +183,19 @@ def builddeps(srclist):
       if os.path.exists(file_h) or os.path.exists(file1_h) or os.path.exists(file1_c): 
         depsX[i] += [j,]
     #if (len(deps[i])): print mod, deps[i]
-  ls = checkcycl(depsX)
-  if ls != 0:
-    print "Error due to cyclic dependence!"
-    for i in ls:
+
+  # 2. sort modules according to dependencies
+  # d[0], d[1], ..., d[n-1] is a permutation of n
+  # d[0] is most basic, i.e., no dependencies
+  # d[k] can depend on (d[0], d[1], ... d[k-1])
+  d, cycl = depls.depsort(depsX)
+  if cycl:
+    print "cyclic dependency detected"
+    for i in cycl:
       print "%d (%s) -> " % (i, srclist[i][0]),
     raise Exception
 
-  # 2. sort modules according to dependencies
-  d = range(n) # ordering modules
-  i = 0
-  while i < n:
-    #print "%d:%d(%s)  deps: %s\n%s" % (i, d[i], srclist[d[i]][0], depsX[d[i]], d)
-    if len(depsX[d[i]]) == 0: 
-      #print "%d:%d(%s) no more dependencies" % (i, d[i], srclist[d[i]][0]); raw_input()
-      i += 1
-      continue
-    mi = max( map(d.index, depsX[d[i]]) )
-    if mi <= i:
-      i += 1
-      continue
-    '''
-    idep = map(d.index, depsX[d[i]])
-    idep.sort()
-    mi = max(idep)
-    if mi <= i:
-      i += 1
-      continue
-    id = 0
-    while idep[id] < i: id += 1
-    mi = idep[id]
-    '''
-    #print "%d:%d(%s); %d:%d(%s)" % (i, d[i], srclist[d[i]][0], mi, d[mi], srclist[d[mi]][0]); raw_input()
-
-    # swap i with mi
-    d[i], d[mi] = d[mi], d[i]
-
-  # build a new sorted src list and dependence list
+  # 3. build a new sorted src list and dependence list
   newsrclist = [0]*n
   newdeps = [0]*n
   for i in range(n):
@@ -269,7 +203,10 @@ def builddeps(srclist):
     newsrclist[i] = srclist[id]
     newdeps[i] = sorted([d.index(j) for j in deps[id]])
   
-  # prune and minimize the dependence list
+  # 4. prune and minimize the dependence list
+  # if C depends on A, B, B depends on A
+  # it can be simplified as
+  # C on B, B on A
   mindeps = [0]*n # a minimal dependent
   for i in range(n):
     m = len(newdeps[i])
@@ -288,7 +225,7 @@ def builddeps(srclist):
     mindeps[i] = depi
     #print "dep %d, %s --> %s" % (i, newdeps[i], mindeps[i])
 
-  # output the dependencies section
+  # 5. output the dependencies section
   sdep = []
   for i in range(n-1, 0, -1):
     if len(mindeps[i]) > 0:
