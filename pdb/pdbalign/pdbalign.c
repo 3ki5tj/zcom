@@ -9,7 +9,7 @@
 const char *fn1 = NULL;
 const char *fn2 = NULL;
 const char *fnout = "fit.pdb";
-enum {ALN_CA = 0, ALN_BB = 1, ALN_HEAVY = 8, ALN_ALL = 9, ALN_LAST = 10};
+enum {ALN_CA = 0, ALN_BB = 1, ALN_MC = 2, ALN_HEAVY = 8, ALN_ALL = 9, ALN_LAST = 10};
 int aligntype = 1;
 int verbose = 1;
 
@@ -20,7 +20,7 @@ static void doargs(int argc, char **argv)
   argopt_regarg(ao, "!", &fn1, "file1");
   argopt_regarg(ao, "!", &fn2, "file2");
   argopt_regopt(ao, "-o", NULL, &fnout, "fit2");
-  argopt_regopt(ao, "-a", "%d", &aligntype, "type 0: C-alpha, 1: backbone, 8: heavy, 9: all");
+  argopt_regopt(ao, "-a", "%d", &aligntype, "type 0: C-alpha, 1: backbone, 2: mainchain, 8: heavy, 9: all");
   argopt_regopt(ao, "-v", "%d", &verbose, "verbose level");
   argopt_reghelp(ao, "-h");
   argopt_parse(ao, argc, argv);
@@ -59,7 +59,7 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
 
   die_if ((m = pdbm_read(fn, verbose)) == NULL,
       "cannot read pdb %s\n", fn);
-  if (aligntype >= ALN_CA && aligntype <= ALN_BB) {
+  if (aligntype >= ALN_CA && aligntype <= ALN_MC) {
     die_if ((c = pdbaac_parse(m, verbose)) == NULL,
       "failed to parse the pdb %s\n", fn);
     nres = c->nres;
@@ -81,6 +81,20 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
       w[3*i] = 14;
       w[3*i+1] = 12;
       w[3*i+2] = 12;
+    }
+  } else if (aligntype == ALN_MC) {
+    n = nres*4;
+    xnew(x, n);
+    xnew(w, n);
+    for (i = 0; i < nres; i++) {
+      rv3_copy(x[4*i],   c->res[i].xn); 
+      rv3_copy(x[4*i+1], c->res[i].xca); 
+      rv3_copy(x[4*i+2], c->res[i].xc);
+      rv3_copy(x[4*i+3], c->res[i].xo);
+      w[4*i] = 14;
+      w[4*i+1] = 12;
+      w[4*i+2] = 12;
+      w[4*i+3] = 16;
     }
   } else if (aligntype == ALN_ALL || aligntype == ALN_HEAVY) {
     int nhvy = 0;
@@ -132,7 +146,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "# of atoms mismatch %s %d != %s %d, use %d\n", fn1, n1, fn2, n2, n);
   }
   rmsd = rotfit3(x2, NULL, x1, w2, n, rot, trans);
-  printf("rmsd = %g\n", rmsd);
+  printf("rmsd = %g A\n", rmsd);
   if (verbose) {
     rm3_print(rot, "Rotation", "%8.3f", 1);
     rv3_print(trans, "Translation", "%8.3f", 1);

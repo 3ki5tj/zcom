@@ -3,13 +3,13 @@
 #include "pdb.h"
 
 /* read raw atom data from pdb */
-pdbmodel_t *pdbm_read(const char *fname, int verbose)
+static pdbmodel_t *pdbm_readpdb(const char *fname)
 {
   const int BSIZ = 256;
   FILE *fp;
   pdbmodel_t *m;
   pdbatom_t *atm;
-  int i, j, ir, iro;
+  int i, ir;
   char s[256], resnm[8] = "";
   float x[3];
 
@@ -42,10 +42,10 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     atm->insert = s[26];
 
     /* atom name */
-    strcnv(atm->atnm, s+12, 4, ZSTR_COPY|ZSTR_XSPACE);
+    strip( substr(atm->atnm, s, 12, 4) );
     pdbm_fmtatom(atm->atnm, atm->atnm, 0);
     /* residue name */
-    strcnv(atm->resnm, s+17, 3, ZSTR_COPY|ZSTR_XSPACE);
+    strip( substr(atm->resnm, s, 17, 3) );
     /* residue number */
     sscanf(s+22, "%d", &(atm->rid));
     if (ir == atm->rid && resnm[0] && strcmp(atm->resnm, resnm) != 0) {
@@ -60,7 +60,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     /* element name */
     atm->elem[0] = '\0';
     if (strlen(s) >= 78)
-      strcnv(atm->elem, s+76, 2, ZSTR_COPY|ZSTR_XSPACE);
+      strip( substr(atm->elem, s, 76, 2) );
     if (atm->elem[0] == '\0') { /* guess */
       atm->elem[0] = atm->atnm[0];
       atm->elem[1] = '\0';
@@ -69,13 +69,98 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   }
   for (i = 0; i < m->natm; i++) /* set atom x */
     m->atm[i].x = m->x[i];
+  fclose(fp);
+  return m;
+}
+
+/* read from GROMACS .gro format */
+static pdbmodel_t *pdbm_readgro(const char *fname)
+{
+  FILE *fp;
+  pdbmodel_t *m;
+  pdbatom_t *atm;
+  int i, ir;
+  char s[256], resnm[8] = "";
+  float x[3];
+
+  xfopen(fp, fname, "r", return NULL);
+  xnew(m, 1);
+  if (fgets(s, sizeof s, fp) == NULL) { /* title line */
+    fprintf(stderr, "cannot read the first line of %s\n", fname);
+    goto ERR;
+  }
+  if (fgets(s, sizeof s, fp) == NULL) { /* number of particles */
+    fprintf(stderr, "cannot read the second line of %s\n", fname);
+    goto ERR;
+  }
+  if (1 != sscanf(s, "%d", &m->natm)) {
+    fprintf(stderr, "no # of atoms, %s\n", fname);
+    goto ERR;
+  }
+  m->nalloc = m->natm;
+  m->file = fname;
+  xnew(m->atm, m->nalloc);
+  xnew(m->x,   m->nalloc);
+  ir = -1;
+  for (i = 0; i < m->natm; i++) {
+    if (fgets(s, sizeof s, fp) == NULL) {
+      fprintf(stderr, "unable to read atom %d\n", i+1);
+      goto ERR;
+    }
+    atm = m->atm + i;
+    atm->aid = i;
+
+    /* atom name */
+    strip( substr(atm->atnm, s, 10, 5) );
+    pdbm_fmtatom(atm->atnm, atm->atnm, 0);
+    /* residue name */
+    strip( substr(atm->resnm, s, 5, 5) );
+    /* residue number */
+    sscanf(s, "%d", &atm->rid);
+    if (ir == atm->rid && resnm[0] && strcmp(atm->resnm, resnm) != 0) {
+      fprintf(stderr, "atom %d, %s, residue %d conflicts %s --> %s, file %s\n",
+          i, atm->atnm, ir, resnm, atm->resnm, fname);
+    }
+    strcpy(resnm, atm->resnm);
+    ir = atm->rid;
+    /* coordinates */
+    sscanf(s+20, "%f%f%f", x, x+1, x+2);
+    rv3_smul( rv3_make(m->x[i], x[0], x[1], x[2]), 10.0f); /* nm --> A */
+    atm->x = m->x[i];
+    /* guess element name */
+    atm->elem[0] = atm->atnm[0];
+    atm->elem[1] = '\0';
+  }
+  fclose(fp);
+  return m;
+ERR:
+  free(m);
+  fclose(fp);
+  return NULL;
+}
+
+/* read pdb */
+pdbmodel_t *pdbm_read(const char *fname, int verbose) 
+{
+  int i, j, ir, iro;
+  pdbmodel_t *m;
+  const char *p;
+ 
+  p = strrchr(fname, '.');
+  if (p != NULL && strcmp(p + 1, "gro") == 0) {
+    m = pdbm_readgro(fname);
+  } else {
+    m = pdbm_readpdb(fname);
+  }
+  if (m == NULL) return NULL;
+
   if (verbose)
     printf("%s has %d residues\n", fname, m->atm[m->natm-1].rid);
-  /* offset the residue id */
+
+  /* sort residue indices */
   for (ir = 0, i = 0; i < m->natm; ir++) {
     iro = m->atm[i].rid;
     for (j = i; j < m->natm && m->atm[j].rid == iro &&
-        m->atm[j].insert == m->atm[i].insert &&
         strcmp(m->atm[j].resnm, m->atm[i].resnm) == 0; j++) {
       m->atm[j].rid = ir;
     }
@@ -85,15 +170,14 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     i = j;
   }
   m->nres = ir;
-  if (verbose >= 3) {
+  
+  if (verbose >= 3)
     for (i = 0; i < m->natm; i++) {
-      atm = m->atm + i;
+      pdbatom_t *atm = m->atm + i;
       printf("%4d %4s %4d %4s %8.3f %8.3f %8.3f\n",
           atm->aid+1, atm->atnm, atm->rid+1, atm->resnm, 
           atm->x[0], atm->x[1], atm->x[2]);
     }
-  }
-  fclose(fp);
   return m;
 }
 
@@ -255,11 +339,12 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     } else if ((r->flags & hvflags) != hvflags) {
       pdbaac_pmiss_(hvflags);
     }
-    r->xn = pdbaac_x(c, i, N);
+    r->xn  = pdbaac_x(c, i, N);
     r->xca = pdbaac_x(c, i, CA);
-    r->xc = pdbaac_x(c, i, C);
+    r->xc  = pdbaac_x(c, i, C);
+    r->xo  = pdbaac_x(c, i, O);
   }
-  /* check bond-length */
+  /* check bond-length, assume backbone are present */
   for (i = 0; i < c->nres; i++) {
     real x;
     r = c->res + i;
@@ -305,6 +390,62 @@ ERR:
   if (c->x) free(c->x);
   free(c);
   return NULL;
+}
+
+/* parse helices, return number of helices nse
+ * (*pse)[0..nse*2 - 1] are start and finishing indices of helices */
+INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
+{
+  int i, nse = 0, is, it, nres = c->nres;
+  int aa, aagly, aapro;
+  int *se, *ishx, quin[5];
+  double phi, psi;
+
+  /* A. make an array of nres, identify if each residue is helix */
+  xnew(ishx, nres);
+  ishx[0] = ishx[nres-1] = 0;
+  for (i = 1; i < nres-1; i++) {
+    /* make local quintuple */
+    quin[0] = pdbaac_getaid(c, i-1, "C");  die_if(quin[0] < 0, "no C  of %d\n", i-1);
+    quin[1] = pdbaac_getaid(c, i,   "N");  die_if(quin[1] < 0, "no N  of %d\n", i);
+    quin[2] = pdbaac_getaid(c, i,   "CA"); die_if(quin[2] < 0, "no CA of %d\n", i);
+    quin[3] = pdbaac_getaid(c, i,   "C");  die_if(quin[3] < 0, "no C  of %d\n", i);
+    quin[4] = pdbaac_getaid(c, i+1, "N");  die_if(quin[4] < 0, "no N  of %d\n", i+1);
+    phi = rv3_calcdihv(NULL, c->x, quin, 0);
+    psi = rv3_calcdihv(NULL, c->x, quin+1, 0);
+    ishx[i] = (phi < 0 && psi > -100*M_PI/180 && psi < 80*M_PI/180);
+  } 
+  
+  /* B. searching for segments 
+   * make 2*pro->ngrp for start/end of each segment 
+   * range of segment k is se[2*k] <= id < se[2*k+1] */
+  xnew(se, 2);
+  aagly = pdbaaidx("GLY");
+  aapro = pdbaaidx("PRO");
+  for (i = 0, is = 0; i < nres; ) { /* try to find the helices */
+    while (i < nres && !ishx[i]) i++;
+    if (i >= nres) break; /* no more helices */
+    is = i;
+    while (ishx[i] && i < nres) i++;
+    it = i;
+    for (; is < it; is++) { /* skip terminal GLY and PRO */
+      aa = c->res[is].aa;
+      if (aa != aagly && aa != aapro)  break;
+    }
+    for (; it > is; it--) {
+      aa = c->res[it - 1].aa;
+      if (aa != aagly && aa != aapro) break;
+    }
+    if (it - is >= 4) { /* successfully find a helical segment */
+      xrenew(se, 2*(nse+1));
+      se[2*nse] = is;
+      se[2*nse+1] = it;
+      nse++;
+    } else { } /* just let go, don't increment nse */
+  } 
+  free(ishx);
+  *pse = se;
+  return nse;
 }
 
 #endif

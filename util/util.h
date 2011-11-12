@@ -34,58 +34,48 @@
 
 /* print an error message */
 INLINE void perrmsg__(const char *file, int line, const char *why,
-    int err, const char *fmt, va_list args)
+    const char *fmt, va_list args)
 {
-  if (err) fprintf(stderr, "error: ");
+  fprintf(stderr, "error: ");
   vfprintf(stderr, fmt, args);
   if (fmt[strlen(fmt) - 1] != '\n')
     fprintf(stderr, "\n"); /* add a new line if needed */
-  if (err) {
-    if (file != NULL) fprintf(stderr, "file: %s\n", file);
-    if (line > 0) fprintf(stderr, "line: %d\n", line);
-    if (why != NULL && strcmp(why, "1") != 0) 
-      fprintf(stderr, "cond: %s\n", why);
-  }
+  if (file != NULL) fprintf(stderr, "file: %s\n", file);
+  if (line >= 0) fprintf(stderr, "line: %d\n", line);
+  if (why != NULL && strcmp(why, "1") != 0) 
+    fprintf(stderr, "cond: %s\n", why);
 }
 
 #ifdef HAVEVAM
 
 INLINE void perrmsg_(const char *file, int line, const char *why,
-    int cond, int err, const char *fmt, ...)
+    int cond, const char *fmt, ...)
 {
-  va_list args;
- 
   if (cond) {
+    va_list args;
     va_start(args, fmt);
-    perrmsg__(file, line, why, err, fmt, args);
+    perrmsg__(file, line, why, fmt, args);
     va_end(args);
-    if (err) exit(1);
+    exit(1);
   }
 }
 
 #define die_if(cond, fmt, ...) \
-  perrmsg_(__FILE__, __LINE__, #cond, cond, 1, fmt, ## __VA_ARGS__)
-#define msg_if(cond, fmt, ...) \
-  perrmsg_(__FILE__, __LINE__, #cond, cond, 0, fmt, ## __VA_ARGS__)
+  perrmsg_(__FILE__, __LINE__, #cond, cond, fmt, ## __VA_ARGS__)
 #define fatal(fmt, ...)  die_if(1, fmt, ## __VA_ARGS__)
 
 #else /* !HAVEVAM */
 
-#define PERRMSG__(c, x) {                     \
-  va_list args;                               \
+#define PERRMSG__(c) {                        \
   if ((#c[0] == '1' && #c[1] == '\0') || c) { \
+    va_list args;                             \
     va_start(args, fmt);                      \
-    perrmsg__(NULL, -1, NULL, x, fmt, args);  \
+    perrmsg__(NULL, -1, NULL, fmt, args);     \
     va_end(args);                             \
-    if (#x[0] == '1') exit(1);                \
+    exit(1);                                  \
   } }
-INLINE void die_if(int cond, const char *fmt, ...) PERRMSG__(cond, 1)
-#ifdef USE_MSG_IF
-INLINE void msg_if(int cond, const char *fmt, ...) PERRMSG__(cond, 0)
-#endif
-#ifdef USE_FATAL
-void fatal(const char *fmt, ...) PERRMSG__(1, 1)
-#endif
+INLINE void die_if(int cond, const char *fmt, ...) PERRMSG__(cond)
+void fatal(const char *fmt, ...) PERRMSG__(1)
 #undef PERRMSG__
 
 #endif /* HAVEVAM */
@@ -101,6 +91,7 @@ INLINE int fexists(const char *fn)
   else { fclose(fp); return 1; }
 } 
 
+/* swap two variables */
 #ifndef xtpswap
 #define xtpswap(tp, x, y) { tp dum_; dum_ = (x); (x) = (y); (y) = dum_; }
 #endif
@@ -152,7 +143,7 @@ INLINE double lnadd(double a, double b)
   return ((c = a-b) > LN_BIG) ? a : a + log(1 + exp(-c));
 }
 
-/* log(exp(a)-exp(b)), only works for a>b */
+/* log(exp(a) - exp(b)), only works for a > b */
 INLINE double lndif(double a, double b)
 {
   double c;
@@ -204,6 +195,7 @@ INLINE char *stripx(char *s, unsigned flags)
 #define strcpy2u(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY|ZSTR_UPPER)
 #define strcpy2l(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY|ZSTR_LOWER)
 #define strcpy_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_COPY)
+#define substr(s, t, start, len) strcnv(s, t+start, len, ZSTR_COPY)
 /* concatenate strings, the last parameter is the buffer size of s,
  * unlike strncat(), in which it's the number of characters from *t* to be copied.  */
 #define strcat_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_CAT)

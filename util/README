@@ -37,6 +37,4 @@ strip(), lstrip(), rstrip():      strip white spaces
 strcpy2u(), strcpy2l():           copy with case conversions
 strcpy_sf(), strcat_sf():         safely copy and cat
 strcmpnc(), strncmpnc:            compare strings without case
-
-NOTE:
-substr(s, t, start, len) == strcpy_sf(s, t+start, len+1)
+substr(s, t, start, len)          sub string == strcpy_sf(s, t+start, len+1)

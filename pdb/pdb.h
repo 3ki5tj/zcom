@@ -11,7 +11,7 @@
 typedef struct {
   int aid; /* atom index */
   int rid; /* residue index */
-  int insert;
+  int insert; /* PDB insertion code, column 27 */
   char atnm[8];
   char resnm[8];
   char elem[4];
@@ -33,7 +33,7 @@ typedef struct {
   int nat; /* number of atoms */
   int id[32]; /* indices to the coordinate array */
   unsigned long flags;
-  real *xca, *xn, *xc;
+  real *xca, *xn, *xc, *xo;
 } pdbaar_t; /* amino-acid residues */
 
 typedef struct {
@@ -57,7 +57,11 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
 #define pdbaac_free(c) { free(c->res); free(c->x); free(c); }
 #define pdbaac_x(c, i, nm) pdbaac_getx(c, i, #nm)
 
-#define AA_BACKBONE 0x7
+#define AA_CA         0x1
+#define AA_N          0x2
+#define AA_C          0x4
+#define AA_BACKBONE   (AA_CA | AA_N | AA_C)
+#define AA_MAINCHAIN  (AA_BACKBONE | AA_O)
 #define AA_H2   29
 #define AA_H3   30
 #define AA_OXT  31
@@ -168,62 +172,6 @@ INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
     }
   }
   return out;
-}
-
-/* parse helices, return number of helices nse
- * (*pse)[0..nse*2 - 1] are start and finishing indices of helices */
-INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
-{
-  int i, nse = 0, is, it, nres = c->nres;
-  int aa, aagly, aapro;
-  int *se, *ishx, quin[5];
-  double phi, psi;
-
-  /* A. make an array of nres, identify if each residue is helix */
-  xnew(ishx, nres);
-  ishx[0] = ishx[nres-1] = 0;
-  for (i = 1; i < nres-1; i++) {
-    /* make local quintuple */
-    quin[0] = pdbaac_getaid(c, i-1, "C");  die_if(quin[0] < 0, "no C  of %d\n", i-1);
-    quin[1] = pdbaac_getaid(c, i,   "N");  die_if(quin[1] < 0, "no N  of %d\n", i);
-    quin[2] = pdbaac_getaid(c, i,   "CA"); die_if(quin[2] < 0, "no CA of %d\n", i);
-    quin[3] = pdbaac_getaid(c, i,   "C");  die_if(quin[3] < 0, "no C  of %d\n", i);
-    quin[4] = pdbaac_getaid(c, i+1, "N");  die_if(quin[4] < 0, "no N  of %d\n", i+1);
-    phi = rv3_calcdihv(NULL, c->x, quin, 0);
-    psi = rv3_calcdihv(NULL, c->x, quin+1, 0);
-    ishx[i] = (phi < 0 && psi > -100*M_PI/180 && psi < 80*M_PI/180);
-  } 
-  
-  /* B. searching for segments 
-   * make 2*pro->ngrp for start/end of each segment 
-   * range of segment k is se[2*k] <= id < se[2*k+1] */
-  xnew(se, 2);
-  aagly = pdbaaidx("GLY");
-  aapro = pdbaaidx("PRO");
-  for (i = 0, is = 0; i < nres; ) { /* try to find the helices */
-    while (i < nres && !ishx[i]) i++;
-    if (i >= nres) break; /* no more helices */
-    is = i;
-    while (ishx[i] && i < nres) i++;
-    it = i;
-    for (; is < it; is++) { /* skip terminal GLY and PRO */
-      aa = c->res[is].aa;
-      if (aa != aagly && aa != aapro)  break;
-    }
-    for (; it > is; it--) {
-      aa = c->res[it - 1].aa;
-      if (aa != aagly && aa != aapro) break;
-    }
-    if (it - is >= 4) { /* successfully find a helical segment */
-      xrenew(se, 2*(nse+1));
-      se[2*nse] = is;
-      se[2*nse+1] = it;
-      nse++;
-    } else { } /* just let go, don't increment nse */
-  } 
-  free(ishx);
-  *pse = se;
-  return nse;
 }
 
 #endif
