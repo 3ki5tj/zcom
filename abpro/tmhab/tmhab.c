@@ -32,6 +32,7 @@ int tmh_guesserange = 0; /* guess energy range */
 double tmh_tps = 0.5; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
+double tmh_elimit = 1e9;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
 
 /* parameters for guess the erange */
@@ -90,6 +91,7 @@ static int loadcfg(const char *fn)
   CFGGETI(tmh_annealcnt);
   CFGGETD(tmh_erg0margin);
   CFGGETD(tmh_erg1margin);
+  CFGGETD(tmh_elimit);
   CFGGETI(tmh_teql); CFGGETI(tmh_tctrun); CFGGETI(tmh_trep);
 
   CFGGETI(tmh_dhdeorder);
@@ -130,7 +132,7 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
       ab_vrescale(ab, (real) tmh_tps, (real)thermdt);
     }
     if (t % 1000 == 0 && ab->lgcon && ab->lgact < ab->lgcnt)
-      ab_updconstr(ab);    
+      ab_updconstr(ab, 0);
     if (t > teql) av_add(av, ab->epot);
     if (trep > 0 && t % trep == 0) {
       fprintf(stderr, "t = %g, tp = %g, epot %g, ekin %g, lgc %d/%d\n", 
@@ -173,7 +175,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
     if (++it % nstmv == 0) {
       it = 0;
       if (ab->lgcon && ab->lgact < ab->lgcnt)
-        ab_updconstr(ab);
+        ab_updconstr(ab, 0);
       /* tweak updating factor by tps/tp */
       tmh_ezmove(tmh, ab->epot, tmh_tps/tmh->tp, tmh_lgvdt);
     }
@@ -279,15 +281,18 @@ int main(int argc, char **argv)
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg, 
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
+  tmh->elimit = tmh_elimit;
   tmh_initwlcvg(tmh, tmh_ampmax, sqrt(0.1), 0.0, tmh_ampc);
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;
   tmh->dhdemax = tmh_dhdemax;
 
-  if (isctn && tmh_load(tmh, fnehis, fndhde, &amp, &step0) != 0) {
-    fprintf(stderr, "cannot load tmh\n");
-    return -1;
+  if (isctn) {
+    if (tmh_load(tmh, fnehis, fndhde, &amp, &step0) != 0) {
+      fprintf(stderr, "cannot load tmh\n");
+      return -1;
+    }
   } else {
     tmh_settp(tmh, tmh_tps);
   }

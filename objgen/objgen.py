@@ -36,8 +36,6 @@ Commands of an object:
 
 Commands of an item:
   * $def:     default value for a variable,
-              for a string variable, the default string should be double quoted,
-              e.g., $def: "input.txt";
               if the variable is a dynamic/static array, this value
               applies to array members
 

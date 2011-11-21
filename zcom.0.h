@@ -82,6 +82,8 @@
 #ifndef INLINE
   #if defined(__GNUC__) || defined(__xlC__)
     #define INLINE STRCLS __inline__
+  #elif defined(__INTEL_COMPILER)
+    #define INLINE STRCLS __inline
   #elif defined(_MSC_VER) || defined(__BORLANDC__)
     #define INLINE __inline STRCLS
   #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
@@ -115,6 +117,9 @@
   #pragma warning(disable:981) /* unspecified order warning */
   #pragma warning(disable:177) /* unreferenced function */
   #pragma warning(disable:161) /* unrecognized #pragma, for omp */
+#elif defined(__GNUC__) && (__GNUC__ >= 4 && __GNUC_MINOR__ >= 2) 
+  #pragma GCC diagnostic ignored "-Wunknown-pragmas"
+  #pragma GCC diagnostic ignored "-Wvariadic-macros"
 #endif
 
 #ifdef _MSC_VER

@@ -16,6 +16,7 @@ typedef struct {
   int en; /* number of energy bins */
   double erg0, erg1; /* energy range (erg0, erg1) */
   double derg; /* bin size for the updating energy range */
+  double elimit; /* energy limit */
   int ergn; /* number of the updating energy bins */
   double scl; /* prefactor in effective Hamiltonian */
   double dergdt; /* (erg1 - erg0)/(tp1 - tp0) */
@@ -28,7 +29,7 @@ typedef struct {
   double *lnz; /* partition function */
   double *lng; /* density of states */
   double *mh; /* modified Hamiltonian  */
-
+  unsigned flags; /* flags */
   wlcvg_t *wl; /* Wang-Landau convergence */
 } tmh_t;
 
@@ -51,50 +52,50 @@ int tmh_calcdos(tmh_t *m, int itmax, double tol,
 /* set the current temperature */
 INLINE void tmh_settp(tmh_t *m, double tp)
 {
-#ifndef TMH_NOCHECK
   die_if ((m->tp1 - tp) * m->dtp < 0.0 || (tp - m->tp0) * m->dtp < 0.0, 
       "temperature %g not in (%g, %g), dtp %g", tp, m->tp0, m->tp1, m->dtp);
-#endif
   m->tp = tp;
   m->itp = (int)((m->tp - m->tp0)/m->dtp);
+  if (m->itp >= m->tpn) m->itp = m->tpn - 1;
   m->ec = m->erg0 + (m->tp - m->tp0)*m->dergdt;
   m->iec = (int)((m->ec - m->erg0)/m->derg);
+  if (m->iec >= m->ergn) m->iec = m->ergn - 1;
 }
 
 /* return dH/dE at given energy 'erg', which should be the current potential energy */
 INLINE double tmh_getdhde(tmh_t *m, double erg)
 {
   double erg0 = m->erg0, erg1 = m->erg1, derg = m->derg, *dhde = m->dhde, x, ix;
-  int ergn = m->ergn, ie;
+  int ergn = m->ergn, ie, order = m->dhdeorder;
 
   if (erg <= erg0) return dhde[0];
-  else if (erg >= erg1) return dhde[ergn];
-  x = modf((erg - erg0) / derg, &ix);
-  ie = (int) ix;
-  return m->dhdeorder == 0 ? dhde[ie] : dhde[ie] * (1 - x) + dhde[ie + 1] * x;
+  else if (erg >= erg1) return dhde[order ? ergn : ergn - 1];
+  if (order == 0) {
+    return dhde[ (int)( (erg - erg0) /derg) ];
+  } else {
+    x = modf((erg - erg0) / derg, &ix);
+    ie = (int) ix;
+    return dhde[ie] * (1 - x) + dhde[ie + 1] * x;
+  }
 }
 
+#define tmh_updatedhde(m, erg, amp) tmh_updhde(m, (erg - m->ec) * amp)
 /* update dH/dE curve
  * Note: the location of updating correspond to m->ec instead of erg */
-INLINE void tmh_updatedhde(tmh_t *m, double erg, double amp)
+INLINE void tmh_updhde(tmh_t *m, double del)
 {
-  double del = amp * (erg - m->ec);
-
 #ifdef TMH_NOCHECK
   #define TMH_UPDHDE(i, del) m->dhde[i] += del; 
 #else
   #define TMH_UPDHDE(i, del) { \
-  m->dhde[i] += del; \
-  if (m->dhde[i] < m->dhdemin) \
-    m->dhde[i] = m->dhdemin; \
-  else if (m->dhde[i] > m->dhdemax) \
-    m->dhde[i] = m->dhdemax; }
+  double k = m->dhde[i] + del; \
+  if (k < m->dhdemin) k = m->dhdemin; \
+  else if (k > m->dhdemax) k = m->dhdemax; \
+  m->dhde[i] = k; }
 #endif
 
   if (m->dhdeorder == 0) {
     TMH_UPDHDE(m->iec, del);
-    if (m->iec == m->ergn - 1) /* last bin */
-      m->dhde[m->ergn] = m->dhde[m->iec];
   } else {
     del *= .5;
     TMH_UPDHDE(m->iec, del);
@@ -102,15 +103,8 @@ INLINE void tmh_updatedhde(tmh_t *m, double erg, double amp)
   }
 }
 
-/* update dH/dE curve with a diffusive force */
-INLINE void tmh_diffusedhde(tmh_t *m, double amp)
-{
-  die_if (m->dhdeorder == 0, "not for order %d", m->dhdeorder);
-  if (m->iec > 0) TMH_UPDHDE(m->iec, amp);
-  if (m->iec < m->ergn) TMH_UPDHDE(m->iec + 1, -amp);
-}
-
-INLINE void tmh_eadd(tmh_t *m, double erg)
+#define tmh_eadd(m, erg) tmh_eaddw(m, erg, 1.0)
+INLINE void tmh_eaddw(tmh_t *m, double erg, double w)
 {
   int ie;
 #ifndef TMH_NOCHECK
@@ -123,66 +117,67 @@ INLINE void tmh_eadd(tmh_t *m, double erg)
   die_if (m->itp > m->tpn, "itp = %d, tpn = %d, tp = %g, dtp = %g\n", 
       m->itp, m->tpn, m->tp, m->dtp);
 #endif
-  m->tpehis[m->itp*m->en + ie] += 1.;
+  m->tpehis[m->itp*m->en + ie] += w;
 }
 
 /* compute dH = H(e1) - H(e0) from integrating the dhde curve */
 INLINE double tmh_hdif(tmh_t *m, double e1, double e0)
 {
-  int ie, iel, ieh, sgn;
+  int ie, iel, ieh, sgn, order = m->dhdeorder, ergn = m->ergn;
   double dh = 0, de, k, el0, eh0, el, eh;
+  double erg0 = m->erg0, erg1 = m->erg1, derg = m->derg, *dhde = m->dhde;
 
   /* ensure e1 > e0 */
   if (e1 < e0) { eh = e0; el = e1; sgn = -1; }
   else { eh = e1; el = e0; sgn = 1; }
 
-  if (eh < m->erg0) { /* first energy bin */
-    dh = (eh - el) * m->dhde[0];
-  } else if (el > m->erg1) { /* last energy bin */
-    dh = (eh - el) * m->dhde[m->ergn];
+  if (eh < erg0) { /* first energy bin */
+    dh = (eh - el) * dhde[0];
+  } else if (el > erg1) { /* last energy bin */
+    dh = (eh - el) * dhde[order ? ergn : ergn - 1];
   } else {
     /* energy index */
-    if (el < m->erg0) {
-      dh += (m->erg0 - el) * m->dhde[0];
-      el = m->erg0 + 1e-8;
+    if (el < erg0) {
+      dh += (erg0 - el) * dhde[0];
+      el = erg0;
       iel = 0;
     } else {
-      iel = (int)((el - m->erg0) / m->derg);
+      iel = (int)((el - erg0) / derg);
     }
-    if (eh >= m->erg1) {
-      dh += (eh - m->erg1) * m->dhde[m->ergn];
-      eh = m->erg1 - 1e-8;
-      ieh = m->ergn - 1;
+    if (eh > erg1) {
+      dh += (eh - erg1) * dhde[order ? ergn : ergn - 1];
+      eh = erg1;
+      ieh = ergn - 1;
     } else {
-      ieh = (int)((eh - m->erg0) / m->derg);
+      ieh = (int)((eh - erg0) / derg);
     }
-    if (m->dhdeorder == 0) { /* zeroth order: dhde is constant within a bin */
+    if (order == 0) { /* zeroth order: dhde is constant within a bin */
       if (iel == ieh) {
-        dh += (eh - el) * m->dhde[iel];
+        dh += (eh - el) * dhde[iel];
       } else if (iel < ieh) {
         /* dh at the two terminal energy bin */
-        dh += (m->erg0 + (iel+1)*m->derg - el) * m->dhde[iel]
-            + (eh - (m->erg0 + m->derg*ieh)) * m->dhde[ieh];
+        dh += (erg0 + (iel+1)*derg - el) * dhde[iel]
+            + (eh - (erg0 + derg*ieh)) * dhde[ieh];
         for (ie = iel+1; ie < ieh; ie++) /* integrate dH/dE */
-          dh += m->dhde[ie] * m->derg;
+          dh += dhde[ie] * derg;
       }
     } else { /* first order: dhde is linear to erg */
       if (iel == ieh) {
-        k = (m->dhde[iel+1] - m->dhde[iel]) / m->derg;
-        el0 = m->erg0 + iel * m->derg;
-        dh += (eh - el) * (m->dhde[iel] + k * (.5f*(el+eh) - el0));
+        k = (dhde[iel+1] - dhde[iel]) / derg;
+        el0 = erg0 + iel * derg;
+        dh += (eh - el) * (dhde[iel] + k * (.5f*(el+eh) - el0));
       } else if (iel < ieh) {
         /* dh at the two terminal energy bin */
-        el0 = m->erg0 + (iel + 1) * m->derg;
+        el0 = erg0 + (iel + 1) * derg;
         de = el0 - el;
-        k = (m->dhde[iel + 1] - m->dhde[iel]) / m->derg;
-        dh += de * (m->dhde[iel + 1] - .5 * k * de);
-        eh0 = m->erg0 + m->derg * ieh;
+        k = (dhde[iel + 1] - dhde[iel]) / derg;
+        dh += de * (dhde[iel + 1] - .5 * k * de);
+        eh0 = erg0 + derg * ieh;
         de = eh - eh0;
-        k = (m->dhde[ieh + 1] - m->dhde[ieh]) / m->derg;
-        dh += de * (m->dhde[ieh] + .5 * k * de);
+        k = (dhde[ieh + 1] - dhde[ieh]) / derg;
+        dh += de * (dhde[ieh] + .5 * k * de);
         for (ie = iel + 1; ie < ieh; ie++) /* integrate dH/dE */
-          dh += .5 * (m->dhde[ie] + m->dhde[ie + 1]) * m->derg;
+          dh += .5 * (dhde[ie] + dhde[ie + 1]) * derg;
       }
     }
   }
@@ -223,6 +218,27 @@ INLINE int tmh_langvmove(tmh_t *m, double dh, double lgvdt)
   return 0;
 }
 
+/* linearly set the temperature according to erg */
+INLINE void tmh_erg2tp(tmh_t *m, double erg)
+{
+  if (erg < m->erg0) {
+    m->ec = m->erg0;
+    m->iec = m->dhdeorder ? -1 : 0;
+    m->tp = m->tp0;
+    m->itp = 0; 
+  } else if (erg > m->erg1) {
+    m->ec = m->erg1;
+    m->iec = m->dhdeorder ? m->ergn : m->ergn - 1; 
+    m->tp = m->tp1;
+    m->itp = m->tpn - 1;
+  } else {
+    m->ec = erg;
+    m->iec = (int)((m->ec - m->erg0)/m->derg);
+    m->tp = m->tp0 + (erg - m->erg0)/m->dergdt; 
+    m->itp = (int)((m->tp - m->tp0)/m->dtp);
+  }
+}
+
 /* initialize amplitude of updating */
 INLINE void tmh_initwlcvg(tmh_t *m, double ampmax, double ampfac, double perc,
     double ampc)
@@ -239,9 +255,11 @@ INLINE void tmh_initwlcvg(tmh_t *m, double ampmax, double ampfac, double perc,
 INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
 {
   tmh_eadd(m, epot);
-  die_if (m->wl == NULL, "call tmh_initamp first, %p\n", (void *) m->wl);
-  wlcvg_update(m->wl, m->tp); /* compute updating amplitude */
-  tmh_updatedhde(m, epot, m->wl->lnf * famp);
+  if (fabs(epot - m->ec) < m->elimit || epot > m->erg1 || epot < m->erg0) {
+    die_if (m->wl == NULL, "call tmh_initamp first, %p\n", (void *) m->wl);
+    wlcvg_update(m->wl, m->tp); /* compute updating amplitude */
+    tmh_updatedhde(m, epot, m->wl->lnf * famp);
+  }
   return tmh_lgvmove(m, epot, lgvdt);
 }
 

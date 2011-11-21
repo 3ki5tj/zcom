@@ -9,10 +9,10 @@ bin = testem testmc
 all: $(bin)
 
 testem: testem.c $(dep)
-	$(CC) -o $@ $< $(src) 
+	$(CC) -o $@ $< 
 
 testmc: testmc.c $(dep)
-	$(CX) -o $@ $< $(src) 
+	$(CX) -o $@ $<
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin)

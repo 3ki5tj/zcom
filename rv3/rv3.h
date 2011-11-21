@@ -417,7 +417,8 @@ INLINE real rv3_dih(const real xi[], const real xj[], const real xk[], const rea
   rv3_cross(n, xkj, xkl);
   n2 = rv3_sqr(n);
   if (m2 > tol && n2 > tol) {
-    cosphi = rv3_dot(m, n)/(real)sqrt(m2*n2);
+    cosphi = rv3_dot(m, n);
+    cosphi /= (real) sqrt(m2 * n2);
     if (cosphi >= 1.f) cosphi = 1.f;
     else if (cosphi < -1.f) cosphi = -1.f;
   }

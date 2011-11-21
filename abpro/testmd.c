@@ -34,7 +34,7 @@ int main(void)
       ab_vrescale(ab, tp, thermdt);
     }
     if (it % 1000 == 0 && ab->lgcon && ab->lgact < ab->lgcnt)
-      ab_updconstr(ab);
+      ab_updconstr(ab, 0);
     if (it % 10000 == 0) 
     {
       printf("t = %4g, T = %6.4f, E = %+9.4f%+9.4f = %+9.4f constr %d/%d\n", 

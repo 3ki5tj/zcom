@@ -6,7 +6,7 @@
 #define PT2_LB 5
 //#define PT2_L 32
 #define PT2_Q 10
-#include "potts2.h"
+#include "potts2.c"
 
 /* randomly pick a site and flip it */
 static void randflip(potts_t *pt)

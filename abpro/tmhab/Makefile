@@ -1,4 +1,4 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99
+CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 # optimized compiling
 CX = icc -Wall -O3 -g -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
@@ -15,7 +15,7 @@ tmhab_d: tmhab.c $(dep)
 	$(CC) -o $@ $< 
 
 zcom.h::
-	cd .. && python ./mk2d.py && cd tmhab
+	cd ../../abpro && python ./mk2d.py && cd tmhab
 	cd ../.. && python ./assemble.py -a -v -1
 
 clean:

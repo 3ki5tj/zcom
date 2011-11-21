@@ -1,4 +1,4 @@
-CC = gcc -O0 -g3 -Wall -Wextra -pedantic
+CC = gcc -O0 -g3 -Wall -Wextra -pedantic -Wno-variadic-macros
 CX = icc -O3 -Wall
 usbdir = /media/RII
 prj = zcom

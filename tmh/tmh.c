@@ -33,14 +33,17 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   m->erg0 = erg0;
   m->erg1 = erg0 + dblround(erg1 - erg0, derg);
   m->ergn = (int)((m->erg1 - m->erg0)/m->derg + .5);
+  m->elimit = 1e9; /* default with no elimit */
 
   /* dhde parameters */
   m->dhdeorder = dhdeorder;
   m->dhdemin = 0.1;
   m->dhdemax = 10.0;
-  xnew(m->dhde, m->ergn + 1);
-  for (i = 0; i <= m->ergn; i++)
+  /* to enable dhde[-1] to dhde[ergn + 1] */
+  xnew(m->dhde, m->ergn + 3);
+  for (i = 0; i < m->ergn + 3; i++)
     m->dhde[i] = 1.;
+  m->dhde++; 
 
   die_if((tp1 - tp0)*dtp < 0, "Error: tp0 %g, tp1 %g, dtp %g\n", tp0, tp1, dtp);
   if (fabs(dtp) > 0) { /* dtp is explicitly specified */
@@ -54,15 +57,17 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
     m->tpn = m->ergn;
     m->dtp = (m->tp1 - m->tp0)/m->tpn * (1. + 1e-12);
   }
-  xnew(m->tpehis, m->tpn*m->en);
+  xnew(m->tpehis, m->tpn * m->en);
 
   m->ensexp = ensexp;
-  tmh_settp(m, (m->tp0+m->tp1)*.5);
+  tmh_settp(m, (m->tp0 + m->tp1) * .5);
   m->dergdt = (m->erg1 - m->erg0)/(m->tp1 - m->tp0);
 
   xnew(m->lnz, m->tpn);
   xnew(m->lng, m->en);
-  xnew(m->mh, m->en+1);
+  xnew(m->mh, m->en + 1);
+  for (i = 0; i <= m->en; i++)
+    m->mh[i] = m->emin + i * m->de;
 
   m->wl = NULL;
   return m;
@@ -71,7 +76,7 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
 void tmh_close(tmh_t *m)
 {
   if (m == NULL) return;
-  free(m->dhde);
+  free(m->dhde - 1);
   free(m->tpehis);
   free(m->lnz);
   free(m->lng);
@@ -99,6 +104,7 @@ int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t)
       m->tp0,  m->dtp,  m->tpn,
       m->ensexp, m->dhdeorder,
       amp, t, m->tp, nupd, lnfwl, lnfc);
+  if (m->dhdeorder == 0) m->dhde[m->ergn] = m->dhde[m->ergn - 1];
   for (ie = 0; ie <= m->ergn; ie++) {
     fprintf(fp, "%g %g\n", m->erg0 + ie*m->derg, m->dhde[ie]);
   }
@@ -106,7 +112,7 @@ int tmh_savedhde(tmh_t *m, const char *fn, double amp, double t)
   return 0;
 }
 
-/* read dhde and overall energy distribution */
+/* read the dhde curve and wlcvg data */
 int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
 {
   int ie, ergn, en, ver, tpn, dhdeorder, next;
@@ -158,7 +164,7 @@ int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
     wlcvg_setnupd(m->wl, nupd, lnfwl, lnfc);
   }
 
-  for (ie = 0; ie < m->ergn; ie++) {
+  for (ie = 0; ie <= m->ergn; ie++) {
     if (fgets(s, sizeof s, fp) == NULL) {
       fprintf(stderr, "cannot read line %d\n", ie);
       goto ERR;
@@ -247,7 +253,7 @@ int tmh_savetp(tmh_t *m, const char *fn)
 }
 
 /* calculate the modified Hamiltonian */
-static int tmh_calcmh(tmh_t *m)
+INLINE int tmh_calcmh(tmh_t *m)
 {
   int i, en = m->en;
   double erg, hm, dh, de = m->de, emin = m->emin;

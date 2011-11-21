@@ -1,4 +1,5 @@
-/* Tempering with modified Hamiltonian on Potts model */
+/* Tempering with modified Hamiltonian on Potts model
+ * simple version */
 #define PT2_LB 5
 #define PT2_Q  10
 #define L (1 << PT2_LB)
@@ -115,95 +116,6 @@ static int tmhrun(tmh_t *m, potts_t *pt, double opinit, double trun, double t,
   return 0;
 }
 
-/* compile mh according to dhde, similar to tmh_caclmh()
- * for dhdeorder == 0, assume EDEL = 1.0 */
-INLINE void tmh_calcmh0(tmh_t *m)
-{
-/*
-  int i, en = m->en;
-  for (m->mh[0] = EMIN, i = 0; i < en; i++)
-    m->mh[i+1] = m->mh[i] + tmh_getdhde(m, EMIN + i * EDEL);
-*/
-  int i, j, k, en = m->en, i0 = (int)(m->erg0 - EMIN + .5), di = (int)(m->derg + .5);
-  double x = EMIN, dh = m->dhde[0];
-
-  for (m->mh[i = 0] = x; i < i0; ) m->mh[++i] = (x += dh);
-  for (j = 0; j < m->ergn; j++)
-    for (dh = m->dhde[j], k = 0; k < di; k++)
-      m->mh[++i] = (x += dh);
-  for (; i < en; ) m->mh[++i] = (x += dh);
-}
-
-unsigned mhproba[ECNT][5];
-
-/* compile transition probability under modified transitions */
-static void tmh_calcproba(tmh_t *m)
-{
-  int e, ie, ie1, de;
-  double bet, x;
-
-  for (e = EMIN; e <= EMAX; e++) {
-    ie = e - EMIN;
-    tmh_erg2tp(m, e);
-    bet = bstyle ? m->tp : 1/m->tp;
-    mhproba[ie][0] = 0xffffffffu;
-    for (de = 1; de <= 4; de++) {
-      ie1 = ie + de;
-      if (ie1 >= ECNT) {
-        mhproba[ie][de] = 0;
-      } else if (m->mh[ie1] <= m->mh[ie]) {
-        mhproba[ie][de] = 0xffffffffu;
-      } else {
-        x = exp(-bet * (m->mh[ie1] - m->mh[ie]));
-        mhproba[ie][de] = (unsigned)(0xffffffffu * x);
-      }
-    }
-  }
-}
-
-typedef struct {
-  double ec;
-  int iec;
-  int itp;
-  double tp;
-  double bet;
-} e2tdata_t;
-
-e2tdata_t e2tarr[ECNT];
-
-static void tmh_calce2tarr(tmh_t *m)
-{
-  int e, ie;
-  for (e = EMIN; e <= EMAX; e++) {
-    tmh_erg2tp(m, e);
-    ie = e - EMIN;
-    e2tarr[ie].ec = m->ec;
-    e2tarr[ie].iec = m->iec;
-    e2tarr[ie].tp = m->tp;
-    e2tarr[ie].itp = m->itp;
-    e2tarr[ie].bet = bstyle ? m->tp : 1.0/m->tp;
-  }
-}
-
-/* static energy move */
-INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta)
-{
-  int id, so, sn, de, nb[PT2_Q], acc;
-  double dh;
-
-  PT2_PICK(pt, id, nb);
-  PT2_NEWFACE(pt, id, so, sn); /* so --> sn */
-  de = nb[so] - nb[sn];
-  if (de > 0) { /* avoid calling hdif() if possible */
-    int eo = pt->E;
-    int en = eo + de;
-    dh = m->mh[en - EMIN] - m->mh[eo - EMIN]; /* modified Hamiltonian */
-    acc = (dh <= 0) || (rnd0() < exp(-dh*beta));
-  } else acc = 1;
-  if (acc) { PT2_FLIP(pt, id, so, sn, nb); return de; }
-  else return 0;
-}
-
 /* entropic sampling */
 static int tmhrun_ent0(tmh_t *m, potts_t *pt, double trun, double t,
     logfile_t *log)
@@ -235,79 +147,6 @@ static int tmhrun_ent0(tmh_t *m, potts_t *pt, double trun, double t,
   tmh_save(m, fntp, fnehis, fndhde, amp, t);
   return 0;
 }
-
-/* entropic sampling */
-static int tmhrun_ent1(tmh_t *m, potts_t *pt, double trun, double t,
-    logfile_t *log)
-{
-  double bet, amp = entampmax, *ehis;
-  int it, ie, de, wt = 1;
-
-/* map energy to temperature, set ec, iec, tp, itp */
-#define E2T(ie) { e2tdata_t *e2t = e2tarr + (ie); \
-  m->ec = e2t->ec; m->iec = e2t->iec; m->tp = e2t->tp; m->itp = e2t->itp; bet = e2t->bet; }
-
-  tmh_calce2tarr(m);
-  E2T(pt->E - EMIN);
-  ehis = m->tpehis + m->itp * m->en;
-  tmh_calcmh0(m);
-
-  /* production run */
-  for (; t < trun; ) {
-    for (it = 0; it < BLOCK; it++) {
-      de = tmhmove0(m, pt, bet);
-      if (de != 0) {
-        ie = pt->E - EMIN;
-        ehis[ie] += wt; wt = 1;
-        tmh_updhde(m, (pt->E - m->ec) * amp);
-        E2T(ie);
-        //tmh_erg2tp(m, pt->E); bet = bstyle ? m->tp : 1/m->tp;
-        ehis = m->tpehis + m->itp * m->en; /* offset pointer for histogram */
-      } else wt++;
-    }
-
-    amp = dblmin(entampc/++t, entampmax);
-    if ((int) fmod(t, 1000) == 0) {
-      tmh_calcmh0(m);
-      if ((int) fmod(t, trep) == 0)
-        log_printf(log, "%g %d %g %g %g\n", t, pt->E, 1.0/bet, m->dhde[m->iec], amp);
-    }
-  }
-  tmh_erg2tp(m, pt->E);
-  tmh_save(m, fntp, fnehis, fndhde, amp, t);
-  return 0;
-}
-
-/* static energy move, for entropic sampling only
- * assumes a static dhde */
-INLINE int tmhmove1(potts_t *pt)
-{
-  int id, so, sn, de, nb[PT2_Q];
-
-  PT2_PICK(pt, id, nb);
-  PT2_NEWFACE(pt, id, so, sn); /* so --> sn */
-  de = nb[so] - nb[sn];
-  if (de <= 0 || mtrand() <= mhproba[pt->E - EMIN][de]) {
-    PT2_FLIP(pt, id, so, sn, nb); return de;
-  } else return 0;
-}
-
-/* entropic sampling: constant dhde, only for verify */
-static int tmhrun_entvrf(tmh_t *m, potts_t *pt, double trun, double t,
-    logfile_t *log)
-{
-  int it;
-
-  tmh_calcmh0(m);
-  tmh_calcproba(m);
-  /* production run */
-  for (; t < trun; ) {
-    for (it = 0; it < BLOCK; it++) tmhmove1(pt);
-    if ((int) fmod(++t, trep) == 0) log_printf(log, "%g %d\n", t, pt->E);
-  }
-  return 0;
-}
-
 
 int main(void)
 {
@@ -355,13 +194,7 @@ int main(void)
 
   if (entropic) {
     die_if (dhdeorder != 0, "must use zeroth order for entropic sampling\n");
-    if (update) {
-      tmhrun_ent1(m, pt, trun, t0, log);
-      //tmhrun_ent0(m, pt, trun, t0, log);
-    } else {
-      tmh_loaddhde(m, fndhde, &amp, &t0);
-      tmhrun_entvrf(m, pt, trun, t0, log);
-    }
+    tmhrun_ent0(m, pt, trun, t0, log);
   } else {
     tmhrun(m, pt, opinit, trun, t0, log);
   }

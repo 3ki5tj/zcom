@@ -17,7 +17,6 @@ int milcshake = 0;
 int sh_itmax = 100000;
 double sh_tol = 1e-10;
 int localgeom = 0;
-int localevel = 1;
 
 /* get dimension and model from file */
 static int getinfo(const char *fn, int *d, int *model, int *seqid)
@@ -47,7 +46,6 @@ static void doargs(int argc, char **argv)
   argopt_regopt(ao, "-w", "%b", &overwrite, "overwrite the file, if significantly minimized");
   argopt_regopt(ao, "-W", "%b", &Overwrite, "always overwrite the file");
   argopt_regopt(ao, "-m", "%b", &milcshake, "use MILCSHAKE");
-  argopt_regopt(ao, "-q", "%d", &localevel, "local geometry level");
   argopt_regopt(ao, "-l", "%b", &localgeom, "display local geometry info.");
   argopt_regopt(ao, "-v", "%b", &verbose, "be verbose");
   argopt_reghelp(ao, "-h");
@@ -108,16 +106,23 @@ int main(int argc, char **argv)
     ab_writepos(ab, ab->lmx, NULL, fnpos);
   }
   if (localgeom) {
+    int localevel;
+
+    /* print the native contact information */
     ab_printcontact(ab);
-    ab_initconstr(ab, localevel); /* initialize constraints */
-    ab_updconstr(ab); /* add constraints */
-    printf("established %d/%d constraints, model %d, %dD\n", ab->lgact, ab->lgcnt, ab->model, ab->d);
-    flags = verbose ? AB_VERBOSE : 0;
-    E = ab_localmin(ab, ab->x, 1000, tol, 100, sh_tol, flags);
-    ab->lgcon = 0; /* turn off */
-    flags |= milcshake ? AB_MILCSHAKE : 0;
-    Em = ab_localmin(ab, ab->x, itmax, tol, sh_itmax, sh_tol, flags);
-    printf("local geometry: E %.8f (with constraints) -> %.8f\n", E, Em);
+
+    for (localevel = 1; localevel <= 2; localevel++) {
+      ab_initconstr(ab, localevel); /* initialize constraints */
+      ab_updconstr(ab, 100.0); /* force to add all constraints */
+      printf("established %d/%d constraints, model %d, %dD\n", ab->lgact, ab->lgcnt, ab->model, ab->d);
+      flags = verbose ? AB_VERBOSE : 0;
+      E = ab_localmin(ab, ab->x, 1000, tol, 100, sh_tol, flags);
+
+      ab->lgcon = 0; /* turn off lgc */
+      flags |= milcshake ? AB_MILCSHAKE : 0;
+      Em = ab_localmin(ab, ab->x, itmax, tol, sh_itmax, sh_tol, flags);
+      printf("local geometry bias %d: E %.8f (with constraints) -> %.8f\n", localevel, E, Em);
+    }
   }
   ab_close(ab);
   return 0;

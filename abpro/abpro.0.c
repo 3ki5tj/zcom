@@ -1019,9 +1019,8 @@ INLINE void ab_initconstr(abpro_t *ab, int level)
   int i, di, n = ab->n;
   real dr0, rref[2][2] = {{1.115f, 1.16f}, {1.09f, 1.2f}}; /* empirical constraint distances */
 
-  if (level < 0) {
-    level = 3; /* turn on all optimizations */
-    if (ab->model == 2) level &= ~2;
+  if (level < 0) { /* default level */
+    if (ab->model == 2) level = 1; else level = 3;
   }
   if (ab->d == 2 || level == 0) return;
   ab->lgcnt = 0;
@@ -1045,18 +1044,19 @@ INLINE void ab_initconstr(abpro_t *ab, int level)
 }
 
 /* update constraints if atoms are close enough*/
-INLINE void ab_updconstr(abpro_t *ab)
+INLINE void ab_updconstr(abpro_t *ab, double r2max)
 {
   int i, j, k, lgcnt = ab->lgcnt;
   real dr2;
 
   if (!ab->lgcon) return;
+  if (r2max <= 0) r2max = 0.3; /* default value */
   for (k = 0; k < lgcnt; k++) { /* try to turn on constraints */
     if (ab->lgc[k].on) continue;
     i = ab->lgc[k].i;
     j = ab->lgc[k].j;
     dr2 = rv3_dist2(ab->x + 3*i, ab->x + 3*j);
-    if (fabs(dr2 - ab->lgc[k].r2ref) < 0.3) {
+    if (fabs(dr2 - ab->lgc[k].r2ref) < r2max) {
       ab->lgc[k].on = 1;
       ab->lgact++;
     }

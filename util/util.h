@@ -75,7 +75,7 @@ INLINE void perrmsg_(const char *file, int line, const char *why,
     exit(1);                                  \
   } }
 INLINE void die_if(int cond, const char *fmt, ...) PERRMSG__(cond)
-void fatal(const char *fmt, ...) PERRMSG__(1)
+INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
 #undef PERRMSG__
 
 #endif /* HAVEVAM */
