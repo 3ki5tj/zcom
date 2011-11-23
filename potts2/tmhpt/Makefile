@@ -4,7 +4,7 @@ CX = icc -Wall -O3 -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = tmhpt tmhpt0
+bin = tmhpt tmhpt0 tmhpt_e
 
 all: $(bin)
 

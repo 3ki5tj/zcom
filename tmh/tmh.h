@@ -58,8 +58,12 @@ INLINE void tmh_settp(tmh_t *m, double tp)
   m->itp = (int)((m->tp - m->tp0)/m->dtp);
   if (m->itp >= m->tpn) m->itp = m->tpn - 1;
   m->ec = m->erg0 + (m->tp - m->tp0)*m->dergdt;
-  m->iec = (int)((m->ec - m->erg0)/m->derg);
-  if (m->iec >= m->ergn) m->iec = m->ergn - 1;
+  if (m->dhdeorder == 0) { /* to the bin */
+    m->iec = (int)((m->ec - m->erg0)/m->derg);
+    if (m->iec >= m->ergn) m->iec = m->ergn - 1;
+  } else { /* to the nearest bin boundary */
+    m->iec = (int)((m->ec - m->erg0)/m->derg + .5);
+  }
 }
 
 /* return dH/dE at given energy 'erg', which should be the current potential energy */
@@ -70,6 +74,7 @@ INLINE double tmh_getdhde(tmh_t *m, double erg)
 
   if (erg <= erg0) return dhde[0];
   else if (erg >= erg1) return dhde[order ? ergn : ergn - 1];
+
   if (order == 0) {
     return dhde[ (int)( (erg - erg0) /derg) ];
   } else {
@@ -85,22 +90,10 @@ INLINE double tmh_getdhde(tmh_t *m, double erg)
 INLINE void tmh_updhde(tmh_t *m, double del)
 {
 #ifdef TMH_NOCHECK
-  #define TMH_UPDHDE(i, del) m->dhde[i] += del; 
+  m->dhde[m->iec] += del; 
 #else
-  #define TMH_UPDHDE(i, del) { \
-  double k = m->dhde[i] + del; \
-  if (k < m->dhdemin) k = m->dhdemin; \
-  else if (k > m->dhdemax) k = m->dhdemax; \
-  m->dhde[i] = k; }
+  m->dhde[m->iec] = dblconfine(m->dhde[m->iec] + del, m->dhdemin, m->dhdemax);
 #endif
-
-  if (m->dhdeorder == 0) {
-    TMH_UPDHDE(m->iec, del);
-  } else {
-    del *= .5;
-    TMH_UPDHDE(m->iec, del);
-    TMH_UPDHDE(m->iec + 1, del);
-  }
 }
 
 #define tmh_eadd(m, erg) tmh_eaddw(m, erg, 1.0)
@@ -218,24 +211,29 @@ INLINE int tmh_langvmove(tmh_t *m, double dh, double lgvdt)
   return 0;
 }
 
-/* linearly set the temperature according to erg */
-INLINE void tmh_erg2tp(tmh_t *m, double erg)
+/* set ec and iec */
+INLINE void tmh_setec(tmh_t *m, double erg)
 {
+  int order = m->dhdeorder;
+
   if (erg < m->erg0) {
     m->ec = m->erg0;
-    m->iec = m->dhdeorder ? -1 : 0;
-    m->tp = m->tp0;
-    m->itp = 0; 
+    m->iec = 0;
   } else if (erg > m->erg1) {
     m->ec = m->erg1;
-    m->iec = m->dhdeorder ? m->ergn : m->ergn - 1; 
-    m->tp = m->tp1;
-    m->itp = m->tpn - 1;
+    m->iec = order ? m->ergn : m->ergn - 1; 
   } else {
+    double x = (erg - m->erg0) / m->derg;
     m->ec = erg;
-    m->iec = (int)((m->ec - m->erg0)/m->derg);
-    m->tp = m->tp0 + (erg - m->erg0)/m->dergdt; 
-    m->itp = (int)((m->tp - m->tp0)/m->dtp);
+    if (order == 0) {
+      m->iec = (int) x;
+    } else {
+      m->iec = (int) (x + .5); /* to the nearest grid */
+      if (m->iec == 1 && x - (int) x >= .5) /* high half of the first bin */
+        m->iec = 0; /* update dhde[0] */
+      else if (m->iec == m->ergn - 1 && x - (int) x < .5) /* low half of the last bin */
+        m->iec = m->ergn; /* update dhde[n] */
+    }
   }
 }
 

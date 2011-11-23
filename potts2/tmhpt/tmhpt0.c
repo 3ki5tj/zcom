@@ -24,14 +24,13 @@ double tp0 = 0.67, tp1 = 0.77, dtp = 0.001;  /* for bstyle == 0 */
 double beta0 = 1.50, beta1 = 1.33, dbeta = -0.002; /* for bstyle == 1 */
 double erg0 = -1760, erg1 = -832, derg = 32, elimit = 32;
 int tequil = 200000, tmcrun = 2000000;
-double trun = 1000000*10, trep = 100000;
-double ampmax = 1e-6, ampc = 1.0;
+double trun = 1000000*100, trep = 100000;
+double ampmax = 1e-5, ampc = 10.0;
 double lgvdt = 1e-6;
 int dhdeorder = 0;
-int entropic = 1; /* entropic sampling */
-double entampmax = 5e-4, entampc = 500.0;
+int entropic = 0; /* entropic sampling */
+double entampmax = 5e-4, entampc = 5000.0;
 int initload = 0; /* continue from a previous run */
-int update = 1; /* update dhde */
 int guesse = 0; /* guess E range */
 
 /* regular metropolis move */
@@ -97,13 +96,13 @@ static int tmhrun(tmh_t *m, potts_t *pt, double opinit, double trun, double t,
 
   tmh_settp(m, opinit);
   bet = bstyle ? m->tp : 1/m->tp;
-  for (; t <= trun; t++) {
+  for (; t < trun; t += BLOCK) {
+    amp = dblmin(ampc/(t + .1), ampmax);
     for (it = 0; it < BLOCK; it++) {
       tmhmove(m, pt, bet);
       tmh_eadd(m, pt->E + .5);
     }
-    epot = pt->E + .5;
-    amp = dblmin(ampc/t, ampmax);
+    epot = pt->E;
     if (fabs(epot - m->ec) < elimit || epot < m->erg0 || epot > m->erg1)
       tmh_updhde(m, (epot - m->ec) * amp);
     tmh_lgvmove(m, epot, lgvdt);
@@ -117,30 +116,27 @@ static int tmhrun(tmh_t *m, potts_t *pt, double opinit, double trun, double t,
 }
 
 /* entropic sampling */
-static int tmhrun_ent0(tmh_t *m, potts_t *pt, double trun, double t,
-    logfile_t *log)
+static int tmhrun_ent0(tmh_t *m, potts_t *pt, double bet,
+    double trun, double t, logfile_t *log)
 {
-  double bet, amp = entampmax, *ehis;
+  double amp = entampmax;
   int it, ie, de, wt = 1;
 
-  tmh_erg2tp(m, pt->E);
-  ehis = m->tpehis + m->itp * m->en;
-
   /* production run */
-  for (; t < trun; ) {
+  tmh_setec(m, pt->E);
+  for (; t < trun; t += BLOCK) {
+    amp = dblmin(entampc/(t + .1), entampmax);
+
     for (it = 0; it < BLOCK; it++) {
       de = tmhmove(m, pt, bet);
       if (de != 0) {
         ie = pt->E - EMIN;
-        ehis[ie] += wt; wt = 1;
+        m->tpehis[ie] += wt; wt = 1;
         tmh_updhde(m, (pt->E - m->ec) * amp);
-        tmh_erg2tp(m, pt->E);
-        bet = bstyle ? m->tp : 1/m->tp;
-        ehis = m->tpehis + m->itp * m->en; /* offset pointer for histogram */
+        tmh_setec(m, pt->E);
       } else wt++;
     }
 
-    amp = dblmin(entampc/++t, entampmax);
     if ((int) fmod(t, trep) == 0)
       log_printf(log, "%g %d %g %g %g\n", t, pt->E, 1.0/bet, m->dhde[m->iec], amp);
   }
@@ -181,20 +177,18 @@ int main(void)
     mcrun(pt, betainit, &edev0, &ar0, tequil, tmcrun, "equilibration");
   }
 
-  m = tmh_open(op0, op1, dop, erg0, erg1, derg, EMIN, EMAX + EDEL, EDEL, ensexp, dhdeorder);
+  m = tmh_open(op0, op1, dop, erg0, erg1, derg, emin, emax, de, ensexp, dhdeorder);
   printf("erange (%g, %g), active (%g, %g)\n", m->emin, m->emax, m->erg0, m->erg1);
 
   if (initload) {
     die_if (tmh_load(m, fnehis, fndhde, &amp, &t0) != 0,
       "cannot load tmh from %s\n", fnehis);
-    tmh_savedhde(m, "a.e", amp, t0);
     opinit = m->tp;
     printf("continue from t %g, op %g\n", t0, opinit);
-  } else t0 = 1.;
+  } else t0 = 0.;
 
   if (entropic) {
-    die_if (dhdeorder != 0, "must use zeroth order for entropic sampling\n");
-    tmhrun_ent0(m, pt, trun, t0, log);
+    tmhrun_ent0(m, pt, beta0, trun, t0, log);
   } else {
     tmhrun(m, pt, opinit, trun, t0, log);
   }
