@@ -219,7 +219,7 @@ int main(int argc, char **argv)
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg,
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
-  tmh_initwlcvg(tmh, tmh_ampmax, sqrt(0.1), 0.95 /* percutoff */, tmh_ampc);
+  tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.95 /* percutoff */, 0.0);
   tmh->scl = 1.0/boltz;
   printf("erange (%g, %g), active (%g, %g)\n",
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);

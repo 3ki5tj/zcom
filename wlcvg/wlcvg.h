@@ -7,8 +7,10 @@
 typedef struct {
   double lnf0;  /* lnf of the first stage, also the maximal value */
   double lnffac; /* factor to multiply on passing to another stage */
+  double lnfc;  /* lnf to be used in formula */
+  double lnfmin; /* minimal lnf */
   double lnfwl; /* lnf as given by Wang-Landau algorithm */
-  double lnfinvt, lnfc; /* lnf as given value given by lnfc/nupd; */
+  double lnfinvt; /* lnf as given value given by lnfc/nupd; */
   double lnf; /* lnf adjusted by both wl and invt */
   double perc, percutoff;
   double nupd; /* the total number of updates */
@@ -22,7 +24,7 @@ typedef struct {
 
 /* to use a pure Wang-Landau scheme, set lnfc = 0
  * to use a pure formula scheme, set percutoff = 0 */
-INLINE wlcvg_t *wlcvg_open(double lnf0, double lnffac, double percutoff, double lnfc,
+INLINE wlcvg_t *wlcvg_open(double lnfc, double lnf0, double lnffac, double percutoff, double lnfmin,
     double xmin, double xmax, double dx)
 {
   wlcvg_t *wl;
@@ -32,6 +34,7 @@ INLINE wlcvg_t *wlcvg_open(double lnf0, double lnffac, double percutoff, double 
   wl->lnf = wl->lnfwl = wl->lnf0 = lnf0;
   wl->lnffac = lnffac;
   wl->lnfc = lnfc;
+  wl->lnfmin = lnfmin;
   wl->percutoff = percutoff;
   wl->perc = 1.0;
   wl->nupd = 0.0;
@@ -84,13 +87,14 @@ INLINE double wlcvg_update(wlcvg_t *wl, double x)
   wlcvg_add(wl, x);
   if (fmod(wl->nupd, wl->nstcheck) < 0.1) /* compute histogram flatness */
     wlcvg_hsflatness(wl);
-  wl->lnf = wl->lnfinvt = wl->lnfc / wl->nupd; /* value given by formula */
-  if (wl->percutoff > 0 && wl->lnf < wl->lnfwl) { /* consult the Wang-Landau scheme */
+  wl->lnfinvt = wl->lnfc / wl->nupd; /* value given by formula */
+  if (wl->percutoff > 0 && wl->lnfinvt < wl->lnfwl) { /* consult the Wang-Landau scheme */
     wl->lnf = wl->lnfwl;
     if (wl->perc < wl->percutoff) wlcvg_shiftstage(wl);
+  } else {
+    wl->lnf = dblmin(wl->lnfinvt, wl->lnf0);
   }
-  wl->lnf = dblmin(wl->lnf0, wl->lnf); /* bound by lnf0 */
-  return wl->lnf;
+  return wl->lnf = dblmax(wl->lnf, wl->lnfmin);
 }
 
 INLINE void wlcvg_setnupd(wlcvg_t *wl, double nupd, double lnfwl, double lnfc)

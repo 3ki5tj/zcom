@@ -42,8 +42,9 @@ typedef struct {
 
 argopt_t *argopt_open(unsigned flags);
 void argopt_close(argopt_t *ao);
-#define argopt_regarg(ao, fmt, ptr, desc) argopt_regopt(ao, NULL, fmt, ptr, desc)
-int argopt_regopt(argopt_t *ao, const char *sflag,
+#define argopt_regarg(ao, fmt, ptr, desc) argopt_add(ao, NULL, fmt, ptr, desc)
+#define argopt_regopt argopt_add
+int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc);
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
 

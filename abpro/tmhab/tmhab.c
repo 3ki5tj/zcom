@@ -33,7 +33,8 @@ double tmh_tps = 0.5; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_elimit = 1e9;
-double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
+double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_ampmin = 0.0;
+double tmh_lgvdt = 2e-3;
 
 /* parameters for guess the erange */
 int tmh_annealcnt = 1;
@@ -99,6 +100,7 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_dhdemax);
   CFGGETD(tmh_ensexp);
   CFGGETD(tmh_ampmax);
+  CFGGETD(tmh_ampmin);
   CFGGETD(tmh_ampc);
   CFGGETD(tmh_lgvdt);
 
@@ -282,7 +284,7 @@ int main(int argc, char **argv)
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg, 
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
   tmh->elimit = tmh_elimit;
-  tmh_initwlcvg(tmh, tmh_ampmax, sqrt(0.1), 0.0, tmh_ampc);
+  tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.0, tmh_ampmin);
   printf("erange (%g, %g), active (%g, %g)\n", 
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;

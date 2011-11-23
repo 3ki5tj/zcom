@@ -238,14 +238,14 @@ INLINE void tmh_setec(tmh_t *m, double erg)
 }
 
 /* initialize amplitude of updating */
-INLINE void tmh_initwlcvg(tmh_t *m, double ampmax, double ampfac, double perc,
-    double ampc)
+INLINE void tmh_initwlcvg(tmh_t *m, double ampc, double ampmax, double ampfac, double perc,
+    double ampmin)
 {
   double tp0, tp1, dtp;
 
   if (m->dtp > 0) { tp0 = m->tp0; tp1 = m->tp1; dtp = m->dtp; }
   else { tp0 = m->tp1; tp1 = m->tp0; dtp = -m->dtp; }
-  m->wl = wlcvg_open(ampmax, ampfac, perc, ampc, tp0, tp1, dtp);
+  m->wl = wlcvg_open(ampc, ampmax, ampfac, perc, ampmin, tp0, tp1, dtp);
 }
 
 /* easy temperature move

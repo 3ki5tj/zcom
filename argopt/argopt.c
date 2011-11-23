@@ -105,7 +105,7 @@ static void argopt_help(argopt_t *ao)
 }
 
 /* register option: fmt = "%b" for a switch */
-int argopt_regopt(argopt_t *ao, const char *sflag,
+int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc)
 {
   opt_t *ol;

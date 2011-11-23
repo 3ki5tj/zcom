@@ -1,0 +1,38 @@
+\documentclass{article}
+\begin{document}
+
+\title{An algorithm to compute the updating factor $\alpha$}
+\maketitle
+
+This article concerns the a robust scheme of make sure a updating scheme.
+
+Algorithm of compute the updating magnitude $\alpha$.
+The formula is 
+\[
+\alpha = \min\{ \max\{\alpha_c/t, \alpha_{\mathrm{WL}} \}, \alpha_0 \}
+\]
+
+\begin{enumerate}
+\item Initialize $\alpha_{\mathrm{WL}} = \alpha_0$, $t = 1$.
+%
+In each steps, do \ref{itm:getait} to \ref{itm:inct}.
+
+\item \label{itm:getait} Compute $\alpha_t = \alpha_c/t$.
+
+\item If $\alpha_t < \alpha_{\mathrm{WL}}$, 
+      do steps \ref{itm:useawl} to \ref{itm:updawl},
+      otherwise do step \ref{itm:useait}.
+
+\item \label{itm:useawl} $\alpha = \alpha_{\mathrm{WL}}$.
+\item $\alpha_c = \alpha_{\mathrm{WL}} \, t$.
+\item Compute histogram flatness $p = |H_{\max} - H_{\min}| / |H_{\max} + H_{\min}|$.
+\item \label{itm:updawl} If $p < p_c$, $\alpha_{\mathrm{WL}} = \alpha_{\mathrm{WL}} / \sqrt{10}$.
+\item Go to step \ref{itm:inct}.
+
+\item \label{itm:useait} $\alpha = \min\{\alpha_0, \alpha_t\}$. 
+
+\item \label{itm:inct} $t = t + 1$. 
+\end{enumerate} 
+
+
+\end{document}
