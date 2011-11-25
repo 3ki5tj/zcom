@@ -33,7 +33,6 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   m->erg0 = erg0;
   m->erg1 = erg0 + dblround(erg1 - erg0, derg);
   m->ergn = (int)((m->erg1 - m->erg0)/m->derg + .5);
-  m->elimit = 1e9; /* default with no elimit */
 
   /* dhde parameters */
   m->dhdeorder = dhdeorder;
@@ -60,7 +59,7 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   xnew(m->tpehis, m->tpn * m->en);
 
   m->ensexp = ensexp;
-  tmh_settp(m, (m->tp0 + m->tp1) * .5);
+  tmh_settp(m, m->tp0 + (m->tp1 - m->tp0) * 1e-8);
   m->dergdt = (m->erg1 - m->erg0)/(m->tp1 - m->tp0);
 
   xnew(m->lnz, m->tpn);
@@ -68,6 +67,9 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   xnew(m->mh, m->en + 1);
   for (i = 0; i <= m->en; i++)
     m->mh[i] = m->emin + i * m->de;
+
+  m->elimit = 1e9; /* default with no elimit */
+  m->springk = 0.0; /* no spring */
 
   m->wl = NULL;
   return m;

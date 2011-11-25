@@ -103,8 +103,10 @@ static int tmhrun(tmh_t *m, potts_t *pt, double opinit, double trun, double t,
       tmh_eadd(m, pt->E + .5);
     }
     epot = pt->E;
-    if (fabs(epot - m->ec) < elimit || epot < m->erg0 || epot > m->erg1)
+    if (fabs(epot - m->ec) < elimit || epot < m->erg0 || epot > m->erg1) {
       tmh_updhde(m, (epot - m->ec) * amp);
+
+    }
     tmh_lgvmove(m, epot, lgvdt);
     bet = bstyle ? m->tp : 1/m->tp;
 

@@ -174,16 +174,12 @@ void glez_fullscreen(void)
   }
 }
 
-void glezInitWindow(int *argc, char **argv, const char *name)
+void glezInitWindow(int *argc, char **argv, int w, int h, const char *name)
 {
-  int h, w;
   glutInit(argc, argv);
-  h = glutGet(GLUT_SCREEN_HEIGHT);
-  if (h > 600) h = 600;
-  w = glutGet(GLUT_SCREEN_WIDTH);
-  if (w < h) h = w;
-  h = 600;
-  glutInitWindowSize(h, h);
+  w = intmin(w, glutGet(GLUT_SCREEN_HEIGHT));
+  h = intmin(h, glutGet(GLUT_SCREEN_WIDTH));
+  glutInitWindowSize(w, h);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutCreateWindow(name);
 

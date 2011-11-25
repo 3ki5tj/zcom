@@ -77,15 +77,14 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
     const char *fn)
 {
   const int version = 0;
-  const char *filename;
   FILE *fp;
   int i, r, rp, rowp, imax, imin;
   const double *p;
   double sm, *sums, fac, delta;
-  double *smtot, *htot = NULL;
+  double *smtot = NULL, *htot = NULL;
 
-  filename = (fn != NULL) ? fn : "HIST";
-  xfopen(fp, filename, "w", return -1);
+  if (fn == NULL) fn = "HIST";
+  xfopen(fp, fn, "w", return -1);
   
   sums = gethistsums_(h, rows, n, xmin, dx);
  
@@ -338,14 +337,13 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fn)
 {
   const int version = 0;
-  const char *filename;
   FILE *fp;
   int i, j, r, imax, imin, jmax, jmin, n2;
   const double *p;
   double *sums, fac, delta;
 
-  filename = (fn != NULL) ? fn : "HIST2";
-  xfopen(fp, filename, "w", return 1);
+  if (fn == NULL) fn = "HIST2";
+  xfopen(fp, fn, "w", return 1);
   
   n2 = n*n;
   sums = gethist2sums_(h, rows, n, xmin, dx);

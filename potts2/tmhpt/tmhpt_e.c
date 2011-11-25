@@ -13,7 +13,7 @@
 #define TMH_NOCHECK  /* dangerous macro */
 #include "zcom.h"
 
-int dhdeorder = 1;
+int dhdeorder = 1, easy = 1;
 double beta0 = 1.40, beta1 = 1.33, dbeta = -0.01; /* only beta0 is actually used */
 double erg0 = -1760, erg1 = -832, derg = 32;
 double trun = 1000000*100, trep = 100000, tmcrun = 2000000;
@@ -72,12 +72,33 @@ static int run(tmh_t *m, potts_t *pt, double tmcrun, double trun)
   return 0;
 }
 
+/* same as run(), but use shortcut routines */
+static int ezrun(tmh_t *m, potts_t *pt, double tmcrun, double trun)
+{
+  double t;
+  logfile_t *log = log_open("tmhpt.tr");
+
+  for (t = 1; t <= tmcrun; t++) move(m, pt, beta0);
+  tmh_initwlcvg(m, entampc, entampmax, sqrt(0.1), .95, 0, WLCVG_UPDLNFC, 1);
+  tmh_setec(m, pt->E);
+  for (t = 0; t < trun; t++) { /* production */
+    move(m, pt, beta0);
+    tmh_ezmoves(m, pt->E, 1.0);
+    if ((int) fmod(t, trep) == 0)
+      log_printf(log, "%g %d %g %g\n", t, pt->E, m->dhde[m->iec], m->wl->lnf);
+  }
+  log_close(log);
+  tmh_save(m, fntp, fnehis, fndhde, m->wl->lnf, t);
+  return 0;
+}
+
 int main(void)
 {
   potts_t *pt = pt2_open(L, PT2_Q);
   tmh_t *m = tmh_open(beta0, beta1, dbeta, erg0, erg1, derg, EMIN, EMAX + EDEL, EDEL, 2.0, dhdeorder);
   
-  run(m, pt, tmcrun, trun);
+  if (easy) ezrun(m, pt, tmcrun, trun);
+  else run(m, pt, tmcrun, trun);
 
   pt2_save(pt, fnpos);
   pt2_close(pt);

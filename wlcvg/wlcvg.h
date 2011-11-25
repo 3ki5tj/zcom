@@ -20,12 +20,12 @@ typedef struct {
   hist_t *hs;
 } wlcvg_t;
 
-#define WLCVG_UPDLNFC 0x0010
+#define WLCVG_UPDLNFC 0x0001
 
 /* to use a pure Wang-Landau scheme, set lnfc = 0
  * to use a pure formula scheme, set percutoff = 0 */
 INLINE wlcvg_t *wlcvg_open(double lnfc, double lnf0, double lnffac, double percutoff, double lnfmin,
-    double xmin, double xmax, double dx)
+    double xmin, double xmax, double dx, unsigned flags)
 {
   wlcvg_t *wl;
 
@@ -40,7 +40,7 @@ INLINE wlcvg_t *wlcvg_open(double lnfc, double lnf0, double lnffac, double percu
   wl->nupd = 0.0;
   wl->stage = 0;
   wl->nstcheck = 10 * ((int)((xmax - xmin)/dx + 0.99999999));
-  wl->flags = 0u;
+  wl->flags = flags;
   return wl;
 }
 

@@ -42,6 +42,8 @@ double tmh_tps = 0.5; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_lgvdt = 2e-3;
+int tmh_updampc = 1;
+double tmh_springk = 0.0;
 
 /* parameters for guess the erange */
 int tmh_tctrun = -1, tmh_trep = 20000;
@@ -114,7 +116,10 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_ensexp);
   CFGGETD(tmh_ampmax);
   CFGGETD(tmh_ampc);
+  CFGGETI(tmh_updampc);
   CFGGETD(tmh_lgvdt);
+
+  CFGGETD(tmh_springk);
 
   CFGGETI(tmh_srand);
   if (tmh_srand) srand((unsigned) tmh_srand);
@@ -219,7 +224,9 @@ int main(int argc, char **argv)
 
   tmh = tmh_open(tmh_tp0, tmh_tp1, tmh_dtp, tmh_erg0, tmh_erg1, tmh_derg,
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
-  tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.95 /* percutoff */, 0.0);
+  tmh->springk = tmh_springk;
+  tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.95 /* percutoff */, 
+      0.0, tmh_updampc);
   tmh->scl = 1.0/boltz;
   printf("erange (%g, %g), active (%g, %g)\n",
       tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);

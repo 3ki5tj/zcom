@@ -201,7 +201,7 @@ static void initgui(void)
 
 int main(int argc, char **argv)
 {
-  glezInitWindow(&argc, argv, "C-alpha Go model");
+  glezInitWindow(&argc, argv, 600, 600, "C-alpha Go model");
   glezMenuKeyFunc(menu, NULL, menukey);
   glutDisplayFunc(display);
   doargs(argc, argv);

@@ -96,9 +96,29 @@ INLINE int fexists(const char *fn)
 #define xtpswap(tp, x, y) { tp dum_; dum_ = (x); (x) = (y); (y) = dum_; }
 #endif
 
+#ifndef intswap
+#define intswap(x, y) xtpswap(int, x, y)
+#endif
+
 #ifndef dblswap
 #define dblswap(x, y) xtpswap(double, x, y)
 #endif
+
+INLINE int intmax(int x, int y) { return x > y ? x : y; }
+INLINE int intmin(int x, int y) { return x < y ? x : y; }
+/* confine x within [xmin, xmax] */
+INLINE int intconfine(int x, int xmin, int xmax)
+  { return x < xmin ? xmin : x > xmax ? xmax : x; }
+
+INLINE int intsqr(int x) { return x * x; }
+
+INLINE double dblmax(double x, double y) { return x > y ? x : y; }
+INLINE double dblmin(double x, double y) { return x < y ? x : y; }
+/* confine x within [xmin, xmax] */
+INLINE double dblconfine(double x, double xmin, double xmax)
+  { return x < xmin ? xmin : x > xmax ? xmax : x; }
+
+INLINE double dblsqr(double x) { return x * x; }
 
 /* sqrt(x*x + y*y) */
 INLINE double dblhypot(double x, double y)
@@ -119,14 +139,6 @@ INLINE double dblround(double x, double dx)
   if (x*dx > 0) return dx * (int)(x/dx + (.5 - DBL_EPSILON));
   else return -dx * (int)(-x/dx + (.5 - DBL_EPSILON));
 }
-
-INLINE double dblsqr(double x) { return x*x; }
-
-INLINE double dblmax(double x, double y) { return x > y ? x : y; }
-INLINE double dblmin(double x, double y) { return x < y ? x : y; }
-/* confine x within [xmin, xmax] */
-INLINE double dblconfine(double x, double xmin, double xmax)
-  { return x < xmin ? xmin : x > xmax ? xmax : x; }
 
 INLINE void dblcleararr(double *x, int n)
   { int i; for (i = 0; i < n; i++) x[i] = 0.0; }

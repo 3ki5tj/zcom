@@ -16,7 +16,6 @@ typedef struct {
   int en; /* number of energy bins */
   double erg0, erg1; /* energy range (erg0, erg1) */
   double derg; /* bin size for the updating energy range */
-  double elimit; /* energy limit */
   int ergn; /* number of the updating energy bins */
   double scl; /* prefactor in effective Hamiltonian */
   double dergdt; /* (erg1 - erg0)/(tp1 - tp0) */
@@ -29,6 +28,8 @@ typedef struct {
   double *lnz; /* partition function */
   double *lng; /* density of states */
   double *mh; /* modified Hamiltonian  */
+  double elimit; /* energy limit */
+  double springk; /* elastic constant to ensure smoothness of dH/dE */
   unsigned flags; /* flags */
   wlcvg_t *wl; /* Wang-Landau convergence */
 } tmh_t;
@@ -84,16 +85,24 @@ INLINE double tmh_getdhde(tmh_t *m, double erg)
   }
 }
 
-#define tmh_updatedhde(m, erg, amp) tmh_updhde(m, (erg - m->ec) * amp)
 /* update dH/dE curve
  * Note: the location of updating correspond to m->ec instead of erg */
 INLINE void tmh_updhde(tmh_t *m, double del)
 {
-#ifdef TMH_NOCHECK
-  m->dhde[m->iec] += del; 
-#else
   m->dhde[m->iec] = dblconfine(m->dhde[m->iec] + del, m->dhdemin, m->dhdemax);
-#endif
+}
+
+/* update dhde with spring constant */
+INLINE void tmh_updhdek(tmh_t *m, double del, double amp)
+{
+  int  i = m->iec;
+  double x = m->dhde[i];
+
+  if (i > 0)
+    del += m->springk * (m->dhde[i-1] - x);
+  if (i < (m->dhdeorder ? m->ergn : m->ergn - 1))
+    del += m->springk * (m->dhde[i+1] - x);
+  m->dhde[i] = dblconfine(x + del * amp, m->dhdemin, m->dhdemax); 
 }
 
 #define tmh_eadd(m, erg) tmh_eaddw(m, erg, 1.0)
@@ -238,17 +247,23 @@ INLINE void tmh_setec(tmh_t *m, double erg)
 }
 
 /* initialize amplitude of updating */
-INLINE void tmh_initwlcvg(tmh_t *m, double ampc, double ampmax, double ampfac, double perc,
-    double ampmin)
+INLINE void tmh_initwlcvg(tmh_t *m, double ampc, double ampmax,
+    double ampfac, double perc, double ampmin, unsigned flags, int ent)
 {
   double tp0, tp1, dtp;
+  
+  if (ent) {
+    tp0 = m->erg0; tp1 = m->erg1; dtp = m->derg;
+  } else {
+    if (m->dtp > 0) { tp0 = m->tp0; tp1 = m->tp1; dtp = m->dtp; }
+    else { tp0 = m->tp1; tp1 = m->tp0; dtp = -m->dtp; }
+  }
 
-  if (m->dtp > 0) { tp0 = m->tp0; tp1 = m->tp1; dtp = m->dtp; }
-  else { tp0 = m->tp1; tp1 = m->tp0; dtp = -m->dtp; }
-  m->wl = wlcvg_open(ampc, ampmax, ampfac, perc, ampmin, tp0, tp1, dtp);
+  m->wl = wlcvg_open(ampc, ampmax, ampfac, perc, ampmin,
+      tp0, tp1, dtp, flags);
 }
 
-/* easy temperature move
+/* easy move for tempering, return 1 if successful
  * famp: tweaking factor */
 INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
 {
@@ -256,9 +271,18 @@ INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
   if (fabs(epot - m->ec) < m->elimit || epot > m->erg1 || epot < m->erg0) {
     die_if (m->wl == NULL, "call tmh_initamp first, %p\n", (void *) m->wl);
     wlcvg_update(m->wl, m->tp); /* compute updating amplitude */
-    tmh_updatedhde(m, epot, m->wl->lnf * famp);
+    tmh_updhdek(m, epot - m->ec, m->wl->lnf * famp);
   }
   return tmh_lgvmove(m, epot, lgvdt);
+}
+
+/* easy move for entropic sampling */
+INLINE void tmh_ezmoves(tmh_t *m, double epot, double ampe)
+{
+  tmh_eadd(m, epot);
+  wlcvg_update(m->wl, epot);
+  tmh_updhde(m, (epot - m->ec) * m->wl->lnf * ampe);
+  tmh_setec(m, epot); 
 }
 
 INLINE int tmh_saveehis(tmh_t *m, const char *fn)

@@ -1,4 +1,5 @@
 #include "rv3.h"
+#include "util.h"
 #ifndef GLEZ_H__
 #define GLEZ_H__
 #if defined(Macintosh) || defined(__APPLE__)
@@ -58,7 +59,7 @@ glez_menukey_t glez_menukey[] = {
   {GLEZ_QUIT, 'q', "Quit",   NULL},
   {-1, '\0', NULL, NULL}};
 
-void glezInitWindow(int *argc, char **argv, const char *name);
+void glezInitWindow(int *argc, char **argv, int w, int h, const char *name);
 
 static void (*glez_user_reshapefunc)(int w, int h) = NULL;
 #define glezReshapeFunc(f)  { glez_user_reshapefunc = f;  glutReshapeFunc(glez_reshapefunc); }
