@@ -346,7 +346,7 @@ int main(int argc, char **argv)
   tmh = tmh_open(tp0, tp1, dtp, erg0, erg1, derg, emin, emax, de, ensexp, dhdeorder);
   tmh->elimit = elimit;
   tmh->springk = springk;
-  tmh_initwlcvg(tmh, ampc, ampmax, sqrt(0.1), 0.95, 0, 0, 0);
+  tmh_initwlcvg(tmh, ampc, ampmax, sqrt(0.1), 0.95, 0, 0);
   printf("erange (%g, %g), active (%g, %g)\n", tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
 
   tpinit = .5 * (tp0 + tp1);

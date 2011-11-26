@@ -248,19 +248,10 @@ INLINE void tmh_setec(tmh_t *m, double erg)
 
 /* initialize amplitude of updating */
 INLINE void tmh_initwlcvg(tmh_t *m, double ampc, double ampmax,
-    double ampfac, double perc, double ampmin, unsigned flags, int ent)
+    double ampfac, double perc, double ampmin, unsigned flags)
 {
-  double tp0, tp1, dtp;
-  
-  if (ent) {
-    tp0 = m->erg0; tp1 = m->erg1; dtp = m->derg;
-  } else {
-    if (m->dtp > 0) { tp0 = m->tp0; tp1 = m->tp1; dtp = m->dtp; }
-    else { tp0 = m->tp1; tp1 = m->tp0; dtp = -m->dtp; }
-  }
-
   m->wl = wlcvg_open(ampc, ampmax, ampfac, perc, ampmin,
-      tp0, tp1, dtp, flags);
+      m->erg0, m->erg1, m->derg, flags);
 }
 
 /* easy move for tempering, return 1 if successful
@@ -270,7 +261,7 @@ INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
   tmh_eadd(m, epot);
   if (fabs(epot - m->ec) < m->elimit || epot > m->erg1 || epot < m->erg0) {
     die_if (m->wl == NULL, "call tmh_initamp first, %p\n", (void *) m->wl);
-    wlcvg_update(m->wl, m->tp); /* compute updating amplitude */
+    wlcvg_update(m->wl, m->ec); /* compute updating amplitude */
     tmh_updhdek(m, epot - m->ec, m->wl->lnf * famp);
   }
   return tmh_lgvmove(m, epot, lgvdt);
@@ -280,7 +271,7 @@ INLINE int tmh_ezmove(tmh_t *m, double epot, double famp, double lgvdt)
 INLINE void tmh_ezmoves(tmh_t *m, double epot, double ampe)
 {
   tmh_eadd(m, epot);
-  wlcvg_update(m->wl, epot);
+  wlcvg_update(m->wl, m->ec);
   tmh_updhde(m, (epot - m->ec) * m->wl->lnf * ampe);
   tmh_setec(m, epot); 
 }

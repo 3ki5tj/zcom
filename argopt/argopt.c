@@ -42,7 +42,7 @@ static void argopt_help(argopt_t *ao)
 {
   int i, len, maxlen;
   opt_t *lo;
-  const char *sysopt[2] = {"print help message", "print version"}, *desc, *fmt;
+  const char *sysopt[2] = {"print help message", "print version"}, *desc;
 
   printf("%s, version %d", 
       ao->desc ? ao->desc : ao->prog, ao->version);
@@ -52,7 +52,7 @@ static void argopt_help(argopt_t *ao)
   for (i = 0; i < ao->narg; i++) {
     const char *bra = "", *ket = "";
     lo = ao->args + i;
-    if (lo->flags & ARGOPT_MUST) {
+    if (lo->flags & OPT_MUST) {
       if (strchr(lo->desc, ' ')) 
         bra = "{", ket = "}";
     } else
@@ -74,29 +74,10 @@ static void argopt_help(argopt_t *ao)
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
     printf("  %-*s : %s%s", maxlen, lo->sflag,
-        (!(lo->flags & ARGOPT_SWITCH) ? "followed by " : ""), desc);
-    if (lo->ptr && lo->ptr != &ao->dum_) { /* print default values */
+        (!(lo->flags & OPT_SWITCH) ? "followed by " : ""), desc);
+    if (lo->ptr && lo->ptr != ao->dum_) { /* print default values */
       printf(", default: ");
-      for (fmt = lo->fmt; *fmt && *fmt != '%'; fmt++) ;
-#define ELIF_PF_(fm, fmp, type) else if (strcmp(fmt, fm) == 0) printf((lo->pfmt ? lo->pfmt : fmp), *(type *)lo->ptr)
-      if (fmt == NULL || *fmt == '\0') printf("%s", (*(char **)lo->ptr) ? (*(char **)lo->ptr) : "NULL");
-      ELIF_PF_("%b", "%d", int); /* switch */
-      ELIF_PF_("%d", "%d", int);
-      ELIF_PF_("%u", "%u", unsigned);
-      ELIF_PF_("%x", "0x%x", unsigned);
-      ELIF_PF_("%ld", "%ld", long);
-      ELIF_PF_("%lu", "%lu", unsigned long);
-      ELIF_PF_("%lx", "0x%lx", unsigned long);
-#if 0  /* C99 only */
-      ELIF_PF_("%lld", "%lld", long long);
-      ELIF_PF_("%llu", "%llu", unsigned long long);
-      ELIF_PF_("%llx", "0x%llx", unsigned long long);
-#endif
-      ELIF_PF_("%f", "%g", float);
-      ELIF_PF_("%lf", "%g", double);
-      ELIF_PF_("%r", "%g", real);
-      else printf("unknown %s-->%%d: %d\n", fmt, *(int *)lo->ptr);
-#undef ELIF_PF_
+      opt_printptr(lo);
     }
     printf("\n");
   }
@@ -104,65 +85,25 @@ static void argopt_help(argopt_t *ao)
   exit(1);
 }
 
-/* register option: fmt = "%b" for a switch */
+/* register option: fmt = "%b" for a switch
+ * return the index */
 int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc)
 {
-  opt_t *ol;
+  opt_t *o;
   int n;
 
   if (sflag) { /* option */
     n = ao->nopt++;
     xrenew(ao->opts, ao->nopt);
-    ol = ao->opts + n;
-    ol->isopt = 1;
-    ol->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
+    o = ao->opts + n;
   } else { /* argument */
     n = ao->narg++;
     xrenew(ao->args, ao->narg);
-    ol = ao->args + n;
-    ol->isopt = 0;
-    ol->ch = '\0';
+    o = ao->args + n;
   }
-  ol->sflag = sflag;
-  ol->flags = 0;
-  die_if (ptr == NULL, "null pass to argopt with %s: %s\n", sflag, desc);
-  ol->ptr = ptr;
-  if (fmt == NULL) fmt = "";
-  if (fmt[0] == '!') {
-    fmt++;
-    ol->flags |= ARGOPT_MUST;
-  }
-  if (strcmp(fmt, "%b") == 0) {
-    fmt = "%d";
-    ol->flags |= ARGOPT_SWITCH;
-  }
-  ol->fmt = fmt;
-  ol->pfmt = NULL;
-  ol->desc = desc;
+  opt_set(o, sflag, NULL, fmt, ptr, desc);
   return n;
-}
-
-/* translate string values to actual ones through sscanf() */
-static int opt_getval_(opt_t *o)
-{
-  const char *fmt = o->fmt;
-  
-  if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
-    *(const char **)o->ptr = o->val;
-  } else { /* call sscanf */
-    int ret, ch;
-    ch = fmt[strlen(fmt)-1];
-    if (ch == 'r') /* real */
-      fmt = (sizeof(real) == 4) ? "%f" : "%lf";
-    ret = sscanf(o->val, fmt, o->ptr);
-    if (ret != 1) {
-      fprintf(stderr, "Error: unable to convert a value for [%s] as fmt [%s], raw string: [%s]\n",
-          o->desc, fmt, o->val);
-      return 1;
-    }
-  }
-  return 0;
 }
 
 /* main parser of arguments */
@@ -177,8 +118,8 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
     if (argv[i][0] != '-') { /* it's an argument */
       if (acnt >= ao->narg) argopt_help(ao);
       al[acnt].val = argv[i];
-      al[acnt].flags |= ARGOPT_SET;
-      if (0 != opt_getval_(al+acnt))
+      al[acnt].flags |= OPT_SET;
+      if (0 != opt_getval(al+acnt))
         argopt_help(ao);
       ++acnt;
       continue;
@@ -209,8 +150,8 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
           argopt_version(ao);
       }
 
-      if (ol[k].flags & ARGOPT_SWITCH) {
-        ol[k].flags |= ARGOPT_SET;
+      if (ol[k].flags & OPT_SWITCH) {
+        ol[k].flags |= OPT_SET;
         *(int *)ol[k].ptr = 1;
         if (islong) break; /* go to the next argument argv[i+1] */
       } else { /* look for the additional argument for this */
@@ -235,21 +176,21 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
           }
           ol[k].val = argv[i];
         }
-        ol[k].flags |= ARGOPT_SET;
-        if (0 != opt_getval_(ol+k)) argopt_help(ao);
+        ol[k].flags |= OPT_SET;
+        if (0 != opt_getval(ol+k)) argopt_help(ao);
         break; /* go to the next argument argv[i+1] */
       }
     } /* end of short option loop */
   }
   /* check if we have all mandatory arguments and options */
   for (i = 0; i < ao->narg; i++) {
-    if ((al[i].flags & ARGOPT_MUST) && !(al[i].flags & ARGOPT_SET)) {
+    if ((al[i].flags & OPT_MUST) && !(al[i].flags & OPT_SET)) {
       printf("Error: missing argument %d: %s\n\n", i, al[i].desc);
       argopt_help(ao);
     }
   }
   for (i = 0; i < ao->nopt; i++) {
-    if ((ol[i].flags & ARGOPT_MUST) && !(ol[i].flags & ARGOPT_SET)) {
+    if ((ol[i].flags & OPT_MUST) && !(ol[i].flags & OPT_SET)) {
       printf("Error: missing option %s: %s\n\n", ol[i].sflag, ol[i].desc);
       argopt_help(ao);
     }

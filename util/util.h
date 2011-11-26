@@ -1,7 +1,6 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
-
 #ifndef UTIL_H__
 #define UTIL_H__
 #include <stdio.h>
@@ -172,6 +171,17 @@ INLINE double lnaddn(double a, double b)
 #undef LN_BIG
 #endif  /* LNADD_DEFINED */
 
+#define cisalnum(c)   isalnum((unsigned char)(c))
+#define cisalpha(c)   isalpha((unsigned char)(c))
+#define cisdigit(c)   isdigit((unsigned char)(c))
+#define cisxdigit(c)  isxdigit((unsigned char)(c))
+#define cisprint(c)   isprint((unsigned char)(c))
+#define cisspace(c)   isspace((unsigned char)(c))
+#define cislower(c)   islower((unsigned char)(c))
+#define cisupper(c)   isupper((unsigned char)(c))
+#define ctolower(c)   (char) tolower((unsigned char)(c))
+#define ctoupper(c)   (char) toupper((unsigned char)(c))
+
 /* string manipulation */
 #define ZSTR_XSPACEL  0x0001
 #define ZSTR_XSPACER  0x0002
@@ -192,12 +202,12 @@ INLINE char *stripx(char *s, unsigned flags)
   char *p;
 
   if (flags & ZSTR_XSPACEL) { /* remove leading spaces */
-    for (p = s; isspace(*p); p++) ;
+    for (p = s; cisspace(*p); p++) ;
     if (*p == '\0') *s = '\0';
     else memmove(s, p, strlen(p)+1);
   }
   if (flags & ZSTR_XSPACER) /* remove trailing spaces */
-    for (p = s + strlen(s) - 1; p >= s && isspace(*p); p--)
+    for (p = s + strlen(s) - 1; p >= s && cisspace(*p); p--)
       *p = '\0';
   return s;
 }

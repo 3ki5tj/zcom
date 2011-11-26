@@ -1,59 +1,39 @@
+#include "util.h"
+#include "opt.h"
 #ifndef CFG_H__
 #define CFG_H__
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
 typedef struct {
-  int    n;       /* number of lines */
-  int    canfree; /* whether the struct is dynamically allocated */
-  char **key;     /* key[0..n-1] */
-  char **val;     /* val[0..n-1] */
-  int   *used;    /* a key is used */
-  char  *buf;     /* the entire configuration file */
-} cfgdata_t;
+  char *key, *val;
+  int used;
+} cfgent_t; /* line from cfg file */
+
+typedef struct {
+  char *buf;      /* the entire configuration file */
+  int nent;       /* number of entries */
+  cfgent_t *ents; /* entries */
+  int nopt;       /* number of user-requested options */
+  opt_t *opts;    /* user-requested options */
+} cfg_t;
+typedef cfg_t cfgdata_t;
 
 #define CFG_CHECKDUP 0x0100
 #define CFG_CHECKUSE 0x0200
 #define CFG_VERBOSE  0x1000
 
-cfgdata_t *cfgopen(const char *filenm);
-void cfgclose(cfgdata_t *cfg);
-int cfgget(cfgdata_t *cfg, void *var, const char *key, const char* fmt);
-unsigned cfgcheck(cfgdata_t *cfg, unsigned flags);
+#define cfgopen(fn) cfg_open(fn)
+#define cfgclose(cfg) cfg_close(cfg)
+#define cfgget(cfg, var, key, fmt) cfg_get(cfg, var, key, fmt)
+
+cfg_t *cfg_open(const char *fn);
+void cfg_close(cfg_t *cfg);
+int cfg_get(cfg_t *cfg, void *var, const char *key, const char *fmt);
+int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc);
+int cfg_match(cfg_t *cfg, unsigned flags);
 
 #endif  /* CFG_H__ */
-
-
-
-
-/* print a mismatch message and die */
-#define CFG_MISMATCH_TPFMT_(fmt, tp) \
-    fprintf(stderr, "format %s doesn\'t match type %s", fmt, #tp);    \
-    exit(1);
-
-/* check if a type matches format by sizeof */
-#define CFG_CHECKTPFMT(tp, fmt)                                       \
-  if (fmt[0] != '%') {                                                \
-    fprintf(stderr, "invalid format string %s\n", fmt);               \
-    exit(1);                                                          \
-  } else if (strchr("di", fmt[1]) && strcmp(#tp, "int") != 0) {       \
-    CFG_MISMATCH_TPFMT_(fmt, tp);                                     \
-  } else if (strchr("uxo", fmt[1]) && strcmp(#tp, "unsigned") != 0) { \
-    CFG_MISMATCH_TPFMT_(fmt, tp);                                     \
-  } else if (strchr("efg", fmt[1]) && strcmp(#tp, "float") != 0) {    \
-    CFG_MISMATCH_TPFMT_(fmt, tp);                                     \
-  } else if (strcmp(fmt, "%lf") == 0 && strcmp(#tp, "double") != 0) { \
-    CFG_MISMATCH_TPFMT_(fmt, tp);                                     \
-  } else if (strchr("sc", fmt[1]) && strcmp(#tp, "char *") != 0) {    \
-    CFG_MISMATCH_TPFMT_(fmt, tp);                                     \
-  }
-
-/* read variable var in format fmt */
-#define CFG_GETATOM0_(var, name, tp, fmt) {       \
-  CFG_CHECKTPFMT(tp, fmt)                         \
-  err = cfgget(cfg, &(var), name, fmt); }
-
 

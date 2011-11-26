@@ -79,7 +79,7 @@ static int ezrun(tmh_t *m, potts_t *pt, double tmcrun, double trun)
   logfile_t *log = log_open("tmhpt.tr");
 
   for (t = 1; t <= tmcrun; t++) move(m, pt, beta0);
-  tmh_initwlcvg(m, entampc, entampmax, sqrt(0.1), .95, 0, WLCVG_UPDLNFC, 1);
+  tmh_initwlcvg(m, entampc, entampmax, sqrt(0.1), .95, 0, WLCVG_UPDLNFC);
   tmh_setec(m, pt->E);
   for (t = 0; t < trun; t++) { /* production */
     move(m, pt, beta0);

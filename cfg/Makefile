@@ -1,5 +1,5 @@
-bin=test1
-hdr=cfg.h ss.h
+bin=test1 test2
+hdr=cfg.h ss.h opt.h def.h util.h
 src=cfg.c ss.c
 dep=$(src) $(hdr) Makefile
 
@@ -13,7 +13,7 @@ $(bin): $(dep)
 	$(CC) -o $@ $< -lm
 
 clean:
-	rm -f $(bin) *~
+	rm -f $(bin) *~ a.out *.o
 
 .PHONY: all clean
 
