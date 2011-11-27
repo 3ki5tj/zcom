@@ -120,7 +120,7 @@ int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
   int ie, ergn, en, ver, tpn, dhdeorder, next;
   FILE *fp;
   char s[1024], *p;
-  double emin, de, derg, erg, erg0, tp0, dtp, dhde, ensexp;
+  double emin, de, derg, erg, erg0, tp, tp0, dtp, dhde, ensexp;
 
   xfopen(fp, fn, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
@@ -153,10 +153,11 @@ int tmh_loaddhde(tmh_t *m, const char *fn, double *amp, double *t)
       goto ERR;
     }
   }
-  if (3 != sscanf(p, "%lf%lf%lf%n", amp, t, &m->tp, &next)) {
+  if (3 != sscanf(p, "%lf%lf%lf%n", amp, t, &tp, &next)) {
     fprintf(stderr, "corrupted info line p3 %s", s);
     goto ERR;
   }
+  tmh_settp(m, tp);
   p += next;
   if (m->wl) {
     double nupd = *t, lnfwl = *amp, lnfc = (*amp) * (*t);

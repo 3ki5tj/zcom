@@ -2,6 +2,7 @@
 #define INLINE __inline static
 #endif
 #include "def.h"
+#include "util.h"
 #include "ss.c"
 #ifndef OPT_H__
 #define OPT_H__
@@ -106,4 +107,19 @@ INLINE void opt_printptr(opt_t *o)
 #undef ELIF_PF_  
 }
 
+/* search an option list, return an option whose variable address is p */
+INLINE opt_t *opt_find(opt_t *ls, int n, const void *p)
+{
+   int i;
+   for (i = 0; i < n; i++) if (ls[i].ptr == p) return ls + i;
+   return NULL;
+}
+
+/* search an option list to see if an option is explicitly set */
+INLINE int opt_isset(opt_t *ls, int n, const void *p, const char *var)
+{
+  opt_t *o = opt_find(ls, n, p);
+  die_if (!o, "cannot find var %s, ptr %p\n", var, p);
+  return o->flags & OPT_SET ? 1 : 0;
+}
 #endif

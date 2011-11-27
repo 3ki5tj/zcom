@@ -3,8 +3,7 @@
 #define CFG_C__
 #include "cfg.h"
 
-/* load the whole configuration file into memory;
- * parse it to entries */
+/* load the whole configuration file into memory, parse it to entries */
 cfg_t *cfg_open(const char *fn)
 {
   cfg_t *cfg;
@@ -90,52 +89,25 @@ void cfg_close(cfg_t *cfg)
   free(cfg->ents);
   free(cfg->opts);
   memset(cfg, 0, sizeof(*cfg));
-  free(cfg); /* free cfg if it is created by cfgopen */
+  free(cfg);
 }
 
-/* Read the value of a given variable from the current configuration file,
- * the name of variable is given by `key',
- * If the key is matched, its value is saved to `*var' through sscanf,
- *   otherwise, the content in *var is not modified.
- * If the function succeeds, it returns 0.
- * A comment line in the configuration file starts with '#', '%' or '!'.
- * In case fmt is "%s", (*var) is a string, or a pointer to char.
- *   The space for (*var) will be managed through sscpy, which should *not*
- *   to be free'd.  Instead, ssdel should be called if really necessary.
- * */
-int cfg_get(cfg_t *cfg, void *var, const char *key, const char *fmt)
-{
-  int i;
-
-  for (i = 0; i < cfg->nent; i++) {
-    cfgent_t *ent = cfg->ents + i;
-    if (ent->key != NULL && strcmp(ent->key, key) == 0) {
-      if (strcmp(fmt, "%s") == 0) { /* string case */
-        sscpy( *(char **)var, ent->val); /* make a copy and return */
-        return 0;
-      } else { /* use sscanf for other cases, like int, float,... */
-        return (EOF == sscanf(ent->val, fmt, var)) ? 2 : 0;
-      }
-    }
-  }
-  return 1; /* no match */
-}
-
-/* add option, return the index */
+/* register an option request, return the index */
 int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc)
 {
-  opt_t *o;
   int n = cfg->nopt++;
+  opt_t *o;
   xrenew(cfg->opts, cfg->nopt);
   o = cfg->opts + n;
   opt_set(o, NULL, key, fmt, ptr, desc);
   return n;
 }
 
-/* match requested options with cfg file entries */
+/* match requested options with entries in cfg file
+ * returns 0 if successful */
 int cfg_match(cfg_t *cfg, unsigned flags)
 {
-  int i, j, ret = 0;
+  int i, j, ret = 0, verbose = flags & CFG_VERBOSE, must = flags & OPT_MUST;
   opt_t *o;
   cfgent_t *ent;
 
@@ -151,18 +123,18 @@ int cfg_match(cfg_t *cfg, unsigned flags)
         break;
       }
     }
-    if (!(o->flags & OPT_SET)) {
+    if (!(o->flags & OPT_SET) && (must || verbose)) {
       printf("cfg: %s not set, default: ", o->key);
       opt_printptr(o);
       printf("\n");
-      if (o->flags & OPT_MUST) ret = 1;
+      if (must) ret = 1;
     }
   }
 
   if (flags & CFG_CHECKUSE) {
     for (j = 0; j < cfg->nent; j++) {
       ent = cfg->ents + j;
-      if (ent->key != NULL && !ent->used)
+      if (ent->key != NULL && !ent->used && verbose)
         printf("cfg: unused entry: %s = %s\n", ent->key, ent->val);
     }
   }

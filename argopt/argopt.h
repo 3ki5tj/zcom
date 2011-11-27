@@ -36,18 +36,16 @@ void argopt_parse(argopt_t *ao, int argc, char **argv);
 #define argopt_reghelp(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$HELP")
 #define argopt_regversion(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$VERSION")
 
-#define argopt_getopt(ao, p) argopt_searchls_(ao->opts, ao->nopt, p)
-#define argopt_getarg(ao, p) argopt_searchls_(ao->args, ao->narg, p)
-INLINE opt_t *argopt_searchls_(opt_t *ls, int n, const void *p)
- { int i; for (i = 0; i < n; i++) if (ls[i].ptr == p) return ls+i; return NULL; }
+#define argopt_getopt(ao, p) opt_find(ao->opts, ao->nopt, p)
+#define argopt_getarg(ao, p) opt_find(ao->args, ao->narg, p)
 
- /* test if argument/option is set */
+ /* test if argument/option is explicitly set */
 #define argopt_set(ao, var) argopt_set_(ao, &var, #var)
 INLINE int argopt_set_(argopt_t *ao, const void *p, const char *var)
-{ 
-   opt_t *a = argopt_getarg(ao, p), *o = argopt_getopt(ao, p);
-   die_if(!a && !o, "cannot locate var %s, %p\n", var, p);
-   return a ? (a->flags & OPT_SET ? 1 : 0) : (o->flags & OPT_SET ? 1 : 0);
+{
+  opt_t *a = opt_find(ao->args, ao->narg, p), *o = opt_find(ao->opts, ao->nopt, p);
+  die_if (!a && !o, "cannot find var %s, ptr %p\n", var, p);
+  return a ? (a->flags & OPT_SET ? 1: 0) : (o->flags & OPT_SET ? 1 : 0);
 }
 
 #endif

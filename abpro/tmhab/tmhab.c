@@ -17,7 +17,8 @@ const char *fnpos = "ab.pos";
 const char *fncfg = "tmhab.cfg";
 const char *fnlog = "tmhab.tr";
 double nsteps = 1000000*1000;
-int seqid = 10, d = 3, model = 2, tmh_dhdeorder = 1;
+int seqid = 10, d = 3, model = 2;
+int tmh_dhdeorder = 1;
 double tmh_dhdemin = 0.1, tmh_dhdemax = 10.0;
 real mddt = 5e-3f;
 real thermdt = 5e-3f;
@@ -29,7 +30,7 @@ unsigned milcshake = AB_MILCSHAKE;
 double tmh_ensexp = 0.0;
 double tmh_emin, tmh_emax, tmh_de = 1.0;
 int tmh_guesserange = 0; /* guess energy range */
-double tmh_tps = 0.5; /* thermostat temperature */
+double tmh_tps = 0.3; /* thermostat temperature */
 double tmh_tp0 = 0.1, tmh_tp1 = 1.0, tmh_dtp = 0.0;
 double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_elimit = 1e9;
@@ -42,9 +43,11 @@ double tmh_lgvdt = 2e-3;
 int tmh_annealcnt = 1;
 int tmh_teql = 400000, tmh_tctrun = 400000, tmh_trep = 20000;
 double tmh_erg0margin = 0., tmh_erg1margin = 0.1;
+int tmh_entropic = 0; /* entropic sampling */
 
 double nsttrace = 1e4;
 double nstsave = 1e6;
+int nstmv = 10;
 
 double maxtime = 1e9;
 time_t time0, time1;
@@ -53,24 +56,23 @@ int tmh_srand = 0; /* seed for initial random configuration */
 
 int verbose = 0;
 
-#define CFGGETI(x) { ret = cfgget(cfg, &x, #x, "%d");  printf("%s: %d\n", #x, x); }
-#define CFGGETD(x) { ret = cfgget(cfg, &x, #x, "%lf"); printf("%s: %g\n", #x, x); }
-#define CFGGETR(x) { ret = cfgget(cfg, &x, #x, rfmt);  printf("%s: %g\n", #x, x); }
+#define CFGGETI(x) { cfg_add(cfg, #x, "%d",  &x, #x); }
+#define CFGGETD(x) { cfg_add(cfg, #x, "%lf", &x, #x); }
+#define CFGGETR(x) { cfg_add(cfg, #x, "%r",  &x, #x); }
 
 /* load setting from configuration */
 static int loadcfg(const char *fn)
 {
-  cfgdata_t *cfg;
+  cfg_t *cfg;
   int ret;
-  const char *rfmt = ((sizeof(real) == sizeof(double)) ? "%lf" : "%f");
 
   die_if ((cfg = cfgopen(fn)) == NULL, "cannot open %s\n", fn);
 
-  CFGGETI(seqid);
-  CFGGETI(d);
-  CFGGETI(model);
-  CFGGETD(nsteps);
+  cfg_add(cfg, "seqid", "!%d", &seqid, "sequence id");
+  cfg_add(cfg, "d", "!%d", &d, "dimension");
+  cfg_add(cfg, "model", "!%d", &model, "model (1 or 2)");
 
+  CFGGETD(nsteps);
   CFGGETR(mddt);
   CFGGETR(thermdt);
   CFGGETI(usebrownian);
@@ -87,10 +89,10 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_tps);
   
   /* if any of erg0, erg1, emin or emax is not given, guess energy range */
-  CFGGETD(tmh_emin); if (ret != 0) tmh_guesserange = 1;
-  CFGGETD(tmh_emax); if (ret != 0) tmh_guesserange = 1;
-  CFGGETD(tmh_erg0); if (ret != 0) tmh_guesserange = 1;
-  CFGGETD(tmh_erg1); if (ret != 0) tmh_guesserange = 1;
+  CFGGETD(tmh_emin);
+  CFGGETD(tmh_emax);
+  CFGGETD(tmh_erg0);
+  CFGGETD(tmh_erg1);
   CFGGETI(tmh_annealcnt);
   CFGGETD(tmh_erg0margin);
   CFGGETD(tmh_erg1margin);
@@ -108,15 +110,17 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_ampc);
   CFGGETI(tmh_updampc);
   CFGGETD(tmh_lgvdt);
+  CFGGETI(tmh_entropic);
 
   CFGGETI(tmh_srand);
   if (tmh_srand) srand((unsigned) tmh_srand);
 
   CFGGETD(nsttrace);
   CFGGETD(nstsave);
+  cfg_add(cfg, "nstmv", "%d", &nstmv, "number of steps per tempering");
 
-  cfgcheck(cfg, CFG_VERBOSE|CFG_CHECKDUP|CFG_CHECKUSE);
-  cfgclose(cfg);
+  die_if (cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE) != 0, "failed match %d\n", fn);
+  cfg_close(cfg);
   return 0;
 }
 
@@ -153,25 +157,26 @@ static double ctrun(abpro_t *ab, double tp, double *edev,
   return eav;
 }
 
+/* tmh run */
 static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
 {
-  int it = 0, nstmv = 10, stop = 0;
+  int it = 0, stop = 0;
   double t, dhde;
   logfile_t *log = log_open(fnlog);
 
   for (t = step0; t <= nsteps; t++) {
     dhde = tmh_getdhde(tmh, ab->epot) * tmh_tps / tmh->tp;
     if (usebrownian == 2) {
-      ab_brownian(ab, (real)(tmh_tps*dhde), 1, (real)brdt, AB_SOFTFORCE|milcshake);
+      ab_brownian(ab, (real) (tmh_tps * dhde), 1, (real) brdt, AB_SOFTFORCE|milcshake);
     } else if (usebrownian == 1) {
-      ab_brownian(ab, (real)tmh_tps, (real)dhde, (real)brdt, AB_SOFTFORCE|milcshake);
+      ab_brownian(ab, (real) tmh_tps, (real) dhde, (real) brdt, AB_SOFTFORCE|milcshake);
     } else {
-      ab_vv(ab, (real)dhde, (real)mddt, AB_SOFTFORCE|milcshake);
+      ab_vv(ab, (real) dhde, (real) mddt, AB_SOFTFORCE|milcshake);
       if (it == 0) ab_rmcom(ab, ab->x, ab->v);
-      ab_vrescale(ab, (real)(tmh_tps), (real)thermdt);
+      ab_vrescale(ab, (real) tmh_tps, (real) thermdt);
     }
     
-    if (ab->epot < ab->emin + 0.05 || (tmh->itp < 3 && rnd0() < 1e-4)) {
+    if (ab->epot < ab->emin + 0.05 || (tmh->iec < 3 && rnd0() < 1e-4)) {
       double em = ab->emin;
       int lgcon = ab->lgcon;
       ab->lgcon = 0; /* turn off LGC during energy minimization */
@@ -183,11 +188,14 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
       it = 0;
       if (ab->lgcon && ab->lgact < ab->lgcnt)
         ab_updconstr(ab, 0);
-      /* tweak updating factor by tps/tp */
-      tmh_ezmove(tmh, ab->epot, tmh_tps/tmh->tp, tmh_lgvdt);
+      if (tmh_entropic) {
+        tmh_ezmoves(tmh, ab->epot, 1.0);
+      } else { /* tweak updating factor by tps/tp */
+        tmh_ezmove(tmh, ab->epot, tmh_tps/tmh->tp, tmh_lgvdt);
+      }
     }
   
-    if ((int)fmod(t, nsttrace) == 0) {
+    if ((int) fmod(t, nsttrace) == 0) {
       log_printf(log, "%g %g %g %d %d %g\n",
           t, ab->epot, tmh->tp, tmh->iec, tmh->itp, dhde);
       if (verbose) fprintf(stderr, "t = %g epot = %g, tp = %g, iec %d, itp %d, dhde %g;%20s\r",
@@ -198,7 +206,7 @@ static int tmhrun(tmh_t *tmh, abpro_t *ab, double nsteps, double step0)
         stop = 1;
       }
     }
-    if ((int)fmod(t, nstsave) == 0 || stop) {
+    if ((int) fmod(t, nstsave) == 0 || stop) {
       mtsave(NULL);
       tmh_save(tmh, fntp, fnehis, fndhde, tmh->wl->lnf, t);
       ab_writepos(ab, ab->x, ab->v, fnpos);
@@ -257,12 +265,8 @@ int main(int argc, char **argv)
 
   doargs(argc, argv);
   time(&time0);
-
   die_if (loadcfg(fncfg) != 0, "cannot load %s\n", fncfg);
-    
-  /* assume a continuation run if fndhde exists */
-  isctn = fexists(fndhde);
-
+  isctn = fexists(fndhde); /* continue if fndhde */
   ab = ab_open(seqid, d, model, 0.1);
   if (lgclevel) {
     ab_initconstr(ab, lgclevel);
@@ -276,10 +280,9 @@ int main(int argc, char **argv)
           &tmh_ensexp, &tmh_dhdeorder))
       return -1;
   } else { /* fresh new run */
-    if (tmh_guesserange) {
+    if (tmh_guesserange)
       guess_erange(ab, tmh_tp0, tmh_tp1, &tmh_erg0, &tmh_erg1, &tmh_emin, &tmh_emax,
           tmh_annealcnt, tmh_teql, tmh_tctrun, tmh_trep);
-    }
     /* equilibrate to thermostat temperature */
     ctrun(ab, tmh_tps, NULL, tmh_teql, tmh_tctrun, tmh_trep);
     ab->epot = ab_energy(ab, ab->x, 0);
@@ -292,19 +295,13 @@ int main(int argc, char **argv)
   tmh->springk = tmh_springk;
   tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.0, 
       tmh_ampmin, tmh_updampc ? WLCVG_UPDLNFC : 0);
-  printf("erange (%g, %g), active (%g, %g)\n", 
-      tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
+  printf("erange (%g, %g), active (%g, %g)\n", tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;
   tmh->dhdemax = tmh_dhdemax;
 
-  if (isctn) {
-    if (tmh_load(tmh, fnehis, fndhde, &amp, &step0) != 0) {
-      fprintf(stderr, "cannot load tmh\n");
-      return -1;
-    }
-  } else {
-    tmh_settp(tmh, tmh_tps);
-  }
+  tmh_settp(tmh, tmh_tps); /* tp = tps */
+  die_if (isctn && tmh_load(tmh, fnehis, fndhde, &amp, &step0) != 0,
+    "cannot load tmh, %s, %s\n", fndhde, fnehis);
 
   tmhrun(tmh, ab, nsteps, step0);
 
