@@ -23,7 +23,7 @@ static glez_menukey_t *glez_user_menukey;
 enum { GLEZ_MENU0 = 1000,
   GLEZ_MOVXM, GLEZ_MOVXP, GLEZ_MOVYM, GLEZ_MOVYP, GLEZ_MOVZM, GLEZ_MOVZP,
   GLEZ_ROTXM, GLEZ_ROTXP, GLEZ_ROTYM, GLEZ_ROTYP, GLEZ_ROTZM, GLEZ_ROTZP, 
-  GLEZ_SCLM, GLEZ_SCLP, GLEZ_FULLS, GLEZ_QUIT, GLEZ_MENU1 };
+  GLEZ_SCLM, GLEZ_SCLP, GLEZ_FULLS, GLEZ_MENU1 };
 
 /* rotation sub-menu */
 glez_menukey_t glez_menukey_rot[] = {
@@ -56,10 +56,9 @@ glez_menukey_t glez_menukey[] = {
   {0,           0, "Move",   glez_menukey_mov},
   {0,           0, "Rotate", glez_menukey_rot},
   {0,           0, "Zoom",   glez_menukey_scl},
-  {GLEZ_QUIT, 'q', "Quit",   NULL},
   {-1, '\0', NULL, NULL}};
 
-void glezInitWindow(int *argc, char **argv, int w, int h, const char *name);
+int glezInitWindow(int *argc, char **argv, int w, int h, const char *name);
 
 static void (*glez_user_reshapefunc)(int w, int h) = NULL;
 #define glezReshapeFunc(f)  { glez_user_reshapefunc = f;  glutReshapeFunc(glez_reshapefunc); }

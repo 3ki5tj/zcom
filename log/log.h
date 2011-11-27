@@ -18,6 +18,7 @@ typedef struct {
 #define LOG_WRITESCREEN  0x01
 #define LOG_FLUSHAFTER   0x02
 #define LOG_NOWRITEFILE  0x10
+#define LOG_APPEND       0x80
 
 INLINE logfile_t *log_open(const char *fn)
 {
@@ -35,7 +36,10 @@ INLINE int log_printf(logfile_t *log, char *fmt, ...)
   va_list args;
 
   if (log == NULL) return 1;
-  if (log->fp == NULL) xfopen(log->fp, log->fname, "w", return 1);
+  if (log->fp == NULL) {
+    const char *aw = (log->flags & LOG_APPEND) ? "a" : "w";
+    xfopen(log->fp, log->fname, aw, return 1);
+  }
   if ((log->flags & LOG_NOWRITEFILE) == 0) {
     va_start(args, fmt);
     vfprintf(log->fp, fmt, args);

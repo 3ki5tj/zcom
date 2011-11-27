@@ -47,8 +47,6 @@ static void glez_menufunc(int id)
     glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) mat);
     glRotatef(amp, mat[0][id], mat[1][id], mat[2][id]);
     glutPostRedisplay();
-  } else if (id == GLEZ_QUIT) {
-    exit(0);
   }
 }
 
@@ -75,7 +73,6 @@ static int glez_keylow(unsigned char c, glez_menukey_t *mk)
 /* system keyboard function */
 static void glez_keyboardfunc(unsigned char c, int x, int y)
 {
-  if (c == 27) exit(0); /* ESC to exit */
   if (glez_keylow(c, glez_menukey)) return;
   if (glez_keylow(c, glez_user_menukey)) return;
   /* pass an unhandle key to glez_user_keyboardfunc */
@@ -174,20 +171,24 @@ void glez_fullscreen(void)
   }
 }
 
-void glezInitWindow(int *argc, char **argv, int w, int h, const char *name)
+int glezInitWindow(int *argc, char **argv, int w, int h, const char *name)
 {
+  int winid;
+
   glutInit(argc, argv);
   w = intmin(w, glutGet(GLUT_SCREEN_HEIGHT));
   h = intmin(h, glutGet(GLUT_SCREEN_WIDTH));
   glutInitWindowSize(w, h);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutCreateWindow(name);
+  winid = glutCreateWindow(name);
 
   /* register glez functions */
   glezReshapeFunc(NULL);
   glezMenuKeyFunc(NULL, NULL, NULL);
   glezMouseFunc(NULL);
   glezMotionFunc(NULL);
+
+  return winid;
 }
 
 /* draw a stick from a to b, with radius r and nface faces */

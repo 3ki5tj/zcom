@@ -36,6 +36,7 @@ double tmh_erg0, tmh_erg1, tmh_derg = 1.0;
 double tmh_elimit = 1e9;
 double tmh_springk = 0.0;
 double tmh_ampmax = 1e-4, tmh_ampc = 2.0, tmh_ampmin = 0.0;
+double tmh_entampmax = 1e-2, tmh_entampc = 100.0, tmh_entampmin = 0.0;
 int tmh_updampc = 0;
 double tmh_lgvdt = 2e-3;
 
@@ -64,7 +65,6 @@ int verbose = 0;
 static int loadcfg(const char *fn)
 {
   cfg_t *cfg;
-  int ret;
 
   die_if ((cfg = cfgopen(fn)) == NULL, "cannot open %s\n", fn);
 
@@ -110,16 +110,23 @@ static int loadcfg(const char *fn)
   CFGGETD(tmh_ampc);
   CFGGETI(tmh_updampc);
   CFGGETD(tmh_lgvdt);
+  
   CFGGETI(tmh_entropic);
+  CFGGETD(tmh_entampmax);
+  CFGGETD(tmh_entampmin);
+  CFGGETD(tmh_entampc);
 
   CFGGETI(tmh_srand);
-  if (tmh_srand) srand((unsigned) tmh_srand);
 
   CFGGETD(nsttrace);
   CFGGETD(nstsave);
   cfg_add(cfg, "nstmv", "%d", &nstmv, "number of steps per tempering");
 
   die_if (cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE) != 0, "failed match %d\n", fn);
+  if (!(cfg_set(cfg, tmh_emin) && cfg_set(cfg, tmh_emax) 
+        && cfg_set(cfg, tmh_erg0) && cfg_set(cfg, tmh_erg1)))
+    tmh_guesserange = 1;
+  if (tmh_srand) srand((unsigned) tmh_srand);
   cfg_close(cfg);
   return 0;
 }
@@ -293,8 +300,13 @@ int main(int argc, char **argv)
       tmh_emin, tmh_emax, tmh_de, tmh_ensexp, tmh_dhdeorder);
   tmh->elimit = tmh_elimit;
   tmh->springk = tmh_springk;
-  tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.0, 
+  if (tmh_entropic) {
+    tmh_initwlcvg(tmh, tmh_entampc, tmh_entampmax, sqrt(0.1), 0.0, 
+      tmh_entampmin, tmh_updampc ? WLCVG_UPDLNFC : 0);
+  } else {
+    tmh_initwlcvg(tmh, tmh_ampc, tmh_ampmax, sqrt(0.1), 0.0, 
       tmh_ampmin, tmh_updampc ? WLCVG_UPDLNFC : 0);
+  }
   printf("erange (%g, %g), active (%g, %g)\n", tmh->emin, tmh->emax, tmh->erg0, tmh->erg1);
   tmh->dhdemin = tmh_dhdemin;
   tmh->dhdemax = tmh_dhdemax;

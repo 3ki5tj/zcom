@@ -29,7 +29,7 @@ void cfg_close(cfg_t *cfg);
 int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc);
 int cfg_match(cfg_t *cfg, unsigned flags);
 
-#define cfg_set(cfg, var) opt_set(cfg->opts, cfg->nopt, &var, #var)
+#define cfg_set(cfg, var) opt_isset(cfg->opts, cfg->nopt, &var, #var)
 
 /* old style functions */
 #define cfgopen(fn) cfg_open(fn)
