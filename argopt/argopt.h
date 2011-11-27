@@ -8,8 +8,7 @@
 #include <time.h>
 
 typedef struct {
-  int narg, nopt;
-  opt_t *args;
+  int nopt;
   opt_t *opts;
   const char *prog;
   const char *desc;
@@ -33,20 +32,14 @@ int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc);
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
 
-#define argopt_reghelp(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$HELP")
-#define argopt_regversion(ao, sflag) argopt_regopt(ao, sflag, "%b", ao->dum_, "$VERSION")
+#define argopt_reghelp(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$HELP")
+#define argopt_regversion(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$VERSION")
 
 #define argopt_getopt(ao, p) opt_find(ao->opts, ao->nopt, p)
-#define argopt_getarg(ao, p) opt_find(ao->args, ao->narg, p)
+#define argopt_getarg argopt_getopt
 
- /* test if argument/option is explicitly set */
-#define argopt_set(ao, var) argopt_set_(ao, &var, #var)
-INLINE int argopt_set_(argopt_t *ao, const void *p, const char *var)
-{
-  opt_t *a = opt_find(ao->args, ao->narg, p), *o = opt_find(ao->opts, ao->nopt, p);
-  die_if (!a && !o, "cannot find var %s, ptr %p\n", var, p);
-  return a ? (a->flags & OPT_SET ? 1: 0) : (o->flags & OPT_SET ? 1 : 0);
-}
+/* test if argument/option is explicitly set */
+#define argopt_set(ao, var) opt_isset(ao->opts, ao->nopt, &var, #var)
 
 #endif
 
