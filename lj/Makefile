@@ -17,7 +17,7 @@ $(bin): $(deps)
 %: %.c
 	$(CX) -o $@ $< 
 
-abpro.c: abpro.0.c mk2d.py
+lj.c: lj.0.c mk2d.py
 	./mk2d.py $@
 
 clean:

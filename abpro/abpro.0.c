@@ -296,7 +296,7 @@ ERR:
   return 1;
 }
 
-/* shake with additional constraints */
+/* 3D shake with additional constraints */
 static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {

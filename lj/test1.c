@@ -13,18 +13,22 @@ int main(void)
 {
   lj_t *lj;
   int t, nsteps = 20000;
+  real u, k, p;
   
-  lj = lj_open(N, 3, rho, rc, tp);
+  lj = lj_open(N, 3, rho, rc);
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
-    lj_vrescale(lj, thermdt);
+    lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avp, lj->p);
+      av_add(&avp, lj->rho * tp + lj->pvir);
     }
   }
-  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f\n", av_getave(&avU)/N, av_getave(&avK)/N, av_getave(&avp));  
+  u = av_getave(&avU)/N;
+  k = av_getave(&avK)/N;
+  p = av_getave(&avp)/N;
+  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f\n", u, k, p);  
   lj_close(lj);
   return 0;
 }

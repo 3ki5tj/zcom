@@ -18,7 +18,7 @@
 
   Usage:
 
-  1.  It is designed quick programming.
+  1.  It is designed for quick programming.
       For simple use, include this file and all functions will be available.
       But there might be many compiler warnings for unused functions.
 
@@ -127,6 +127,7 @@
   #pragma warning(disable:4505) /* unreferenced function */
   #pragma warning(disable:4514) /* unreferenced inline */
   #pragma warning(disable:4710) /* not inlined */
+  #include <stdio.h> /* suppress CRT _s functions warnings */
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
