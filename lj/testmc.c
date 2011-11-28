@@ -7,7 +7,7 @@ real rho = 0.8f;
 real rcdef = 2.5f;
 real tp = 1.0f;
 real amp = 0.04f;
-int nsteps = 200000;
+int nsteps = 100000;
 av_t avU, avp;
 
 int main(void)
@@ -17,7 +17,7 @@ int main(void)
   real u, p;
 
   for (t = 0; t < nsteps; t++) {
-    acc += lj_metro(lj, amp, 1.0f/tp);
+    acc += lj_metro3d(lj, amp, 1.0f/tp);
     if (t >= nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avp, lj_calcp(lj, tp));

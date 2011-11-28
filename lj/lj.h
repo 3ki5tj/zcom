@@ -2,12 +2,6 @@
 #ifndef LJ_H__
 #define LJ_H__
 
-/* pair energy data */
-typedef struct {
-  int in; /* dr2 < rc2 */
-  real u, vir;
-} ljpair_t;
-
 typedef struct {
   int d; /* dimension = 3 */
   int n; /* number of particles */
@@ -23,8 +17,6 @@ typedef struct {
   real vir, pvir; /* virial and non-ideal gas part of the virial */
   real epot_shift, epot_tail, p_tail;
   double t;
-
-  ljpair_t *pair, *npair;
 } lj_t;
 
 lj_t *lj_open(int n, int d, real rho, real rcdef);

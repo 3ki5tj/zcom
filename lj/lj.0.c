@@ -75,34 +75,18 @@ INLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real L)
   { return rv3_sqr(lj_vpbc3d(rv3_diff(dx, a, b), L)); }
 
 /* compute energy data for a 3D Lennard-Jones pair */
-INLINE int lj_calcpair3d(ljpair_t *pr, real *xi, real *xj, real l, real rc2)
+INLINE int lj_calcpair3d(real *xi, real *xj, real l, real rc2,
+    real *u, real *vir)
 {
   real dx[3], dr2, invr2, invr6;
   dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
   if (dr2 < rc2) {
     invr2 = 1.0f / dr2;
     invr6 = invr2 * invr2 * invr2;
-    pr->vir = invr6 * (48.f * invr6 - 24.f);
-    pr->u  = 4.f * invr6 * (invr6 - 1.f);
-    return pr->in = 1;
-  } else return pr->in = 0;
-}
-
-INLINE void lj_initmc3d(lj_t *lj)
-{
-  int i, j, n = lj->n;
-  real l = lj->l, rc2 = lj->rc * lj->rc;
-  ljpair_t *pr;
-
-  lj->epot = 0.f;
-  lj->vir = 0.f;
-  for (i = 0; i < n; i++) 
-    for (j = i + 1; j < n; j++) {
-      pr = lj->pair + i * n + j;
-      lj_calcpair3d(pr, lj->x + i*3, lj->x + j*3, l, rc2);
-      lj->epot += pr->u;
-      lj->vir += pr->vir;
-    }
+    *vir = invr6 * (48.f * invr6 - 24.f);
+    *u  = 4.f * invr6 * (invr6 - 1.f);
+    return 1;
+  } else return 0;
 }
 
 /* randomly displace particle i with random amplitude */
@@ -121,21 +105,18 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
 INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 {
   int j, n = lj->n;
-  real l = lj->l, rc2 = lj->rc * lj->rc, u = 0.f;
-  ljpair_t *opr, *npr;
+  real l = lj->l, rc2 = lj->rc * lj->rc, u = 0.f, du, dvir;
 
   *vir = 0.0f;
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    opr = (j > i) ? (lj->pair + i * n + j) : (lj->pair + j * n + i);
-    if (opr->in) {
-      *vir -= opr->vir;
-      u -= opr->u;
+    if (lj_calcpair3d(lj->x + i*3, lj->x + j*3, l, rc2, &du, &dvir)) {
+      u -= du;
+      *vir -= dvir;
     }
-    npr = lj->npair + j;
-    if (lj_calcpair3d(npr, xi, lj->x + j*3, l, rc2)) {
-      *vir += npr->vir;
-      u += npr->u;
+    if (lj_calcpair3d(xi, lj->x + j*3, l, rc2, &du, &dvir)) {
+      u += du;
+      *vir += dvir;
     }
   }
   return u;
@@ -144,19 +125,7 @@ INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 /* commit a particle displacement */
 INLINE void lj_commit3d(lj_t *lj, int i, const real *xi, real du, real dvir)
 {
-  int j, n = lj->n;
-  ljpair_t *opr, *npr;
-
   rv3_copy(lj->x + i*3, xi);
-  for (j = 0; j < n; j++) {
-    if (j == i) continue;
-    opr = (j > i) ? (lj->pair + i * n + j) : (lj->pair + j * n + i);
-    npr = lj->npair + j;
-    if ( (opr->in = npr->in) ) {
-      opr->u = npr->u;
-      opr->vir = npr->vir;
-    }
-  }
   lj->epot += du;
   lj->vir += dvir; 
 }
@@ -287,9 +256,6 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   md_shiftcom(lj->x, n, d);
   md_shiftang(lj->x, lj->v, n, d);
 
-  xnew(lj->pair, n * n);
-  xnew(lj->npair, n);
-  if (d == 2) lj_initmc2d(lj); else lj_initmc3d(lj);
   lj_force(lj);
   return lj;
 }
