@@ -1,6 +1,13 @@
 2D/3D Lennard Jones system
 
-test1.c is somehow slower than ../md/testlj.c
+also support
+Square-well potential
+Switched potential
+
+
+Speed test
+==========
+testmd.c is somehow slower than ../md/testlj.c
 because the array were allocated on the heap instead of the stack
 
 test2.c is a better illustration

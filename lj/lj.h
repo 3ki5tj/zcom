@@ -26,17 +26,20 @@ typedef struct {
   real epot_shift, epot_tail, p_tail;
   double t;
 
-  int usesw;
-  real rs, a4, a5, a6, a7; /* for switch potential */
+  int usesw; /* switched potential */
+  real rs, a4, a5, a6, a7; /* parameters */
   ljpair_t *pr;
   int npr;
   real lap, f2;
+
+  int usesq; /* square well potential */
+  real ra, ra2, rb, rb2; /* -1 for (ra, rb) */
 } lj_t;
 
 lj_t *lj_open(int n, int d, real rho, real rcdef);
 void lj_close(lj_t *lj);
-void lj_energy(lj_t *lj);
-void lj_force(lj_t *lj);
+real lj_energy(lj_t *lj);
+real lj_force(lj_t *lj);
 void lj_vv(lj_t *lj, real dt);
 
 INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt) 
@@ -47,6 +50,7 @@ INLINE real lj_calcp(lj_t *lj, real tp)
   { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
 
 void lj_initsw(lj_t *lj, real rs);
+void lj_initsq(lj_t *lj, real ra, real rb);
 
 #endif
 

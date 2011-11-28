@@ -7,6 +7,7 @@ subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
 	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj abpro cago tmh
 
 $(prj).h::
+	cd lj && ./mk2d.py && cd ..
 	cd abpro && ./mk2d.py && cd ..
 	python assemble.py -a -v1
 

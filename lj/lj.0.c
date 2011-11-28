@@ -60,6 +60,17 @@ void lj_initsw(lj_t *lj, real rs)
   lj->usesw = 1;
 }
 
+/* initialize square well potential */
+void lj_initsq(lj_t *lj, real ra, real rb)
+{
+  lj->ra = ra;
+  lj->ra2 = ra * ra;
+  lj->rb = rb;
+  lj->rb2 = rb * rb;
+  lj->usesq = 1;
+  lj_energy(lj);
+}
+
 /* compute the switch potential phi(r) and its derivatives
  * fscal = -phi = uij'/rij
  * psi = phi'/rij
@@ -135,17 +146,77 @@ static void lj_initfcc3d(lj_t *lj)
       }
 }
 
-INLINE real lj_pbc(real x, real L)
-  { return (real)((x - ((int)((x)+1000.5) - 1000))*L) ; }
+INLINE real lj_pbc(real x, real l)
+  { return (real)((x - ((int)((x)+1000.5) - 1000))*l) ; }
 
-INLINE real *lj_vpbc2d(real *v, real L)
-  { v[0] = lj_pbc(v[0], L); v[1] = lj_pbc(v[1], L); return v; }
+INLINE real *lj_vpbc2d(real *v, real l)
+  { v[0] = lj_pbc(v[0], l); v[1] = lj_pbc(v[1], l); return v; }
 
-INLINE real *lj_vpbc3d(real *v, real L)
-  { v[0] = lj_pbc(v[0], L); v[1] = lj_pbc(v[1], L); v[2] = lj_pbc(v[2], L); return v; }
+INLINE real *lj_vpbc3d(real *v, real l)
+  { v[0] = lj_pbc(v[0], l); v[1] = lj_pbc(v[1], l); v[2] = lj_pbc(v[2], l); return v; }
 
-INLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real L)
-  { return rv3_sqr(lj_vpbc3d(rv3_diff(dx, a, b), L)); }
+INLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real l)
+  { return rv3_sqr(lj_vpbc3d(rv3_diff(dx, a, b), l)); }
+
+/* randomly displace particle i with random amplitude */
+INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
+{
+  int i, d;
+
+  i = (int)(rnd0() * lj->n);
+  rv3_copy(xi, lj->x + i*3);
+  for (d = 0; d < 3; d++) /* displacement */
+    xi[d] += (real)(amp * (2.*rnd0() - 1.));
+  return i;
+}
+
+/* compute energy data for a 3D pair with a square well potential */
+INLINE int lj_pairsq3d(real *xi, real *xj, real l, real ra2, real rb2)
+{
+  real dx[3], dr2;
+  dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
+  if (dr2 < ra2) return -1000000;
+  else if (dr2 < rb2) return 1;
+  else return 0;
+}
+
+/* return the energy change (square well) from displacing x[i] to xi */
+INLINE int lj_depotsq3d(lj_t *lj, int i, real *xi)
+{
+  int j, n = lj->n, npr = 0;
+  real l = lj->l, ra2 = lj->ra2, rb2 = lj->rb2;
+  rv3_t *x = (rv3_t *) lj->x;
+
+  for (j = 0; j < n; j++) { /* pair */
+    if (j == i) continue;
+    npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2);
+    npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2);
+  }
+  return npr;
+}
+
+/* commit a particle displacement for a square wel potential */
+INLINE void lj_commitsq3d(lj_t *lj, int i, const real *xi, int dnpr)
+{
+  rv3_copy(lj->x + i*3, xi);
+  lj->npr += dnpr;
+  lj->epot -= dnpr;
+}
+
+/* metropolis for a square well */
+INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
+{
+  int i, dnpr;
+  real xi[3];
+  
+  i = lj_randmv3d(lj, xi, amp);
+  dnpr = lj_depotsq3d(lj, i, xi);
+  if (dnpr >= 0 || rnd0() < exp(-bet*(-dnpr))) {
+    lj_commitsq3d(lj, i, xi, dnpr);
+    return 1;
+  }
+  return 0;
+}
 
 /* compute energy data for a 3D Lennard-Jones pair */
 INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
@@ -162,32 +233,21 @@ INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
   } else return 0;
 }
 
-/* randomly displace particle i with random amplitude */
-INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
-{
-  int i, d;
-
-  i = (int)(rnd0() * lj->n);
-  rv3_copy(xi, lj->x + i*3);
-  for (d = 0; d < 3; d++) /* displacement */
-    xi[d] += (real)(amp * (2.*rnd0() - 1.));
-  return i;
-}
-
-/* return the energy change by displacing x[i] to xi */
+/* return the energy change from displacing x[i] to xi */
 INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 {
   int j, n = lj->n;
   real l = lj->l, rc2 = lj->rc2, u = 0.f, du, dvir;
+  rv3_t *x = (rv3_t *) lj->x;
 
   *vir = 0.0f;
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    if (lj_pair3d(lj->x + i*3, lj->x + j*3, l, rc2, &du, &dvir)) {
+    if (lj_pair3d(x[i], x[j], l, rc2, &du, &dvir)) {
       u -= du;
       *vir -= dvir;
     }
-    if (lj_pair3d(xi, lj->x + j*3, l, rc2, &du, &dvir)) {
+    if (lj_pair3d(xi, x[j], l, rc2, &du, &dvir)) {
       u += du;
       *vir += dvir;
     }
@@ -208,6 +268,7 @@ INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
   int i;
   real xi[3], du, dvir;
   
+  if (lj->usesq) return lj_metrosq3d(lj, amp, bet);
   i = lj_randmv3d(lj, xi, amp);
   du = lj_depot3d(lj, i, xi, &dvir);
   if (du < 0 || rnd0() < exp(-bet*du)) {
@@ -221,15 +282,34 @@ INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
 INLINE int lj_metro(lj_t *lj, real amp, real bet)
 { return lj->d == 2 ? lj_metro2d(lj, amp, bet) : lj_metro3d(lj, amp, bet); }
 
-/* 3D compute force and virial, return energy */
-static void lj_energy3d(lj_t *lj)
+/* 3D energy for square */
+static real lj_energysq3d(lj_t *lj)
 {
-  real dx[3], dr2, dr6, U, Vir, L = lj->l, rc2 = lj->rc2;
+  real dx[3], dr2, ra2 = lj->ra2, rb2 = lj->rb2, l = lj->l;
+  int i, j, iu = 0, n = lj->n;
+
+  for (i = 0; i < n - 1; i++) {
+    for (j = i + 1; j < n; j++) {
+      dr2 = lj_pbcdist2_3d(dx, lj->x + i*3, lj->x + j*3, l);
+      if (dr2 < ra2)
+        iu += 1000000;
+      else if (dr2 < rb2)
+        iu--;
+    }
+  }
+  return lj->epot = (real) iu;
+}
+
+/* 3D compute force and virial, return energy */
+static real lj_energy3d(lj_t *lj)
+{
+  real dx[3], dr2, dr6, U, Vir, l = lj->l, rc2 = lj->rc2;
   int i, j, prcnt = 0, n = lj->n;
 
+  if (lj->usesq) return lj_energysq3d(lj);
   for (U = Vir = 0, i = 0; i < n - 1; i++) {
     for (j = i + 1; j < n; j++) {
-      dr2 = lj_pbcdist2_3d(dx, lj->x + i*3, lj->x + j*3, L);
+      dr2 = lj_pbcdist2_3d(dx, lj->x + i*3, lj->x + j*3, l);
       if (dr2 > rc2) continue;
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
@@ -238,28 +318,70 @@ static void lj_energy3d(lj_t *lj)
       prcnt++;
     }
   }
-  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
-  lj->epot =  U + lj->epot_tail; /* unshifted energy */
   lj->vir = Vir;
+  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
+  return lj->epot =  U + lj->epot_tail; /* unshifted energy */
 }
 
-void lj_energy(lj_t *lj)
+real lj_energy(lj_t *lj)
 {
-  if (lj->d == 2) lj_energy2d(lj); else lj_energy3d(lj);
+  return (lj->d == 2) ? lj_energy2d(lj) : lj_energy3d(lj);
+}
+
+/* compute 3D switched force, save derivative information to lj->pr */
+INLINE real lj_forcesw3d(lj_t *lj) 
+{
+  int i, j, n = lj->n;
+  ljpair_t *pr;
+  real dx[3], dr2, dr, l = lj->l, d = (real) lj->l;
+  rv3_t *f = (rv3_t *) lj->f, *x = (rv3_t *) lj->x;
+  real fscal, psi, xi;
+
+  lj->epot = lj->lap = lj->vir = 0.f;
+  for (i = 0; i < n; i++) rv3_zero(f[i]);
+  lj->npr = 0;
+  for (i = 0; i < n; i++) {
+    for (j = i + 1; j < n; j++) {
+      dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
+      if (dr2 > lj->rc2) continue;
+
+      pr = lj->pr + lj->npr;
+      rv3_copy(pr->dx, dx);
+      pr->dr2 = dr2;
+      dr = (real) sqrt(dr2);
+      lj->epot += lj_potsw(lj, dr, &fscal, &psi, &xi);
+      pr->phi = -fscal; /* phi = u'/r */
+      pr->psi = psi;  /* psi = phi'/r */
+      pr->xi = xi;  /* xi = psi'/r */
+      lj->lap += 2.f*(psi*dr2 - d*fscal);
+      lj->vir -= fscal*dr2;
+      rv3_smul(dx, fscal);
+      pr->i = i;
+      pr->j = j;
+      rv3_inc(f[i], dx);
+      rv3_dec(f[j], dx);
+      lj->npr++;
+    }
+  }
+  for (lj->f2 = 0.0, i = 0; i < n; i++) lj->f2 += rv3_sqr(f[i]);
+  return lj->epot;
 }
 
 /* 3D compute force and virial, return energy */
-static void lj_force3d(lj_t *lj)
+static real lj_force3d(lj_t *lj)
 {
-  real dx[3], fi[3], dr2, dr6, fs, tmp, U, Vir, L = lj->l, rc2 = lj->rc2;
+  real dx[3], fi[3], dr2, dr6, fs, tmp, U, Vir, l = lj->l, rc2 = lj->rc2;
   int i, j, d, prcnt = 0, n = lj->n;
   rv3_t *f = (rv3_t *) lj->f, *x = (rv3_t *) lj->x;
+
+  if (lj->usesw) return lj_forcesw3d(lj);
+  else if (lj->usesq) return lj_energysq3d(lj); /* no force for square well */
 
   for (i = 0; i < n; i++) rv3_zero(f[i]);
   for (U = Vir = 0, i = 0; i < n - 1; i++) {
     rv3_zero(fi);
     for (j = i + 1; j < n; j++) {
-      dr2 = lj_pbcdist2_3d(dx, x[i], x[j], L);
+      dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 > rc2) continue;
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
@@ -276,54 +398,14 @@ static void lj_force3d(lj_t *lj)
     }
     rv3_inc(f[i], fi);
   }
-  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
-  lj->epot =  U + lj->epot_tail; /* unshifted energy */
   lj->vir = Vir;
+  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
+  return lj->epot =  U + lj->epot_tail; /* unshifted energy */
 }
 
-/* compute 3D switched force, save derivative information to lj->pr */
-INLINE void lj_forcesw3d(lj_t *lj) 
+real lj_force(lj_t *lj)
 {
-  int i, j, n = lj->n;
-  ljpair_t *pr;
-  real dx[3], dr2, dr, L = lj->l;
-  rv3_t *f = (rv3_t *) lj->f, *x = (rv3_t *) lj->x;
-  real fscal, psi, xi;
-
-  lj->epot = lj->lap = lj->vir = 0.f;
-  for (i = 0; i < n; i++) rv3_zero(f[i]);
-  lj->npr = 0;
-  for (i = 0; i < n; i++) {
-    for (j = i + 1; j < n; j++) {
-      dr2 = lj_pbcdist2_3d(dx, x[i], x[j], L);
-      if (dr2 > lj->rc2) continue;
-
-      pr = lj->pr + lj->npr;
-      rv3_copy(pr->dx, dx);
-      pr->dr2 = dr2;
-      dr = (real) sqrt(dr2);
-      lj->epot += lj_potsw(lj, dr, &fscal, &psi, &xi);
-      pr->phi = -fscal; // phi = u'/r
-      pr->psi = psi;  // psi = phi'/r
-      pr->xi = xi;  // xi = psi'/r
-      lj->lap += 2.f*psi*dr2 - 6.f*fscal;
-      lj->vir -= fscal*dr2;
-      rv3_smul(dx, fscal);
-      pr->i = i;
-      pr->j = j;
-      rv3_inc(f[i], dx);
-      rv3_dec(f[j], dx);
-      lj->npr++;
-    }
-  }
-  for (lj->f2 = 0.0, i = 0; i < n; i++) lj->f2 += rv3_sqr(f[i]);
-}
-
-void lj_force(lj_t *lj)
-{
-  if (lj->d == 2) lj_force2d(lj);
-  else if (lj->usesw) lj_forcesw3d(lj);
-  else lj_force3d(lj);
+  return (lj->d == 2) ? lj_force2d(lj) : lj_force3d(lj);
 }
 
 /* velocity verlet */
