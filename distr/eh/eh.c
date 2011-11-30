@@ -1,5 +1,8 @@
-#include "lj.c"
-#include "include/av.h"
+#define ZCOM_PICK
+#define ZCOM_LJ
+#define ZCOM_DISTR
+#define ZCOM_AV
+#include "zcom.h"
 
 const char *fnpos = "lj.pos";
 int initload = 1;
@@ -14,40 +17,27 @@ real thermdt = 0.01f;
 int usesw = 1;
 real rs = 2.0f;
 
-/* see if force matches energy */
-static void foo(lj_t *lj)
-{
-  int i, n = lj->n;
-  real f2 = 0.f, invf2, e1, e2, del = 0.1f;
-  rv3_t *x = (rv3_t *) lj->x, *f = (rv3_t *) lj->f;
-
-  for (i = 0; i < 3*n; i++) lj->x[i] += 0.01f * (2.*rnd0() - 1.);
-  lj_force(lj);
-  e1 = lj->epot;
-  for (i = 0; i < n; i++) f2 += rv3_sqr(f[i]);
-  invf2 = del/f2/lj->l;
-  for (i = 0; i < n; i++) rv3_sinc(x[i], f[i], invf2);
-  lj_force(lj);
-  e2 = lj->epot;
-  printf("e1 %g, e2 %g, del %g\n", e1, e2, (e1 - e2)/del);
-}
-
 int main(void)
 {
   lj_t *lj;
-  int t, nsteps = 20000;
+  int t, nsteps = 10000;
   real u, k, p;
-  real bc = 0.f, udb;
+  real bc = 0.f, udb, bvir;
   static av_t avU, avK, avp, avbc;
+  distr_t *ds;
 
   lj = lj_open(N, 3, rho, rc);
   if (usesw) {
     lj_initsw(lj, rs);
     printf("rc %g, rs %g\n", rc, rs);
   }
-  if (initload) lj_readpos(lj, lj->x, lj->v, fnpos);
-  foo(lj);
+  if (initload) {
+    lj_readpos(lj, lj->x, lj->v, fnpos);
+    lj_force(lj);
+    if (usesw) bc = lj_bconfsw3d(lj, &udb, &bvir);
+  }
 
+  ds = distr_open(-7.0*N, -3.0*N, 0.01*N);
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
     lj_vrescale(lj, tp, thermdt);
@@ -56,7 +46,8 @@ int main(void)
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        bc = lj_bconfsw3d(lj, &udb, NULL);
+        bc = lj_bconfsw3d(lj, &udb, &bvir);
+        distr_add(ds, lj->epot, bc, 1.0/tp, udb, 1.0);
         av_add(&avbc, bc);
       }
     }
@@ -66,6 +57,8 @@ int main(void)
   p = av_getave(&avp);
   bc = av_getave(&avbc);
   printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, bc = %6.3f\n", u, k, p, bc);
+  distr_save(ds, "ds.dat");
+  distr_close(ds);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
   return 0;

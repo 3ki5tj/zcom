@@ -56,6 +56,8 @@ void lj_initsw(lj_t *lj, real rs)
   lj->a7 = 16.f*(5.f*f1 + 15.f*f2 + 7.f*f13 + 3.f*f26)/(dr3*dr4*rs15);
 
   xnew(lj->pr, lj->n * lj->n);
+  xnew(lj->gdg, lj->n * lj->d);
+  xnew(lj->xdg, lj->n * lj->d);
   lj->npr = 0;
   lj->usesw = 1;
 }
@@ -333,7 +335,7 @@ INLINE real lj_forcesw3d(lj_t *lj)
 {
   int i, j, n = lj->n;
   ljpair_t *pr;
-  real dx[3], dr2, dr, l = lj->l, d = (real) lj->l;
+  real dx[3], dr2, dr, l = lj->l, d = (real) lj->d;
   rv3_t *f = (rv3_t *) lj->f, *x = (rv3_t *) lj->x;
   real fscal, psi, xi;
 
@@ -426,6 +428,78 @@ void lj_vv(lj_t *lj, real dt)
   lj->t += dt;
 }
 
+/* calculate the configurational temperature (bc) for switched potential
+ * bc = div(v), where v = g/(g.g), g = grad U,
+ * udb = v . grad bc
+ * bvir = x . grad bc */
+real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
+{
+  int i, j, ipr, npr = lj->npr, n = lj->n;
+  ljpair_t *pr;
+  real dg[3], dh[3], ds[3];
+  real phi, psi, xi, d = (real) lj->d;
+  real dgdx, dg2, dr2, m = 0.f, h2, hs;
+  real gdlap = 0.f, gdm = 0.f, bc, invg2, invg4;
+  real dlap, dgdx2, tmp, hx = 0.f, xdlap = 0.f, xdm = 0.f;
+  rv3_t *h = (rv3_t *) lj->gdg, *s = (rv3_t *) lj->xdg, *f = (rv3_t *) lj->f;
+
+  for (i = 0; i < n; i++) {
+    rv3_zero(h[i]);  /* g * grad g */
+    rv3_zero(s[i]);  /* x * grad g */
+  }
+
+  for (ipr = 0; ipr < npr; ipr++) {
+    pr = lj->pr + ipr;
+    i = pr->i;
+    j = pr->j;
+    phi = pr->phi;
+    psi = pr->psi;
+    xi = pr->xi;
+    dr2 = pr->dr2;
+
+    dg2 = rv3_sqr( rv3_diff(dg, f[j], f[i]) );
+    dgdx = rv3_dot(dg, pr->dx);
+    m += psi*(dgdx2 = dgdx*dgdx) + phi*dg2; /* M = g g : grad grad U */
+    dlap = xi*dr2 + (2.f + d)*psi;
+    gdlap += dlap * dgdx; /* 0.5 g . grad laplace U */
+    gdm += (xi*dgdx2 + 3.f*psi*dg2)*dgdx; /* g g g : grad grad grad U, first larger */
+    rv3_lincomb2(dh, pr->dx, dg, psi * dgdx, phi);
+    rv3_sinc(h[i], dh,  2.f);
+    rv3_sinc(h[j], dh, -2.f);
+
+    if (bvir) {
+      xdlap += dlap * dr2;  /* 0.5 x . grad laplace U */
+      xdm += xi*dgdx2*dr2 + psi*(dg2*dr2 + 2.f*dgdx2); /* g g r : grad grad grad U */
+      tmp = psi*dr2 + phi;
+      hx += tmp * dgdx;
+      rv3_smul2(ds, pr->dx, 2.f * tmp);
+      rv3_inc(s[i], ds);
+      rv3_dec(s[j], ds);
+    }
+  }
+  m *= 2.f;
+  gdlap *= 2.f;
+  gdm *= 2.f;
+  invg2 = 1.f/lj->f2;
+  invg4 = invg2 * invg2;
+  bc = (lj->lap - m*invg2)*invg2; /* configuration temperature */
+
+  for (h2 = 0.f, i = 0; i < n; i++) h2 += rv3_sqr(h[i]);
+  /* (1/g) \partial^2 g/ \partial E^2 = <bc*bc + udb>
+     \partial bc/ \partial E = <d(bc)^2 + udb> */
+  *udb = invg4*(gdlap - (lj->lap*m + h2 + gdm)*invg2 + 2.f*m*m*invg4);
+  
+  if (bvir) {
+    hx *= 2.f;
+    xdlap *= 2.f;
+    xdm *= 2.f;
+    for (hs = 0.f, i = 0; i < n; i++) hs += rv3_dot(h[i], s[i]);
+    *bvir = invg2*(xdlap - (lj->lap*hx + hs + xdm)*invg2 + 2.f*m*hx*invg4);
+  }
+  return bc;
+}
+
+
 /* create an open structure */
 lj_t *lj_open(int n, int d, real rho, real rcdef)
 {
@@ -457,10 +531,87 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
 
 void lj_close(lj_t *lj)
 {
+  if (lj->pr) free(lj->pr);
+  if (lj->xdg) free(lj->xdg);
+  if (lj->gdg) free(lj->gdg);
   free(lj->x);
   free(lj->v);
   free(lj->f);
   free(lj);
 }
+
+/* write position (and velocity)
+ * Note 1: *actual* position, not unit position is used
+ * Note 2: coordinates are *not* wrapped back into the box */
+int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
+{
+  FILE *fp;
+  int i, j, d = lj->d, n = lj->n;
+  real l = lj->l;
+
+  if (fn == NULL) fn = "lj.pos";
+  xfopen(fp, fn, "w", return -1);
+
+  fprintf(fp, "# %d %d %d\n", d, lj->n, (v != NULL));
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", x[i*d + j] * l);
+    if (v)
+      for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", v[i*d + j]);
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+  return 0;
+}
+
+/* read position file (which may include velocity) */
+int lj_readpos(lj_t *lj, real *x, real *v, const char *fn)
+{
+  char s[1024], *p;
+  FILE *fp;
+  int i, j, hasv = 0, next, d = lj->d, n = lj->n;
+  const char *fmt;
+  real l = lj->l, xtmp;
+
+  if (fn == NULL) fn = "lj.pos";
+  xfopen(fp, fn, "r", return -1);
+
+  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
+    fprintf(stderr, "Warning: %s has no information line\n", fn);
+    rewind(fp);
+  } else {
+    if (3 != sscanf(s + 1, "%d%d%d", &i, &j, &hasv) || i != d || j != lj->n) {
+      fprintf(stderr, "first line is corrupted:\n%s", s);
+      goto ERR;
+    }
+  }
+
+  fmt = (sizeof(double) == sizeof(real)) ? "%lf%n" : "%f%n";
+  for (i = 0; i < n; i++) {
+    if (fgets(s, sizeof s, fp) == NULL) goto ERR;
+    if (strlen(s) < 10) goto ERR;
+    for (p = s, j = 0; j < d; j++, p += next) {
+      if (1 != sscanf(p, fmt, &xtmp, &next)) {
+        fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
+        goto ERR;
+      }
+      x[i*d + j] = xtmp / l;
+    }
+    if (hasv && v != NULL) {
+      for (j = 0; j < d; j++, p += next)
+        if (1 != sscanf(p, fmt, v + i*d + j, &next)) {
+          fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
+          goto ERR;
+        }
+    }
+  }
+  fclose(fp);
+  return 0;
+
+ERR:
+  fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fn, i, s);
+  fclose(fp);
+  return 1;
+}
+
 #endif
 

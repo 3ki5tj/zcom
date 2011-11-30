@@ -21,7 +21,7 @@ lj.c: lj.0.c mk2d.py
 	./mk2d.py $@
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* ab.pos
+	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* lj.pos
 	rm -rf bin obj *.layout *.depend
 
 .PHONY: clean all

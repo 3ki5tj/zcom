@@ -217,13 +217,13 @@ void ab_rmcom(abpro_t *ab, real *x, real *v)
 }
 
 /* write position file (which may include velocity) */
-int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
+int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fn)
 {
   FILE *fp;
   int i, j, d = ab->d, n = ab->n;
 
-  if (fname == NULL) fname = "ab.pos";
-  xfopen(fp, fname, "w", return -1);
+  if (fn == NULL) fn = "ab.pos";
+  xfopen(fp, fn, "w", return -1);
 
   fprintf(fp, "# %d %d %d %d %d\n", d, ab->model, ab->seqid, ab->n, (v != NULL));
   for (i = 0; i < n; i++) {
@@ -238,7 +238,7 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname)
 }
 
 /* read position file (which may include velocity) */
-int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
+int ab_readpos(abpro_t *ab, real *x, real *v, const char *fn)
 {
   char s[1024], *p;
   FILE *fp;
@@ -246,11 +246,11 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
   const char *fmt;
   real vtmp[3], *vi;
 
-  if (fname == NULL) fname = "ab.pos";
-  xfopen(fp, fname, "r", return -1);
+  if (fn == NULL) fn = "ab.pos";
+  xfopen(fp, fn, "r", return -1);
 
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
-    fprintf(stderr, "Warning: %s has no information line\n", fname);
+    fprintf(stderr, "Warning: %s has no information line\n", fn);
     rewind(fp);
   } else {
     if (5 != sscanf(s+1, "%d%d%d%d%d", &i, &j, &seq, &next, &hasv)
@@ -260,27 +260,22 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
     }
   }
 
-  if (sizeof(double) == sizeof(real))
-    fmt = "%lf%n";
-  else
-    fmt = "%f%n";
+  fmt = (sizeof(double) == sizeof(real)) ? "%lf%n" : "%f%n";
   for (i = 0; i < n; i++) {
     if (fgets(s, sizeof s, fp) == NULL) goto ERR;
     if (strlen(s) < 10) goto ERR;
-    for (p = s, j = 0; j < d; j++, p += next) {
+    for (p = s, j = 0; j < d; j++, p += next)
       if (1 != sscanf(p, fmt, x+i*d+j, &next)) {
         fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
         goto ERR;
       }
-    }
     if (hasv) {
       vi = (v != NULL) ? (v + i*d) : vtmp;
-      for (j = 0; j < d; j++, p += next) {
+      for (j = 0; j < d; j++, p += next)
         if (1 != sscanf(p, fmt, vi+j, &next)) {
           fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
           goto ERR;
         }
-      }
     }
     if (1 != sscanf(p, "%d", &j) || j != ab->type[i]) {
       fprintf(stderr, "bad type on i = %d, j = %d\n", i, j);
@@ -291,7 +286,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname)
   return 0;
 
 ERR:
-  fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fname, i, s);
+  fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fn, i, s);
   fclose(fp);
   return 1;
 }
