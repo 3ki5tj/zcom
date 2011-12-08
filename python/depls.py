@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+''' dependency list '''
+
 def depsort(deps):
   ''' returns a sorted list s.t. dependencies specified in 'deps' are satisfied
   INPUT:  deps[i]:    a list items that i depends on

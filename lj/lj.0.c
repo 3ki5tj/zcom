@@ -288,30 +288,35 @@ static real lj_energysq3d(lj_t *lj)
         iu--;
     }
   }
-  return lj->epot = (real) iu;
+  return (real) iu;
 }
 
 /* 3D compute force and virial, return energy */
-static real lj_energy3d(lj_t *lj)
+static real lj_energylj3d(lj_t *lj, real *virial, real *eps)
 {
-  real dx[3], dr2, dr6, U, Vir, l = lj->l, rc2 = lj->rc2;
+  real dx[3], dr2, dr6, ep, vir, l = lj->l, rc2 = lj->rc2;
   int i, j, prcnt = 0, n = lj->n;
 
-  if (lj->usesq) return lj_energysq3d(lj);
-  for (U = Vir = 0, i = 0; i < n - 1; i++) {
+  for (ep = vir = 0, i = 0; i < n - 1; i++) {
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, lj->x + i*3, lj->x + j*3, l);
       if (dr2 > rc2) continue;
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
-      Vir += dr6 * (48.f * dr6 - 24.f); /* f.r */
-      U += 4 * dr6 * (dr6 - 1);
+      vir += dr6 * (48.f * dr6 - 24.f); /* f.r */
+      ep += 4 * dr6 * (dr6 - 1);
       prcnt++;
     }
   }
-  lj->vir = Vir;
-  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
-  return lj->epot =  U + lj->epot_tail; /* unshifted energy */
+  if (virial) *virial = vir;
+  if (eps) *eps = ep - prcnt * lj->epot_shift; /* shifted energy */
+  return ep + lj->epot_tail; /* unshifted energy */
+}
+
+INLINE real lj_energy3d(lj_t *lj)
+{
+  if (lj->usesq) return lj->epot = lj_energysq3d(lj);
+  else return lj->epot = lj_energylj3d(lj, &lj->vir, &lj->epots);
 }
 
 real lj_energy(lj_t *lj)
@@ -359,17 +364,14 @@ INLINE real lj_forcesw3d(lj_t *lj)
 }
 
 /* 3D compute force and virial, return energy */
-static real lj_force3d(lj_t *lj)
+static real lj_forcelj3d(lj_t *lj, rv3_t *f, real *virial, real *eps)
 {
-  real dx[3], fi[3], dr2, dr6, fs, tmp, U, Vir, l = lj->l, rc2 = lj->rc2;
+  real dx[3], fi[3], dr2, dr6, fs, tmp, ep, vir, l = lj->l, rc2 = lj->rc2;
   int i, j, d, prcnt = 0, n = lj->n;
-  rv3_t *f = (rv3_t *) lj->f, *x = (rv3_t *) lj->x;
-
-  if (lj->usesw) return lj_forcesw3d(lj);
-  else if (lj->usesq) return lj_energysq3d(lj); /* no force for square well */
+  rv3_t *x = (rv3_t *) lj->x;
 
   for (i = 0; i < n; i++) rv3_zero(f[i]);
-  for (U = Vir = 0, i = 0; i < n - 1; i++) {
+  for (ep = vir = 0, i = 0; i < n - 1; i++) {
     rv3_zero(fi);
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
@@ -377,21 +379,28 @@ static real lj_force3d(lj_t *lj)
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
       fs = dr6 * (48.f * dr6 - 24.f); /* f.r */
-      Vir += fs;
+      vir += fs;
       fs *= dr2;
       for (d = 0; d < 3; d++) {
         tmp = dx[d] * fs;
         fi[d] += tmp;
         f[j][d] -= tmp;
       }
-      U += 4 * dr6 * (dr6 - 1);
+      ep += 4 * dr6 * (dr6 - 1);
       prcnt++;
     }
     rv3_inc(f[i], fi);
   }
-  lj->vir = Vir;
-  lj->epots = U - prcnt * lj->epot_shift; /* shifted energy */
-  return lj->epot =  U + lj->epot_tail; /* unshifted energy */
+  if (virial) *virial = vir;
+  if (eps) *eps = ep - prcnt * lj->epot_shift; /* shifted energy */
+  return ep + lj->epot_tail; /* unshifted energy */
+}
+
+INLINE real lj_force3d(lj_t *lj)
+{
+  if (lj->usesw) return lj_forcesw3d(lj);
+  else if (lj->usesq) return lj->epot = lj_energysq3d(lj); /* no force for square well */
+  else return lj->epot = lj_forcelj3d(lj, (rv3_t *) lj->f, &lj->vir, &lj->epots);
 }
 
 real lj_force(lj_t *lj)
