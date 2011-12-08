@@ -6,7 +6,7 @@
 #include "zcom.h"
 
 const char *fncfg = "eh.cfg";
-const char *fnds = "ds.dat";
+const char *fnds = "ds.dat", *fndsb = "dsb.dat";
 const char *fnpos = "lj.pos";
 int initload = 1;
 
@@ -23,16 +23,18 @@ real rs = 2.0f;
 int dosimul = 1; /* do a simulation */
 int nsteps = 10000;
 
-double emin = -7.0, emax = -3.0, edel = 0.001;
+double emin = -1380, emax = -1240, edel = 0.2;
 
 int halfwin = 50; /* half window size */
-int iitype = 0; /* 0: Adib-Jarsynski, 1: modulated */
+int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
+int mfhalfwin = 0; /* half window size for mean force */
 
 /* load parameters from .cfg file */
 static void loadcfg(const char *fncfg)
 {
   cfg_t *cfg = cfg_open(fncfg);
   if (cfg == NULL) return;
+  cfg_add(cfg, "initload", "%d", &initload, "load data initially");
   cfg_add(cfg, "dosimul", "%d", &dosimul, "do simulation");
   cfg_add(cfg, "nsteps", "%d", &nsteps, "number of steps");
   cfg_add(cfg, "n", "%d", &N, "number of particles");
@@ -43,20 +45,21 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "emin", "%lf", &emin, "minimal energy");
   cfg_add(cfg, "emax", "%lf", &emax, "maximal energy");
   cfg_add(cfg, "edel", "%lf", &edel, "energy interval");
-  cfg_add(cfg, "halfwin", "%d", &halfwin, "II: number of bin in each side of the window");
+  cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, for II");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
+  cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, for II mean force");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
   cfg_close(cfg);
 }
 
 /* perform a simulation, save data to ds */
-static void simul(distr_t *ds)
+static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
   int t;
   real u, k, p;
-  real bc = 0.f, udb, bvir;
-  static av_t avU, avK, avp, avbc;
+  real bet = 1.0/tp, fb = 0.f, udb, bvir;
+  static av_t avU, avK, avp, avfb;
 
   lj = lj_open(N, 3, rho, rc);
   if (usesw) {
@@ -66,50 +69,62 @@ static void simul(distr_t *ds)
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos);
     lj_force(lj);
-    if (usesw) bc = lj_bconfsw3d(lj, &udb, &bvir);
+    if (usesw) fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
   }
 
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
+    lj_shiftcom(lj, lj->v);
     lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        bc = lj_bconfsw3d(lj, &udb, &bvir);
-        distr_add(ds, lj->epot, bc, 1.0/tp, udb, 1.0);
-        av_add(&avbc, bc);
+        fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
+        distr_add(d, lj->epot, fb, udb, 1.0);
+        if ((t + 1) % 10 == 0)
+          distr_add(db, lj->epot, fb, udb, 1.0);
+        av_add(&avfb, fb);
       }
     }
   }
   u = av_getave(&avU)/N;
   k = av_getave(&avK)/N;
   p = av_getave(&avp);
-  bc = av_getave(&avbc);
-  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, bc = %6.3f\n", u, k, p, bc);
+  fb = av_getave(&avfb);
+  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, delb = %6.3f\n", u, k, p, fb);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
 }
 
 int main(void)
 {
-  distr_t *ds;
+  distr_t *d, *db;
 
   loadcfg(fncfg);
-  ds = distr_open(emin*N, emax*N, edel*N);
-  if (dosimul) {
-    simul(ds);
-  } else { /* load previous data */
-    die_if(0 != distr_load(ds, fnds), "failed to load data from %s\n", fnds);
+  d = distr_open(emin, emax, edel);
+  db = distr_open(emin, emax, edel);
+  if (initload) { /* load previous data */
+    die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
+    die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
   }
+  if (dosimul)
+    simul(d, db);
   if (iitype == 0) {
-    distr_aj(ds, halfwin);
+    distr_aj(d, halfwin);
   } else {
-    distr_ii0(ds, halfwin);
+    if (mfhalfwin > 0) distr_mfii(db, mfhalfwin); else distr_mf0(db);
+    if (halfwin >= 0) {
+      distr_ii0(db, halfwin);
+    } else {
+      distr_iiadp(db);
+    }
   }
-  distr_save(ds, fnds);
-  distr_close(ds);
+  distr_save(d, fnds);
+  distr_close(d);
+  distr_save(db, fndsb);
+  distr_close(db);
   return 0;
 }
 

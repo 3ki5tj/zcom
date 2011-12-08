@@ -65,9 +65,16 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev);
 void ab_close(abpro_t *ab);
 
 int ab_checkconn(abpro_t *ab, const real *x, double tol);
-#define ab_shiftcom(ab, x)      md_shiftcom(x, ab->n, ab->d)
+#define ab_shiftcom(ab, v)      md_shiftcom(v, ab->n, ab->d)
 #define ab_shiftang(ab, x, v)   md_shiftang(x, v, ab->n, ab->d)
-void ab_rmcom(abpro_t *ab, real *x, real *v);
+/* shift center of x to the origin, remove center velocity and angular momentum */
+INLINE void ab_rmcom(abpro_t *ab, real *x, real *v)
+{
+  ab_shiftcom(ab, x);
+  ab_shiftcom(ab, v);
+  ab_shiftang(ab, x, v); /* remove angular momentum */
+}
+
 
 int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname);
 int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname);

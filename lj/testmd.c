@@ -10,6 +10,7 @@ real rc = 3.0f;
 real tp = 1.0f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
+int nsteps = 100000;
 
 int usesw = 1;
 real rs = 2.0f;
@@ -35,9 +36,9 @@ static void foo(lj_t *lj)
 int main(void)
 {
   lj_t *lj;
-  int t, nsteps = 20000;
+  int t;
   real u, k, p;
-  real bc = 0.f, udb;
+  real bc = 0.f;
   static av_t avU, avK, avp, avbc;
 
   lj = lj_open(N, 3, rho, rc);
@@ -48,15 +49,19 @@ int main(void)
   if (initload) lj_readpos(lj, lj->x, lj->v, fnpos);
   foo(lj);
 
+  md_shiftcom(lj->v, lj->n, lj->d);
+  md_shiftang(lj->x, lj->v, lj->n, lj->d);
+
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
+    lj_shiftcom(lj, lj->v);
     lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        bc = lj_bconfsw3d(lj, &udb, NULL);
+        bc = lj_bconfsw3d(lj, NULL, NULL);
         av_add(&avbc, bc);
       }
     }

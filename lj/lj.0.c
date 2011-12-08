@@ -62,17 +62,6 @@ void lj_initsw(lj_t *lj, real rs)
   lj->usesw = 1;
 }
 
-/* initialize square well potential */
-void lj_initsq(lj_t *lj, real ra, real rb)
-{
-  lj->ra = ra;
-  lj->ra2 = ra * ra;
-  lj->rb = rb;
-  lj->rb2 = rb * rb;
-  lj->usesq = 1;
-  lj_energy(lj);
-}
-
 /* compute the switch potential phi(r) and its derivatives
  * fscal = -phi = uij'/rij
  * psi = phi'/rij
@@ -443,10 +432,8 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
   real dlap, dgdx2, tmp, hx = 0.f, xdlap = 0.f, xdm = 0.f;
   rv3_t *h = (rv3_t *) lj->gdg, *s = (rv3_t *) lj->xdg, *f = (rv3_t *) lj->f;
 
-  for (i = 0; i < n; i++) {
-    rv3_zero(h[i]);  /* g * grad g */
-    rv3_zero(s[i]);  /* x * grad g */
-  }
+  if(udb) for (i = 0; i < n; i++) rv3_zero(h[i]);  /* g * grad g */
+  if(bvir) for (i = 0; i < n; i++) rv3_zero(s[i]);  /* x * grad g */
 
   for (ipr = 0; ipr < npr; ipr++) {
     pr = lj->pr + ipr;
@@ -454,18 +441,20 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
     j = pr->j;
     phi = pr->phi;
     psi = pr->psi;
-    xi = pr->xi;
-    dr2 = pr->dr2;
 
     dg2 = rv3_sqr( rv3_diff(dg, f[j], f[i]) );
     dgdx = rv3_dot(dg, pr->dx);
     m += psi*(dgdx2 = dgdx*dgdx) + phi*dg2; /* M = g g : grad grad U */
-    dlap = xi*dr2 + (2.f + d)*psi;
-    gdlap += dlap * dgdx; /* 0.5 g . grad laplace U */
-    gdm += (xi*dgdx2 + 3.f*psi*dg2)*dgdx; /* g g g : grad grad grad U, first larger */
-    rv3_lincomb2(dh, pr->dx, dg, psi * dgdx, phi);
-    rv3_sinc(h[i], dh,  2.f);
-    rv3_sinc(h[j], dh, -2.f);
+    if (udb) {
+      dr2 = pr->dr2;
+      xi = pr->xi;
+      dlap = xi*dr2 + (2.f + d)*psi;
+      gdlap += dlap * dgdx; /* 0.5 g . grad laplace U */
+      gdm += (xi*dgdx2 + 3.f*psi*dg2)*dgdx; /* g g g : grad grad grad U, first larger */
+      rv3_lincomb2(dh, pr->dx, dg, psi * dgdx, phi);
+      rv3_sinc(h[i], dh,  2.f);
+      rv3_sinc(h[j], dh, -2.f);
+    }
 
     if (bvir) {
       xdlap += dlap * dr2;  /* 0.5 x . grad laplace U */
@@ -484,10 +473,12 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
   invg4 = invg2 * invg2;
   bc = (lj->lap - m*invg2)*invg2; /* configuration temperature */
 
-  for (h2 = 0.f, i = 0; i < n; i++) h2 += rv3_sqr(h[i]);
-  /* (1/g) \partial^2 g/ \partial E^2 = <bc*bc + udb>
-     \partial bc/ \partial E = <d(bc)^2 + udb> */
-  *udb = invg4*(gdlap - (lj->lap*m + h2 + gdm)*invg2 + 2.f*m*m*invg4);
+  if (udb) {
+    for (h2 = 0.f, i = 0; i < n; i++) h2 += rv3_sqr(h[i]);
+    /* (1/g) \partial^2 g/ \partial E^2 = <bc*bc + udb>
+       \partial bc/ \partial E = <d(bc)^2 + udb> */
+    *udb = invg4*(gdlap - (lj->lap*m + h2 + gdm)*invg2 + 2.f*m*m*invg4);
+  }
   
   if (bvir) {
     hx *= 2.f;
@@ -522,8 +513,8 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   /* init. random velocities */
   for (i = 0; i < n * d; i++) lj->v[i] = rnd0() - .5;
 
-  md_shiftcom(lj->x, n, d);
-  md_shiftang(lj->x, lj->v, n, d);
+  lj_shiftcom(lj, lj->v);
+  lj_shiftang(lj, lj->x, lj->v);
 
   lj_force(lj);
   return lj;

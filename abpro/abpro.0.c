@@ -207,15 +207,6 @@ int ab_checkconn(abpro_t *ab, const real *x, double tol)
   return 0;
 }
 
-/* shift center of x to the origin, 
- * remove center velocity and angular momentum */
-void ab_rmcom(abpro_t *ab, real *x, real *v)
-{
-  ab_shiftcom(ab, x);
-  ab_shiftcom(ab, v);
-  ab_shiftang(ab, x, v); /* remove angular momentum */
-}
-
 /* write position file (which may include velocity) */
 int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fn)
 {

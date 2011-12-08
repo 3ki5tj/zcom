@@ -42,6 +42,9 @@ real lj_energy(lj_t *lj);
 real lj_force(lj_t *lj);
 void lj_vv(lj_t *lj, real dt);
 
+#define lj_shiftcom(lj, v)    md_shiftcom(v, lj->n, lj->d)
+#define lj_shiftang(lj, x, v) md_shiftang(x, v, lj->n, lj->d)
+
 INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt) 
  { md_vrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
@@ -50,7 +53,17 @@ INLINE real lj_calcp(lj_t *lj, real tp)
   { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
 
 void lj_initsw(lj_t *lj, real rs);
-void lj_initsq(lj_t *lj, real ra, real rb);
+
+/* initialize square well potential */
+INLINE void lj_initsq(lj_t *lj, real ra, real rb)
+{
+  lj->ra = ra;
+  lj->ra2 = ra * ra;
+  lj->rb = rb;
+  lj->rb2 = rb * rb;
+  lj->usesq = 1;
+  lj_energy(lj);
+}
 
 real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir);
 
