@@ -98,6 +98,20 @@ real md_ekin(const real *v, int nd, int dof, real *tkin)
   return ekin *= .5f;
 }
 
+/* velocity scaling: for regular MD
+ * ekt is the time-averaged ek, may not be *ekin  */
+void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tkin)
+{
+  int i;
+  real ekav = .5f*tp*dof, s;
+
+  s = (real) sqrt( ekav / ekt );
+  for (i = 0; i < nd; i++)
+    v[i] *= s;
+  if (ekin) *ekin *= s*s;
+  if (tkin) *tkin *= s*s;
+}
+
 /* velocity rescaling thermostat */
 void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
@@ -108,7 +122,7 @@ void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *t
   amp = 2*sqrt(ek1*ekav*dt/dof);
   ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
   if (ek2 < 0) ek2 = 0;
-  s = (real)sqrt(ek2/ek1);
+  s = (real) sqrt(ek2/ek1);
   for (i = 0; i < nd; i++)
     v[i] *= s;
   *ekin = ek2;

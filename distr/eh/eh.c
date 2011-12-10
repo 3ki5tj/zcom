@@ -21,9 +21,11 @@ int usesw = 1; /* must use switched potential */
 real rs = 2.0f;
 
 int dosimul = 1; /* do a simulation */
-int nsteps = 10000;
+int tstat = 1; /* thermostat */
+int nsteps = 10000, nequil = 10000, nstadj = 1000;
+int nstdb = 100; /* # of steps to deposit to database B */
 
-double emin = -1380, emax = -1240, edel = 0.2;
+double emin = -1380, emax = -1240, edel = 0.1;
 
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
@@ -37,6 +39,9 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "initload", "%d", &initload, "load data initially");
   cfg_add(cfg, "dosimul", "%d", &dosimul, "do simulation");
   cfg_add(cfg, "nsteps", "%d", &nsteps, "number of steps");
+  cfg_add(cfg, "nequil", "%d", &nequil, "number of equilibration steps");
+  cfg_add(cfg, "tstat", "%d", &tstat, "use thermostat, 0: regular MD, 1: canonical ensemble");
+  cfg_add(cfg, "nstadj", "%d", &nstadj, "every # of steps to adjust temperature if tstat = 0");
   cfg_add(cfg, "n", "%d", &N, "number of particles");
   cfg_add(cfg, "rho", "%r", &rho, "density");
   cfg_add(cfg, "rc", "%r", &rc, "cutoff distance");
@@ -45,7 +50,8 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "emin", "%lf", &emin, "minimal energy");
   cfg_add(cfg, "emax", "%lf", &emax, "maximal energy");
   cfg_add(cfg, "edel", "%lf", &edel, "energy interval");
-  cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, for II");
+  cfg_add(cfg, "nstdb", "%d", &nstdb, "every # of steps to deposit to the small database (B)");
+  cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, for II; 0: guess, -1: adaptive");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, for II mean force");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
@@ -56,15 +62,15 @@ static void loadcfg(const char *fncfg)
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int t;
-  real u, k, p;
+  int i, t, ntot = nsteps + nequil;
+  real u, k, p, s;
   real bet = 1.0/tp, fb = 0.f, udb, bvir;
-  static av_t avU, avK, avp, avfb;
+  static av_t avU, avK0, avK, avp, avfb;
 
   lj = lj_open(N, 3, rho, rc);
   if (usesw) {
     lj_initsw(lj, rs);
-    printf("rc %g, rs %g\n", rc, rs);
+    printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   }
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos);
@@ -72,20 +78,37 @@ static void simul(distr_t *d, distr_t *db)
     if (usesw) fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
   }
 
-  for (t = 0; t < nsteps; t++) {
+  for (t = 0; t < ntot; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
-    lj_vrescale(lj, tp, thermdt);
-    if (t > nsteps/2) {
+    if (tstat)
+      lj_vrescale(lj, tp, thermdt);
+
+    if (t >= nequil) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
+        fb = lj_bconfsw3d(lj, &udb, &bvir);
+        if (tstat)
+          fb -= bet;
+        else {
+          fb -= (lj->dof*.5f - 1)/lj->ekin;
+          udb -= (lj->dof*.5f - 1)/(lj->ekin * lj->ekin);
+        }
         distr_add(d, lj->epot, fb, udb, 1.0);
-        if ((t + 1) % 10 == 0)
+        if ((t + 1) % nstdb == 0)
           distr_add(db, lj->epot, fb, udb, 1.0);
         av_add(&avfb, fb);
+      }
+    } else if (!tstat) { /* regular MD */
+      av_add(&avK0, lj->ekin);
+      if ((t + 1) % nstadj == 0) { /* adjust temperature */
+        k = av_getave(&avK0);
+        lj_vscale(lj, tp, k);
+        printf("t %g: v-scaling: T %g(%g), now K %g, K + U = %g\n",
+            (t+1)*mddt, k*2.f/lj->dof, avK0.s, lj->ekin, lj->epot + lj->ekin);
+        av_clear(&avK0);
       }
     }
   }
@@ -96,6 +119,26 @@ static void simul(distr_t *d, distr_t *db)
   printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, delb = %6.3f\n", u, k, p, fb);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
+}
+
+/* perform integral identity */
+static void doii(distr_t *d)
+{
+  if (iitype == 0) {
+    distr_aj(d, halfwin);
+  } else if (iitype == 1) {
+    if (mfhalfwin > 0)
+      distr_mfii(d, mfhalfwin);
+    else
+      distr_mf0(d);
+
+    if (halfwin >= 0)
+      distr_ii0(d, halfwin);
+    else
+      distr_iiadp(d);
+  } else if (iitype == 2) {
+    distr_iimf(d);
+  }
 }
 
 int main(void)
@@ -111,16 +154,10 @@ int main(void)
   }
   if (dosimul)
     simul(d, db);
-  if (iitype == 0) {
-    distr_aj(d, halfwin);
-  } else {
-    if (mfhalfwin > 0) distr_mfii(db, mfhalfwin); else distr_mf0(db);
-    if (halfwin >= 0) {
-      distr_ii0(db, halfwin);
-    } else {
-      distr_iiadp(db);
-    }
-  }
+  
+  doii(d);
+  doii(db);
+  
   distr_save(d, fnds);
   distr_close(d);
   distr_save(db, fndsb);

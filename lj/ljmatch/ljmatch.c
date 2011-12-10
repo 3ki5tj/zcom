@@ -45,6 +45,7 @@ static void match(lj_t *lj)
     for (it = 0; it < 10; it++)
       lj_metro3d(lj, amp, bet);
     eljn = lj_energylj3d(lj, NULL, NULL);
+    /* get dhde(eljn) */
     printf("%g %g %g %g %g\n", t, eljn - elj, lj->epot - esq, elj, esq);
     elj = eljn;
     esq = lj->epot;
