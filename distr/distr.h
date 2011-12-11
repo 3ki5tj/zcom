@@ -17,7 +17,7 @@ typedef struct {
   double xmin, xmax, dx;
   distrsum_t *arr;
   double *rho, *lnrho, *his;
-  double *mf, *mf0;
+  double *mf, *mdv;
   int *jl, *jr; /* window size */
   double *err;
   double *hsum; /* histogram sum for comparison */
@@ -29,58 +29,62 @@ typedef struct {
 INLINE void distr_mf0(distr_t *d)
 {
   int i, m = 0, n = d->n;
-  double s, sf;
+  double s, sf, sdv;
 
   for (i = 0; i < n; i++) {
     distrsum_t *ds = d->arr + i;
     s = ds->s;
     sf = ds->sf;
+    sdv = ds->sdv;
     /* extend to both sides, stop as soon as we have one data point */
     for (m = 1; m < n && s <= 0.; m++) {
       if (i - m >= 0) { /* extend to the left */
         ds = d->arr + i - m;
         s += ds->s;
         sf += ds->sf;
+        sdv += ds->sdv;
       }
       if (i + m < n) { /* extend to the right */
         ds = d->arr + i + m;
         s += ds->s;
         sf += ds->sf;
+        sdv += ds->sdv;
       }
     }
     d->mf[i] = (s > 0.) ? (sf / s) : 0.;
+    d->mdv[i] = (s > 0.) ? (sdv / s) : 0.;
   }
 }
 
-/* compute mean force from a symmetric window using the integral identity
+#define distr_mfav(d, m) distr_mfwin(d, m, 0)
+#define distr_mfii(d, m) distr_mfwin(d, m, 1)
+
+/* compute mean force from a symmetric window
+ * if ii, we use the integral identity, otherwise, a plain average
  * half window size starts from m until the window contains at least one data point
  * linear phi(x) is used for the integral identity
  * improves mean force, slightly smoothness of distribution itself */
-INLINE void distr_mfii(distr_t *d, int m)
+INLINE void distr_mfwin(distr_t *d, int m, int ii)
 {
   int i, j, j0, j1, mm, n = d->n;
-  double s0, s1, s, phi, f, dv, dx = d->dx;
-  distrsum_t *ds;
+  double s0, s1, s, phi, dx = d->dx;
 
+  distr_mf0(d);
   for (i = 0; i < n; i++) {
-    ds = d->arr + i;
     /* start with a window size of m, but extend if nothing is in the window */
     for (mm = m; mm < n; mm++) {
       j0 = intmax(0, i - mm);
       j1 = intmin(n, i + mm + 1);
       for (s0 = s1 = s = 0., j = j0; j < j1; j++) {
         phi = (j == i) ? 0 : (j + .5 - (j < i ? j0 : j1)) * dx;
-        ds = d->arr + j;
-        if (ds->s <= 0.) continue;
-        f = ds->sf / ds->s;
-        dv = (ds->sdv + ds->sf2) / ds->s - f * f;
-        s0 += f;
-        s1 += dv * phi;
+        s0 += d->mf[j];
+        s1 += d->mdv[j] * phi;
         s += 1;
       }
       if (s > 0) break;
     }
-    d->mf[i] = (s > 0) ? (s0 + s1)/s : 0.0;
+    if (ii) s0 += s1; /* add correction second-order derivative */
+    d->mf[i] = (s > 0) ? s0/s : 0.0;
   }
 }
 
@@ -282,7 +286,7 @@ INLINE distr_t *distr_open(double xmin, double xmax, double dx)
   xnew(d->lnrho, d->n + 1);
   xnew(d->his, d->n + 1);
   xnew(d->mf, d->n + 1);
-  xnew(d->mf0, d->n + 1);
+  xnew(d->mdv, d->n + 1);
   xnew(d->jl, d->n + 1);
   xnew(d->jr, d->n + 1);
   xnew(d->err, d->n + 1);
@@ -298,7 +302,7 @@ INLINE void distr_close(distr_t *d)
   free(d->lnrho);
   free(d->his);
   free(d->mf);
-  free(d->mf0);
+  free(d->mdv);
   free(d->jl);
   free(d->jr);
   free(d->err);
@@ -336,7 +340,7 @@ INLINE int distr_save(distr_t *d, const char *fn)
   }
 
   xfopen(fp, fn, "w", return -1);
-  fprintf(fp, "# %d %d %.14e %.14e\n", 1, d->n, d->xmin, d->dx);
+  fprintf(fp, "# 1 %d %.14e %.14e\n", d->n, d->xmin, d->dx);
 
   for (i = i0; i <= i1; i++) {
     double f = 0.0, f2 = 0.0, dv = 0.0;
@@ -347,9 +351,9 @@ INLINE int distr_save(distr_t *d, const char *fn)
       dv = ds->sdv / ds->s;
     }
     fprintf(fp, "%g %.14e %.14e %.14e %.14e "
-        "%.14e %.14e %.14e %.14e %g %g %g\n",
+        "%.14e %.14e %.14e %.14e %.14e %g %g %g\n",
       d->xmin + i * d->dx, ds->s, f, f2, dv,
-      d->rho[i], d->lnrho[i], d->mf[i], d->his[i],
+      d->rho[i], d->lnrho[i], d->his[i], d->mf[i], d->mdv[i],
       d->xmin + d->dx * d->jl[i], d->xmin + d->dx * d->jr[i], d->err[i]);
   }
   fclose(fp);

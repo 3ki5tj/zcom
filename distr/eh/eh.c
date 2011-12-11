@@ -51,9 +51,11 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "emax", "%lf", &emax, "maximal energy");
   cfg_add(cfg, "edel", "%lf", &edel, "energy interval");
   cfg_add(cfg, "nstdb", "%d", &nstdb, "every # of steps to deposit to the small database (B)");
-  cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, for II; 0: guess, -1: adaptive");
+  cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, "
+      "for the fractional identity; 0: guess, -1: adaptive");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
-  cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, for II mean force");
+  cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
+      "for mean force; 0: single bin, < 0: plain average");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
   cfg_close(cfg);
 }
@@ -90,9 +92,9 @@ static void simul(distr_t *d, distr_t *db)
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
         fb = lj_bconfsw3d(lj, &udb, &bvir);
-        if (tstat)
+        if (tstat) { /* canonical ensemble */
           fb -= bet;
-        else {
+        } else { /* microcanonical ensemble */
           fb -= (lj->dof*.5f - 1)/lj->ekin;
           udb -= (lj->dof*.5f - 1)/(lj->ekin * lj->ekin);
         }
@@ -127,10 +129,13 @@ static void doii(distr_t *d)
   if (iitype == 0) {
     distr_aj(d, halfwin);
   } else if (iitype == 1) {
-    if (mfhalfwin > 0)
-      distr_mfii(d, mfhalfwin);
-    else
+    if (mfhalfwin == 0) {
       distr_mf0(d);
+    } else if (mfhalfwin > 0) {
+      distr_mfii(d, mfhalfwin);
+    } else if (mfhalfwin < 0) {
+      distr_mfav(d, -mfhalfwin);
+    }
 
     if (halfwin >= 0)
       distr_ii0(d, halfwin);
