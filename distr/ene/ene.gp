@@ -5,7 +5,7 @@ set terminal push
 # large size 10,14
 set terminal postscript landscape enhanced "Helvetica" 14 
 
-set output "eh.ps"
+set output "ene.ps"
 
 binh = 0.05  # half bin width
 tcfont = "Helvetica, 9"

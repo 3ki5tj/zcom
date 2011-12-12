@@ -1,0 +1,7 @@
+use the integral identity method to estimate a volume distribution
+
+to reproduce demonstration data, type
+  ./run.py
+or
+  make run
+

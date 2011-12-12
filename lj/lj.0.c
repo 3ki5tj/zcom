@@ -527,6 +527,31 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
   return bc;
 }
 
+/* compute volume change */
+INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
+{
+  real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
+  double r;
+
+  lo = lj->l;
+  vo = lj->vol;
+  loglo = log(lo);
+  logln = loglo + amp * (2.f * rnd0() - 1.);
+  ln = exp(logln);
+  if (ln < lj->rc * 2) return 0; /* box too small */
+  epo = lj->epot;
+  vn = pow(ln, lj->d);
+  lj_setrho(lj, lj->n/vn); /* commit to the new box */
+  lj_force(lj);
+  r = bet*((lj->epot - epo) + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
+  if (r < 0 || rnd0() < exp(-r)) {
+    return 1;
+  } else {
+    lj_setrho(lj, lj->n/vo);
+    lj_force(lj);
+    return 0;
+  }
+}
 
 /* create an open structure */
 lj_t *lj_open(int n, int d, real rho, real rcdef)

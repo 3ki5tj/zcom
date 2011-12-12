@@ -4,14 +4,14 @@ CX = icc -Wall -O3 -g -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = eh
+bin = vol
 
 all: $(bin)
 
-eh: eh.c $(dep)
+vol: vol.c $(dep)
 	$(CX) -o $@ $< 
 
-run: eh
+run: vol
 	python run.py
 
 zcom.h::
@@ -19,7 +19,7 @@ zcom.h::
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos
-	rm -rf bin obj *.depend *.layout ds.dat
+	rm -rf bin obj *.depend *.layout ds.dat dsb.dat
 
 .PHONY: clean all
 

@@ -1,0 +1,24 @@
+use the integral identity method to estimate an energy distribution
+
+to reproduce demonstration data, type
+  ./run.py
+or
+  make run
+Note all .dat and .cfg files under data can be regenerated this way (except the link to eh.gp)
+
+data folder
+============
+.dat and .cfg files
+
+Naming convention
+
+ds_X.dat   large data set
+dsb_X.dat  small data set
+
+_c  canonical ensemble (applies to .dat/.cfg files)
+_m  microcanonical ensemble 
+
+_aj  Adib-Jarzynski 
+_ii  fractional, 
+_ix  fractional, adaptive window
+

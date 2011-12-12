@@ -1,3 +1,4 @@
+/* integral identity for a volume distribution */
 #define ZCOM_PICK
 #define ZCOM_LJ
 #define ZCOM_DISTR
@@ -5,27 +6,26 @@
 #define ZCOM_AV
 #include "zcom.h"
 
-const char *fncfg = "eh.cfg";
+const char *fncfg = "vol.cfg";
 const char *fnds = "ds.dat", *fndsb = "dsb.dat";
 const char *fnpos = "lj.pos";
 int initload = 1;
 
 int N = 256;
 real rho = 0.8f;
-real rc = 3.0f;
-real tp = 1.0f;
+real rc = 3.5f;
+real tp = 1.24f;
+real pressure = 0.115f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
-
-int usesw = 1; /* must use switched potential */
-real rs = 2.0f;
+real rs = 2.5f;
 
 int dosimul = 1; /* do a simulation */
-int tstat = 1; /* thermostat */
-int nsteps = 10000, nequil = 10000, nstadj = 1000;
+int nsteps = 10000, nequil = 10000;
 int nstdb = 100; /* # of steps to deposit to database B */
 
-double emin = -1380, emax = -1240, edel = 0.1;
+real volamp = 0.01; /* percentage */
+double vmin = 400, vmax = 2000, vdel = 0.1;
 
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
@@ -40,16 +40,16 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "dosimul", "%d", &dosimul, "do simulation");
   cfg_add(cfg, "nsteps", "%d", &nsteps, "number of steps");
   cfg_add(cfg, "nequil", "%d", &nequil, "number of equilibration steps");
-  cfg_add(cfg, "tstat", "%d", &tstat, "use thermostat, 0: regular MD, 1: canonical ensemble");
-  cfg_add(cfg, "nstadj", "%d", &nstadj, "every # of steps to adjust temperature if tstat = 0");
   cfg_add(cfg, "n", "%d", &N, "number of particles");
   cfg_add(cfg, "rho", "%r", &rho, "density");
   cfg_add(cfg, "rc", "%r", &rc, "cutoff distance");
   cfg_add(cfg, "rs", "%r", &rs, "switch distance");
   cfg_add(cfg, "tp", "%r", &tp, "temperature");
-  cfg_add(cfg, "emin", "%lf", &emin, "minimal energy");
-  cfg_add(cfg, "emax", "%lf", &emax, "maximal energy");
-  cfg_add(cfg, "edel", "%lf", &edel, "energy interval");
+  cfg_add(cfg, "pressure", "%r", &pressure, "pressure");
+  cfg_add(cfg, "volamp", "%r", &volamp, "volume move amplitude, as a fraction");
+  cfg_add(cfg, "vmin", "%lf", &vmin, "minimal volume");
+  cfg_add(cfg, "vmax", "%lf", &vmax, "maximal volume");
+  cfg_add(cfg, "vdel", "%lf", &vdel, "volume interval");
   cfg_add(cfg, "nstdb", "%d", &nstdb, "every # of steps to deposit to the small database (B)");
   cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, "
       "for the fractional identity; 0: guess, -1: adaptive");
@@ -70,48 +70,30 @@ static void simul(distr_t *d, distr_t *db)
   static av_t avU, avK0, avK, avp, avfb;
 
   lj = lj_open(N, 3, rho, rc);
-  if (usesw) {
-    lj_initsw(lj, rs);
-    printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
-  }
+  lj_initsw(lj, rs);
+  printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos);
     lj_force(lj);
-    if (usesw) fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
   }
 
   for (t = 0; t < ntot; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
-    if (tstat)
-      lj_vrescale(lj, tp, thermdt);
+    lj_vrescale(lj, tp, thermdt);
+    if ((t + 1) % 10 == 0) {
+      lj_volmove(lj, volamp, tp, pressure);
+    }
 
     if (t >= nequil) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
-      if (usesw) {
-        fb = lj_bconfsw3d(lj, &udb, &bvir);
-        if (tstat) { /* canonical ensemble */
-          fb -= bet;
-        } else { /* microcanonical ensemble */
-          fb -= (lj->dof*.5f - 1)/lj->ekin;
-          udb -= (lj->dof*.5f - 1)/(lj->ekin * lj->ekin);
-        }
-        distr_add(d, lj->epot, fb, udb, 1.0);
-        if ((t + 1) % nstdb == 0)
-          distr_add(db, lj->epot, fb, udb, 1.0);
-        av_add(&avfb, fb);
-      }
-    } else if (!tstat) { /* regular MD */
-      av_add(&avK0, lj->ekin);
-      if ((t + 1) % nstadj == 0) { /* adjust temperature */
-        k = av_getave(&avK0);
-        lj_vscale(lj, tp, k);
-        printf("t %g: v-scaling: T %g(%g), now K %g, K + U = %g\n",
-            (t+1)*mddt, k*2.f/lj->dof, avK0.s, lj->ekin, lj->epot + lj->ekin);
-        av_clear(&avK0);
-      }
+      
+      distr_add(d, lj->epot, fb, udb, 1.0);
+      if ((t + 1) % nstdb == 0)
+        distr_add(db, lj->epot, fb, udb, 1.0);
+      av_add(&avfb, fb);
     }
   }
   u = av_getave(&avU)/N;
@@ -126,24 +108,8 @@ static void simul(distr_t *d, distr_t *db)
 /* perform integral identity */
 static void doii(distr_t *d)
 {
-  if (iitype == 0) {
-    distr_aj(d, halfwin);
-  } else if (iitype == 1) {
-    if (mfhalfwin == 0) {
-      distr_mf0(d);
-    } else if (mfhalfwin > 0) {
-      distr_mfii(d, mfhalfwin);
-    } else if (mfhalfwin < 0) {
-      distr_mfav(d, -mfhalfwin);
-    }
-
-    if (halfwin >= 0)
-      distr_ii0(d, halfwin);
-    else
-      distr_iiadp(d);
-  } else if (iitype == 2) {
-    distr_iimf(d);
-  }
+  distr_save(d, fnds);
+  distr_close(d);
 }
 
 int main(void)
@@ -151,8 +117,8 @@ int main(void)
   distr_t *d, *db;
 
   loadcfg(fncfg);
-  d = distr_open(emin, emax, edel);
-  db = distr_open(emin, emax, edel);
+  d = distr_open(vmin, vmax, vdel);
+  db = distr_open(vmin, vmax, vdel);
   if (initload) { /* load previous data */
     die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
     die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
@@ -162,11 +128,6 @@ int main(void)
   
   doii(d);
   doii(db);
-  
-  distr_save(d, fnds);
-  distr_close(d);
-  distr_save(db, fndsb);
-  distr_close(db);
   return 0;
 }
 

@@ -6,10 +6,10 @@ import os, sys, re, shutil
 
 active = 1
 datadir = "data"
-fngp = "eh.gp"
+fngp = "ene.gp"
 
 # template for eh_cfg
-eh_cfg = '''initload = %s
+src_cfg = '''initload = %s
 dosimul = %s
 nequil = 20000
 nstadj = 2000
@@ -37,17 +37,17 @@ def run(canon = 1, run = 0, iitype = 1, halfwin = 70, mfhalfwin = 0):
   else:
     initload = 1
     dosimul = 0
-  strcfg = eh_cfg % (initload, dosimul, canon, iitype, halfwin, mfhalfwin)
+  strcfg = src_cfg % (initload, dosimul, canon, iitype, halfwin, mfhalfwin)
 
   # make file names
   if canon:
     fnds = "ds_c"
     fndsb = "dsb_c"
-    fncfg = "eh_c"
+    fncfg = "ene_c"
   else:
     fnds = "ds_m"
     fndsb = "dsb_m"
-    fncfg = "eh_m"
+    fncfg = "ene_m"
   if not run:
     if iitype == 0: ii = "_aj"
     elif halfwin < 0: ii = "_ix"
@@ -67,10 +67,10 @@ def run(canon = 1, run = 0, iitype = 1, halfwin = 70, mfhalfwin = 0):
 
   # save configuration file
   open(fncfg, "w").write(strcfg)
-  open("eh.cfg", "w").write(strcfg)
+  open("ene.cfg", "w").write(strcfg)
 
   # run
-  os.system("../eh")
+  os.system("../ene")
 
   # save dat
   shutil.copy("ds.dat", fnds)
