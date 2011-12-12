@@ -508,6 +508,20 @@ real lj_bconfsw3d(lj_t *lj, real *udb)
   return bc;
 }
 
+/* return r r : grad grad U, must be called after force */
+INLINE real lj_vir2sw3d(lj_t *lj)
+{
+  int ipr, npr = lj->npr;
+  real vir2 = 0.f;
+  ljpair_t *pr;
+
+  for (ipr = 0; ipr < npr; ipr++) {
+    pr = lj->pr + ipr;
+    vir2 = pr->psi * pr->dr2 * pr->dr2;
+  }
+  return vir2;
+}
+
 /* compute volume change */
 INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 {

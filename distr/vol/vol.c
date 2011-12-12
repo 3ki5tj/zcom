@@ -64,10 +64,9 @@ static void loadcfg(const char *fncfg)
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int i, t, ntot = nsteps + nequil;
-  real u, k, p, s;
-  real bet = 1.0/tp, fb = 0.f, udb, bvir;
-  static av_t avU, avK0, avK, avp, avfb;
+  int i, t, ntot = nsteps + nequil, vtot = 0, vacc = 0;
+  real u, k, p, vol, fv, dv, bet = 1.f/tp;
+  static av_t avU, avK, avV, avp, avfv;
 
   lj = lj_open(N, 3, rho, rc);
   lj_initsw(lj, rs);
@@ -82,33 +81,43 @@ static void simul(distr_t *d, distr_t *db)
     lj_shiftcom(lj, lj->v);
     lj_vrescale(lj, tp, thermdt);
     if ((t + 1) % 10 == 0) {
-      lj_volmove(lj, volamp, tp, pressure);
+      vtot += 1;
+      vacc += lj_volmove(lj, volamp, tp, pressure);
     }
 
     if (t >= nequil) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avp, lj->rho * tp + lj->pvir);
+      av_add(&avV, lj->vol);
       
-      distr_add(d, lj->epot, fb, udb, 1.0);
+      dv = lj_vir2sw3d(lj); /* r r : grad grad U */
+      fv = lj->n / lj->vol - bet * lj->vir / (3*lj->vol) - bet * pressure;
+      dv = -lj->n / (lj->vol * lj->vol) + bet * (2*lj->vir - dv) / (9*lj->vol*lj->vol);
+
+      distr_add(d, lj->vol, fv, dv, 1.0);
       if ((t + 1) % nstdb == 0)
-        distr_add(db, lj->epot, fb, udb, 1.0);
-      av_add(&avfb, fb);
+        distr_add(db, lj->vol, fv, dv, 1.0);
+      av_add(&avp, lj->rho * tp - lj->vir / (3*lj->vol));
+      av_add(&avfv, fv);
     }
   }
   u = av_getave(&avU)/N;
   k = av_getave(&avK)/N;
   p = av_getave(&avp);
-  fb = av_getave(&avfb);
-  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, delb = %6.3f\n", u, k, p, fb);
+  vol = av_getave(&avV)/N;
+  fv = av_getave(&avfv);
+  printf("U/N %6.3f, K/N %6.3f, V/N %6.3f, p %6.3f, delfv %6.3f, vacc %g%%\n",
+     u, k, vol, p, fv, 100.*vacc/vtot);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
 }
 
 /* perform integral identity */
-static void doii(distr_t *d)
+static void doii(distr_t *d, const char *fn)
 {
-  distr_save(d, fnds);
+  distr_mf0(d);
+  distr_ii0(d, halfwin);
+  distr_save(d, fn);
   distr_close(d);
 }
 
@@ -126,8 +135,8 @@ int main(void)
   if (dosimul)
     simul(d, db);
   
-  doii(d);
-  doii(db);
+  doii(d, fnds);
+  doii(db, fndsb);
   return 0;
 }
 

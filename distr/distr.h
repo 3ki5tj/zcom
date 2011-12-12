@@ -145,7 +145,7 @@ INLINE void distr_winfixinvmf(distr_t *d)
     }
   }
   sig = sqrt(sig/his);
-  printf("mean force deviation is %g\n", sig);
+  printf("mean force standard deviation is %g\n", sig);
 
   m = intmax(1, (int)( 0.5/(sig * d->dx) + .5 ));
   distr_winfix(d, m);
