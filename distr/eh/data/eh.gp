@@ -95,7 +95,7 @@ plot [][-0.4:0.4] \
      "dsb_c_ii.dat"       u ($1+binh):9 w l lt 1 lw 1 lc rgb lightgreen t "single bin", \
      "dsb_c_ii_mfii.dat"  u ($1+binh):9 w l lt 1 lw 3 lc rgb niceblue   t "unbiased identity", \
      "dsb_c_ii_mfav.dat"  u ($1+binh):9 w l lt 2 lw 3 lc rgb nicered    t "plain average", \
-     "ds_c_ix_mfii.dat"        u ($1+binh):9 w l lt 1 lw 1  t "reference", \
+     "ds_c_ix.dat"        u ($1+binh):9 w l lt 1 lw 1  t "reference", \
       0 w l lt 1 lw 1 lc rgb "#000000" notitle
 
 #########################################################################################

@@ -11,6 +11,9 @@ all: $(bin)
 eh: eh.c $(dep)
 	$(CX) -o $@ $< 
 
+run: eh
+	python run.py
+
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
