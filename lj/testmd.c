@@ -61,7 +61,7 @@ int main(void)
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        bc = lj_bconfsw3d(lj, NULL, NULL);
+        bc = lj_bconfsw3d(lj, NULL);
         av_add(&avbc, bc);
       }
     }

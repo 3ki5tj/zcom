@@ -58,7 +58,6 @@ void lj_initsw(lj_t *lj, real rs)
 
   xnew(lj->pr, lj->n * lj->n);
   xnew(lj->gdg, lj->n * lj->d);
-  xnew(lj->xdg, lj->n * lj->d);
   lj->npr = 0;
   lj->usesw = 1;
 }
@@ -458,19 +457,18 @@ void lj_vv(lj_t *lj, real dt)
  * bc = div(v), where v = g/(g.g), g = grad U,
  * udb = v . grad bc
  * bvir = x . grad bc */
-real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
+real lj_bconfsw3d(lj_t *lj, real *udb)
 {
   int i, j, ipr, npr = lj->npr, n = lj->n;
   ljpair_t *pr;
-  real dg[3], dh[3], ds[3];
+  real dg[3], dh[3];
   real phi, psi, xi, d = (real) lj->d;
-  real dgdx, dg2, dr2, m = 0.f, h2, hs;
+  real dgdx, dg2, dr2, m = 0.f, h2;
   real gdlap = 0.f, gdm = 0.f, bc, invg2, invg4;
-  real dlap, dgdx2, tmp, hx = 0.f, xdlap = 0.f, xdm = 0.f;
-  rv3_t *h = (rv3_t *) lj->gdg, *s = (rv3_t *) lj->xdg, *f = (rv3_t *) lj->f;
+  real dlap, dgdx2;
+  rv3_t *h = (rv3_t *) lj->gdg, *f = (rv3_t *) lj->f;
 
   if(udb) for (i = 0; i < n; i++) rv3_zero(h[i]);  /* g * grad g */
-  if(bvir) for (i = 0; i < n; i++) rv3_zero(s[i]);  /* x * grad g */
 
   for (ipr = 0; ipr < npr; ipr++) {
     pr = lj->pr + ipr;
@@ -492,16 +490,6 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
       rv3_sinc(h[i], dh,  2.f);
       rv3_sinc(h[j], dh, -2.f);
     }
-
-    if (bvir) {
-      xdlap += dlap * dr2;  /* 0.5 x . grad laplace U */
-      xdm += xi*dgdx2*dr2 + psi*(dg2*dr2 + 2.f*dgdx2); /* g g r : grad grad grad U */
-      tmp = psi*dr2 + phi;
-      hx += tmp * dgdx;
-      rv3_smul2(ds, pr->dx, 2.f * tmp);
-      rv3_inc(s[i], ds);
-      rv3_dec(s[j], ds);
-    }
   }
   m *= 2.f;
   gdlap *= 2.f;
@@ -517,13 +505,6 @@ real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir)
     *udb = invg4*(gdlap - (lj->lap*m + h2 + gdm)*invg2 + 2.f*m*m*invg4);
   }
   
-  if (bvir) {
-    hx *= 2.f;
-    xdlap *= 2.f;
-    xdm *= 2.f;
-    for (hs = 0.f, i = 0; i < n; i++) hs += rv3_dot(h[i], s[i]);
-    *bvir = invg2*(xdlap - (lj->lap*hx + hs + xdm)*invg2 + 2.f*m*hx*invg4);
-  }
   return bc;
 }
 
@@ -585,7 +566,6 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
 void lj_close(lj_t *lj)
 {
   if (lj->pr) free(lj->pr);
-  if (lj->xdg) free(lj->xdg);
   if (lj->gdg) free(lj->gdg);
   free(lj->x);
   free(lj->v);

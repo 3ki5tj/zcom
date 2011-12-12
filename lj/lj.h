@@ -68,7 +68,7 @@ INLINE void lj_initsq(lj_t *lj, real ra, real rb)
   lj_energy(lj);
 }
 
-real lj_bconfsw3d(lj_t *lj, real *udb, real *bvir);
+real lj_bconfsw3d(lj_t *lj, real *udb);
 
 #endif
 

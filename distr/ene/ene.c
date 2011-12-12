@@ -67,7 +67,7 @@ static void simul(distr_t *d, distr_t *db)
   lj_t *lj;
   int i, t, ntot = nsteps + nequil;
   real u, k, p, s;
-  real bet = 1.0/tp, fb = 0.f, udb, bvir;
+  real bet = 1.0/tp, fb = 0.f, udb;
   static av_t avU, avK0, avK, avp, avfb;
 
   lj = lj_open(N, 3, rho, rc);
@@ -78,7 +78,7 @@ static void simul(distr_t *d, distr_t *db)
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos);
     lj_force(lj);
-    if (usesw) fb = lj_bconfsw3d(lj, &udb, &bvir) - bet;
+    if (usesw) fb = lj_bconfsw3d(lj, &udb) - bet;
   }
 
   for (t = 0; t < ntot; t++) {
@@ -92,7 +92,7 @@ static void simul(distr_t *d, distr_t *db)
       av_add(&avK, lj->ekin);
       av_add(&avp, lj->rho * tp + lj->pvir);
       if (usesw) {
-        fb = lj_bconfsw3d(lj, &udb, &bvir);
+        fb = lj_bconfsw3d(lj, &udb);
         if (tstat) { /* canonical ensemble */
           fb -= bet;
         } else { /* microcanonical ensemble */

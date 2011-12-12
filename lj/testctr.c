@@ -58,7 +58,7 @@ int main(void)
   u = lj->epot;
   if (usesw) {
     lj_force(lj);
-    bc = lj_bconfsw3d(lj, NULL, NULL);
+    bc = lj_bconfsw3d(lj, NULL);
   }
   printf("finish equil., u %g, bet %g, bc %g, acc %g\n",
       u/lj->n, 1.0/tp, bc, 1.*acc/nsteps);
