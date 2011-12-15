@@ -4,7 +4,7 @@
 
 import os, sys, re, shutil
 
-active = 1
+active = 0
 datadir = "data"
 fngp = "ene.gp"
 
@@ -99,8 +99,8 @@ run(halfwin = -1, mfhalfwin = 30)
 if active:
   run(canon = 0, run = 1)
 else:
-  shutil.copy2("../data/dsb_m_ii.dat", "dsb.dat")
-  shutil.copy2("../data/ds_m_ii.dat", "ds.dat")
+  shutil.copy2("../data/dsb_m_ix.dat", "dsb.dat")
+  shutil.copy2("../data/ds_m_ix.dat", "ds.dat")
 run(canon = 0, halfwin = -1, mfhalfwin = 30)
 
 # call Gnuplot to do the ploting

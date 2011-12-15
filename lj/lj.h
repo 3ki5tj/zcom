@@ -20,7 +20,7 @@ typedef struct {
   real * RESTRICT v, * RESTRICT f;
   real epot, epots; /* potential energy and shifted potential energy */
   real ekin, tkin, etot;
-  real vir, pvir; /* virial and non-ideal gas part of the virial */
+  real vir; /* virial */
   real epot_shift, epot_tail, p_tail;
   double t;
 
@@ -67,8 +67,6 @@ INLINE void lj_initsq(lj_t *lj, real ra, real rb)
   lj->usesq = 1;
   lj_energy(lj);
 }
-
-real lj_bconfsw3d(lj_t *lj, real *udb);
 
 #endif
 

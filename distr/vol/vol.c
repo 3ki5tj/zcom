@@ -64,7 +64,7 @@ static void loadcfg(const char *fncfg)
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int i, t, ntot = nsteps + nequil, vtot = 0, vacc = 0;
+  int t, ntot = nsteps + nequil, vtot = 0, vacc = 0;
   real u, k, p, vol, fv, dv, bet = 1.f/tp;
   static av_t avU, avK, avV, avp, avfv;
 
@@ -89,7 +89,7 @@ static void simul(distr_t *d, distr_t *db)
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avV, lj->vol);
-      
+
       dv = lj_vir2sw3d(lj); /* r r : grad grad U */
       fv = lj->n / lj->vol - bet * lj->vir / (3*lj->vol) - bet * pressure;
       dv = -lj->n / (lj->vol * lj->vol) + bet * (2*lj->vir - dv) / (9*lj->vol*lj->vol);
@@ -112,13 +112,80 @@ static void simul(distr_t *d, distr_t *db)
   lj_close(lj);
 }
 
+double LOG0 = -300;
+
+/* compute the free energy at p + dp, also compute average volume there */
+static double reweight(distr_t *d, double tp, double dp, double *vav, int raw)
+{
+  int i, n;
+  double betdp = dp/tp, x, lnx, vol, tot = 0, lnz = LOG0, lnzv = LOG0;
+
+  n = raw ? d->n : d->n + 1;
+  for (i = 0; i < n; i++) {
+    if (raw) {
+      vol = d->xmin + i * d->dx;
+      x = d->rho[i];
+    } else {
+      vol = d->xmin + (i + .5) * d->dx;
+      x = d->arr[i].s;
+    }
+    if (x <= 0) continue;
+    tot += x;
+    lnx = log(x);
+    lnz = lnadd(lnz, lnx - betdp * vol);
+    lnzv = lnadd(lnzv, lnx - betdp * vol + log(vol));
+  }
+  *vav = exp(lnzv - lnz);
+  return -tp * (lnz - log(tot));
+}
+
+/* do reweighting */
+static void dorew(distr_t *d, distr_t *db, const char *fn)
+{
+  int i;
+  double p, dp, vav[4], dfe[4];
+  FILE *fp;
+
+  xfopen(fp, fn, "w", return);
+  for (p = 0.1; p < 0.2; p += 0.001) {
+    dp = p - pressure;
+    dfe[0] = reweight(db, tp, dp, &vav[0], 0);
+    dfe[1] = reweight(db, tp, dp, &vav[1], 1);
+    dfe[2] = reweight(d,  tp, dp, &vav[2], 0);
+    dfe[3] = reweight(d,  tp, dp, &vav[3], 1);
+    fprintf(fp, "%.5f ", pressure + dp);
+    for (i = 0; i < 4; i++)
+      fprintf(fp, "%.14e %.14e ", dfe[i], vav[i]);
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+}
+
 /* perform integral identity */
 static void doii(distr_t *d, const char *fn)
 {
-  distr_mf0(d);
-  distr_ii0(d, halfwin);
+  if (iitype == 0) {
+    distr_aj(d, halfwin);
+  } else if (iitype == 1 || iitype == 2) {
+    if (mfhalfwin == 0) {
+      distr_mf0(d);
+    } else if (mfhalfwin > 0) {
+      distr_mfii(d, mfhalfwin);
+    } else if (mfhalfwin < 0) {
+      distr_mfav(d, -mfhalfwin);
+    }
+
+    if (iitype == 1) {
+      if (halfwin >= 0)
+        distr_ii0(d, halfwin);
+      else
+        distr_iiadp(d, 1e2);
+    } else {
+      distr_iimf(d);
+    }
+  }
+
   distr_save(d, fn);
-  distr_close(d);
 }
 
 int main(void)
@@ -134,9 +201,12 @@ int main(void)
   }
   if (dosimul)
     simul(d, db);
-  
+
   doii(d, fnds);
   doii(db, fndsb);
+  dorew(d, db, "fe.dat");
+  distr_close(d);
+  distr_close(db);
   return 0;
 }
 

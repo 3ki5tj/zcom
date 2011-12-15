@@ -90,7 +90,7 @@ static void simul(distr_t *d, distr_t *db)
     if (t >= nequil) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avp, lj->rho * tp + lj->pvir);
+      av_add(&avp, lj_calcp(lj, tp));
       if (usesw) {
         fb = lj_bconfsw3d(lj, &udb);
         if (tstat) { /* canonical ensemble */
@@ -129,7 +129,7 @@ static void doii(distr_t *d)
 {
   if (iitype == 0) {
     distr_aj(d, halfwin);
-  } else if (iitype == 1) {
+  } else if (iitype == 1 || iitype == 2) {
     if (mfhalfwin == 0) {
       distr_mf0(d);
     } else if (mfhalfwin > 0) {
@@ -138,12 +138,14 @@ static void doii(distr_t *d)
       distr_mfav(d, -mfhalfwin);
     }
 
-    if (halfwin >= 0)
-      distr_ii0(d, halfwin);
-    else
-      distr_iiadp(d);
-  } else if (iitype == 2) {
-    distr_iimf(d);
+    if (iitype == 1) {
+      if (halfwin >= 0)
+        distr_ii0(d, halfwin);
+      else
+        distr_iiadp(d, 100);
+    } else {
+      distr_iimf(d);
+    }
   }
 }
 

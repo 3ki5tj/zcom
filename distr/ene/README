@@ -1,6 +1,7 @@
 use the integral identity method to estimate an energy distribution
 
-to reproduce demonstration data, type
+to reproduce demonstration data, modify run.py such that active = 1,
+and then type
   ./run.py
 or
   make run

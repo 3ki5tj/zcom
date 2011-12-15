@@ -16,13 +16,19 @@ static void lj_setrho(lj_t *lj, real rho)
   lj->rc2 = lj->rc * lj->rc;
   irc = 1.0/lj->rc;
   irc3 = irc*irc*irc; irc6 = irc3*irc3;
-  lj->epot_shift = 4*irc6*(irc6-1);
-  if (lj->d == 3) {
-    lj->epot_tail = (real)( 8*M_PI*rho*lj->n/9*(irc6 - 3)*irc3 );
-    lj->p_tail = (real)( 32*M_PI*rho*rho/9*(irc6 - 1.5)*irc3 );
-  } else if (lj->d == 2) {
-    lj->epot_tail = (real) (M_PI*rho*lj->n*(.4*irc6 - 1)*irc3*irc);
-    lj->p_tail = (real) (M_PI*rho*rho*(1.6*irc6 - 2)*irc3*irc);
+  if (lj->usesw) { /* assume u(L/2) = 0 */
+    lj->epot_shift = 0.f;
+    lj->epot_tail = 0.f;
+    lj->p_tail = 0.f;
+  } else {
+    lj->epot_shift = (real)( 4*irc6*(irc6-1) );
+    if (lj->d == 3) {
+      lj->epot_tail = (real)( 8*M_PI*rho*lj->n/9*(irc6 - 3)*irc3 );
+      lj->p_tail = (real)( 32*M_PI*rho*rho/9*(irc6 - 1.5)*irc3 );
+    } else if (lj->d == 2) {
+      lj->epot_tail = (real) (M_PI*rho*lj->n*(.4*irc6 - 1)*irc3*irc);
+      lj->p_tail = (real) (M_PI*rho*rho*(1.6*irc6 - 2)*irc3*irc);
+    }
   }
 }
 
@@ -457,7 +463,7 @@ void lj_vv(lj_t *lj, real dt)
  * bc = div(v), where v = g/(g.g), g = grad U,
  * udb = v . grad bc
  * bvir = x . grad bc */
-real lj_bconfsw3d(lj_t *lj, real *udb)
+INLINE real lj_bconfsw3d(lj_t *lj, real *udb)
 {
   int i, j, ipr, npr = lj->npr, n = lj->n;
   ljpair_t *pr;

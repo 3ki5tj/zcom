@@ -121,7 +121,7 @@ plot [][1e-6:.15] \
      "dsb_c_ix.dat"     u 1:6 w l lt 1 lw 3 lc rgb nicegreen t "variable window", \
      "ds_c_ix.dat"      u 1:6 w l lt 1 lw 1  t "reference"
 
-# mean force key for (c)
+# inset window boundaries for (c)
 set size 0.18, 0.18
 set origin 0.19, 0.09
 set tmargin 0
@@ -133,10 +133,17 @@ unset xlabel
 set xtics 50 offset 0,.5 font tcsfont
 set mxtics 5
 unset logscale y
-set ytics 50 offset .5,0 font tcsfont
+set ytics 50 offset .5,0 font tcsfont 
 set mytics 5
 set format y "%g"
 set ylabel "window boundaries" offset 4, 0 font tcfont
+
+set tics front 
+set label 7 "x_+" at -1360, -1280 font keyfont
+set label 8 "x_{/Symbol -}" at -1280, -1350 font keyfont
+set arrow 7 from -1355, -1290 to -1340, -1320 lw 1 lc rgb nicegreen
+set arrow 8 from -1280, -1340 to -1300, -1310 lw 1 lc rgb nicegreen
+
 plot [][-1380:-1240] \
      "dsb_c_ix.dat" u 1:12:11 w filledcurves lt 1 lw 0 lc rgb lightgreen notitle, \
      "dsb_c_ix.dat" u 1:11 w l lt 1 lw 1 lc rgb nicegreen notitle, \
@@ -145,9 +152,13 @@ plot [][-1380:-1240] \
       x - 7 w l lt 2 lw 1 lc rgb niceblue notitle, \
       x w l lt 1 lw 1 lc rgb "#000000" notitle
 
+unset label 7
+unset label 8
+unset arrow 7
+unset arrow 8
 
 #########################################################################################
-# microcanonical ensemble
+# comparison microcanonical ensemble
 
 set size 0.5, 0.5
 set origin 0.5, 0.
@@ -169,14 +180,15 @@ plot [][1e-6:.15] \
      "ds_m_ix.dat"      u 1:6 w l lt 2 lw 3 lc rgb nicered t "microcanonical"
 
 
-# mean force key for (d)
-set size 0.16, 0.16
-set origin 0.69, 0.09
+# lower inset: mean force for (d)
+set size 0.15, 0.12
+set origin 0.70, 0.08
 set tmargin 0
 set bmargin 0
 set rmargin 0
 set lmargin 0
 set format x "%g"
+set xrange [-1360:-1270]
 unset xlabel
 set xtics 50 offset 0,.5 font tcsfont
 set mxtics 5
@@ -185,10 +197,34 @@ set format y "%g"
 set ytics .2 offset .5,0 font tcsfont
 set mytics 4
 set ylabel "d ln{/Symbol r} / dE" offset 4., 0 font tcfont
-plot [][-0.4:0.5] \
-     "ds_c_ix.dat" u 1:9 w l lt 1 lw 2 lc rgb niceblue notitle, \
-     "ds_m_ix.dat" u 1:9 w l lt 2 lw 2 lc rgb nicered notitle, \
+plot [][-0.36:0.38] \
+     "ds_c_ix.dat" u ($1+binh):9 w l lt 1 lw 2 lc rgb niceblue notitle, \
+     "ds_m_ix.dat" u ($1+binh):9 w l lt 2 lw 2 lc rgb nicered notitle, \
+     "ds_c_ix.dat" u ($1+binh):($9+1) w l lt 1 lw 2 lc rgb niceblue notitle, \
+     "ds_m_ix.dat" u ($1+binh):($9+(762/2 - 1)/(-931.5-$1-binh)) w l lt 2 lw 2 lc rgb nicered notitle, \
       0 w l lt 1 lw 1 lc rgb "#000000" notitle
+
+# upper inset: configurational temperature for (d)
+set size 0.15, 0.08
+set origin 0.70, 0.20
+set tmargin 0
+set bmargin 0
+set rmargin 0
+set lmargin 0
+set format x ""
+unset xlabel
+set xtics 50 offset 0,.5 font tcsfont
+set mxtics 5
+unset logscale y
+set format y "%g"
+set ytics .2 offset .5,0 font tcsfont
+set mytics 4
+set ylabel "{/Symbol \341}{/Symbol \321}\267v{/Symbol \361}" offset 3.0, -0.0 font tcfont
+plot [][0.78:1.25] \
+     "ds_c_ix.dat" u ($1+binh):($9+1) w l lt 1 lw 2 lc rgb niceblue notitle, \
+     "ds_m_ix.dat" u ($1+binh):($9+(762/2 - 1)/(-931.5-$1-binh)) w l lt 2 lw 2 lc rgb nicered notitle, \
+      1 w l lt 1 lw 1 lc rgb "#000000" notitle
+
 
 unset multiplot
 unset output

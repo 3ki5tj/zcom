@@ -59,7 +59,7 @@ int main(void)
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avp, lj->rho * tp + lj->pvir);
+      av_add(&avp, lj_calcp(lj, tp));
       if (usesw) {
         bc = lj_bconfsw3d(lj, NULL);
         av_add(&avbc, bc);

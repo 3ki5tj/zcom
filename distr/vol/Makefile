@@ -19,7 +19,7 @@ zcom.h::
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos
-	rm -rf bin obj *.depend *.layout ds.dat dsb.dat
+	rm -rf bin obj *.depend *.layout ds.dat dsb.dat fe.dat
 
 .PHONY: clean all
 

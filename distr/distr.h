@@ -21,6 +21,7 @@ typedef struct {
   int *jl, *jr; /* window size */
   double *err;
   double *hsum; /* histogram sum for comparison */
+  double *mfsig; /* std. dev. of mf, for adaptive window */
 } distr_t;
 
 
@@ -151,7 +152,38 @@ INLINE void distr_winfixinvmf(distr_t *d)
   distr_winfix(d, m);
 }
 
-/* make adaptive window */
+/* estimate local standard deviation of the mean force
+ * average over local window of 2 m */
+INLINE void distr_mfsig1(distr_t *d, double sampmin)
+{
+  int i, m, n = d->n;
+  double x, sig, his, *asig, *hsum;
+
+  xnew(asig, n + 1);
+  xnew(hsum, n + 1);
+  for (asig[0] = hsum[0] = 0, i = 0; i < n; i++) {
+    distrsum_t *ds = d->arr + i;
+    hsum[i+1] = hsum[i] + ds->s;
+    x = ds->sf2 * ds->s - ds->sf * ds->sf;
+    asig[i+1] = asig[i] + ((ds->s > 0. && x > 0.) ? sqrt(x) : 0.);
+  }
+  for (i = 0; i < n; i++) {
+    /* start from the minimal window size, expand until included sampmin data points */
+    for (m = 1; m < n; m++) {
+      int j0 = intmax(0, i-m), j1 = intmin(i + m + 1, n);
+      his = hsum[j1] - hsum[j0];
+      sig = asig[j1] - asig[j0];
+      d->mfsig[i] = his > 0. ? sig/his : 0.;
+      if (his > sampmin || (j0 == 0 && j1 == n)) break;
+    }
+  }
+  d->mfsig[n] = d->mfsig[n-1];
+  free(asig);
+  free(hsum);
+} 
+
+/* make adaptive window
+ * requires d->rho and d->mfsig */
 INLINE void distr_winadp(distr_t *d)
 {
   int i, n = d->n;
@@ -164,15 +196,6 @@ INLINE void distr_winadp(distr_t *d)
   for (hsum[0] = 0., i = 0; i < n; i++)
     hsum[i + 1] = hsum[i] + hhis[i];
 
-  for (sig = his = 0, i = 0; i < n; i++) {
-    distrsum_t *ds = d->arr + i;
-    if (ds->s > 0.) {
-      sig += ds->sf2 - ds->sf * ds->sf / ds->s;
-      his += ds->s;
-    }
-  }
-  sig = sqrt(sig/his);
-
   for (i = 0; i <= n; i++) {
     int k = 0, jl = i, jr = i+1, el = 0, er = 0;
 
@@ -182,7 +205,7 @@ INLINE void distr_winadp(distr_t *d)
           el = 1;
           continue;
         }
-        if (hhis[jl - 1] / (hsum[jr] - hsum[jl] + 1e-10) < sig * dx) {
+        if (hhis[jl - 1] / (hsum[jr] - hsum[jl] + 1e-10) < d->mfsig[jl - 1] * dx) {
           el = 1;
         } else {
           jl--;
@@ -192,7 +215,7 @@ INLINE void distr_winadp(distr_t *d)
           er = 1;
           continue;
         }
-        if (hhis[jr] / (hsum[jr] - hsum[jl] + 1e-10) < sig * dx) {
+        if (hhis[jr] / (hsum[jr] - hsum[jl] + 1e-10) < d->mfsig[jr] * dx) {
           er = 1;
         } else {
           jr++;
@@ -210,8 +233,8 @@ INLINE void distr_winadp(distr_t *d)
  * limiting case of distr_ii0 with infinite window size */
 INLINE void distr_iimf(distr_t *d)
 {
-  int i, j, jl, jr, n = d->n;
-  double x, max, den, tot, dx = d->dx;
+  int i, n = d->n;
+  double max, tot, lntot, dx = d->dx;
 
   /* construct ln(rho) from the mean force */
   for (max = d->lnrho[0] = 0, i = 0; i < n; i++) {
@@ -220,11 +243,14 @@ INLINE void distr_iimf(distr_t *d)
   }
 
   for (tot = 0, i = 0; i <= n; i++)
-    tot += d->rho[i] = exp(d->lnrho[i] - max);
+    tot += d->rho[i] = exp(d->lnrho[i] -= max);
   tot *= dx;
+  lntot = log(tot);
 
-  for (i = 0; i <= n; i++)
+  for (i = 0; i <= n; i++) {
+    d->lnrho[i] -= lntot;
     d->rho[i] /= tot;
+  }
 }
 
 /* modulated integral identity from a fixed window [i - m, i + m),
@@ -267,9 +293,10 @@ INLINE void distr_ii0(distr_t *d, int m)
   }
 }
 
-INLINE void distr_iiadp(distr_t *d)
+INLINE void distr_iiadp(distr_t *d, double sigsampmin)
 {
-  distr_iimf(d);
+  distr_iimf(d); /* tentative distribution from integrating the mean force */
+  distr_mfsig1(d, sigsampmin);
   distr_ii0(d, -1); /* use variable window */
 }
 
@@ -291,6 +318,7 @@ INLINE distr_t *distr_open(double xmin, double xmax, double dx)
   xnew(d->jr, d->n + 1);
   xnew(d->err, d->n + 1);
   xnew(d->hsum, d->n + 1);
+  xnew(d->mfsig, d->n + 1);
   return d;
 }
 
@@ -307,6 +335,7 @@ INLINE void distr_close(distr_t *d)
   free(d->jr);
   free(d->err);
   free(d->hsum);
+  free(d->mfsig);
   free(d);
 }
 
@@ -351,10 +380,12 @@ INLINE int distr_save(distr_t *d, const char *fn)
       dv = ds->sdv / ds->s;
     }
     fprintf(fp, "%g %.14e %.14e %.14e %.14e "
-        "%.14e %.14e %.14e %.14e %.14e %g %g %g\n",
+        "%.14e %.14e %.14e %.14e %.14e %g %g "
+        "%g %g\n",
       d->xmin + i * d->dx, ds->s, f, f2, dv,
       d->rho[i], d->lnrho[i], d->his[i], d->mf[i], d->mdv[i],
-      d->xmin + d->dx * d->jl[i], d->xmin + d->dx * d->jr[i], d->err[i]);
+      d->xmin + d->dx * d->jl[i], d->xmin + d->dx * d->jr[i], 
+      d->err[i], d->mfsig[i]);
   }
   fclose(fp);
   return 0;
