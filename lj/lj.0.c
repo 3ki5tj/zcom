@@ -370,7 +370,16 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
   for (i = 0; i < n; i++) {
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
-      if (dr2 > lj->rc2) continue;
+      if (dr2 > lj->rc2) {
+        if (lj->usesw & 0x100) { /* save out-of-range pairs */
+          rv3_copy(pr->dx, dx);
+          pr->dr2 = dr2;
+          pr->in = 0;
+          pr++;
+          npr++;
+        }
+        continue;
+      }
 
       rv3_copy(pr->dx, dx);
       pr->dr2 = dr2;
@@ -386,6 +395,7 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
       pr->j = j;
       rv3_inc(f[i], dx);
       rv3_dec(f[j], dx);
+      pr->in = 1;
       pr++; npr++;
     }
   }
@@ -519,10 +529,9 @@ INLINE real lj_vir2sw3d(lj_t *lj)
 {
   int ipr, npr = lj->npr;
   real vir2 = 0.f;
-  ljpair_t *pr;
 
   for (ipr = 0; ipr < npr; ipr++) {
-    pr = lj->pr + ipr;
+    ljpair_t *pr = lj->pr + ipr;
     vir2 = pr->psi * pr->dr2 * pr->dr2;
   }
   return vir2;

@@ -11,6 +11,7 @@ tcsfont = "Helvetica, 10"
 keyfont = "Helvetica, 14"
 zcut = 1e-9
 lightgray = "#cccccc"
+nicegray = "#606060"
 lightgreen = "#ccffcc"
 nicered = "#ff4040"
 niceblue = "#40b0ff"
@@ -63,7 +64,7 @@ set ytics 10 offset .5, 0 font tcsfont
 set mytics 10
 set tics front
 plot [400:2200][5:400] \
-  "dsb.dat" u 1:($12-$11) w l lt 1 lw 4 lc rgb nicegreen notitle
+  "dsb.dat" u 1:($12-$11) w l lt 1 lw 4 lc rgb niceblue notitle
 unset logscale 
 
 # (b) volume vs pressure
@@ -78,11 +79,16 @@ set xtics 0.01 offset 0, 0.3 font tcfont
 set ylabel "Volume (V)" offset 1, 0 font keyfont
 set ytics 500 font tcfont
 set format y "%g"
-set arrow 7 from 0.115, 400 to 0.115, 2000 nohead
-plot [.1:.16][400:2000] \
-  "fe.dat" u 1:3 w l lt 2 lw 4 lc rgb nicered  title "histogram", \
-  ""       u 1:5 w l lt 1 lw 4 lc rgb niceblue title "fractional identity", \
-  ""       u 1:7 w l lt 1 lw 1 lc rgb "#000000" title "reference"
+pmin = .095
+pmax = .18
+vmin = 400
+vmax = 2100
+set arrow 7 from 0.115, vmin to 0.115, vmax nohead
+plot [pmin:pmax][vmin:vmax] \
+  "fe.dat" u 1:3 w l lt 4 lw 4 lc rgb nicegray title "histogram", \
+  ""       u 1:5 w l lt 2 lw 3 lc rgb nicered title "m.f. integration", \
+  ""       u 1:7 w l lt 1 lw 4 lc rgb niceblue title "fractional identity", \
+  ""       u 1:9 w l lt 1 lw 1 lc rgb "#000000" title "reference"
 
 # (b) inset: relative error of the volume
 set size 0.4, 0.2
@@ -94,12 +100,18 @@ set rmargin 0
 unset xlabel
 set xtics 0.02 font tcsfont 
 set mxtics 10
-set ylabel "{/Symbol e}(V)/V" offset 3., -1. font tcfont
-set ytics 0.01 offset .5, 0 font tcsfont
-set arrow 7 from 0.115, -0.002 to 0.115, 0.018 nohead
-plot [.1:.16][-0.002:0.018] \
-  "fe.dat" u 1:(($3-$7)/$7) w l lt 2 lw 4 lc rgb nicered notitle, \
-  ""       u 1:(($5-$7)/$7) w l lt 1 lw 4 lc rgb niceblue notitle, \
+set logscale y
+set ylabel "|{/Symbol e}(V)|/V" offset 2., 0 font tcfont
+set format y "10^{%L}"
+set ytics 10 offset .5, 0 font tcsfont
+set mytics 10
+errmin = 1e-5
+errmax = 0.1
+set arrow 7 from 0.115, errmin to 0.115, errmax nohead
+plot [pmin:pmax][errmin:errmax] \
+  "fe.dat" u 1:(abs($3/$9 - 1)) w l lt 4 lw 4 lc rgb nicegray notitle, \
+  ""       u 1:(abs($5/$9 - 1)) w l lt 2 lw 3 lc rgb nicered notitle, \
+  ""       u 1:(abs($7/$9 - 1)) w l lt 1 lw 4 lc rgb niceblue notitle, \
   0 w l lt 1 lw 1 notitle
  
 unset multiplot

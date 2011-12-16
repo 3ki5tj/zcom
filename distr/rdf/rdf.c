@@ -1,4 +1,4 @@
-/* integral identity for a volume distribution */
+/* integral identity for a radial distribution function */
 #define ZCOM_PICK
 #define ZCOM_LJ
 #define ZCOM_DISTR
@@ -6,7 +6,7 @@
 #define ZCOM_AV
 #include "zcom.h"
 
-const char *fncfg = "vol.cfg";
+const char *fncfg = "rdf.cfg";
 const char *fnds = "ds.dat", *fndsb = "dsb.dat";
 const char *fnpos = "lj.pos";
 int initload = 1;
@@ -23,9 +23,9 @@ real rs = 2.5f;
 int dosimul = 1; /* do a simulation */
 int nsteps = 10000, nequil = 10000;
 int nstdb = 100; /* # of steps to deposit to database B */
+int nstrdf = 100;
 
-real volamp = 0.01; /* percentage */
-double vmin = 400, vmax = 2000, vdel = 0.1;
+double rmax = 5.0, rdel = 0.01;
 
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
@@ -45,12 +45,10 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "rc", "%r", &rc, "cutoff distance");
   cfg_add(cfg, "rs", "%r", &rs, "switch distance");
   cfg_add(cfg, "tp", "%r", &tp, "temperature");
-  cfg_add(cfg, "pressure", "%r", &pressure, "pressure");
-  cfg_add(cfg, "volamp", "%r", &volamp, "volume move amplitude, as a fraction");
-  cfg_add(cfg, "vmin", "%lf", &vmin, "minimal volume");
-  cfg_add(cfg, "vmax", "%lf", &vmax, "maximal volume");
-  cfg_add(cfg, "vdel", "%lf", &vdel, "volume interval");
+  cfg_add(cfg, "nstrdf", "%d", &nstrdf, "every # of steps to compute rdf");
   cfg_add(cfg, "nstdb", "%d", &nstdb, "every # of steps to deposit to the small database (B)");
+  cfg_add(cfg, "rmax", "%lf", &rmax, "maximal r");
+  cfg_add(cfg, "rdel", "%lf", &rdel, "r interval");
   cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, "
       "for the fractional identity; 0: guess, -1: adaptive");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
@@ -60,16 +58,61 @@ static void loadcfg(const char *fncfg)
   cfg_close(cfg);
 }
 
+/* deposit pair information */
+static void deposit(distr_t *d, lj_t *lj, real bet)
+{
+  int i, j, k, ipr, kpr, npr = lj->npr, n = lj->n;
+  real *dx, dr, dr2, rdot, dfdx, vir1, vir2 = 0.f, hbox = .5f*lj->l;
+  rv3_t df, *f = (rv3_t *) lj->f;
+
+  for (ipr = 0; ipr < npr; ipr++) {
+    ljpair_t *pr = lj->pr + ipr, *prk;
+    i = pr->i;
+    j = pr->j;
+    dx = pr->dx;
+    dr2 = rv3_sqr(dx);
+    dr = sqrt(dr2);
+    if (dr >= hbox) continue;
+    rv3_diff(df, f[i], f[j]);
+    dfdx = rv3_dot(df, dx);
+    vir1 = .5f * dfdx / dr;
+
+    /* compute the second-order virial */
+    if (pr->in) {
+      vir2 = pr->psi * dr2 + pr->phi;
+    } else {
+      vir2 = 0.f;
+    }
+    for (k = 0; k < n; k++) {
+      if (i == k || j == k) continue;
+      kpr = getpairindex(i, k, n);
+      prk = lj->pr + kpr;
+      if (prk->in) {
+        rdot = rv3_dot(prk->dx, dx); /* sign doesn't matter, to be squared */
+        vir2 += (prk->psi * (rdot*rdot)/dr2 + prk->phi)/4;
+      }
+      kpr = getpairindex(j, k, n);
+      prk = lj->pr + kpr;
+      if (prk->in) {
+        rdot = rv3_dot(prk->dx, dx);
+        vir2 += (prk->psi * (rdot*rdot)/dr2 + prk->phi)/4;
+      }
+    }
+    distr_add(d, dr, bet*vir1, -bet*vir2, 1.0);
+  }
+}
+
 /* perform a simulation, save data to ds */
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int t, ntot = nsteps + nequil, vtot = 0, vacc = 0;
-  real u, k, p, vol, fv, dv, bet = 1.f/tp;
-  static av_t avU, avK, avV, avp, avfv;
+  int t, ntot = nsteps + nequil, nb = 0;
+  real u, k, bet = 1.f/tp;
+  static av_t avU, avK;
 
   lj = lj_open(N, 3, rho, rc);
   lj_initsw(lj, rs);
+  lj->usesw |= 0x100; /* count out-of-range pairs */
   printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos);
@@ -80,94 +123,29 @@ static void simul(distr_t *d, distr_t *db)
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
     lj_vrescale(lj, tp, thermdt);
-    if ((t + 1) % 10 == 0) {
-      vtot += 1;
-      vacc += lj_volmove(lj, volamp, tp, pressure);
-    }
 
     if (t >= nequil) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avV, lj->vol);
 
-      dv = lj_vir2sw3d(lj); /* r r : grad grad U */
-      fv = lj->n / lj->vol - bet * lj->vir / (3*lj->vol) - bet * pressure;
-      dv = -lj->n / (lj->vol * lj->vol) + bet * (2*lj->vir - dv) / (9*lj->vol*lj->vol);
-
-      distr_add(d, lj->vol, fv, dv, 1.0);
-      if ((t + 1) % nstdb == 0)
-        distr_add(db, lj->vol, fv, dv, 1.0);
-      av_add(&avp, lj->rho * tp - lj->vir / (3*lj->vol));
-      av_add(&avfv, fv);
+      if ((t + 1) % nstrdf == 0) {
+        deposit(d, lj, bet);
+        if (++nb % nstdb == 0)
+          deposit(db, lj, bet);
+      }
     }
   }
   u = av_getave(&avU)/N;
   k = av_getave(&avK)/N;
-  p = av_getave(&avp);
-  vol = av_getave(&avV)/N;
-  fv = av_getave(&avfv);
-  printf("U/N %6.3f, K/N %6.3f, V/N %6.3f, p %6.3f, delfv %6.3f, vacc %g%%\n",
-     u, k, vol, p, fv, 100.*vacc/vtot);
+  printf("U/N %6.3f, K/N %6.3f\n", u, k);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
-}
-
-double LOG0 = -300;
-
-/* compute the free energy at p + dp, also compute average volume there */
-static double reweight(distr_t *d, double tp, double dp, double *vav, int type)
-{
-  int i, n;
-  double betdp = dp/tp, x, lnx, vol, tot = 0, lnz = LOG0, lnzv = LOG0;
-
-  n = (type == 0) ? d->n : d->n + 1;
-  for (i = 0; i < n; i++) {
-    if (type == 0) { /* histogram */
-      vol = d->xmin + (i + .5) * d->dx;
-      x = d->arr[i].s;
-    } else { /* integrate mean force, integral identity */
-      vol = d->xmin + i * d->dx;
-      if (type == 1) {
-        x = exp(d->lnrho[i]);
-      } else {
-        x = d->rho[i];
-      }
-    }
-    if (x < 1e-30) continue;
-    tot += x;
-    lnx = log(x);
-    lnz = lnadd(lnz, lnx - betdp * vol);
-    lnzv = lnadd(lnzv, lnx - betdp * vol + log(vol));
-  }
-  *vav = exp(lnzv - lnz);
-  return -tp * (lnz - log(tot));
-}
-
-/* do reweighting */
-static void dorew(distr_t *d, distr_t *db, const char *fn)
-{
-  int i;
-  double p, dp, vav[6], dfe[6];
-  FILE *fp;
-
-  xfopen(fp, fn, "w", return);
-  for (p = 0.08; p < 0.2; p += 0.001) {
-    dp = p - pressure;
-    for (i = 0; i < 3; i++) {
-      dfe[i] = reweight(db, tp, dp, &vav[i], i);
-      dfe[i+3] = reweight(d, tp, dp, &vav[i+3], i);
-    }
-    fprintf(fp, "%.5f ", pressure + dp);
-    for (i = 0; i < 6; i++)
-      fprintf(fp, "%.14e %.14e ", dfe[i], vav[i]);
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
 }
 
 /* perform integral identity */
 static void doii(distr_t *d, const char *fn)
 {
+/*
   if (iitype == 0) {
     distr_aj(d, halfwin);
   } else if (iitype == 1 || iitype == 2) {
@@ -188,7 +166,7 @@ static void doii(distr_t *d, const char *fn)
       distr_iimf(d);
     }
   }
-
+*/
   distr_save(d, fn);
 }
 
@@ -197,8 +175,8 @@ int main(void)
   distr_t *d, *db;
 
   loadcfg(fncfg);
-  d = distr_open(vmin, vmax, vdel);
-  db = distr_open(vmin, vmax, vdel);
+  d = distr_open(0, rmax, rdel);
+  db = distr_open(0, rmax, rdel);
   if (initload) { /* load previous data */
     die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
     die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
@@ -208,7 +186,6 @@ int main(void)
 
   doii(d, fnds);
   doii(db, fndsb);
-  dorew(d, db, "fe.dat");
   distr_close(d);
   distr_close(db);
   return 0;

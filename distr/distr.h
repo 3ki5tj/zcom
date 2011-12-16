@@ -187,7 +187,7 @@ INLINE void distr_mfsig1(distr_t *d, double sampmin)
 INLINE void distr_winadp(distr_t *d)
 {
   int i, n = d->n;
-  double his, sig, dx = d->dx, *hsum, *hhis;
+  double dx = d->dx, *hsum, *hhis;
 
   xnew(hsum, n + 1);
   xnew(hhis, n + 1);

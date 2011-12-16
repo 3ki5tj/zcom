@@ -111,6 +111,30 @@ INLINE int intconfine(int x, int xmin, int xmax)
 
 INLINE int intsqr(int x) { return x * x; }
 
+/* get the pair index from 0 to n*(n - 1)/2 - 1 */
+INLINE int getpairindex(int i, int j, int n)
+{
+  die_if (i < 0 || i >= n || j < 0 || j >= n || i == j,
+      "bad index error i %d, j %d, n %d\n", i, j, n);
+  if (i > j) { int i1 = i; i = j; j = i1; }
+  return n*i - (i + 1)*(i + 2)/2 + j;
+}
+
+/* return individual indices for a given pair index */
+INLINE int parsepairindex(int id, int n, int *i, int *j)
+{
+  int i1, n1;
+  die_if (id < 0 || id >= n*(n - 1)/2, "index %d too large for n %d\n", id, n);
+  for (i1 = n - 2; i1 >= 0; i1--) {
+    if (id >= (n1 = i1*n - i1*(i1 + 1)/2)) {
+      *i = i1;
+      *j = id - n1 + i1 + 1;
+      return 0;
+    }
+  }
+  return 1;
+}
+
 INLINE double dblmax(double x, double y) { return x > y ? x : y; }
 INLINE double dblmin(double x, double y) { return x < y ? x : y; }
 /* confine x within [xmin, xmax] */

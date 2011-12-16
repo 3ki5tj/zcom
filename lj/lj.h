@@ -4,7 +4,7 @@
 #define LJ_H__
 
 typedef struct {
-  int i, j;
+  int i, j, in;
   real phi, psi, xi, dx[3], dr2;
 } ljpair_t;
 
