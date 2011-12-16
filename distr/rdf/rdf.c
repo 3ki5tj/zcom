@@ -87,12 +87,16 @@ static void deposit(distr_t *d, lj_t *lj, real bet)
       if (i == k || j == k) continue;
       kpr = getpairindex(i, k, n);
       prk = lj->pr + kpr;
+      die_if (!(i == prk->i && k == prk->j) && !(i == prk->j && k == prk->i),
+          "not");
       if (prk->in) {
         rdot = rv3_dot(prk->dx, dx); /* sign doesn't matter, to be squared */
         vir2 += (prk->psi * (rdot*rdot)/dr2 + prk->phi)/4;
       }
       kpr = getpairindex(j, k, n);
       prk = lj->pr + kpr;
+      die_if (!(j == prk->i && k == prk->j) && !(j == prk->j && k == prk->i),
+          "not");
       if (prk->in) {
         rdot = rv3_dot(prk->dx, dx);
         vir2 += (prk->psi * (rdot*rdot)/dr2 + prk->phi)/4;

@@ -373,10 +373,12 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
       if (dr2 > lj->rc2) {
         if (lj->usesw & 0x100) { /* save out-of-range pairs */
           rv3_copy(pr->dx, dx);
+          pr->i = i;
+          pr->j = j;
+          pr->phi = pr->psi = pr->xi = 0.f;
           pr->dr2 = dr2;
           pr->in = 0;
-          pr++;
-          npr++;
+          pr++; npr++;
         }
         continue;
       }
