@@ -1,5 +1,6 @@
 #include "def.h"
 #include "util.h"
+#include "rc.h"
 #ifndef DISTR_H__
 #define DISTR_H__
 
@@ -392,7 +393,7 @@ INLINE int distr_save(distr_t *d, const char *fn)
 }
 
 /* load a previous histogram */
-STRCLS int distr_load(distr_t *d, const char *fn)
+INLINE int distr_load(distr_t *d, const char *fn)
 {
   FILE *fp;
   char s[1024];
@@ -441,6 +442,153 @@ ERR:
   /* clear everything on error */
   for (i = 0; i <= n; i++) distrsum_clear(d->arr + i);
   return -1;
+}
+
+/* least square solver for a 2D potential from the mean forces */
+typedef struct {
+  int n, m; /* dimension of x and y */
+  real dx, dy;
+  rcomplex_t *u, *f, *g; /* pmf, mean force along x and y */
+  rcomplex_t *ru, *rf, *rg, *tmp; /* reciprocal space  */
+  rcomplex_t *en, *em; /* exp(i 2 pi I / n) and exp(j 2 pi I / m) */
+} ftsolver2d_t;
+
+INLINE ftsolver2d_t *ftsolver2d_open(int n, int m, real dx, real dy)
+{
+  ftsolver2d_t *fts;
+  int i;
+
+  xnew(fts, 1);
+  fts->n = n;
+  fts->m = m;
+  fts->dx = dx;
+  fts->dy = dy;
+  xnew(fts->u, n * m);
+  xnew(fts->f, n * m);
+  xnew(fts->g, n * m);
+  xnew(fts->ru, n * m);
+  xnew(fts->rf, n * m);
+  xnew(fts->rg, n * m);
+  xnew(fts->tmp, n * m);
+  xnew(fts->en, 2 * n);
+  for (i = 0; i < 2 * n; i++) {
+    double phi = M_PI*i/n;
+    fts->en[i].re = (real) cos(phi);
+    fts->en[i].im = (real) sin(phi);
+  }
+  xnew(fts->em, 2 * m);
+  for (i = 0; i < 2 * m; i ++) {
+    double phi = M_PI*i/m;
+    fts->em[i].re = (real) cos(phi);
+    fts->em[i].im = (real) sin(phi);
+  }
+  return fts;
+}
+
+INLINE void ftsolver2d_close(ftsolver2d_t *fts)
+{
+  free(fts->u);
+  free(fts->f);
+  free(fts->g);
+  free(fts->ru);
+  free(fts->rf);
+  free(fts->rg);
+  free(fts->tmp);
+  free(fts->en);
+  free(fts->em);
+  free(fts);
+}
+
+/* slow Fourier transform rf of f
+ * decomposed along x and y 
+ * sgn:   0 to get coeffients, 1 to combine components
+ * inpre: 1 if input is real */
+INLINE int ftsolver2d_ft(ftsolver2d_t *fts, rcomplex_t *rf, const rcomplex_t *f,
+   unsigned flags)
+{
+  int i, j, k, l, n = fts->n, m = fts->m;
+  int sgn = (flags & 0x1), inpre = (flags & 0x2);
+  rcomplex_t fkl, x;
+
+  /* FT along the m direction, save to tmp */
+  for (i = 0; i < n; i++) { /* for different rows */
+    for (l = 0; l < m; l++) { /* for different wave vectors */
+      for (fkl = rc_zero, j = 0; j < m; j++) { /* integrate */
+        x = rc_mul(fts->em[(j * l) % m * 2], f[i * m + j]);
+        fkl = rc_add(fkl, x);
+      }
+      fts->tmp[i*m + l] = fkl;
+      if (inpre) { /* reflect around l = m/2 */
+        if (l >= m/2) break;
+        if (l > 0 && l*2 < m) fts->tmp[i*m + m - l] = rc_star(fkl);
+      }
+    }
+  }
+
+  /* FT along the n direction, save to rf */
+  for (l = 0; l < m; l++) { /* for different columns */
+    for (k = 0; k < n; k++) { /* for different wave vectors */
+      for (fkl = rc_zero, i = 0; i < n; i++) { /* integrate */
+        x = rc_mul(fts->en[(i * k) % n * 2], fts->tmp[i * m + l]);
+        fkl = rc_add(fkl, x);
+      }
+      if (!sgn) fkl = rc_sdiv(rc_star(fkl), (real)(n * m)); /* fkl* / (n m) */
+      rf[k*m + l] = fkl;
+      if (inpre && l > 0 && l*2 < m) /* reflect: rf(n - k, m - l) = rf(n, l)* */
+        rf[(n - k) % n * m + (m - l)] = rc_star(fkl);
+    }
+    if (inpre && l >= m/2) break;
+  }
+  return 0;
+}
+
+/* return the least-square 2D potential of mean force 
+ * from the mean forces along the two directions */
+INLINE void ftsolver2d_solve(ftsolver2d_t *fts, real *u, real *fx, real *fy)
+{
+  int i, k, l, kl, n = fts->n, m = fts->m;
+  real ck, sk, cl, sl, c2k, c2l, dx = fts->dx, dy = fts->dy;
+  rcomplex_t x;
+
+  for (i = 0; i < n * m; i++) {
+    fts->f[i].re = fx[i];
+    fts->f[i].im = 0.f;
+    fts->g[i].re = fy[i];
+    fts->g[i].im = 0.f;
+  }
+  ftsolver2d_ft(fts, fts->rf, fts->f, 0x2);
+  ftsolver2d_ft(fts, fts->rg, fts->g, 0x2);
+  /* the loop is O(nm), no need to optimize */
+  for (k = 0; k < n; k++) {
+    ck = fts->en[k].re;
+    sk = fts->en[k].im;
+    c2k = fts->en[k*2].re;
+    for (l = 0; l < m; l++) {
+      kl = k*m + l;
+      if (kl == 0) {
+        fts->ru[kl].re = fts->ru[kl].im = 0.f;
+        continue;
+      }
+      cl = fts->em[l].re;
+      sl = fts->em[l].im;
+      c2l = fts->em[l*2].re;
+      x = rc_smul(fts->rf[kl], sk * cl * dx);
+      x = rc_add(x, rc_smul(fts->rg[kl], ck * sl * dy));
+      x = rc_mul(x, rc_make(sk*cl - ck*sl, ck*cl + sk*sl));
+      if (fabs(c2k*c2l - 1) < 1e-15) {
+        x.re = x.im = 0.f;
+      } else {
+        x = rc_sdiv(x, c2k*c2l - 1);
+      }
+      fts->ru[kl] = x;
+    }
+  }
+  ftsolver2d_ft(fts, fts->u, fts->ru, 1); /* inverse transform back */
+  if (u != NULL) {
+    for (k = 0; k < n; k++)
+      for (l = 0; l < m; l++)
+        u[k*m + l] = fts->u[k*m + l].re;
+  }
 }
 
 #endif
