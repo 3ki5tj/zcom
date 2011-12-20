@@ -306,9 +306,9 @@ INLINE distr_t *distr_open(double xmin, double xmax, double dx)
   distr_t *d;
   xnew(d, 1);
   d->xmin = xmin;
-  d->xmax = xmax;
   d->dx = dx;
   d->n = (int)((xmax - xmin)/dx + 0.999999f);
+  d->xmax = xmin + d->n * dx;
   xnew(d->arr, d->n + 1);
   xnew(d->rho, d->n + 1);
   xnew(d->lnrho, d->n + 1);
@@ -444,7 +444,166 @@ ERR:
   return -1;
 }
 
-/* least square solver for a 2D potential from the mean forces */
+typedef struct { double s, sf, sg, sf2, sg2; } distr2dsum_t;
+
+INLINE void distr2dsum_clear(distr2dsum_t *x)
+{ x->s = x->sf = x->sg = x->sf2 = x->sg2 = 0.0; }
+
+typedef struct {
+  int n, m;
+  double xmin, xmax, dx;
+  double ymin, ymax, dy;
+  distr2dsum_t *arr;
+  double *rho, *lnrho, *his;
+  double *mf, *mg;
+} distr2d_t;
+
+INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
+    double ymin, double ymax, double dy)
+{
+  distr2d_t *d;
+  int n1m1;
+
+  xnew(d, 1);
+  
+  d->xmin = xmin;
+  d->dx = dx;
+  d->n = (int)((xmax - xmin)/dx + 0.999999f);
+  d->xmax = xmin + d->n * dx;
+
+  d->ymin = ymin;
+  d->dy = dy;
+  d->m = (int)((ymax - ymin)/dy + 0.999999f);
+  d->ymax = ymin + d->m * dy;
+
+  n1m1 = (d->n + 1) * (d->m + 1);
+  xnew(d->arr, n1m1);
+  xnew(d->rho, n1m1);
+  xnew(d->lnrho, n1m1);
+  xnew(d->his, n1m1);
+  xnew(d->mf, n1m1);
+  xnew(d->mg, n1m1);
+  return d;
+}
+
+INLINE void distr2d_close(distr2d_t *d)
+{
+  if (!d) return;
+  free(d->arr);
+  free(d->rho);
+  free(d->lnrho);
+  free(d->his);
+  free(d->mf);
+  free(d->mg);
+  free(d);
+}
+
+INLINE void distr2d_add(distr2d_t *d, double x, double y, double f, double g, double w)
+{
+  if (x >= d->xmin && x <= d->xmax && y >= d->ymin && y <= d->ymax) {
+    int i = (int)((x - d->xmin)/d->dx), j = (int)((y - d->ymin)/d->dy);
+    int m1 = d->m + 1;
+    distr2dsum_t *ds = d->arr + i * m1 + j; 
+    ds->s   += w;
+    ds->sf  += w * f;
+    ds->sf2 += w * f * f;
+    ds->sg  += w * g;
+    ds->sg2 += w * g * g;
+  }
+}
+
+INLINE int distr2d_save(distr2d_t *d, const char *fn)
+{
+  FILE *fp;
+  int i, i0 = 0, i1 = d->n, n = d->n, id;
+  int j, j0 = 0, j1 = d->m, m = d->m, m1 = d->m + 1;
+  distr2dsum_t *ds = d->arr;
+
+  xfopen(fp, fn, "w", return -1);
+  fprintf(fp, "# 0 %d %.14e %.14e %d %.14e %.14e\n",
+      d->n, d->xmin, d->dx, d->m, d->ymin, d->dy);
+
+  for (i = i0; i <= i1; i++) {
+    for (j = j0; j <= j1; j++) {
+      double f = 0.0, g = 0.0, f2 = 0.0, g2 = 0.0;
+      id = i * m1 + j;
+      ds = d->arr + id;
+      if (i < n && j < m && ds->s > 0.) {
+        f = ds->sf / ds->s;
+        f2 = ds->sf2 / ds->s - f * f; /* convert to variance */
+        g = ds->sg / ds->s;
+        g2 = ds->sg2 / ds->s - f * f; /* convert to variance */
+      }
+      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
+        d->xmin + i * d->dx, d->ymin + j * d->dy, 
+        ds->s, f, f2, g, g2,
+        d->rho[id], d->lnrho[id], d->his[id]);
+    }
+  }
+  fclose(fp);
+  return 0;
+}
+
+/* load a previous histogram */
+INLINE int distr2d_load(distr2d_t *d, const char *fn)
+{
+  FILE *fp;
+  char s[1024];
+  int ver, i, j, n = d->n, m = d->m, nlin;
+  double x, y, sm, f, f2, g, g2;
+  double xmin = d->xmin, dx = d->dx, ymin = d->ymin, dy = d->dy;
+  distr2dsum_t *ds;
+
+  xfopen(fp, fn, "r", return -1);
+
+  /* check the first line */
+  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
+    fprintf(stderr, "%s: missing the first line\n", fn);
+    fclose(fp);
+    return -1;
+  }
+  if (7 != sscanf(s, " # %d%d%lf%lf%d%lf%lf", &ver, &i, &x, &f, &j, &y, &g)
+      || i != n || fabs(x - xmin) > 1e-3 || fabs(f - dx) > 1e-5
+      || j != m || fabs(y - ymin) > 1e-3 || fabs(g - dy) > 1e-5) {
+    fprintf(stderr, "error: n %d, %d; xmin %g, %g; dx %g, %g; "
+        "m %d, %d; ymin %g, %g; dy %g, %g\n",
+        i, n, x, xmin, f, dx, j, m, y, ymin, g, dy);
+    fclose(fp);
+    return -1;
+  }
+
+  /* only read in raw data */
+  for (nlin = 2; fgets(s, sizeof s, fp); nlin++) {
+    if (7 != sscanf(s, "%lf%lf%lf%lf%lf%lf%lf", 
+          &x, &y, &sm, &f, &f2, &g, &g2)) { /* only scan raw data */
+      fprintf(stderr, "sscanf error\n");
+      goto ERR;
+    }
+    /* locate the bin */
+    i = (int)( (x - xmin)/dx + .1);
+    j = (int)( (y - ymin)/dy + .1);
+    if (i < 0 || i >= n || j < 0 || j >= m) {
+      fprintf(stderr, "bad x %g, xmin %g, i %d/%d, y %g, ymin %g, j %d/%d\n", 
+          x, xmin, i, n, y, ymin, j, m);
+      goto ERR;
+    }
+    ds = d->arr + i * (m + 1) + j;
+    ds->s = sm;
+    ds->sf = f * sm;
+    ds->sf2 = (f2 + f*f)*sm;
+    ds->sg = g * sm;
+    ds->sg2 = (g2 + g*g)*sm;
+  }
+  return 0;
+ERR:
+  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
+  /* clear everything on error */
+  for (i = 0; i <= (n + 1)*(m + 1); i++) distr2dsum_clear(d->arr + i);
+  return -1;
+}
+
+/* least square solver for a 2D potential from the mean forces
+ * assume periodic along both directions */
 typedef struct {
   int n, m; /* dimension of x and y */
   real dx, dy;
@@ -542,19 +701,22 @@ INLINE int ftsolver2d_ft(ftsolver2d_t *fts, rcomplex_t *rf, const rcomplex_t *f,
   return 0;
 }
 
-/* return the least-square 2D potential of mean force 
+/* return the least-square 2D ln(rho)
  * from the mean forces along the two directions */
-INLINE void ftsolver2d_solve(ftsolver2d_t *fts, real *u, real *fx, real *fy)
+INLINE void ftsolver2d_solve(ftsolver2d_t *fts, double *u, double *fx, double *fy)
 {
-  int i, k, l, kl, n = fts->n, m = fts->m;
+  int i, j, id, id1, k, l, kl, n = fts->n, m = fts->m;
   real ck, sk, cl, sl, c2k, c2l, dx = fts->dx, dy = fts->dy;
   rcomplex_t x;
 
-  for (i = 0; i < n * m; i++) {
-    fts->f[i].re = fx[i];
-    fts->f[i].im = 0.f;
-    fts->g[i].re = fy[i];
-    fts->g[i].im = 0.f;
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    id = i * m + j;
+    id1 = i * (m + 1) + j;
+    fts->f[id].re = (real) fx[id1];
+    fts->f[id].im = 0.f;
+    fts->g[id].re = (real) fy[id1];
+    fts->g[id].im = 0.f;
   }
   ftsolver2d_ft(fts, fts->rf, fts->f, 0x2);
   ftsolver2d_ft(fts, fts->rg, fts->g, 0x2);
@@ -578,16 +740,19 @@ INLINE void ftsolver2d_solve(ftsolver2d_t *fts, real *u, real *fx, real *fy)
       if (fabs(c2k*c2l - 1) < 1e-15) {
         x.re = x.im = 0.f;
       } else {
-        x = rc_sdiv(x, c2k*c2l - 1);
+        x = rc_sdiv(x, 1 - c2k*c2l);
       }
       fts->ru[kl] = x;
     }
   }
   ftsolver2d_ft(fts, fts->u, fts->ru, 1); /* inverse transform back */
   if (u != NULL) {
-    for (k = 0; k < n; k++)
-      for (l = 0; l < m; l++)
-        u[k*m + l] = fts->u[k*m + l].re;
+    for (i = 0; i <= n; i++)
+      for (j = 0; j <= m; j++) {
+        id = i * m + j;
+        id1 = i * (m + 1) + j;
+        u[id1] = fts->u[id].re;
+      }
   }
 }
 

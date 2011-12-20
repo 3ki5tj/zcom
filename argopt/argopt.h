@@ -28,12 +28,14 @@ argopt_t *argopt_open(unsigned flags);
 void argopt_close(argopt_t *ao);
 #define argopt_regarg(ao, fmt, ptr, desc) argopt_add(ao, NULL, fmt, ptr, desc)
 #define argopt_regopt argopt_add
+#define argopt_reghelp argopt_addhelp
+#define argopt_regversion argopt_addversion
 int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc);
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
 
-#define argopt_reghelp(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$HELP")
-#define argopt_regversion(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$VERSION")
+#define argopt_addhelp(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$HELP")
+#define argopt_addversion(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$VERSION")
 
 #define argopt_getopt(ao, p) opt_find(ao->opts, ao->nopt, p)
 #define argopt_getarg argopt_getopt
