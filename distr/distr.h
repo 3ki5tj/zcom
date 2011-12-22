@@ -23,6 +23,7 @@ typedef struct {
   double *err;
   double *hsum; /* histogram sum for comparison */
   double *mfsig; /* std. dev. of mf, for adaptive window */
+  double *norm; /* normalization vector */
 } distr_t;
 
 
@@ -95,7 +96,7 @@ INLINE void distr_mfwin(distr_t *d, int m, int ii)
 INLINE void distr_aj(distr_t *d, int m)
 {
   int i, j, j0, j1, n = d->n;
-  double s0, s1, phi, den, tot, dx = d->dx;
+  double s0, s1, phi, den, tot, s, sf, dx = d->dx;
   distrsum_t *ds;
 
   /* compute the total visits */
@@ -109,8 +110,15 @@ INLINE void distr_aj(distr_t *d, int m)
     for (s0 = s1 = 0., j = j0; j < j1; j++) {
       phi = (j + .5 - (j < i ? j0 : j1)) * dx;
       ds = d->arr + j;
-      s0 += ds->s; /* phi' = 1 */
-      s1 += ds->sf * phi;
+      s = ds->s;
+      sf = ds->sf;
+      if (d->norm) {
+        double nm = .5 * (d->norm[j] + d->norm[j + 1]);
+        s /= nm;
+        sf /= nm;
+      }
+      s0 += s; /* phi' = 1 */
+      s1 += sf * phi;
     }
     den = 2.0 * m * tot * dx;
     d->his[i] = s0/den;
@@ -192,8 +200,10 @@ INLINE void distr_winadp(distr_t *d)
 
   xnew(hsum, n + 1);
   xnew(hhis, n + 1);
-  for (i = 0; i < n; i++)
+  for (i = 0; i < n; i++) {
     hhis[i] = .5 * (d->rho[i] + d->rho[i + 1]);
+    if (d->norm) hhis[i] *= .5 * (d->norm[i] + d->norm[i + 1]);
+  }
   for (hsum[0] = 0., i = 0; i < n; i++)
     hsum[i + 1] = hsum[i] + hhis[i];
 
@@ -286,6 +296,7 @@ INLINE void distr_ii0(distr_t *d, int m)
      * Note: we can loop from j0 to j1, with little difference */
     for (den = 0., j = jl; j <= jr; j++) {
       x = exp(d->lnrho[j] - d->lnrho[i]);
+      if (d->norm) x *= d->norm[j];
       den += (j == jl || j == jr) ? x * .5 : x;
     }
     den *= tot * dx;
@@ -294,11 +305,43 @@ INLINE void distr_ii0(distr_t *d, int m)
   }
 }
 
+
 INLINE void distr_iiadp(distr_t *d, double sigsampmin)
 {
   distr_iimf(d); /* tentative distribution from integrating the mean force */
   distr_mfsig1(d, sigsampmin);
   distr_ii0(d, -1); /* use variable window */
+}
+
+/* perform integral identity
+ * iitype: 0: Adib-Jazynski, 1: fraction identity, 2: integrate the mean force
+ * halfwin: half window size. > 0: fixed size, 0: fixed size (determined
+ *          automatically), -1: adaptive window size
+ * mfhalfwin: half window size for mean force integration
+ * sampmin: minimal number of samples in estimating mean force std. */
+INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
+    double sampmin)
+{
+  if (iitype == 0) {
+    distr_aj(d, halfwin);
+  } else if (iitype == 1 || iitype == 2) {
+    if (mfhalfwin == 0) {
+      distr_mf0(d);
+    } else if (mfhalfwin > 0) {
+      distr_mfii(d, mfhalfwin);
+    } else if (mfhalfwin < 0) {
+      distr_mfav(d, -mfhalfwin);
+    }
+
+    if (iitype == 1) {
+      if (halfwin >= 0)
+        distr_ii0(d, halfwin);
+      else
+        distr_iiadp(d, sampmin);
+    } else {
+      distr_iimf(d);
+    }
+  }
 }
 
 INLINE distr_t *distr_open(double xmin, double xmax, double dx)
@@ -320,6 +363,7 @@ INLINE distr_t *distr_open(double xmin, double xmax, double dx)
   xnew(d->err, d->n + 1);
   xnew(d->hsum, d->n + 1);
   xnew(d->mfsig, d->n + 1);
+  d->norm = NULL;
   return d;
 }
 
@@ -444,164 +488,6 @@ ERR:
   return -1;
 }
 
-typedef struct { double s, sf, sg, sf2, sg2; } distr2dsum_t;
-
-INLINE void distr2dsum_clear(distr2dsum_t *x)
-{ x->s = x->sf = x->sg = x->sf2 = x->sg2 = 0.0; }
-
-typedef struct {
-  int n, m;
-  double xmin, xmax, dx;
-  double ymin, ymax, dy;
-  distr2dsum_t *arr;
-  double *rho, *lnrho, *his;
-  double *mf, *mg;
-} distr2d_t;
-
-INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
-    double ymin, double ymax, double dy)
-{
-  distr2d_t *d;
-  int n1m1;
-
-  xnew(d, 1);
-  
-  d->xmin = xmin;
-  d->dx = dx;
-  d->n = (int)((xmax - xmin)/dx + 0.999999f);
-  d->xmax = xmin + d->n * dx;
-
-  d->ymin = ymin;
-  d->dy = dy;
-  d->m = (int)((ymax - ymin)/dy + 0.999999f);
-  d->ymax = ymin + d->m * dy;
-
-  n1m1 = (d->n + 1) * (d->m + 1);
-  xnew(d->arr, n1m1);
-  xnew(d->rho, n1m1);
-  xnew(d->lnrho, n1m1);
-  xnew(d->his, n1m1);
-  xnew(d->mf, n1m1);
-  xnew(d->mg, n1m1);
-  return d;
-}
-
-INLINE void distr2d_close(distr2d_t *d)
-{
-  if (!d) return;
-  free(d->arr);
-  free(d->rho);
-  free(d->lnrho);
-  free(d->his);
-  free(d->mf);
-  free(d->mg);
-  free(d);
-}
-
-INLINE void distr2d_add(distr2d_t *d, double x, double y, double f, double g, double w)
-{
-  if (x >= d->xmin && x <= d->xmax && y >= d->ymin && y <= d->ymax) {
-    int i = (int)((x - d->xmin)/d->dx), j = (int)((y - d->ymin)/d->dy);
-    int m1 = d->m + 1;
-    distr2dsum_t *ds = d->arr + i * m1 + j; 
-    ds->s   += w;
-    ds->sf  += w * f;
-    ds->sf2 += w * f * f;
-    ds->sg  += w * g;
-    ds->sg2 += w * g * g;
-  }
-}
-
-INLINE int distr2d_save(distr2d_t *d, const char *fn)
-{
-  FILE *fp;
-  int i, i0 = 0, i1 = d->n, n = d->n, id;
-  int j, j0 = 0, j1 = d->m, m = d->m, m1 = d->m + 1;
-  distr2dsum_t *ds = d->arr;
-
-  xfopen(fp, fn, "w", return -1);
-  fprintf(fp, "# 0 %d %.14e %.14e %d %.14e %.14e\n",
-      d->n, d->xmin, d->dx, d->m, d->ymin, d->dy);
-
-  for (i = i0; i <= i1; i++) {
-    for (j = j0; j <= j1; j++) {
-      double f = 0.0, g = 0.0, f2 = 0.0, g2 = 0.0;
-      id = i * m1 + j;
-      ds = d->arr + id;
-      if (i < n && j < m && ds->s > 0.) {
-        f = ds->sf / ds->s;
-        f2 = ds->sf2 / ds->s - f * f; /* convert to variance */
-        g = ds->sg / ds->s;
-        g2 = ds->sg2 / ds->s - f * f; /* convert to variance */
-      }
-      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
-        d->xmin + i * d->dx, d->ymin + j * d->dy, 
-        ds->s, f, f2, g, g2,
-        d->rho[id], d->lnrho[id], d->his[id]);
-    }
-  }
-  fclose(fp);
-  return 0;
-}
-
-/* load a previous histogram */
-INLINE int distr2d_load(distr2d_t *d, const char *fn)
-{
-  FILE *fp;
-  char s[1024];
-  int ver, i, j, n = d->n, m = d->m, nlin;
-  double x, y, sm, f, f2, g, g2;
-  double xmin = d->xmin, dx = d->dx, ymin = d->ymin, dy = d->dy;
-  distr2dsum_t *ds;
-
-  xfopen(fp, fn, "r", return -1);
-
-  /* check the first line */
-  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
-    fprintf(stderr, "%s: missing the first line\n", fn);
-    fclose(fp);
-    return -1;
-  }
-  if (7 != sscanf(s, " # %d%d%lf%lf%d%lf%lf", &ver, &i, &x, &f, &j, &y, &g)
-      || i != n || fabs(x - xmin) > 1e-3 || fabs(f - dx) > 1e-5
-      || j != m || fabs(y - ymin) > 1e-3 || fabs(g - dy) > 1e-5) {
-    fprintf(stderr, "error: n %d, %d; xmin %g, %g; dx %g, %g; "
-        "m %d, %d; ymin %g, %g; dy %g, %g\n",
-        i, n, x, xmin, f, dx, j, m, y, ymin, g, dy);
-    fclose(fp);
-    return -1;
-  }
-
-  /* only read in raw data */
-  for (nlin = 2; fgets(s, sizeof s, fp); nlin++) {
-    if (7 != sscanf(s, "%lf%lf%lf%lf%lf%lf%lf", 
-          &x, &y, &sm, &f, &f2, &g, &g2)) { /* only scan raw data */
-      fprintf(stderr, "sscanf error\n");
-      goto ERR;
-    }
-    /* locate the bin */
-    i = (int)( (x - xmin)/dx + .1);
-    j = (int)( (y - ymin)/dy + .1);
-    if (i < 0 || i >= n || j < 0 || j >= m) {
-      fprintf(stderr, "bad x %g, xmin %g, i %d/%d, y %g, ymin %g, j %d/%d\n", 
-          x, xmin, i, n, y, ymin, j, m);
-      goto ERR;
-    }
-    ds = d->arr + i * (m + 1) + j;
-    ds->s = sm;
-    ds->sf = f * sm;
-    ds->sf2 = (f2 + f*f)*sm;
-    ds->sg = g * sm;
-    ds->sg2 = (g2 + g*g)*sm;
-  }
-  return 0;
-ERR:
-  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
-  /* clear everything on error */
-  for (i = 0; i <= (n + 1)*(m + 1); i++) distr2dsum_clear(d->arr + i);
-  return -1;
-}
-
 /* least square solver for a 2D potential from the mean forces
  * assume periodic along both directions */
 typedef struct {
@@ -612,7 +498,7 @@ typedef struct {
   rcomplex_t *en, *em; /* exp(i 2 pi I / n) and exp(j 2 pi I / m) */
 } ftsolver2d_t;
 
-INLINE ftsolver2d_t *ftsolver2d_open(int n, int m, real dx, real dy)
+INLINE ftsolver2d_t *ftsolver2d_open(int n, real dx, int m, real dy)
 {
   ftsolver2d_t *fts;
   int i;
@@ -702,7 +588,8 @@ INLINE int ftsolver2d_ft(ftsolver2d_t *fts, rcomplex_t *rf, const rcomplex_t *f,
 }
 
 /* return the least-square 2D ln(rho)
- * from the mean forces along the two directions */
+ * from the mean forces along the two directions 
+ * fx and fy are (n+1)*(m+1) */
 INLINE void ftsolver2d_solve(ftsolver2d_t *fts, double *u, double *fx, double *fy)
 {
   int i, j, id, id1, k, l, kl, n = fts->n, m = fts->m;
@@ -749,11 +636,204 @@ INLINE void ftsolver2d_solve(ftsolver2d_t *fts, double *u, double *fx, double *f
   if (u != NULL) {
     for (i = 0; i <= n; i++)
       for (j = 0; j <= m; j++) {
-        id = i * m + j;
+        id = (i%n) * m + (j%m);
         id1 = i * (m + 1) + j;
         u[id1] = fts->u[id].re;
       }
   }
+}
+
+typedef struct { double s, sf, sg, sf2, sg2; } distr2dsum_t;
+
+INLINE void distr2dsum_clear(distr2dsum_t *x)
+{ x->s = x->sf = x->sg = x->sf2 = x->sg2 = 0.0; }
+
+typedef struct {
+  int n, m;
+  double xmin, xmax, dx;
+  double ymin, ymax, dy;
+  distr2dsum_t *arr;
+  double *rho, *lnrho, *his;
+  double *mf, *mg;
+} distr2d_t;
+
+INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
+    double ymin, double ymax, double dy)
+{
+  distr2d_t *d;
+  int n1m1;
+
+  xnew(d, 1);
+  
+  d->xmin = xmin;
+  d->dx = dx;
+  d->n = (int)((xmax - xmin)/dx + 0.999999f);
+  d->xmax = xmin + d->n * dx;
+
+  d->ymin = ymin;
+  d->dy = dy;
+  d->m = (int)((ymax - ymin)/dy + 0.999999f);
+  d->ymax = ymin + d->m * dy;
+
+  n1m1 = (d->n + 1) * (d->m + 1);
+  xnew(d->arr, n1m1);
+  xnew(d->rho, n1m1);
+  xnew(d->lnrho, n1m1);
+  xnew(d->his, n1m1);
+  xnew(d->mf, n1m1);
+  xnew(d->mg, n1m1);
+  return d;
+}
+
+INLINE void distr2d_close(distr2d_t *d)
+{
+  if (!d) return;
+  free(d->arr);
+  free(d->rho);
+  free(d->lnrho);
+  free(d->his);
+  free(d->mf);
+  free(d->mg);
+  free(d);
+}
+
+INLINE void distr2d_add(distr2d_t *d, double x, double y, double f, double g, double w)
+{
+  if (x >= d->xmin && x <= d->xmax && y >= d->ymin && y <= d->ymax) {
+    int i = (int)((x - d->xmin)/d->dx), j = (int)((y - d->ymin)/d->dy);
+    int m1 = d->m + 1;
+    distr2dsum_t *ds = d->arr + i * m1 + j; 
+    ds->s   += w;
+    ds->sf  += w * f;
+    ds->sf2 += w * f * f;
+    ds->sg  += w * g;
+    ds->sg2 += w * g * g;
+  }
+}
+
+/* compute the mean force */
+INLINE void distr2d_mf0(distr2d_t *d)
+{
+  int i, j, id, n = d->n, m = d->m, m1 = d->m + 1;
+  distr2dsum_t *ds;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < m; j++) {
+      double mf = 0., mg = 0.;
+      id = i * m1 + j;
+      ds = d->arr + id;
+      if (ds->s > 0.) {
+        mf = ds->sf / ds->s;
+        mg = ds->sg / ds->s;
+      }
+      d->mf[id] = mf;
+      d->mg[id] = mg;
+    }
+}
+
+/* compute lnrho from least-square fitting of the mean force */
+INLINE void distr2d_calclnrho(distr2d_t *d)
+{
+  ftsolver2d_t *fts = ftsolver2d_open(d->n, (real) d->dx, d->m, (real) d->dy);
+  ftsolver2d_solve(fts, d->lnrho, d->mf, d->mg);
+  ftsolver2d_close(fts);
+}
+
+INLINE int distr2d_save(distr2d_t *d, const char *fn)
+{
+  FILE *fp;
+  int i, i0 = 0, i1 = d->n, n = d->n, id;
+  int j, j0 = 0, j1 = d->m, m = d->m, m1 = d->m + 1;
+  distr2dsum_t *ds = d->arr;
+
+  xfopen(fp, fn, "w", return -1);
+  fprintf(fp, "# 0 %d %.14e %.14e %d %.14e %.14e\n",
+      d->n, d->xmin, d->dx, d->m, d->ymin, d->dy);
+
+  for (i = i0; i <= i1; i++) {
+    for (j = j0; j <= j1; j++) {
+      double sm = 0., f = 0.0, g = 0.0, f2 = 0.0, g2 = 0.0;
+      id = i * m1 + j;
+      if (i < n && j < m) {
+        ds = d->arr + id;
+        sm = ds->s;
+        if (i < n && j < m && sm > 0.) {
+          f = ds->sf / ds->s;
+          f2 = ds->sf2 / ds->s - f * f; /* convert to variance */
+          g = ds->sg / ds->s;
+          g2 = ds->sg2 / ds->s - f * f; /* convert to variance */
+        }
+      }
+      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
+        d->xmin + i * d->dx, d->ymin + j * d->dy, 
+        sm, f, f2, g, g2,
+        d->rho[id], d->lnrho[id], d->his[id]);
+    }
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+  return 0;
+}
+
+/* load a previous histogram */
+INLINE int distr2d_load(distr2d_t *d, const char *fn)
+{
+  FILE *fp;
+  char s[1024];
+  int ver, i, j, n = d->n, m = d->m, nlin;
+  double x, y, sm, f, f2, g, g2;
+  double xmin = d->xmin, dx = d->dx, ymin = d->ymin, dy = d->dy;
+  distr2dsum_t *ds;
+
+  xfopen(fp, fn, "r", return -1);
+
+  /* check the first line */
+  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
+    fprintf(stderr, "%s: missing the first line\n", fn);
+    fclose(fp);
+    return -1;
+  }
+  if (7 != sscanf(s, " # %d%d%lf%lf%d%lf%lf", &ver, &i, &x, &f, &j, &y, &g)
+      || i != n || fabs(x - xmin) > 1e-3 || fabs(f - dx) > 1e-5
+      || j != m || fabs(y - ymin) > 1e-3 || fabs(g - dy) > 1e-5) {
+    fprintf(stderr, "error: n %d, %d; xmin %g, %g; dx %g, %g; "
+        "m %d, %d; ymin %g, %g; dy %g, %g\n",
+        i, n, x, xmin, f, dx, j, m, y, ymin, g, dy);
+    fclose(fp);
+    return -1;
+  }
+
+  /* only read in raw data */
+  for (nlin = 2; fgets(s, sizeof s, fp); nlin++) {
+    strip(s);
+    if (s[0] == '\0') continue;
+    if (7 != sscanf(s, "%lf%lf%lf%lf%lf%lf%lf", 
+          &x, &y, &sm, &f, &f2, &g, &g2)) { /* only scan raw data */
+      fprintf(stderr, "sscanf error\n");
+      goto ERR;
+    }
+    /* locate the bin */
+    i = (int)( (x - xmin)/dx + .1);
+    j = (int)( (y - ymin)/dy + .1);
+    if (i < 0 || i > n || j < 0 || j > m) {
+      fprintf(stderr, "bad x %g, xmin %g, i %d/%d, y %g, ymin %g, j %d/%d\n", 
+          x, xmin, i, n, y, ymin, j, m);
+      goto ERR;
+    }
+    if (i == n || j == m) continue;
+    ds = d->arr + i * (m + 1) + j;
+    ds->s = sm;
+    ds->sf = f * sm;
+    ds->sf2 = (f2 + f*f)*sm;
+    ds->sg = g * sm;
+    ds->sg2 = (g2 + g*g)*sm;
+  }
+  return 0;
+ERR:
+  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
+  /* clear everything on error */
+  for (i = 0; i <= (n + 1)*(m + 1); i++) distr2dsum_clear(d->arr + i);
+  return -1;
 }
 
 #endif

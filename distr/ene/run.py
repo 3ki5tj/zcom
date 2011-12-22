@@ -27,6 +27,7 @@ edel = 0.1
 iitype = %-4s     # 0: AJ identity; 1: fractional identity
 halfwin = %-4s    # 0: single bin; > 0: fixed win; -1: variable window
 mfhalfwin = %-4s  # 0: signle bin; > 0: ii; < 0: plain average
+sampmin = 400
 '''
 
 def run(canon = 1, run = 0, iitype = 1, halfwin = 70, mfhalfwin = 0):

@@ -371,7 +371,8 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 > lj->rc2) {
-        if (lj->usesw & 0x100) { /* save out-of-range pairs */
+        if (lj->usesw & 0x100) { /* save out-of-range pairs, so we can later
+            * locate the pair from indices i and j using getpairindex() */
           rv3_copy(pr->dx, dx);
           pr->i = i;
           pr->j = j;

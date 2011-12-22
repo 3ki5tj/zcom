@@ -30,6 +30,7 @@ double vmin = 400, vmax = 2000, vdel = 0.1;
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
+double sampmin = 400.;
 
 /* load parameters from .cfg file */
 static void loadcfg(const char *fncfg)
@@ -56,6 +57,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
   cfg_close(cfg);
 }
@@ -165,33 +167,6 @@ static void dorew(distr_t *d, distr_t *db, const char *fn)
   fclose(fp);
 }
 
-/* perform integral identity */
-static void doii(distr_t *d, const char *fn)
-{
-  if (iitype == 0) {
-    distr_aj(d, halfwin);
-  } else if (iitype == 1 || iitype == 2) {
-    if (mfhalfwin == 0) {
-      distr_mf0(d);
-    } else if (mfhalfwin > 0) {
-      distr_mfii(d, mfhalfwin);
-    } else if (mfhalfwin < 0) {
-      distr_mfav(d, -mfhalfwin);
-    }
-
-    if (iitype == 1) {
-      if (halfwin >= 0)
-        distr_ii0(d, halfwin);
-      else
-        distr_iiadp(d, 1e2);
-    } else {
-      distr_iimf(d);
-    }
-  }
-
-  distr_save(d, fn);
-}
-
 int main(void)
 {
   distr_t *d, *db;
@@ -206,8 +181,10 @@ int main(void)
   if (dosimul)
     simul(d, db);
 
-  doii(d, fnds);
-  doii(db, fndsb);
+  distr_iiez(d, iitype, halfwin, mfhalfwin, sampmin);
+  distr_save(d, fnds);
+  distr_iiez(db, iitype, halfwin, mfhalfwin, sampmin);
+  distr_save(db, fndsb);
   dorew(d, db, "fe.dat");
   distr_close(d);
   distr_close(db);

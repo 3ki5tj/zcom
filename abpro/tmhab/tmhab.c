@@ -254,10 +254,10 @@ static void doargs(int argc, char **argv)
 {
   double maxh = 1e9;
   argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -h */
-  argopt_regopt(ao, "-maxh", "%lf", &maxh, "maximal hours");
-  argopt_regopt(ao, "-cfg", NULL, &fncfg, "configuration file");
-  argopt_regopt(ao, "-g", NULL, &fnlog, "log file");
-  argopt_reghelp(ao, "-h");
+  argopt_add(ao, "-maxh", "%lf", &maxh, "maximal hours");
+  argopt_add(ao, "-cfg", NULL, &fncfg, "configuration file");
+  argopt_add(ao, "-g", NULL, &fnlog, "log file");
+  argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
   maxtime = maxh * 3600 * 0.95;
   argopt_close(ao);
