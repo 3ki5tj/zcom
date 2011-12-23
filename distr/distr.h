@@ -643,7 +643,7 @@ INLINE void ftsolver2d_solve(ftsolver2d_t *fts, double *u, double *fx, double *f
   }
 }
 
-typedef struct { double s, sf, sg, sf2, sg2; } distr2dsum_t;
+typedef struct { double s, sf, sg, sf2, sg2, sfg; } distr2dsum_t;
 
 INLINE void distr2dsum_clear(distr2dsum_t *x)
 { x->s = x->sf = x->sg = x->sf2 = x->sg2 = 0.0; }
@@ -667,12 +667,12 @@ INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
   
   d->xmin = xmin;
   d->dx = dx;
-  d->n = (int)((xmax - xmin)/dx + 0.999999f);
+  d->n = (int)((xmax - xmin)/dx + 0.5f);
   d->xmax = xmin + d->n * dx;
 
   d->ymin = ymin;
   d->dy = dy;
-  d->m = (int)((ymax - ymin)/dy + 0.999999f);
+  d->m = (int)((ymax - ymin)/dy + 0.5f);
   d->ymax = ymin + d->m * dy;
 
   n1m1 = (d->n + 1) * (d->m + 1);
@@ -705,9 +705,10 @@ INLINE void distr2d_add(distr2d_t *d, double x, double y, double f, double g, do
     distr2dsum_t *ds = d->arr + i * m1 + j; 
     ds->s   += w;
     ds->sf  += w * f;
-    ds->sf2 += w * f * f;
     ds->sg  += w * g;
+    ds->sf2 += w * f * f;
     ds->sg2 += w * g * g;
+    ds->sfg += w * f * g;
   }
 }
 
@@ -752,21 +753,22 @@ INLINE int distr2d_save(distr2d_t *d, const char *fn)
 
   for (i = i0; i <= i1; i++) {
     for (j = j0; j <= j1; j++) {
-      double sm = 0., f = 0.0, g = 0.0, f2 = 0.0, g2 = 0.0;
+      double sm = 0., f = 0.0, g = 0.0, f2 = 0.0, g2 = 0.0, fg = 0.0;
       id = i * m1 + j;
       if (i < n && j < m) {
         ds = d->arr + id;
         sm = ds->s;
         if (i < n && j < m && sm > 0.) {
           f = ds->sf / ds->s;
-          f2 = ds->sf2 / ds->s - f * f; /* convert to variance */
           g = ds->sg / ds->s;
+          f2 = ds->sf2 / ds->s - f * f; /* convert to variance */
           g2 = ds->sg2 / ds->s - f * f; /* convert to variance */
+          fg = ds->sfg / ds->s - f * g; /* covariance */
         }
       }
-      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
+      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
         d->xmin + i * d->dx, d->ymin + j * d->dy, 
-        sm, f, f2, g, g2,
+        sm, f, g, f2, g2, fg,
         d->rho[id], d->lnrho[id], d->his[id]);
     }
     fprintf(fp, "\n");
@@ -781,7 +783,7 @@ INLINE int distr2d_load(distr2d_t *d, const char *fn)
   FILE *fp;
   char s[1024];
   int ver, i, j, n = d->n, m = d->m, nlin;
-  double x, y, sm, f, f2, g, g2;
+  double x, y, sm, f, g, f2, g2, fg;
   double xmin = d->xmin, dx = d->dx, ymin = d->ymin, dy = d->dy;
   distr2dsum_t *ds;
 
@@ -807,8 +809,8 @@ INLINE int distr2d_load(distr2d_t *d, const char *fn)
   for (nlin = 2; fgets(s, sizeof s, fp); nlin++) {
     strip(s);
     if (s[0] == '\0') continue;
-    if (7 != sscanf(s, "%lf%lf%lf%lf%lf%lf%lf", 
-          &x, &y, &sm, &f, &f2, &g, &g2)) { /* only scan raw data */
+    if (8 != sscanf(s, "%lf%lf%lf%lf%lf%lf%lf%lf", 
+          &x, &y, &sm, &f, &g, &f2, &g2, &fg)) { /* only scan raw data */
       fprintf(stderr, "sscanf error\n");
       goto ERR;
     }
@@ -824,9 +826,10 @@ INLINE int distr2d_load(distr2d_t *d, const char *fn)
     ds = d->arr + i * (m + 1) + j;
     ds->s = sm;
     ds->sf = f * sm;
-    ds->sf2 = (f2 + f*f)*sm;
     ds->sg = g * sm;
+    ds->sf2 = (f2 + f*f)*sm;
     ds->sg2 = (g2 + g*g)*sm;
+    ds->sfg = (fg + f*g)*sm;
   }
   return 0;
 ERR:

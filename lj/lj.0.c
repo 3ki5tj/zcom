@@ -535,7 +535,7 @@ INLINE real lj_vir2sw3d(lj_t *lj)
 
   for (ipr = 0; ipr < npr; ipr++) {
     ljpair_t *pr = lj->pr + ipr;
-    vir2 = pr->psi * pr->dr2 * pr->dr2;
+    vir2 += (pr->psi * pr->dr2 + pr->phi) * pr->dr2;
   }
   return vir2;
 }

@@ -23,3 +23,11 @@ _aj  Adib-Jarzynski
 _ii  fractional, 
 _ix  fractional, adaptive window
 
+NOTES
+=====
+
+In .dat file 
+  mean force is column 2,
+  its variance column 3, 
+  second derivative column 4
+  columns 3 + 4 should match the derivative of column 2

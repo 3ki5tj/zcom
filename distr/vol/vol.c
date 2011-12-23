@@ -94,7 +94,7 @@ static void simul(distr_t *d, distr_t *db)
 
       dv = lj_vir2sw3d(lj); /* r r : grad grad U */
       fv = lj->n / lj->vol - bet * lj->vir / (3*lj->vol) - bet * pressure;
-      dv = -lj->n / (lj->vol * lj->vol) + bet * (2*lj->vir - dv) / (9*lj->vol*lj->vol);
+      dv = -lj->n / (lj->vol * lj->vol) - bet * (dv - 2*lj->vir) / (9*lj->vol*lj->vol);
 
       distr_add(d, lj->vol, fv, dv, 1.0);
       if ((t + 1) % nstdb == 0)
