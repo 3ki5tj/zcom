@@ -4,6 +4,82 @@
 #ifndef DISTR_H__
 #define DISTR_H__
 
+#define DSDIF_HIS1 0x01 /* the first distribution is histogram */
+#define DSDIF_HIS2 0x02 /* the second (reference) is histogram */
+
+/* return KS difference between f and ref, with p-value
+ * f and ref are distribution densities
+ * if ishis & DSDIF_HIS1, f[0..n-1] is histogram, otherwise f[0..n] is the distribution
+ * is ishis & DSDIF_HIS2, ref[0..n-1] is histogram, otherwise ref[0..n] is the distribution
+ * smpsize is the sample size */
+static double ksdif1d(const double f[], const double ref[], int n, int ishis,
+    double smpsiz, double *p, double err[])
+{
+  int i, alloc = 0, his1 = ishis & DSDIF_HIS1, his2 = ishis & DSDIF_HIS2;
+  double tot1, tot2, sum1, sum2, e, emax;
+ 
+  if (err == NULL) { alloc = 1; xnew(err, n + 1); }
+  err[0] = 0.; 
+
+  /* compute the normalization factor for both distributions */
+  for (tot1 = tot2 = 0., i = 0; i < n; i++) {
+    tot1 += his1 ? f[i]   : .5*(f[i] + f[i+1]);
+    tot2 += his2 ? ref[i] : .5*(ref[i] + ref[i+1]);
+  }
+  if (tot1 <= 0. || tot2 <= 0.) {
+    fprintf(stderr, "ksdif: bad distribution, tot 1: %g, 2: %g\n", tot1, tot2);
+    return 0;
+  }
+
+  for (sum1 = sum2 = 0., emax = 0., i = 0; i < n; i++) {
+    sum1 += (his1 ? f[i]   : .5*(f[i] + f[i+1])) / tot1;
+    sum2 += (his2 ? ref[i] : .5*(ref[i] + ref[i+1])) / tot2;
+    err[i + 1] = e = sum1 - sum2;
+    if ((e = fabs(e)) > emax) emax = e;
+  }
+  e = sqrt(smpsiz);
+  emax *= e + .12 + .11/e; /* a formula from numerical recipes */
+  if (p != NULL) *p = ksq(emax);
+  if (alloc) free(err);
+  return emax;
+}
+
+/* entropic difference = integral log(ref/r) ref(x) dx */
+static double entdif1d(const double f[], const double ref[], int n,
+    int ishis, double err[])
+{
+  int i, alloc = 0, his1 = ishis & DSDIF_HIS1, his2 = ishis & DSDIF_HIS2;
+  double tot1, tot2, y1, y2, e;
+ 
+  if (err == NULL) { alloc = 1; xnew(err, n + 1); }
+  err[0] = 0.; 
+
+  /* compute the normalization factor for both distributions */
+  for (tot1 = tot2 = 0., i = 0; i < n; i++) {
+    tot1 += his1 ? f[i]   : .5*(f[i] + f[i+1]);
+    tot2 += his2 ? ref[i] : .5*(ref[i] + ref[i+1]);
+  }
+  if (tot1 <= 0. || tot2 <= 0.) {
+    fprintf(stderr, "entdif: bad distribution, tot 1: %g, 2: %g\n", tot1, tot2);
+    return 0;
+  }
+
+  for (e = 0., i = 0; i < n; i++) {
+    y1 = (his1 ? f[i]   : .5*(f[i] + f[i+1])) / tot1;
+    y2 = (his2 ? ref[i] : .5*(ref[i] + ref[i+1])) / tot2;
+    if (y1 <= 0 || y2 <= 0) {
+      if (err) err[i] = 0;
+      continue;
+    }
+    y2 = log(y1/y2);
+    if (err) err[i] = y2;
+    e += y2 * y1;
+  }
+  if (alloc) free(err);
+  return e;
+}
+
+
 typedef struct {
   double s;
   double sf;  /* mean force */
@@ -86,7 +162,7 @@ INLINE void distr_mfwin(distr_t *d, int m, int ii)
       }
       if (s > 0) break;
     }
-    if (ii) s0 += s1; /* add correction second-order derivative */
+    if (ii) s0 += s1; /* add correction from the second-order derivative */
     d->mf[i] = (s > 0) ? s0/s : 0.0;
   }
 }
@@ -122,48 +198,43 @@ INLINE void distr_aj(distr_t *d, int m)
     }
     den = 2.0 * m * tot * dx;
     d->his[i] = s0/den;
-    d->rho[i] = (s0 + s1)/den;
+    d->rho[i] = (s0 + s1 > 0) ? (s0 + s1)/den : 0.;
     d->jl[i] = i - j0;
     d->jr[i] = j1 - i;
   }
 }
 
-/* make fixed window */
-INLINE void distr_winfix(distr_t *d, int m)
+/* make fixed windows
+ * if m == 0, guess width from 2 m dx = 1/sig(mf) */
+INLINE void distr_winfixed(distr_t *d, int m)
 {
   int i, n = d->n;
+  double his, sig;
 
-  printf("fixed window, half width m = %d (%g)\n", m, m * d->dx);
+  if (m == 0) { /* guess window size */
+    /* error of mean force as variance divided by the number of samples */
+    for (sig = his = 0, i = 0; i < n; i++) {
+      distrsum_t *ds = d->arr + i;
+      if (ds->s > 0.) {
+        sig += ds->sf2 - ds->sf * ds->sf / ds->s;
+        his += ds->s;
+      }
+    }
+    sig = sqrt(sig/his);
+
+    m = intmax(1, (int) (0.5/(sig * d->dx) + .5) );
+    printf("mean force standard deviation is %g, m %d\n", sig, m);
+  }
+
   for (i = 0; i <= n; i++) {
     d->jl[i] = intmax(i - m, 0);
     d->jr[i] = intmin(i + m, n);
-  }
-}
-
-/* make fixed window, guess width from 2 m dx = 1/sig(mf) */
-INLINE void distr_winfixinvmf(distr_t *d)
-{
-  int i, m, n = d->n;
-  double his, sig;
-
-  /* error of mean force as variance divided by the number of samples */
-  for (sig = his = 0, i = 0; i < n; i++) {
-    distrsum_t *ds = d->arr + i;
-    if (ds->s > 0.) {
-      sig += ds->sf2 - ds->sf * ds->sf / ds->s;
-      his += ds->s;
-    }
-  }
-  sig = sqrt(sig/his);
-  printf("mean force standard deviation is %g\n", sig);
-
-  m = intmax(1, (int)( 0.5/(sig * d->dx) + .5 ));
-  distr_winfix(d, m);
+  }  
 }
 
 /* estimate local standard deviation of the mean force
  * average over local window of 2 m */
-INLINE void distr_mfsig1(distr_t *d, double sampmin)
+INLINE void distr_mfsig0(distr_t *d, double sampmin)
 {
   int i, m, n = d->n;
   double x, sig, his, *asig, *hsum;
@@ -193,7 +264,7 @@ INLINE void distr_mfsig1(distr_t *d, double sampmin)
 
 /* make adaptive window
  * requires d->rho and d->mfsig */
-INLINE void distr_winadp(distr_t *d)
+INLINE void distr_winadp(distr_t *d, int mlimit)
 {
   int i, n = d->n;
   double dx = d->dx, *hsum, *hhis;
@@ -207,12 +278,16 @@ INLINE void distr_winadp(distr_t *d)
   for (hsum[0] = 0., i = 0; i < n; i++)
     hsum[i + 1] = hsum[i] + hhis[i];
 
-  for (i = 0; i <= n; i++) {
-    int k = 0, jl = i, jr = i+1, el = 0, er = 0;
+  if (mlimit < 0) mlimit = 100000000; /* set a very large number */
 
+  for (i = 0; i <= n; i++) {
+    int k = 0, jl = i, jr = i+1, el = 0, er = 0, jlm, jrm;
+
+    jlm = intmax(1, i - mlimit);
+    jrm = intmin(n, i + mlimit);
     for (k = 0; el == 0 || er == 0; k++) {
       if (k % 2 == 0) { /* do the left */
-        if (el || jl <= 1) {
+        if (el || jl <= jlm) {
           el = 1;
           continue;
         }
@@ -222,7 +297,7 @@ INLINE void distr_winadp(distr_t *d)
           jl--;
         }
       } else { /* do the right */
-        if (er || jr >= n) {
+        if (er || jr >= jrm) {
           er = 1;
           continue;
         }
@@ -245,16 +320,19 @@ INLINE void distr_winadp(distr_t *d)
 INLINE void distr_iimf(distr_t *d)
 {
   int i, n = d->n;
-  double max, tot, lntot, dx = d->dx;
+  double max, tot, x, lntot, dx = d->dx;
 
-  /* construct ln(rho) from the mean force */
+  /* integrate mf to get ln(rho) */
   for (max = d->lnrho[0] = 0, i = 0; i < n; i++) {
     d->lnrho[i + 1] = d->lnrho[i] + d->mf[i] * dx;
     if (d->lnrho[i + 1] > max) max = d->lnrho[i + 1];
   }
 
-  for (tot = 0, i = 0; i <= n; i++)
-    tot += d->rho[i] = exp(d->lnrho[i] -= max);
+  for (tot = 0, i = 0; i <= n; i++) {
+    x = exp(d->lnrho[i] -= max);
+    if (d->norm) x *= d->norm[i];
+    tot += d->rho[i] = x;
+  }
   tot *= dx;
   lntot = log(tot);
 
@@ -264,27 +342,23 @@ INLINE void distr_iimf(distr_t *d)
   }
 }
 
-/* modulated integral identity from a fixed window [i - m, i + m),
+/* modulated integral identity
  * set rho[], lnrho[], his[]
- * must call mfX(), first */
-INLINE void distr_ii0(distr_t *d, int m)
+ * before calling this function
+ * first call mfX() to compute the mean force, 
+ * and call winX() to compute the window */
+INLINE void distr_ii0(distr_t *d)
 {
   int i, j, jl, jr, n = d->n;
   double x, den, tot, dx = d->dx;
 
   /* construct ln(rho) from the mean force */
-  for (i = 0; i < n; i++)
-    d->lnrho[i + 1] = d->lnrho[i] + d->mf[i] * dx;
+  distr_iimf(d);
 
   for (d->hsum[0] = 0., i = 0; i < n; i++)
     d->hsum[i + 1] = d->hsum[i] + d->arr[i].s;
   tot = d->hsum[n]; /* total number of visits */
-  printf("tot %g\n", tot);
-
-  if (m > 0) distr_winfix(d, m);
-  else if (m == 0) distr_winfixinvmf(d);
-  else if (m == -1) distr_winadp(d);
-
+  
   /* estimate using integral identity */
   for (i = 0; i <= n; i++) {
     /* compute # of visits in a window around i */
@@ -305,12 +379,21 @@ INLINE void distr_ii0(distr_t *d, int m)
   }
 }
 
-
-INLINE void distr_iiadp(distr_t *d, double sigsampmin)
+/* integral identity with an adaptive window
+ * may not always help, use with care */
+INLINE void distr_iiadp(distr_t *d, int mlimit, double sigsampmin)
 {
-  distr_iimf(d); /* tentative distribution from integrating the mean force */
-  distr_mfsig1(d, sigsampmin);
-  distr_ii0(d, -1); /* use variable window */
+  /* construct a tentative d->rho from integrating the mean force */
+  distr_iimf(d);
+
+  /* estimate mean force variance */
+  distr_mfsig0(d, sigsampmin);
+
+  /* compute adaptive windows */
+  distr_winadp(d, mlimit);
+
+  /* estimate the distribution */
+  distr_ii0(d);
 }
 
 /* perform integral identity
@@ -320,11 +403,12 @@ INLINE void distr_iiadp(distr_t *d, double sigsampmin)
  * mfhalfwin: half window size for mean force integration
  * sampmin: minimal number of samples in estimating mean force std. */
 INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
-    double sampmin)
+    int mlimit, double sampmin)
 {
   if (iitype == 0) {
     distr_aj(d, halfwin);
   } else if (iitype == 1 || iitype == 2) {
+    /* compute mean force */
     if (mfhalfwin == 0) {
       distr_mf0(d);
     } else if (mfhalfwin > 0) {
@@ -333,11 +417,14 @@ INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
       distr_mfav(d, -mfhalfwin);
     }
 
+    /* compute the distribution */
     if (iitype == 1) {
-      if (halfwin >= 0)
-        distr_ii0(d, halfwin);
-      else
-        distr_iiadp(d, sampmin);
+      if (halfwin >= 0) {
+        distr_winfixed(d, halfwin);
+        distr_ii0(d);
+      } else {
+        distr_iiadp(d, mlimit, sampmin);
+      }
     } else {
       distr_iimf(d);
     }
@@ -442,7 +529,7 @@ INLINE int distr_load(distr_t *d, const char *fn)
   FILE *fp;
   char s[1024];
   int ver, i, n = d->n, nlin;
-  double x, sm, f, f2, dv, xmin = d->xmin, dx = d->dx;
+  double x, sm, f, f2, dv, rho, xmin = d->xmin, dx = d->dx;
   distrsum_t *ds;
 
   xfopen(fp, fn, "r", return -1);
@@ -463,7 +550,7 @@ INLINE int distr_load(distr_t *d, const char *fn)
 
   /* only read in raw data */
   for (nlin = 2; fgets(s, sizeof s, fp); nlin++) {
-    if (5 != sscanf(s, "%lf%lf%lf%lf%lf", &x, &sm, &f, &f2, &dv)) {
+    if (6 != sscanf(s, "%lf%lf%lf%lf%lf%lf", &x, &sm, &f, &f2, &dv, &rho)) {
       fprintf(stderr, "sscanf error\n");
       goto ERR;
     }
@@ -478,6 +565,7 @@ INLINE int distr_load(distr_t *d, const char *fn)
     ds->sf = f * sm;
     ds->sf2 = (f2 + f*f)*sm;
     ds->sdv = dv * sm;
+    d->rho[i] = rho;
     if (i >= n - 1) break;
   }
   return 0;
@@ -738,6 +826,63 @@ INLINE void distr2d_calclnrho(distr2d_t *d)
   ftsolver2d_t *fts = ftsolver2d_open(d->n, (real) d->dx, d->m, (real) d->dy);
   ftsolver2d_solve(fts, d->lnrho, d->mf, d->mg);
   ftsolver2d_close(fts);
+}
+
+/* compute the mean force variance */
+INLINE double distr2d_mfvar(distr2d_t *d)
+{
+  int i, j, n = d->n, m = d->m;
+  double sm = 0, f2sm = 0, s, f, g;
+
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    distr2dsum_t *ds = d->arr + i * (m + 1) + j;
+    if ((s = ds->s) <= 0.) continue;
+    sm += 1;
+    f = ds->sf / s;
+    g = ds->sg / s;
+    f2sm += .5*(ds->sf2/s - f*f + ds->sg2/s - g*g);
+  }
+  return sm > 0. ? f2sm/sm : 0.;
+}
+
+/* integral identity, assume periodic function */
+INLINE void distr2d_ii0(distr2d_t *d, int iw)
+{
+  int i, j, id, ia, ib, ja, jb, ii, jj, iip, jjp, ij, n = d->n, m = d->m;
+  double num, den, den0, wt, dlnrho;
+
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    id = i * (m + 1) + j;
+    ia = i - iw;
+    ib = i + iw;
+    ja = j - iw;
+    jb = j + iw;
+
+    num = den = den0 = 0.;
+    /* get the number of visits to the region */
+    for (ii = ia; ii < ib; ii++)
+    for (jj = ja; jj < jb; jj++) {
+      iip = (ii + n) % n;
+      jjp = (jj + n) % n;
+      num += d->arr[iip * (m + 1) + jjp].s;
+    }
+    for (ii = ia; ii <= ib; ii++)
+    for (jj = ja; jj <= jb; jj++) {
+      iip = (ii + n) % n;
+      jjp = (jj + n) % n;
+      ij = iip * (m + 1) + jjp;
+      wt = 1.0;
+      if (jj == ja || jj == jb) wt *= .5;
+      if (ii == ia || ii == ib) wt *= .5;
+      den0 += wt;
+      dlnrho = d->lnrho[ij] - d->lnrho[id];
+      den += wt * exp(dlnrho);
+    }
+    d->rho[id] = num/den; /* unbiased result */
+    d->his[id] = num/den0; /* biased result */
+  }
 }
 
 INLINE int distr2d_save(distr2d_t *d, const char *fn)

@@ -224,7 +224,7 @@ INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
   if (dr2 < rc2) {
     invr2 = 1.0f / dr2;
     invr6 = invr2 * invr2 * invr2;
-    *vir = invr6 * (48.f * invr6 - 24.f);
+    *vir = invr6 * (48.f * invr6 - 24.f); /* f.r */
     *u  = 4.f * invr6 * (invr6 - 1.f);
     return 1;
   } else return 0;
@@ -313,7 +313,7 @@ INLINE real lj_energysw3d(lj_t *lj, rv3_t *x, real *virial, real *laplace)
       dr = (real) sqrt(dr2);
       ep += lj_potsw(lj, dr, &fscal, &psi, &xi);
       lap += 2.f*(psi*dr2 - d*fscal);
-      vir -= fscal*dr2;
+      vir += fscal*dr2;
       rv3_smul(dx, fscal);
     }
   }
@@ -371,7 +371,7 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 > lj->rc2) {
-        if (lj->usesw & 0x100) { /* save out-of-range pairs, so we can later
+        if (lj->usesw & LJ_SWALLPAIRS) { /* save out-of-range pairs, so we can later
             * locate the pair from indices i and j using getpairindex() */
           rv3_copy(pr->dx, dx);
           pr->i = i;
@@ -392,7 +392,7 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
       pr->psi = psi;  /* psi = phi'/r */
       pr->xi = xi;  /* xi = psi'/r */
       lap += 2.f*(psi*dr2 - d*fscal);
-      vir -= fscal*dr2;
+      vir += fscal*dr2; /* f.r */
       rv3_smul(dx, fscal);
       pr->i = i;
       pr->j = j;
@@ -424,7 +424,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial, real *eps)
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
       fs = dr6 * (48.f * dr6 - 24.f); /* f.r */
-      vir += fs;
+      vir += fs; /* f.r */
       fs *= dr2;
       for (d = 0; d < 3; d++) {
         tmp = dx[d] * fs;
@@ -540,7 +540,7 @@ INLINE real lj_vir2sw3d(lj_t *lj)
   return vir2;
 }
 
-/* compute volume change */
+/* compute volume change, use amp 0.01 ~ 0.02 for 256 system */
 INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 {
   real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
@@ -556,15 +556,44 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
   vn = pow(ln, lj->d);
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
-  r = bet*((lj->epot - epo) + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
-  if (r < 0 || rnd0() < exp(-r)) {
+  r = -bet*(lj->epot - epo + p*(vn - vo)) + (lj->n + 1) * lj->d * (logln - loglo);
+/*  
+  printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
+*/
+  if (r >= 0 || rnd0() < exp(r)) {
     return 1;
   } else {
     lj_setrho(lj, lj->n/vo);
-    lj_force(lj);
+    lj_force(lj); /* inefficient */
     return 0;
   }
 }
+
+/* compute volume change, dt < 3e-4 for 256 system
+ * cautious, testing version */
+INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
+{
+  int d;
+  real r, logvo, logvn, dlogv, ln, vn, bet = 1.f/tp;
+
+  logvo = log(lj->vol);
+  dlogv = dt * (lj->n + 1 + bet*lj->vir/3.f - bet*p*lj->vol);
+  r = (real) grand0();
+  dlogv += r * sqrt(2 * dt);
+  dlogv = dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
+  logvn = logvo + dlogv;
+  ln = (real) exp(logvn/3);
+  if (ln < lj->rc * 2) return 0; /* box too small */
+  for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
+/*
+  printf("pvir %g, bp %g, dlogv %g, rho %g -> %g, p %g\n", (lj->n + 1 + bet*lj->vir/3)/lj->vol, bet*p, dlogv, lj->n/lj->vol, lj->n/vn, lj_calcp(lj, tp));
+*/
+  lj_setrho(lj, lj->n/vn); /* commit to the new box */
+  lj_force(lj);
+  /* safety check! */
+  return 1;
+}
+
 
 /* create an open structure */
 lj_t *lj_open(int n, int d, real rho, real rcdef)

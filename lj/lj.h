@@ -8,6 +8,9 @@ typedef struct {
   real phi, psi, xi, dx[3], dr2;
 } ljpair_t;
 
+
+#define LJ_SWALLPAIRS 0x100 /* flag of usesw, save all (including out-of-range) pairs */
+
 typedef struct {
   int d; /* dimension = 3 */
   int n; /* number of particles */

@@ -31,6 +31,7 @@ int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
 double sampmin = 100.0;
 double ajR1 = 1.0; /* used by the Adib-Jarzynski identity */
+int mlimit = -1;
 
 /* load parameters from .cfg file */
 static void loadcfg(const char *fncfg)
@@ -236,7 +237,7 @@ static void doii(distr_t *d, const char *fn)
   if (iitype == 9) {
     distr_ajrdf(d, ajR1);
   } else {
-    distr_iiez(d, iitype, halfwin, mfhalfwin, sampmin);
+    distr_iiez(d, iitype, halfwin, mfhalfwin, mlimit, sampmin);
   }
   distr_save(d, fn);
 }

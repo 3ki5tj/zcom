@@ -4,7 +4,7 @@
 
 import os, sys, re, shutil
 
-active = 0 # run md to collect data
+active = 1 # run md to collect data
 datadir = "data"
 fngp = "rdf.gp"
 fncfg = "rdf.cfg"

@@ -13,7 +13,7 @@ int initload = 1;
 
 int N = 256;
 real rho = 0.8f;
-real rc = 3.5f;
+real rc = 3.2f;
 real tp = 1.24f;
 real pressure = 0.115f;
 real mddt = 0.002f;
@@ -25,11 +25,14 @@ int nsteps = 10000, nequil = 10000;
 int nstdb = 100; /* # of steps to deposit to database B */
 
 real volamp = 0.01; /* percentage */
+real voldt = 2e-4; /* move size for langevin equation */
 double vmin = 400, vmax = 2000, vdel = 0.1;
 
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
+
+int mlimit = -1;
 double sampmin = 400.;
 
 /* load parameters from .cfg file */
@@ -48,6 +51,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "tp", "%r", &tp, "temperature");
   cfg_add(cfg, "pressure", "%r", &pressure, "pressure");
   cfg_add(cfg, "volamp", "%r", &volamp, "volume move amplitude, as a fraction");
+  cfg_add(cfg, "voldt", "%r", &voldt, "volume move dt, in the langevin equation");
   cfg_add(cfg, "vmin", "%lf", &vmin, "minimal volume");
   cfg_add(cfg, "vmax", "%lf", &vmax, "maximal volume");
   cfg_add(cfg, "vdel", "%lf", &vdel, "volume interval");
@@ -66,7 +70,7 @@ static void loadcfg(const char *fncfg)
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int t, ntot = nsteps + nequil, vtot = 0, vacc = 0;
+  int t, ntot = nsteps + nequil, vtot = 1e-8, vacc = 0;
   real u, k, p, vol, fv, dv, bet = 1.f/tp;
   static av_t avU, avK, avV, avp, avfv;
 
@@ -82,9 +86,11 @@ static void simul(distr_t *d, distr_t *db)
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
     lj_vrescale(lj, tp, thermdt);
-    if ((t + 1) % 10 == 0) {
+    if ((t + 1) % 2 == 0) 
+    {
       vtot += 1;
       vacc += lj_volmove(lj, volamp, tp, pressure);
+      //vacc += lj_lgvvolmove(lj, voldt, tp, pressure, 0.2); /* put a limit of 20% volume change */
     }
 
     if (t >= nequil) {
@@ -93,13 +99,13 @@ static void simul(distr_t *d, distr_t *db)
       av_add(&avV, lj->vol);
 
       dv = lj_vir2sw3d(lj); /* r r : grad grad U */
-      fv = lj->n / lj->vol - bet * lj->vir / (3*lj->vol) - bet * pressure;
-      dv = -lj->n / (lj->vol * lj->vol) - bet * (dv - 2*lj->vir) / (9*lj->vol*lj->vol);
+      fv = lj->n / lj->vol + bet * lj->vir / (3*lj->vol) - bet * pressure;
+      dv = -lj->n / (lj->vol * lj->vol) - bet * (dv + 2*lj->vir) / (9*lj->vol*lj->vol);
 
       distr_add(d, lj->vol, fv, dv, 1.0);
       if ((t + 1) % nstdb == 0)
         distr_add(db, lj->vol, fv, dv, 1.0);
-      av_add(&avp, lj->rho * tp - lj->vir / (3*lj->vol));
+      av_add(&avp, lj->rho * tp + lj->vir / (3*lj->vol));
       av_add(&avfv, fv);
     }
   }
@@ -127,7 +133,7 @@ static double reweight(distr_t *d, double tp, double dp, double *vav, int type)
     if (type == 0) { /* histogram */
       vol = d->xmin + (i + .5) * d->dx;
       x = d->arr[i].s;
-    } else { /* integrate mean force, integral identity */
+    } else { /* integrate mean force or integral identity */
       vol = d->xmin + i * d->dx;
       if (type == 1) {
         x = exp(d->lnrho[i]);
@@ -136,7 +142,7 @@ static double reweight(distr_t *d, double tp, double dp, double *vav, int type)
       }
     }
     if (x < 1e-30) continue;
-    tot += x;
+    tot += x * d->dx;
     lnx = log(x);
     lnz = lnadd(lnz, lnx - betdp * vol);
     lnzv = lnadd(lnzv, lnx - betdp * vol + log(vol));
@@ -181,9 +187,9 @@ int main(void)
   if (dosimul)
     simul(d, db);
 
-  distr_iiez(d, iitype, halfwin, mfhalfwin, sampmin);
+  distr_iiez(d, iitype, halfwin, mfhalfwin, mlimit, sampmin);
   distr_save(d, fnds);
-  distr_iiez(db, iitype, halfwin, mfhalfwin, sampmin);
+  distr_iiez(db, iitype, halfwin, mfhalfwin, mlimit, sampmin);
   distr_save(db, fndsb);
   dorew(d, db, "fe.dat");
   distr_close(d);

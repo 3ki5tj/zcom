@@ -2,15 +2,16 @@
 #include "include/av.h"
 
 const char *fnpos = "lj.pos";
-int initload = 1;
+int initload = 0;
 
 int N = 256;
-real rho = 0.8f;
+real rho = 0.7f;
 real rc = 3.0f;
-real tp = 1.0f;
+real tp = 1.2f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
-int nsteps = 100000;
+real pressure = 0.1f;
+int nsteps = 10000;
 
 int usesw = 1;
 real rs = 2.0f;
@@ -36,7 +37,7 @@ static void foo(lj_t *lj)
 int main(void)
 {
   lj_t *lj;
-  int t;
+  int t, vtot = 0, vacc = 0;
   real u, k, p;
   real bc = 0.f;
   static av_t avU, avK, avp, avbc;
@@ -44,7 +45,7 @@ int main(void)
   lj = lj_open(N, 3, rho, rc);
   if (usesw) {
     lj_initsw(lj, rs);
-    printf("rc %g, rs %g\n", rc, rs);
+    printf("rc %g, rs %g, box %g\n", rc, rs, lj->l*.5f);
   }
   if (initload) lj_readpos(lj, lj->x, lj->v, fnpos);
   foo(lj);
@@ -55,6 +56,11 @@ int main(void)
   for (t = 0; t < nsteps; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
+    if ((t + 1) % 10 == 0) {
+      //vacc += lj_volmove(lj, 1e-2, tp, pressure);
+      vacc += lj_lgvvolmove(lj, 3e-4, tp, pressure, 0.2);
+      vtot ++;
+    }
     lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
@@ -65,12 +71,14 @@ int main(void)
         av_add(&avbc, bc);
       }
     }
+    //printf("epot = %g\n", lj->epot); if (lj->epot > 100) exit(1);
   }
   u = av_getave(&avU)/N;
   k = av_getave(&avK)/N;
   p = av_getave(&avp);
   bc = av_getave(&avbc);
-  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f, bc = %6.3f\n", u, k, p, bc);
+  printf("U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
+      u, k, p, bc, lj->n/lj->vol, 100.0*vacc/vtot);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
   return 0;

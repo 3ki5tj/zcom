@@ -28,9 +28,12 @@ int nstdb = 100; /* # of steps to deposit to database B */
 
 double emin = -1380, emax = -1240, edel = 0.1;
 
-int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
+int halfwin = 50; /* half window size */
 int mfhalfwin = 0; /* half window size for mean force */
+
+/* adaptive window parameters */
+int mlimit = -1; /* maximal # of bins for a window in adaptive window */
 double sampmin = 400; /* minimal number of samples to estimate sig(mf) */
 
 /* load parameters from .cfg file */
@@ -58,6 +61,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "mlimit", "%d", &mlimit, "maximal # of bins in adaptive window");
   cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
   cfg_close(cfg);
@@ -140,11 +144,12 @@ int main(void)
   if (dosimul)
     simul(d, db);
   
-  distr_iiez(d, iitype, halfwin, mfhalfwin, sampmin);
+  distr_iiez(d, iitype, halfwin, mfhalfwin, mlimit, sampmin);
+  distr_iiez(db, iitype, halfwin, mfhalfwin, mlimit, sampmin); 
   distr_save(d, fnds);
-  distr_close(d);
-  distr_iiez(db, iitype, halfwin, mfhalfwin, sampmin);
   distr_save(db, fndsb);
+
+  distr_close(d);
   distr_close(db);
   return 0;
 }

@@ -93,7 +93,7 @@ plot [t=0:1][-0.3:2.3][-0.8:1.2] \
    bj*t, am*sigm(t) t "{/Symbol f}({/Symbol b})" w l lt 1 lw 4, \
    2-bjm*t, -ap*sigp(t) notitle w l lt 1 lw 4, \
    bj, bj*am/bj*(1-t)-ap*t notitle w l lt 1 lw 4, \
-   bj*t, am*derm(t) t "{/Symbol f}'({/Symbol b})" w l lt 2, \
+   bj*t, am*derm(t) t "{/Symbol f}{/Symbol \242}({/Symbol b})" w l lt 2, \
    2-bjm*t, ap*derp(t) notitle w l lt 2, \
    5*t-1,0 notitle w l lt 1, \
    1,1*t notitle w l lt 1 

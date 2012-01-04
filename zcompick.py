@@ -7,7 +7,7 @@ import os, sys, re, shutil, getopt, filecmp
 verbose = 0
 fninput = "zcom.h"
 fnoutput = "zcom1.h"
-keys = ['def', 'util', 'ss', 'rng', 'cfg', 'log', 'endn']
+keys = ['def', 'util', 'ss', 'rng', 'opt', 'cfg', 'log', 'endn']
 prefix = "ZCOM_"
 
 def mksmall(input, output, goodkeys):

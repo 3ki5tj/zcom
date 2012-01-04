@@ -13,7 +13,7 @@ tcsfont = "Helvetica, 7"
 keyfont = "Helvetica, 10"
 zcut = 1e-9
 lightgray = "#cccccc"
-lightgreen = "#ccffcc"
+lightgreen = "#99ffaa"
 nicered = "#ff4040"
 niceblue = "#40b0ff"
 nicegreen = "#00cc00"
@@ -24,172 +24,143 @@ set multiplot
 
 set label 1 "(a)" at screen 0.01, 0.98
 set label 2 "(b)" at screen 0.51, 0.98
-set label 3 "(c)" at screen 0.01, 0.48
-set label 4 "(d)" at screen 0.51, 0.48
+set label 3 "(c)" at screen 0.76, 0.98
+set label 4 "(d)" at screen 0.01, 0.48
+set label 5 "(e)" at screen 0.51, 0.48
 #########################################################################################
 # (a) canonical ensemble, basic comparison
 
 set size 0.5, 0.5
 set origin 0.0, 0.5
 set tmargin 1.0
-set bmargin 1.5
+set bmargin 2.5
 set lmargin 6.0
 set rmargin 2.0
 set xtics 50 offset 0, 0.4 font tcfont
 set mxtics 5
-unset xlabel
+set xlabel "U" offset 0, 1 font keyfont
 set ytics font tcfont
 set mytics 10
 set format y "10^{%L}"
-set ylabel "{/Symbol r}(E)" offset 1, 0 font keyfont
+set ylabel "{/Symbol r}(U)" offset 1, 0 font keyfont
 set key font keyfont
 set logscale y
-plot [][1e-6:.5] \
+plot [][1e-7:1] \
      "dsb_c_ii.dat"     u ($1+binh):($2/1e3) w l lt 4 lc rgb lightgray t "histogram", \
-     "dsb_c_ii.dat"     u 1:6 w l lt 1 lw 3 lc rgb niceblue t "fractional (this work)", \
+     "dsb_c_ii.dat"     u 1:6 w l lt 1 lw 3 lc rgb niceblue t "fractional, fixed window", \
      "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) w l lt 2 lw 3 lc rgb nicered t "AJ identity", \
-     "ds_c_ix.dat"      u 1:6 w l lt 1 lw 1  t "reference"
+     "dsmerge.dat"      u 1:6 w l lt 1 lw 1  t "reference"
 
 #########################################################################################
-# (b) canonical ensemble, improving mean force
+# (b)/(c) errors
 
-set size 0.5, 0.5
+# (b) KS difference (left)
+set size 0.27, 0.5
 set origin 0.5, 0.5
 set tmargin 1.0
-set bmargin 1.5
+set bmargin 2.0
 set lmargin 6.0
 set rmargin 2.0
-set xtics 50 offset 0, 0.4 font tcfont
+unset logscale
+set xtics 10 offset 0, 0.4 font tcfont
 set mxtics 5
-unset xlabel
-set ytics font tcfont
-set mytics 10
-set format y "10^{%L}"
-set ylabel "{/Symbol r}(E)" offset 1, 0 font keyfont
-set key font keyfont
-set logscale y
-plot [][1e-6:.5] \
-     "dsb_c_ii.dat"       u ($1+binh):6 w l lt 1 lw 4 lc rgb lightgreen t "mf. from a single bin", \
-     "dsb_c_ii_mfii.dat"  u ($1+binh):6 w l lt 1 lw 3 lc rgb niceblue   t "unbiased mf. identity", \
-     "dsb_c_ii_mfav.dat"  u ($1+binh):6 w l lt 2 lw 3 lc rgb nicered    t "plain mf. average", \
-     "ds_c_ix.dat"   u ($1+binh):6 w l lt 1 lw 1  t "reference"
-
-# mean force key for (b)
-set size 0.18, 0.18
-set origin 0.68, 0.59
-set tmargin 0
-set bmargin 0
-set rmargin 0
-set lmargin 0
 set format x "%g"
-unset xlabel
-set xtics 50 offset 0,.5 font tcsfont
-set mxtics 5
-unset logscale y
+set xlabel "window size, {/Symbol D}U" offset 0, 1 font keyfont 
+set ytics 0.2 offset .5, 0 font tcsfont
+set mytics 2
+set ylabel "KS difference" offset 3, 0 font keyfont
 set format y "%g"
-set ytics .2 offset .5,0 font tcsfont
-set mytics 4
-set ylabel "d ln{/Symbol r} / dE" offset 4., 0 font tcfont
-unset key
-plot [][-0.4:0.4] \
-     "dsb_c_ii.dat"       u ($1+binh):9 w l lt 1 lw 1 lc rgb lightgreen t "single bin", \
-     "dsb_c_ii_mfii.dat"  u ($1+binh):9 w l lt 1 lw 3 lc rgb niceblue   t "unbiased identity", \
-     "dsb_c_ii_mfav.dat"  u ($1+binh):9 w l lt 2 lw 3 lc rgb nicered    t "plain average", \
-     "ds_c_ix.dat"        u ($1+binh):9 w l lt 1 lw 1  t "reference", \
-      0 w l lt 1 lw 1 lc rgb "#000000" notitle
+set key font keyfont
+#unset logscale y
+plot [0:40][0:1.15] \
+  "err.dat" u ($1*.2):2 w l lt 4 lw 3 lc rgb "#000000" t "histogram", \
+  ""        u ($1*.2):5 w l lt 1 lw 3 lc rgb niceblue t "fractional", \
+  ""        u ($1*.2):8 w l lt 2 lw 3 lc rgb nicered t "AJ"
+
+# (c) entropic distance 
+set size 0.23, 0.5
+set origin 0.77, 0.5
+set tmargin 1.0
+set bmargin 2.0
+set lmargin 3.0
+set rmargin 2.0
+unset logscale 
+set xtics 10 offset 0, 0.4 font tcfont
+set mxtics 5
+set format x "%g"
+set logscale y
+set ytics 10 offset .5, 0 font tcsfont
+set mytics 10
+set ylabel "entropic distance" offset 3, 0 font keyfont
+set format y "10^{%L}"
+set key font keyfont
+plot [0:40][1e-4:0.5] \
+  "err.dat" u ($1*0.2):4  w l lt 4 lw 3 lc rgb "#000000" t "histogram", \
+  ""        u ($1*0.2):7  w l lt 1 lw 3 lc rgb niceblue t "fractional", \
+  ""        u ($1*0.2):10 w l lt 2 lw 3 lc rgb nicered t "AJ"
+unset logscale y
+
 
 #########################################################################################
-# (c) canonical ensemble, variable window width
+# (d) canonical ensemble, improving mean force
 
 set size 0.5, 0.5
 set origin 0.0, 0.0
 set tmargin 1.0
-set bmargin 1.5
+set bmargin 2.0
 set lmargin 6.0
 set rmargin 2.0
 set xtics 50 offset 0, 0.4 font tcfont
 set mxtics 5
-unset xlabel
-set logscale y
-set ytics 10 font tcfont
-set mytics 10
+set xlabel "U" offset 0, 1 font keyfont
+set ytics 100 font tcfont
+set mytics 100
 set format y "10^{%L}"
-set ylabel "{/Symbol r}(E)" offset 1, 0 font keyfont
+set ylabel "{/Symbol r}(U)" offset 2, 0 font keyfont
 set key font keyfont
-plot [][1e-6:.15] \
-     "dsb_c_ii.dat"     u 1:6 w l lt 2 lw 3 lc rgb niceblue  t "fixed window", \
-     "dsb_c_ix.dat"     u 1:6 w l lt 1 lw 3 lc rgb nicegreen t "variable window", \
-     "ds_c_ix.dat"      u 1:6 w l lt 1 lw 1  t "reference"
+set logscale y
+plot [-1410:-1200][1e-10:1e1] \
+     "../datal/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray t "histograms", \
+     "../data/dsb_c.dat"  u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
+     "../datah/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
+     "dsbmerge0.dat" u ($1):6 w l lt 2 lw 1 lc rgb nicered   t "weighted histogram", \
+     "dsbmerge.dat"  u ($1):6 w l lt 1 lw 3 lc rgb niceblue  t "fractional identity", \
+     "dsmerge.dat"   u ($1):6 w l lt 1 lw 1 lc rgb "#000000" t "reference"
 
-# inset window boundaries for (c)
-set size 0.18, 0.18
-set origin 0.19, 0.09
-set tmargin 0
-set bmargin 0
-set rmargin 0
-set lmargin 0
-set format x "%g"
-unset xlabel
-set xtics 50 offset 0,.5 font tcsfont
-set mxtics 5
-unset logscale y
-set ytics 50 offset .5,0 font tcsfont 
-set mytics 5
-set format y "%g"
-set ylabel "window boundaries" offset 4, 0 font tcfont
-
-set tics front 
-set label 7 "x_+" at -1360, -1280 font keyfont
-set label 8 "x_{/Symbol -}" at -1280, -1350 font keyfont
-set arrow 7 from -1355, -1290 to -1340, -1320 lw 1 lc rgb nicegreen
-set arrow 8 from -1280, -1340 to -1300, -1310 lw 1 lc rgb nicegreen
-
-plot [][-1380:-1240] \
-     "dsb_c_ix.dat" u 1:12:11 w filledcurves lt 1 lw 0 lc rgb lightgreen notitle, \
-     "dsb_c_ix.dat" u 1:11 w l lt 1 lw 1 lc rgb nicegreen notitle, \
-     "dsb_c_ix.dat" u 1:12 w l lt 1 lw 1 lc rgb nicegreen notitle, \
-      x + 7 w l lt 2 lw 1 lc rgb niceblue notitle, \
-      x - 7 w l lt 2 lw 1 lc rgb niceblue notitle, \
-      x w l lt 1 lw 1 lc rgb "#000000" notitle
-
-unset label 7
-unset label 8
-unset arrow 7
-unset arrow 8
 
 #########################################################################################
-# comparison microcanonical ensemble
+# (e) comparison with microcanonical ensemble
 
 set size 0.5, 0.5
 set origin 0.5, 0.
 set tmargin 1.0
-set bmargin 1.5
+set bmargin 2.0
 set lmargin 6.0
 set rmargin 2.0
 set xtics 50 offset 0, 0.4 font tcfont
 set mxtics 5
-unset xlabel
+set xlabel "U" offset 0, 1 font keyfont
 set logscale y
 set ytics 10 font tcfont
 set mytics 10
 set format y "10^{%L}"
-set ylabel "{/Symbol r}(E)" offset 1, 0 font keyfont
+set ylabel "{/Symbol r}(U)" offset 1, 0 font keyfont
 set key font keyfont
-plot [][1e-6:.15] \
-     "ds_c_ix.dat"      u 1:6 w l lt 1 lw 3 lc rgb niceblue t "canonical", \
+plot [][1e-7:.15] \
+     "dsmerge.dat"      u 1:6 w l lt 1 lw 3 lc rgb niceblue t "canonical", \
      "ds_m_ix.dat"      u 1:6 w l lt 2 lw 3 lc rgb nicered t "microcanonical"
 
 
 # lower inset: mean force for (d)
-set size 0.15, 0.12
-set origin 0.70, 0.08
+set size 0.16, 0.12
+set origin 0.69, 0.09
 set tmargin 0
 set bmargin 0
 set rmargin 0
 set lmargin 0
 set format x "%g"
-set xrange [-1360:-1270]
 unset xlabel
+set xrange [-1360:-1270]
 set xtics 50 offset 0,.5 font tcsfont
 set mxtics 5
 unset logscale y
@@ -205,8 +176,8 @@ plot [][-0.36:0.38] \
       0 w l lt 1 lw 1 lc rgb "#000000" notitle
 
 # upper inset: configurational temperature for (d)
-set size 0.15, 0.08
-set origin 0.70, 0.20
+set size 0.16, 0.08
+set origin 0.69, 0.21
 set tmargin 0
 set bmargin 0
 set rmargin 0
