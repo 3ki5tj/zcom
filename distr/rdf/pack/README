@@ -1,0 +1,10 @@
+Make a self-contained minimal package.
+
+FILES
+======
+rdf.c           main source code
+zcom.h          common modules (abridged)
+Makefile        build file (for distribution)
+rdf.cfg         typical configuration file
+README          this file
+
