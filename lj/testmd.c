@@ -2,7 +2,7 @@
 #include "include/av.h"
 
 const char *fnpos = "lj.pos";
-int initload = 0;
+int initload = 1;
 
 int N = 256;
 real rho = 0.7f;
@@ -47,7 +47,7 @@ int main(void)
     lj_initsw(lj, rs);
     printf("rc %g, rs %g, box %g\n", rc, rs, lj->l*.5f);
   }
-  if (initload) lj_readpos(lj, lj->x, lj->v, fnpos);
+  if (initload) lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX);
   foo(lj);
 
   md_shiftcom(lj->v, lj->n, lj->d);
@@ -59,7 +59,7 @@ int main(void)
     if ((t + 1) % 10 == 0) {
       //vacc += lj_volmove(lj, 1e-2, tp, pressure);
       vacc += lj_lgvvolmove(lj, 3e-4, tp, pressure, 0.2);
-      vtot ++;
+      vtot++;
     }
     lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {

@@ -13,7 +13,7 @@ int initload = 1;
 
 int N = 256;
 real rho = 0.8f;
-real rc = 3.2f;
+real rc = 3.5f;
 real tp = 1.24f;
 real pressure = 0.115f;
 real mddt = 0.002f;
@@ -78,7 +78,7 @@ static void simul(distr_t *d, distr_t *db)
   lj_initsw(lj, rs);
   printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   if (initload) {
-    lj_readpos(lj, lj->x, lj->v, fnpos);
+    lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX);
     lj_force(lj);
   }
 

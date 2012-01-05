@@ -40,7 +40,8 @@ typedef struct {
 lj_t *lj_open(int n, int d, real rho, real rcdef);
 void lj_close(lj_t *lj);
 int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
-int lj_readpos(lj_t *lj, real *x, real *v, const char *fn);
+#define LJ_LOADBOX 0x10
+int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);
 real lj_energy(lj_t *lj);
 real lj_force(lj_t *lj);
 void lj_vv(lj_t *lj, real dt);

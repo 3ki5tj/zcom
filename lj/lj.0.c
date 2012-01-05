@@ -646,7 +646,7 @@ int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
   if (fn == NULL) fn = "lj.pos";
   xfopen(fp, fn, "w", return -1);
 
-  fprintf(fp, "# %d %d %d\n", d, lj->n, (v != NULL));
+  fprintf(fp, "# %d %d %d %.14e\n", d, lj->n, (v != NULL), l);
   for (i = 0; i < n; i++) {
     for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", x[i*d + j] * l);
     if (v)
@@ -658,24 +658,34 @@ int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
 }
 
 /* read position file (which may include velocity) */
-int lj_readpos(lj_t *lj, real *x, real *v, const char *fn)
+int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags)
 {
   char s[1024], *p;
   FILE *fp;
   int i, j, hasv = 0, next, d = lj->d, n = lj->n;
   const char *fmt;
   real l = lj->l, xtmp;
+  double l0;
 
   if (fn == NULL) fn = "lj.pos";
   xfopen(fp, fn, "r", return -1);
 
-  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
+  if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') { /* simplified format, old version */
     fprintf(stderr, "Warning: %s has no information line\n", fn);
     rewind(fp);
   } else {
-    if (3 != sscanf(s + 1, "%d%d%d", &i, &j, &hasv) || i != d || j != lj->n) {
+    if (4 != sscanf(s + 1, "%d%d%d%lf", &i, &j, &hasv, &l0)
+        || i != d || j != lj->n) {
       fprintf(stderr, "first line is corrupted:\n%s", s);
       goto ERR;
+    }
+    if (fabs(l0 - l) > 1e-5*l) { /* verify the box size */
+      if (flags & LJ_LOADBOX) {
+        lj->l = l = l0;
+      } else {
+        fprintf(stderr, "box mismatch l %g, should be %g\n", l0, l);
+        goto ERR;
+      }
     }
   }
 

@@ -122,7 +122,7 @@ static void simul(distr_t *d, distr_t *db)
   lj->usesw |= 0x100; /* count out-of-range pairs */
   printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   if (initload) {
-    lj_readpos(lj, lj->x, lj->v, fnpos);
+    lj_readpos(lj, lj->x, lj->v, fnpos, 0);
     lj_force(lj);
   }
 
