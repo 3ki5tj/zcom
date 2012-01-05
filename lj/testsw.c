@@ -1,4 +1,6 @@
 /* test switched potential */
+#define HAVE_REAL 1
+typedef float real;
 #include "lj.c"
 
 int n = 256;

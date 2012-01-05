@@ -12,7 +12,7 @@ static void lj_setrho(lj_t *lj, real rho)
   lj->rho = rho;
   lj->l = (real) pow(1.*lj->n/rho, 1./lj->d);
   for (lj->vol = 1.f, i = 0; i < lj->d; i++) lj->vol *= lj->l;
-  if ((lj->rc = lj->rcdef) > lj->l*.5) lj->rc = lj->l*.5;
+  if ((lj->rc = lj->rcdef) > lj->l * .5f) lj->rc = lj->l * .5f;
   lj->rc2 = lj->rc * lj->rc;
   irc = 1.0/lj->rc;
   irc3 = irc*irc*irc; irc6 = irc3*irc3;
@@ -77,33 +77,33 @@ INLINE real lj_potsw(lj_t *lj, real r, real *fscal, real *psi, real *xi)
 {
   if (r < lj->rs) { /* normal lj */
     real invr2, invr6, invr8;
-    invr2 = 1.f / (r*r);
+    invr2 = 1 / (r*r);
     invr6 = invr2 * invr2 * invr2;
     invr8 = invr6 * invr2;
-    *fscal = (48.f * invr6 - 24.f) * invr8;
-    *psi = (672.f * invr6 - 192.f) * invr8 * invr2;
-    *xi = -(10752.f * invr6 - 1920.f) * invr6 * invr6;
-    return 4.f * invr6 * (invr6 - 1.f);
+    *fscal = (48 * invr6 - 24) * invr8;
+    *psi = (672 * invr6 - 192) * invr8 * invr2;
+    *xi = -(10752 * invr6 - 1920) * invr6 * invr6;
+    return 4 * invr6 * (invr6 - 1);
   } else if (r < lj->rc) { /* polynomial */
     real dr, dr2, dr3, fs, ps, xs, invr, invr2;
     real a4 = lj->a4, a5 = lj->a5, a6 = lj->a6, a7 = lj->a7;
-    invr = 1.f/r;
+    invr = 1/r;
     dr = r - lj->rc;
     invr2 = invr * invr;
     dr2 = dr * dr;
     dr3 = dr2 * dr;
-    fs = dr3*(4.f*a4 + dr*(5.f*a5 + dr*(6.f*a6 + dr*7.f*a7)))*invr;
+    fs = dr3*(4*a4 + dr*(5*a5 + dr*(6*a6 + dr*7*a7)))*invr;
     *fscal = -fs;
-    ps = dr2*(12.f*a4 + dr*(20.f*a5 + dr*(30.f*a6 + dr*42.f*a7)));
+    ps = dr2*(12*a4 + dr*(20*a5 + dr*(30*a6 + dr*42*a7)));
     *psi = (ps - fs)*invr2;
-    xs = dr*(24.f*a4 + dr*(60.f*a5 + dr*(120.f*a6 + dr*210.0*a7)));
-    *xi = (xs*invr - 3.f*(*psi))*invr2;
+    xs = dr*(24*a4 + dr*(60*a5 + dr*(120*a6 + dr*210*a7)));
+    *xi = (xs*invr - 3*(*psi))*invr2;
     return (dr2*dr2)*(a4 + dr*(a5 + dr*(a6 + dr*a7)));
   } else { /* out of range */
-    *fscal = 0.f;
-    *psi = 0.f;
-    *xi = 0.f;
-    return 0.f;
+    *fscal = 0;
+    *psi = 0;
+    *xi = 0;
+    return 0;
   }
 }
 
@@ -114,12 +114,12 @@ static void lj_initfcc2d(lj_t *lj)
   real a;
 
   n1 = (int) (pow(2*n, 1.0/lj->d) + .999999); /* # of particles per side */
-  a = 1./n1;
+  a = 1.f/n1;
   for (id = 0, i = 0; i < n1 && id < n; i++)
     for (j = 0; j < n1 && id < n; j++) {
       if ((i+j) % 2 != 0) continue;
-      lj->x[id*2 + 0] = (i+.5)*a;
-      lj->x[id*2 + 1] = (j+.5)*a;
+      lj->x[id*2 + 0] = (i + .5f) * a;
+      lj->x[id*2 + 1] = (j + .5f) * a;
       id++;
     }
 }
@@ -131,14 +131,14 @@ static void lj_initfcc3d(lj_t *lj)
   real a;
 
   n1 = (int) (pow(2*n, 1.0/lj->d) + .999999); /* # of particles per side */
-  a = 1./n1;
+  a = 1.f/n1;
   for (id = 0, i = 0; i < n1 && id < n; i++)
     for (j = 0; j < n1 && id < n; j++)
       for (k = 0; k < n1 && id < n; k++) {
         if ((i+j+k) % 2 != 0) continue;
-        lj->x[id*3 + 0] = (i+.5)*a;
-        lj->x[id*3 + 1] = (j+.5)*a;
-        lj->x[id*3 + 2] = (k+.5)*a;
+        lj->x[id*3 + 0] = (i + .5f) * a;
+        lj->x[id*3 + 1] = (j + .5f) * a;
+        lj->x[id*3 + 2] = (k + .5f) * a;
         id++;
       }
 }
@@ -208,7 +208,7 @@ INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
   
   i = lj_randmv3d(lj, xi, amp);
   dnpr = lj_depotsq3d(lj, i, xi);
-  if (dnpr >= 0 || rnd0() < exp(-bet*(-dnpr))) {
+  if (metroacc(dnpr, bet * dnpr)) {
     lj_commitsq3d(lj, i, xi, dnpr);
     return 1;
   }
@@ -268,7 +268,7 @@ INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
   if (lj->usesq) return lj_metrosq3d(lj, amp, bet);
   i = lj_randmv3d(lj, xi, amp);
   du = lj_depot3d(lj, i, xi, &dvir);
-  if (du < 0 || rnd0() < exp(-bet*du)) {
+  if (metroacc(-du, -bet*du)) {
     lj_commit3d(lj, i, xi, du, dvir);
     return 1;
   }
@@ -548,19 +548,19 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 
   lo = lj->l;
   vo = lj->vol;
-  loglo = log(lo);
-  logln = loglo + amp * (2.f * rnd0() - 1.);
-  ln = exp(logln);
+  loglo = (real) log(lo);
+  logln = (real) (loglo + amp * (2.f * rnd0() - 1.));
+  ln = (real) exp(logln);
   if (ln < lj->rc * 2) return 0; /* box too small */
   epo = lj->epot;
-  vn = pow(ln, lj->d);
+  vn = (real) pow(ln, lj->d);
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   r = -bet*(lj->epot - epo + p*(vn - vo)) + (lj->n + 1) * lj->d * (logln - loglo);
 /*  
   printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
 */
-  if (r >= 0 || rnd0() < exp(r)) {
+  if (metroacc(r, 1.0)) {
     return 1;
   } else {
     lj_setrho(lj, lj->n/vo);
@@ -576,11 +576,11 @@ INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
   int d;
   real r, logvo, logvn, dlogv, ln, vn, bet = 1.f/tp;
 
-  logvo = log(lj->vol);
+  logvo = (real) log(lj->vol);
   dlogv = dt * (lj->n + 1 + bet*lj->vir/3.f - bet*p*lj->vol);
   r = (real) grand0();
-  dlogv += r * sqrt(2 * dt);
-  dlogv = dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
+  dlogv += (real) (r * sqrt(2 * dt));
+  dlogv = (real) dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
   logvn = logvo + dlogv;
   ln = (real) exp(logvn/3);
   if (ln < lj->rc * 2) return 0; /* box too small */
@@ -615,7 +615,7 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   if (lj->d == 3) lj_initfcc3d(lj); else lj_initfcc2d(lj);
 
   /* init. random velocities */
-  for (i = 0; i < n * d; i++) lj->v[i] = rnd0() - .5;
+  for (i = 0; i < n * d; i++) lj->v[i] = (real) (rnd0() - .5);
 
   lj_shiftcom(lj, lj->v);
   lj_shiftang(lj, lj->x, lj->v);
@@ -681,7 +681,7 @@ int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags)
     }
     if (fabs(l0 - l) > 1e-5*l) { /* verify the box size */
       if (flags & LJ_LOADBOX) {
-        lj->l = l = l0;
+        lj->l = l = (real) l0;
       } else {
         fprintf(stderr, "box mismatch l %g, should be %g\n", l0, l);
         goto ERR;

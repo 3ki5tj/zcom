@@ -166,6 +166,13 @@ INLINE double dblround(double x, double dx)
 INLINE void dblcleararr(double *x, int n)
   { int i; for (i = 0; i < n; i++) x[i] = 0.0; }
 
+/* metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
+INLINE int metroacc0(double r) { r = exp(r); return rnd0() < r; }
+
+/* metropolis acceptance probability rnd0() < exp(bet * r), assuming bet > 0 
+ * defined as a macro, in case r is an integer */
+#define metroacc(r, bet) ((r >= 0) ? 1 : metroacc0(r * bet))
+
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED
 #define LN_BIG 50.0
