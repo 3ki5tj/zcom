@@ -8,3 +8,8 @@ Makefile        build file (for distribution)
 rdf.cfg         typical configuration file
 README          this file
 
+Usage
+=====
+To compile: enter make under Linux, or under windows cl rdf.c
+To run: edit rdf.cfg for parameters, then type ./rdf or rdf.exe under windows
+

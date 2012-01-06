@@ -5,4 +5,7 @@ to reproduce demonstration data, change active = 1 in run.py and type
 or
   make run
 
-running the simulation can take up to two days
+One should pay attention to the idea of differential volume distribution.
+Thus at the end of the simulation, one must do a reweighting procedure
+to get the actual the volume distribution.
+Although the difference is usually small for a large system 

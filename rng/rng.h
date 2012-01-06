@@ -40,4 +40,11 @@ int mtload(const char *fname, uint32_t seed);
 uint32_t mtrand(void);
 double grand0(void);
 
+/* metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
+INLINE int metroacc0(double r) { r = exp(r); return rnd0() < r; }
+
+/* metropolis acceptance probability rnd0() < exp(bet * r), assuming bet > 0 
+ * defined as a macro, in case r is an integer */
+#define metroacc(r, bet) ((r >= 0) ? 1 : metroacc0(r * bet))
+
 #endif

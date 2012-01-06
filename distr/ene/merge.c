@@ -30,6 +30,7 @@ int halfwinb = 50; /* half window size for db */
 int mfhalfwin = 0; /* half window size for mean force */
 
 /* adaptive window parameters */
+double gam = 1.0;
 int mlimit = -1; /* maximal # of bins for a window in adaptive window */
 double sampmin = 400; /* minimal number of samples to estimate sig(mf) */
 
@@ -48,6 +49,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "gamma", "%lf", &gam, "half window amplification factor");  
   cfg_add(cfg, "mlimit", "%d", &mlimit, "maximal # of bins in adaptive window");  
   cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_match(cfg, 0);
@@ -207,7 +209,7 @@ static void merge(distr_t *d, distr_t **darr, double *dbeta, double *wt,
 
   mfmhc(d, darr, dbeta, wt, narr); /* computing the mean force */
   if (m < 0) m = 0;
-  distr_winfixed(d, m);
+  distr_winfixed(d, gam, m);
   iimhc(d, darr, dbeta, wt, dlnz, narr);
   decorate(d, darr, dbeta, wt, dlnz, narr);
 }

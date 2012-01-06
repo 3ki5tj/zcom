@@ -1,16 +1,16 @@
 reset
 set terminal push
-set terminal postscript landscape enhanced "Helvetica" 16
+set terminal postscript landscape enhanced "Helvetica" 20
 
 
 set output "vol.ps"
 
 binh = 0.5
-tcfont = "Helvetica, 12"
-tcsfont = "Helvetica, 10"
-keyfont = "Helvetica, 14"
+tcfont = "Helvetica, 14"
+tcsfont = "Helvetica, 12"
+keyfont = "Helvetica, 16"
 zcut = 1e-9
-lightgray = "#cccccc"
+lightgray = "#aaaaaa"
 nicegray = "#606060"
 lightgreen = "#ccffcc"
 nicered = "#ff4040"
@@ -34,10 +34,12 @@ set logscale y
 set format y "10^{%L}"
 set ytics 10 font tcfont
 set mytics 10
-set ylabel "{/Symbol r}(V) ({/Symbol \264} 10^{-3})" offset 0.0, 0 font keyfont
+set ylabel '~{/Symbol r}{.3\^}(V) ({/Symbol \264} 10^{-3})' offset 0.0, 0 font keyfont
 set key font keyfont
+pres = 0.115
+bp = pres / 1.24
 plot [400:2100][1e-5:3e-3] \
-     "dsb.dat" u ($1 + binh):($2/1e5) w l lt 4 lc rgb "#C0C0C0" t "histogram", \
+     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/0.0901) w l lt 4 lc rgb lightgray t "histogram", \
      "dsb.dat" u 1:(exp($7)) w l lt 2 lw 3 lc rgb nicered t "m.f. integration", \
      "dsb.dat" u 1:($6) w l lt 1 lw 4 lc rgb niceblue t "fractional identity", \
      "ds.dat"  u 1:($6) w l lt 1 lw 1 t "reference", \
@@ -45,7 +47,7 @@ plot [400:2100][1e-5:3e-3] \
 unset logscale y
 
 # (a) inset: window size
-set size 0.38, 0.38
+set size 0.36, 0.36
 set origin 0.3, 0.24
 set tmargin 0
 set bmargin 0
@@ -55,12 +57,14 @@ set xlabel "V" offset 0, 1. font tcfont
 set xtics 500 offset 0, 0.5 font tcsfont
 set mxtics 10
 set ylabel "window size" offset 2, 0 font tcfont
-set logscale y
+unset logscale y
 set format "%g"
-set ytics 10 offset .5, 0 font tcsfont 
-set mytics 10
+set ytics 20 font tcsfont
+set mytics 2
+#set ytics 10 offset .5, 0 font tcsfont 
+#set mytics 10
 set tics front
-plot [400:2200][5:400] \
+plot [400:2200][5:120] \
   "dsb.dat" u 1:($12-$11) w l lt 1 lw 4 lc rgb niceblue notitle
 unset logscale 
 

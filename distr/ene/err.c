@@ -18,6 +18,7 @@ int halfwin = 50; /* half window size */
 int mfhalfwin = 0; /* half window size for mean force */
 
 /* adaptive window parameters */
+double gam = 1.0; /* mean force amplification */
 int mlimit = -1; /* maximal # of bins for a window in adaptive window */
 double sampmin = 400; /* minimal number of samples to estimate sig(mf) */
 
@@ -34,6 +35,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "gamma", "%lf", &gam, "half window amplification factor");
   cfg_add(cfg, "mlimit", "%d", &mlimit, "maximal # of bins in adaptive window");  
   cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_match(cfg, 0);
@@ -73,18 +75,18 @@ static void winscan(distr_t *db, distr_t *d)
 
   /* adaptive window */
   /* distr_iiez(db, 1, -1, 0, mlimit, sampmin); */
-/*
-  m = 0;
-  distr_iiez(db, 1, m, 0, mlimit, sampmin);
+
+  m = -1;
+  distr_iiez(db, 1, m, 0, gam, mlimit, sampmin);
   calcerr(db, d, &hre, &hrp, &hrs, &rre, &rrp, &rrs);
   printf("%d %g %g %g %g %g %g\n", m,
       hre, hrp, hrs, rre, rrp, rrs);
-*/
+
 
   for (m = 5; m <= 250; m += 5) {
-    distr_iiez(db, 0, m, 0, mlimit, sampmin);
+    distr_iiez(db, 0, m, 0, gam, mlimit, sampmin);
     calcerr(db, d, &hre, &hrp, &hrs, &are, &arp, &ars);
-    distr_iiez(db, 1, m, 0, mlimit, sampmin);
+    distr_iiez(db, 1, m, 0, gam, mlimit, sampmin);
     calcerr(db, d, &hre, &hrp, &hrs, &rre, &rrp, &rrs);
     printf("%d %g %g %g %g %g %g %g %g %g\n", m,
         hre, hrp, hrs, rre, rrp, rrs, are, arp, ars);
@@ -103,7 +105,7 @@ int main(void)
   
   /* construct a best guess */
   if (strstr(fnds, "merge") == 0) /* only for single distribution */
-    distr_iiez(d, 1, halfwin, mfhalfwin, mlimit, sampmin);
+    distr_iiez(d, 1, halfwin, mfhalfwin, gam, mlimit, sampmin);
   winscan(db, d);
 
   distr_close(d);

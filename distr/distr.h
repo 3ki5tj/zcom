@@ -1,5 +1,6 @@
 #include "def.h"
 #include "util.h"
+#include "specfunc.h"
 #include "rc.h"
 #ifndef DISTR_H__
 #define DISTR_H__
@@ -12,7 +13,7 @@
  * if ishis & DSDIF_HIS1, f[0..n-1] is histogram, otherwise f[0..n] is the distribution
  * is ishis & DSDIF_HIS2, ref[0..n-1] is histogram, otherwise ref[0..n] is the distribution
  * smpsize is the sample size */
-static double ksdif1d(const double f[], const double ref[], int n, int ishis,
+INLINE double ksdif1d(const double f[], const double ref[], int n, int ishis,
     double smpsiz, double *p, double err[])
 {
   int i, alloc = 0, his1 = ishis & DSDIF_HIS1, his2 = ishis & DSDIF_HIS2;
@@ -45,7 +46,7 @@ static double ksdif1d(const double f[], const double ref[], int n, int ishis,
 }
 
 /* entropic difference = integral log(ref/r) ref(x) dx */
-static double entdif1d(const double f[], const double ref[], int n,
+INLINE double entdif1d(const double f[], const double ref[], int n,
     int ishis, double err[])
 {
   int i, alloc = 0, his1 = ishis & DSDIF_HIS1, his2 = ishis & DSDIF_HIS2;
@@ -89,19 +90,20 @@ typedef struct {
 
 INLINE void distrsum_clear(distrsum_t *x) { x->s = x->sf = x->sf2 = x->sdv = 0.0; }
 
+typedef struct { int il, ir; } distrwin_t;
+
 typedef struct {
   int n;
   double xmin, xmax, dx;
   distrsum_t *arr;
   double *rho, *lnrho, *his;
   double *mf, *mdv;
-  int *jl, *jr; /* window size */
+  distrwin_t *win; /* window size */
   double *err;
   double *hsum; /* histogram sum for comparison */
   double *mfsig; /* std. dev. of mf, for adaptive window */
   double *norm; /* normalization vector */
 } distr_t;
-
 
 /* compute mean force from a single bin or a narrowest symmetric window
  * that contains at least one data point */
@@ -140,27 +142,22 @@ INLINE void distr_mf0(distr_t *d)
 
 /* compute mean force from a symmetric window
  * if ii, we use the integral identity, otherwise, a plain average
- * half window size starts from m until the window contains at least one data point
  * linear phi(x) is used for the integral identity
  * improves mean force, slightly smoothness of distribution itself */
 INLINE void distr_mfwin(distr_t *d, int m, int ii)
 {
-  int i, j, j0, j1, mm, n = d->n;
+  int i, j, j0, j1, n = d->n;
   double s0, s1, s, phi, dx = d->dx;
 
   distr_mf0(d);
   for (i = 0; i < n; i++) {
-    /* start with a window size of m, but extend if nothing is in the window */
-    for (mm = m; mm < n; mm++) {
-      j0 = intmax(0, i - mm);
-      j1 = intmin(n, i + mm + 1);
-      for (s0 = s1 = s = 0., j = j0; j < j1; j++) {
-        phi = (j == i) ? 0 : (j + .5 - (j < i ? j0 : j1)) * dx;
-        s0 += d->mf[j];
-        s1 += d->mdv[j] * phi;
-        s += 1;
-      }
-      if (s > 0) break;
+    j0 = intmax(0, i - m);
+    j1 = intmin(n, i + m + 1);
+    for (s0 = s1 = s = 0., j = j0; j < j1; j++) {
+      phi = (j == i) ? 0 : (j + .5 - (j < i ? j0 : j1)) * dx;
+      s0 += d->mf[j];
+      s1 += d->mdv[j] * phi;
+      s += 1;
     }
     if (ii) s0 += s1; /* add correction from the second-order derivative */
     d->mf[i] = (s > 0) ? s0/s : 0.0;
@@ -199,14 +196,14 @@ INLINE void distr_aj(distr_t *d, int m)
     den = 2.0 * m * tot * dx;
     d->his[i] = s0/den;
     d->rho[i] = (s0 + s1 > 0) ? (s0 + s1)/den : 0.;
-    d->jl[i] = i - j0;
-    d->jr[i] = j1 - i;
+    d->win[i].il = i - j0;
+    d->win[i].ir = j1 - i;
   }
 }
 
 /* make fixed windows
  * if m == 0, guess width from 2 m dx = 1/sig(mf) */
-INLINE void distr_winfixed(distr_t *d, int m)
+INLINE void distr_winfixed(distr_t *d, distrwin_t *win, double gam, int m)
 {
   int i, n = d->n;
   double his, sig;
@@ -222,13 +219,13 @@ INLINE void distr_winfixed(distr_t *d, int m)
     }
     sig = sqrt(sig/his);
 
-    m = intmax(1, (int) (0.5/(sig * d->dx) + .5) );
+    m = intmax(1, (int) (0.5 * gam/(sig * d->dx) + .5));
     printf("mean force standard deviation is %g, m %d\n", sig, m);
   }
 
   for (i = 0; i <= n; i++) {
-    d->jl[i] = intmax(i - m, 0);
-    d->jr[i] = intmin(i + m, n);
+    win[i].il = intmax(i - m, 0);
+    win[i].ir = intmin(i + m, n);
   }  
 }
 
@@ -244,16 +241,16 @@ INLINE void distr_mfsig0(distr_t *d, double sampmin)
   for (asig[0] = hsum[0] = 0, i = 0; i < n; i++) {
     distrsum_t *ds = d->arr + i;
     hsum[i+1] = hsum[i] + ds->s;
-    x = ds->sf2 * ds->s - ds->sf * ds->sf;
-    asig[i+1] = asig[i] + ((ds->s > 0. && x > 0.) ? sqrt(x) : 0.);
+    x = (ds->s > 0) ? (ds->sf2 - ds->sf * ds->sf / ds->s) : 0.;
+    asig[i+1] = asig[i] + x;
   }
   for (i = 0; i < n; i++) {
     /* start from the minimal window size, expand until included sampmin data points */
     for (m = 1; m < n; m++) {
-      int j0 = intmax(0, i-m), j1 = intmin(i + m + 1, n);
+      int j0 = intmax(0, i - m), j1 = intmin(i + m + 1, n);
       his = hsum[j1] - hsum[j0];
       sig = asig[j1] - asig[j0];
-      d->mfsig[i] = his > 0. ? sig/his : 0.;
+      d->mfsig[i] = his > 0. ? sqrt(sig/his) : 0.;
       if (his > sampmin || (j0 == 0 && j1 == n)) break;
     }
   }
@@ -261,6 +258,22 @@ INLINE void distr_mfsig0(distr_t *d, double sampmin)
   free(asig);
   free(hsum);
 } 
+
+/* make symmetrical but x-dependent window
+ * requires d->mfsig */
+INLINE void distr_winadp0(distr_t *d, distrwin_t *win, double gam, int mlimit)
+{
+  int i, m, n = d->n;
+  double dx = d->dx;
+
+  if (mlimit < 0) mlimit = 100000000; /* set a very large number */
+
+  for (i = 0; i <= n; i++) {
+    m = (int) intmax(1, (int) (0.5 * gam/(d->mfsig[i] * dx) + .5));
+    win[i].il = intmax(0, i - m);
+    win[i].ir = intmin(n, i + m);
+  }
+}
 
 /* make adaptive window
  * requires d->rho and d->mfsig */
@@ -283,7 +296,7 @@ INLINE void distr_winadp(distr_t *d, int mlimit)
   for (i = 0; i <= n; i++) {
     int k = 0, jl = i, jr = i+1, el = 0, er = 0, jlm, jrm;
 
-    jlm = intmax(1, i - mlimit);
+    jlm = intmax(0, i - mlimit);
     jrm = intmin(n, i + mlimit);
     for (k = 0; el == 0 || er == 0; k++) {
       if (k % 2 == 0) { /* do the left */
@@ -308,8 +321,8 @@ INLINE void distr_winadp(distr_t *d, int mlimit)
         }
       }
     }
-    d->jl[i] = jl;
-    d->jr[i] = jr;
+    d->win[i].il = jl;
+    d->win[i].ir = jr;
   }
   free(hhis);
   free(hsum);
@@ -347,7 +360,7 @@ INLINE void distr_iimf(distr_t *d)
  * before calling this function
  * first call mfX() to compute the mean force, 
  * and call winX() to compute the window */
-INLINE void distr_ii0(distr_t *d)
+INLINE void distr_ii0(distr_t *d, distrwin_t *win)
 {
   int i, j, jl, jr, n = d->n;
   double x, den, tot, dx = d->dx;
@@ -362,8 +375,8 @@ INLINE void distr_ii0(distr_t *d)
   /* estimate using integral identity */
   for (i = 0; i <= n; i++) {
     /* compute # of visits in a window around i */
-    jl = d->jl[i];
-    jr = d->jr[i];
+    jl = win[i].il;
+    jr = win[i].ir;
     d->his[i] = d->hsum[jr] - d->hsum[jl];
 
     /* integrate over exp(lnrho[j] - lnrho[i])
@@ -393,7 +406,7 @@ INLINE void distr_iiadp(distr_t *d, int mlimit, double sigsampmin)
   distr_winadp(d, mlimit);
 
   /* estimate the distribution */
-  distr_ii0(d);
+  distr_ii0(d, d->win);
 }
 
 /* perform integral identity
@@ -401,9 +414,11 @@ INLINE void distr_iiadp(distr_t *d, int mlimit, double sigsampmin)
  * halfwin: half window size. > 0: fixed size, 0: fixed size (determined
  *          automatically), -1: adaptive window size
  * mfhalfwin: half window size for mean force integration
+ * gamma: window size amplification factor
+ * mlimit: maximal half window size (-1 to disable)
  * sampmin: minimal number of samples in estimating mean force std. */
 INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
-    int mlimit, double sampmin)
+    double gam, int mlimit, double sampmin)
 {
   if (iitype == 0) {
     distr_aj(d, halfwin);
@@ -411,17 +426,20 @@ INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
     /* compute mean force */
     if (mfhalfwin == 0) {
       distr_mf0(d);
-    } else if (mfhalfwin > 0) {
-      distr_mfii(d, mfhalfwin);
-    } else if (mfhalfwin < 0) {
-      distr_mfav(d, -mfhalfwin);
+    } else {
+      distr_mfwin(d, abs(mfhalfwin), mfhalfwin > 0 ? 1 : 0);
     }
 
     /* compute the distribution */
     if (iitype == 1) {
-      if (halfwin >= 0) {
-        distr_winfixed(d, halfwin);
-        distr_ii0(d);
+      if (halfwin >= -1) {
+        if (halfwin >= 0) {
+          distr_winfixed(d, d->win, gam, halfwin);
+        } else {
+          distr_mfsig0(d, sampmin);
+          distr_winadp0(d, d->win, gam, mlimit);
+        }
+        distr_ii0(d, d->win);
       } else {
         distr_iiadp(d, mlimit, sampmin);
       }
@@ -445,8 +463,7 @@ INLINE distr_t *distr_open(double xmin, double xmax, double dx)
   xnew(d->his, d->n + 1);
   xnew(d->mf, d->n + 1);
   xnew(d->mdv, d->n + 1);
-  xnew(d->jl, d->n + 1);
-  xnew(d->jr, d->n + 1);
+  xnew(d->win, d->n + 1);
   xnew(d->err, d->n + 1);
   xnew(d->hsum, d->n + 1);
   xnew(d->mfsig, d->n + 1);
@@ -463,8 +480,7 @@ INLINE void distr_close(distr_t *d)
   free(d->his);
   free(d->mf);
   free(d->mdv);
-  free(d->jl);
-  free(d->jr);
+  free(d->win);
   free(d->err);
   free(d->hsum);
   free(d->mfsig);
@@ -516,7 +532,7 @@ INLINE int distr_save(distr_t *d, const char *fn)
         "%g %g\n",
       d->xmin + i * d->dx, ds->s, f, f2, dv,
       d->rho[i], d->lnrho[i], d->his[i], d->mf[i], d->mdv[i],
-      d->xmin + d->dx * d->jl[i], d->xmin + d->dx * d->jr[i], 
+      d->xmin + d->dx * d->win[i].il, d->xmin + d->dx * d->win[i].ir, 
       d->err[i], d->mfsig[i]);
   }
   fclose(fp);
@@ -709,9 +725,12 @@ INLINE void ftsolver2d_solve(ftsolver2d_t *fts, double *u, double *fx, double *f
       cl = fts->em[l].re;
       sl = fts->em[l].im;
       c2l = fts->em[l*2].re;
+      /* sin(pi k/N) cos(pi l/M) f(k, l) dx */
       x = rc_smul(fts->rf[kl], sk * cl * dx);
+      /* + cos(pi k/N) sin(pi l/M) g(k, l) dy */
       x = rc_add(x, rc_smul(fts->rg[kl], ck * sl * dy));
-      x = rc_mul(x, rc_make(sk*cl - ck*sl, ck*cl + sk*sl));
+      /* multiply -i exp[ - pi i (k/N + l/M) ] */
+      x = rc_mul(x, rc_make(-(sk*cl + ck*sl), -(ck*cl - sk*sl)));
       if (fabs(c2k*c2l - 1) < 1e-15) {
         x.re = x.im = 0.f;
       } else {
@@ -736,6 +755,8 @@ typedef struct { double s, sf, sg, sf2, sg2, sfg; } distr2dsum_t;
 INLINE void distr2dsum_clear(distr2dsum_t *x)
 { x->s = x->sf = x->sg = x->sf2 = x->sg2 = 0.0; }
 
+typedef struct { int il, ir, jl, jr; } distr2dwin_t;
+
 typedef struct {
   int n, m;
   double xmin, xmax, dx;
@@ -743,6 +764,8 @@ typedef struct {
   distr2dsum_t *arr;
   double *rho, *lnrho, *his;
   double *mf, *mg;
+  double tot;
+  distr2dwin_t *win;
 } distr2d_t;
 
 INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
@@ -762,6 +785,7 @@ INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
   d->dy = dy;
   d->m = (int)((ymax - ymin)/dy + 0.5f);
   d->ymax = ymin + d->m * dy;
+  d->tot = 0;
 
   n1m1 = (d->n + 1) * (d->m + 1);
   xnew(d->arr, n1m1);
@@ -770,6 +794,7 @@ INLINE distr2d_t *distr2d_open(double xmin, double xmax, double dx,
   xnew(d->his, n1m1);
   xnew(d->mf, n1m1);
   xnew(d->mg, n1m1);
+  xnew(d->win, n1m1);
   return d;
 }
 
@@ -782,6 +807,7 @@ INLINE void distr2d_close(distr2d_t *d)
   free(d->his);
   free(d->mf);
   free(d->mg);
+  free(d->win);
   free(d);
 }
 
@@ -800,7 +826,19 @@ INLINE void distr2d_add(distr2d_t *d, double x, double y, double f, double g, do
   }
 }
 
-/* compute the mean force */
+INLINE double distr2d_tot(distr2d_t *d)
+{
+  int i, j, n = d->n, m = d->m;
+  double tot = 0;
+  
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    tot += d->arr[i * (m + 1) + j].s;
+  }
+  return d->tot = tot;
+}
+
+/* compute the mean force from a single bin */
 INLINE void distr2d_mf0(distr2d_t *d)
 {
   int i, j, id, n = d->n, m = d->m, m1 = d->m + 1;
@@ -820,12 +858,57 @@ INLINE void distr2d_mf0(distr2d_t *d)
     }
 }
 
+/* compute the mean force from a window at least of size 2w+1 */
+INLINE void distr2d_mfwin(distr2d_t *d, int w)
+{
+  int i, j, id, n = d->n, m = d->m, m1 = d->m + 1, ww;
+  distr2dsum_t *ds;
+
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    double ms, mf, mg;
+    /* try to expand the window until we have something */
+    for (ww = w; ww < intmin(n/2, m/2); ww++) {
+      int il = i - ww, ir = i + ww + 1, jl = j - ww, jr = j + ww + 1;
+      int i1, j1;
+      ms = mf = mg = 0.;
+      for (i1 = il; i1 < ir; i1++)
+      for (j1 = jl; j1 < jr; j1++) {
+        id = (i1 + n) % n * m1 + (j1 + m) % m;
+        ds = d->arr + id;
+        if (ds->s <= 0) continue;
+        ms += ds->s;
+        mf += ds->sf;
+        mg += ds->sg;
+      }
+      if (ms > 0) break; 
+    }
+    id = i * m1 + j;
+    d->mf[id] = (ms > 0) ? mf/ms : 0;
+    d->mg[id] = (ms > 0) ? mg/ms : 0;
+  }
+}
+
 /* compute lnrho from least-square fitting of the mean force */
 INLINE void distr2d_calclnrho(distr2d_t *d)
 {
+  int i, j, n = d->n, m = d->m;
+  double tot = 0, lntot;
+  
   ftsolver2d_t *fts = ftsolver2d_open(d->n, (real) d->dx, d->m, (real) d->dy);
   ftsolver2d_solve(fts, d->lnrho, d->mf, d->mg);
   ftsolver2d_close(fts);
+
+  /* normalize d->lnrho */
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
+    tot += exp(d->lnrho[i * (m + 1) + j]);
+  }
+  tot *= d->dx * d->dy;
+  lntot = log(tot);
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++)
+    d->lnrho[i * (m + 1) + j] -= lntot;
 }
 
 /* compute the mean force variance */
@@ -846,40 +929,75 @@ INLINE double distr2d_mfvar(distr2d_t *d)
   return sm > 0. ? f2sm/sm : 0.;
 }
 
-/* integral identity, assume periodic function */
-INLINE void distr2d_ii0(distr2d_t *d, int iw)
+/* fixed window */
+INLINE void distr2d_winfixed(distr2d_t *d, distr2dwin_t *dwin, int w, double smin)
 {
-  int i, j, id, ia, ib, ja, jb, ii, jj, iip, jjp, ij, n = d->n, m = d->m;
-  double num, den, den0, wt, dlnrho;
+  int i, j, n = d->n, m = d->m, m1 = d->m + 1, ww, ww1;
+  distr2dsum_t *ds;
 
   for (i = 0; i < n; i++)
   for (j = 0; j < m; j++) {
+    distr2dwin_t *win = dwin + i * m1 + j;
+    win->il = i - w;
+    win->ir = i + w;
+    win->jl = j - w;
+    win->jr = j + w;
+
+    if (smin > 0) {
+      for (ww = w; ww < intmin(n/2, m/2); ww++) {
+        int il = i - ww, ir = i + ww, jl = j - ww, jr = j + ww, i1, j1;
+        double ms = 0.;
+        for (i1 = il; i1 < ir; i1++)
+        for (j1 = jl; j1 < jr; j1++) {
+          ms += d->arr [ (i1 + n) % n * m1 + (j1 + m) % m ].s;
+        }
+        if (ms > 0) break; 
+      }
+      win->il = i - ww;
+      win->ir = i + ww;
+      win->jl = j - ww;
+      win->jr = j + ww;
+    }
+  }
+}
+
+/* integral identity, assume periodic function */
+INLINE void distr2d_ii0(distr2d_t *d, distr2dwin_t *win)
+{
+  int i, j, id, il, ir, jl, jr, ii, jj, iip, jjp, ij, n = d->n, m = d->m;
+  double num, den, den0, wt, dlnrho, tot;
+
+  tot = distr2d_tot(d);
+  for (i = 0; i < n; i++)
+  for (j = 0; j < m; j++) {
     id = i * (m + 1) + j;
-    ia = i - iw;
-    ib = i + iw;
-    ja = j - iw;
-    jb = j + iw;
+    il = win[id].il;
+    ir = win[id].ir;
+    jl = win[id].jl;
+    jr = win[id].jr;
 
     num = den = den0 = 0.;
     /* get the number of visits to the region */
-    for (ii = ia; ii < ib; ii++)
-    for (jj = ja; jj < jb; jj++) {
+    for (ii = il; ii < ir; ii++)
+    for (jj = jl; jj < jr; jj++) {
       iip = (ii + n) % n;
       jjp = (jj + n) % n;
       num += d->arr[iip * (m + 1) + jjp].s;
     }
-    for (ii = ia; ii <= ib; ii++)
-    for (jj = ja; jj <= jb; jj++) {
+    for (ii = il; ii <= ir; ii++)
+    for (jj = jl; jj <= jr; jj++) {
       iip = (ii + n) % n;
       jjp = (jj + n) % n;
       ij = iip * (m + 1) + jjp;
       wt = 1.0;
-      if (jj == ja || jj == jb) wt *= .5;
-      if (ii == ia || ii == ib) wt *= .5;
+      if (jj == jl || jj == jr) wt *= .5;
+      if (ii == il || ii == ir) wt *= .5;
       den0 += wt;
       dlnrho = d->lnrho[ij] - d->lnrho[id];
       den += wt * exp(dlnrho);
     }
+    den *= tot * d->dx * d->dy;
+    den0 *= tot * d->dx * d->dy;
     d->rho[id] = num/den; /* unbiased result */
     d->his[id] = num/den0; /* biased result */
   }

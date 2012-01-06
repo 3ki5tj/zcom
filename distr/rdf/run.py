@@ -4,12 +4,14 @@
 
 import os, sys, re, shutil
 
-active = 1 # run md to collect data
+active = 0 # run md to collect data
 datadir = "data"
 fngp = "rdf.gp"
 fncfg = "rdf.cfg"
 
 def foo(runmd = 0, tp = 0.85, aj = 0):
+  print "tp %g aj %d" % (tp, aj)
+
   # write configure file
   cfgstr = open(os.path.join("..", fncfg)).readlines()[2:]
   if runmd:
@@ -26,7 +28,7 @@ def foo(runmd = 0, tp = 0.85, aj = 0):
       else:
         cfgstr[i] = "iitype = 1\n"
     elif cfgstr[i].startswith("tp"):
-      cfgstr[i] = "tp = %s" % tp
+      cfgstr[i] = "tp = %s\n" % tp
     
   open(fncfg, "w").writelines(cfgstr)
 

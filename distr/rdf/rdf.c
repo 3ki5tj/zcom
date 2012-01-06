@@ -1,4 +1,5 @@
-/* integral identity for a radial distribution function */
+/* integral identity for a radial distribution function 
+ * Copyright Cheng Zhang 2010-2012 */
 #define ZCOM_PICK
 #define ZCOM_LJ
 #define ZCOM_DISTR
@@ -29,6 +30,8 @@ double rmax = 5.0, rdel = 0.01;
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
+
+double gam = 1.0;
 double sampmin = 100.0;
 double ajR1 = 1.0; /* used by the Adib-Jarzynski identity */
 int mlimit = -1;
@@ -55,6 +58,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "gamma", "%lf", &gam, "half window amplification factor");
   cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_add(cfg, "ajR1", "%lf", &ajR1, "repulsion radius used by the Adib-Jarzynski identity");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
@@ -119,7 +123,7 @@ static void simul(distr_t *d, distr_t *db)
 
   lj = lj_open(N, 3, rho, rc);
   lj_initsw(lj, rs);
-  lj->usesw |= 0x100; /* count out-of-range pairs */
+  lj->usesw |= LJ_SWALLPAIRS; /* count out-of-range pairs */
   printf("rc %g, rs %g, box %g\n", lj->rc, lj->rs, lj->l);
   if (initload) {
     lj_readpos(lj, lj->x, lj->v, fnpos, 0);
@@ -237,7 +241,7 @@ static void doii(distr_t *d, const char *fn)
   if (iitype == 9) {
     distr_ajrdf(d, ajR1);
   } else {
-    distr_iiez(d, iitype, halfwin, mfhalfwin, mlimit, sampmin);
+    distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
   }
   distr_save(d, fn);
 }

@@ -32,6 +32,7 @@ int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
 
+double gam = 1.0;
 int mlimit = -1;
 double sampmin = 400.;
 
@@ -61,6 +62,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
+  cfg_add(cfg, "gamma", "%lf", &gam, "half window amplification factor");
   cfg_add(cfg, "sampmin", "%lf", &sampmin, "minimal number of samples to estimate sig(mf)");
   cfg_match(cfg, CFG_VERBOSE|CFG_CHECKUSE);
   cfg_close(cfg);
@@ -173,6 +175,58 @@ static void dorew(distr_t *d, distr_t *db, const char *fn)
   fclose(fp);
 }
 
+/* compute mean force from a window structure */
+INLINE void distr_mfwinX(distr_t *d, distrwin_t *win, int ii)
+{
+  int i, j, j0, j1, n = d->n;
+  double s0, s1, s, phi, dx = d->dx;
+
+  distr_mf0(d);
+  for (i = 0; i < n; i++) {
+    j0 = win[i].il;
+    j1 = intmin(n, win[i].ir + 1);
+    for (s0 = s1 = s = 0., j = j0; j < j1; j++) {
+      phi = (j == i) ? 0 : (j + .5 - (j < i ? j0 : j1)) * dx;
+      s0 += d->mf[j];
+      s1 += d->mdv[j] * phi;
+      s += 1;
+    }
+    if (ii) s0 += s1; /* add correction from the second-order derivative */
+    d->mf[i] = (s > 0) ? s0/s : 0.0;
+  }
+}
+
+/* adjust the volume distribution, by a factor p(V)*beta */
+static void volcorr(distr_t *d)
+{
+  int i, n = d->n;
+  double tot, tot1, x;
+  distrwin_t *win;
+
+  distr_mf0(d);
+  xnew(win, n + 1);
+  distr_winadp0(d, win, 3.0, -1);
+  distr_mfwinX(d, win, 1); /* compute mean force from the window of ii */
+  //distr_mfwin(d, 20, 1);
+  for (tot = tot1 = 0, i = 0; i <= n; i++) {
+    x = 0;
+    if (i < n) x += .5 * d->mf[i];
+    if (i > 0) x += .5 * d->mf[i-1];
+    x += pressure / tp;
+    tot += (d->rho[i] *= x);
+    tot1 += exp(d->lnrho[i] += log(x));
+  }
+  tot *= d->dx;
+  tot1 *= d->dx;
+  printf("tot = %g, tot1 = %g\n", tot, tot1);
+  tot1 = log(tot1/d->dx);
+  for (i = 0; i <= n; i++) {
+    d->rho[i] /= tot;
+    d->lnrho[i] -= tot1;
+  }
+  free(win);
+}
+
 int main(void)
 {
   distr_t *d, *db;
@@ -187,9 +241,11 @@ int main(void)
   if (dosimul)
     simul(d, db);
 
-  distr_iiez(d, iitype, halfwin, mfhalfwin, mlimit, sampmin);
+  distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
+  volcorr(d);
   distr_save(d, fnds);
-  distr_iiez(db, iitype, halfwin, mfhalfwin, mlimit, sampmin);
+  distr_iiez(db, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
+  volcorr(db);
   distr_save(db, fndsb);
   dorew(d, db, "fe.dat");
   distr_close(d);
