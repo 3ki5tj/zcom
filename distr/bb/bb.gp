@@ -38,7 +38,7 @@ dx = pi/180
 den = tot*dx*dx
 
 
-set label "log[{/Symbol r}({/Symbol f}, {/Symbol y})]" \
+set label "log {/Symbol r}({/Symbol f}, {/Symbol y})" \
   at screen 0.45, 0.95 font "Helvetica, 16" enhanced
 
 #set view 0, 0, 1.4, 1.4

@@ -951,7 +951,7 @@ INLINE void distr2d_winfixed(distr2d_t *d, distr2dwin_t *dwin, int w, double smi
         for (j1 = jl; j1 < jr; j1++) {
           ms += d->arr [ (i1 + n) % n * m1 + (j1 + m) % m ].s;
         }
-        if (ms > 0) break; 
+        if (ms > smin) break; 
       }
       win->il = i - ww;
       win->ir = i + ww;
@@ -1029,10 +1029,10 @@ INLINE int distr2d_save(distr2d_t *d, const char *fn)
           fg = ds->sfg / ds->s - f * g; /* covariance */
         }
       }
-      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %.14e %g %g %g\n",
+      fprintf(fp, "%g %g %.14e %.14e %.14e %.14e %.14e %.14e %g %g %g %d\n",
         d->xmin + i * d->dx, d->ymin + j * d->dy, 
         sm, f, g, f2, g2, fg,
-        d->rho[id], d->lnrho[id], d->his[id]);
+        d->rho[id], d->lnrho[id], d->his[id], d->win[id].ir - d->win[id].il);
     }
     fprintf(fp, "\n");
   }

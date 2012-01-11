@@ -1,8 +1,25 @@
 #include "clus.c"
 
 #define MULTI 4
-double frac[MULTI] = {1.0, .1, 0.6, 0.3};
+double frac[MULTI] = {1.0, 0.5, 1.0, 1.0};
 
+int weighted = 0;
+int n = 200;
+int verbose = 2;
+int zalgo = 1;
+int method = 0; // CLUS_HEATBATH;
+double mu = 0.1;
+double bet0 = 1.0, bet1 = 10.0;
+int nbet = 10;
+int nstmin = 1000;
+
+static int dblcmp(const void *pa, const void *pb)
+{
+  double a = *(double *) pa, b = *(double *) pb;
+  return (a > b) ? 1 : (a < b) ? -1 : 0;
+}
+
+/* generate a sample with rho(x) = sin(x)^16 */
 static double *gensamp1(int n)
 {
   double *arr, x, y;
@@ -11,15 +28,18 @@ static double *gensamp1(int n)
   xnew(arr, n);
   for (i = 0; i < n; i++) {
     for (;;) {
-      x = (rnd0()*MULTI)*M_PI;
-      ix = (int)(x/M_PI);
-      if (rnd0() > frac[ix]) continue;
-      y = sin(x);
-      y = y*y*y*y;
-      if (rnd0() < y) break;
+      x = rnd0() * MULTI;
+      ix = (int) x;
+      y = sin(x * M_PI);
+      y = y*y;
+      y = y*y;
+      y = y*y;
+      y = y*y;
+      if (rnd0() < y * frac[ix]) break;
     }
     arr[i] = x;
   }
+  qsort(arr, n, sizeof(*arr), dblcmp);
   return arr;
 }
 
@@ -31,8 +51,8 @@ static double *gensamp2(int n)
   xnew(arr, 2*n);
   wt = arr + n;
   for (i = 0; i < n; i++) {
-    x = (rnd0()*MULTI)*M_PI;
-    y = sin(x);
+    x = rnd0() * MULTI;
+    y = sin(x * M_PI);
     arr[i] = x;
     wt[i] = y*y*y*y;
   }
@@ -57,14 +77,7 @@ int main(void)
 {
   double *arr, *wt = NULL;
   float **mat;
-  int weighted = 0;
-  int n = 200;
   clsys_t *cls;
-  int verbose = 2;
-  int zalgo = 1;
-  int method = 0; // CLUS_HEATBATH;
-  double mu = 0.2;
-  double bet0 = 1., bet1 = 1.;
 
   if (weighted) {
     arr = gensamp2(n);
@@ -75,14 +88,23 @@ int main(void)
   mat = getdismat(arr, n);
   cls = cls_init(mat, wt, n, mu);
   if (zalgo)
-    cls_zalgo(cls, 10*n*n, method, bet0, bet1, 10, verbose);
+    cls_zalgo(cls, 100*n*n, method, bet0, bet1, nbet, nstmin, verbose);
   else 
-    cls_anneal(cls, 1000*n*n, method, 2.0, 10.0);
+    cls_anneal(cls, 10*n*n, method, 0.001, 0.02);
   cls_write(cls, "clus.txt", NULL, NULL, 0);
-  //for (i = 0; i < n; i++)
-  //  printf("%d: %g, %g\n", i, arr[i], arr[i+n]);
-  printf("energy %g, %d clusters\n", cls->ene, cls->nc);
-  /*
+  printf("Final, energy %g, %d clusters\n", cls->ene, cls->nc);
+
+  {
+    FILE *fp;
+    int i;
+    xfopen(fp, "x.txt", "w", return -1);
+    for (i = 0; i < n; i++)
+      fprintf(fp, "%d: %g, %g\n", i, arr[i], wt ? wt[i] : 1.0);
+    cls->ene = cls_ene(cls, CLUS_CHECK|CLUS_VERBOSE);
+    printf("Energy %g\n", cls->ene);
+  }
+
+/*
   for (i = 0; i < cls->nc; i++) {
     clus_t *c = cls->c + i;
     for (j = 0; j < c->cnt; j++) {
@@ -91,7 +113,8 @@ int main(void)
       w =  (weighted) ? arr[id+n] : 1.;
       fprintf(stderr, "%g %d %g\n", arr[id], i, w);
     }
-  }*/
+  }
+*/
   free(arr);
   cls_free(cls, 1);
 
