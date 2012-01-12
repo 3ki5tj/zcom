@@ -932,8 +932,7 @@ INLINE double distr2d_mfvar(distr2d_t *d)
 /* fixed window */
 INLINE void distr2d_winfixed(distr2d_t *d, distr2dwin_t *dwin, int w, double smin)
 {
-  int i, j, n = d->n, m = d->m, m1 = d->m + 1, ww, ww1;
-  distr2dsum_t *ds;
+  int i, j, n = d->n, m = d->m, m1 = d->m + 1, ww;
 
   for (i = 0; i < n; i++)
   for (j = 0; j < m; j++) {

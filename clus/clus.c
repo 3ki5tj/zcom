@@ -762,7 +762,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
   cls->bet = barr[0];
   cls->iter = 1;
   if (itermax <= 0) { /* automatically determine */
-    itermax = (cls->np < 10000) ? 10*cls->np*cls->np : 1000000000;
+    itermax = (cls->np < 10000) ? 2*cls->np*cls->np : 10000000;
     if (verbose)
       printf("automatically determine itermax = %d for n = %d\n", itermax, cls->np);
   }

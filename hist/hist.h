@@ -89,9 +89,9 @@ INLINE void hs_close(hist_t *hs)
 
 INLINE void hs_check(const hist_t *hs)
 {
-  die_if (hs == NULL, "hs is %p", (void *) hs);
+  die_if (hs == NULL, "hs is %p", (const void *) hs);
   die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0,
-    "hist: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
+    "hist: arr %p rows %d n %d\n", (const void *)(hs->arr), hs->rows, hs->n);
 }
 
 INLINE int hs_savex(const hist_t *hs, const char *fn, void *pdata, unsigned flags)
@@ -164,9 +164,9 @@ INLINE void hs2_close(hist2_t *hs2)
 
 INLINE void hs2_check(const hist2_t *hs)
 {
-  die_if (hs == NULL, "hist2 is %p", (void *) hs);
+  die_if (hs == NULL, "hist2 is %p", (const void *) hs);
   die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0, 
-    "hist2: arr %p rows %d n %d\n", (void *)(hs->arr), hs->rows, hs->n);
+    "hist2: arr %p rows %d n %d\n", (const void *)(hs->arr), hs->rows, hs->n);
 }
 
 INLINE int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)

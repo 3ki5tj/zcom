@@ -3,7 +3,8 @@
 #define ROTFIT_C__
 #include "rotfit.h"
 
-/* least square fit x to y after rotation/translation */
+/* least square fit from x to y after rotation/translation of the former
+ * the best fit structure is saved to xf, if not NULL */
 real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
     real (*r)[3], real *t)
 {
