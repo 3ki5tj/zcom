@@ -1,6 +1,6 @@
 % mpost this_file.mp
 
-prologues := 3;
+prologues := 2;
 
 beginfig(1)
 numeric u;
@@ -44,26 +44,26 @@ dotlabel.top(btex $l$ etex, l);
 
 % m
 drawarrow (m--mb) dashed evenly;
-label.bot(btex $m$ etex, mb);
+label.bot(btex \bf{m} etex, mb);
 
 % n
 drawarrow (n--nb);
-label.rt(btex $n$ etex, nb);
+label.rt(btex \bf{n} etex, nb);
 
 drawarrow ((.9*u, -.15*u)..(.8*u, .3*u)..(.3*u, .8*u)) shifted org;
 label.urt(btex $\phi$ etex, (.8*u, .3*u) shifted org);
 
 % x
 drawarrow (j--x);
-label.bot(btex $x$ etex, (x+(-.2*u, -.1*u)));
+label.bot(btex \bf x etex, (x+(-.2*u, -.1*u)));
 
 % y
 drawarrow (j--y);
-label.rt(btex $y$ etex, (y+(.1*u, -.2*u)));
+label.rt(btex \bf y etex, (y+(.1*u, -.2*u)));
 
 % z
 drawarrow (j--z);
-label.top(btex $z$ etex, (z+(.1*u, .2*u)));
+label.top(btex \bf z etex, (z+(.1*u, .2*u)));
 
 endfig;
 end.
