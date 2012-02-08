@@ -54,9 +54,14 @@ where $\vmh = \vm/m$, $\vnh = \vn/n$
 and $m = | \vm |$, $n = | \vn |$.
 %
 Since both $\phi$ and $-\phi$ yield the same value of cosine,
-we determine the sign of $\phi$ from
-that of $\vn \cdot \vr_{ij}$;
-the valid range of $\phi$ is $(-\pi, \pi)$. 
+we determine the sign of $\phi$ from that of $\vn \cdot \vr_{ij}$;
+the valid range of $\phi$ is $(-\pi, \pi)$.
+Thus we also have 
+\begin{equation}
+  \vmh \times \vnh  = \sin \phi \, \vrh_{kj}
+  \label{eq:sinphi}
+\end{equation}
+
 %
 \begin{figure}[h]
 \begin{center}
@@ -78,16 +83,16 @@ $\vmhh = \vm/m^2$ and $\vnhh = \vn/n^2$.
 In the follows, we shall derive the gradient of the dihedral geometrically.
 %
 The key is to observe that $\phi$ changes only via the unit plane vectors $\vmh$ and $\vnh$,
-i.e., any changes that leaves the two unit vector invariant had no effect to 
+i.e., any change that leaves the two unit vectors invariant has no effect to 
 the dihedral $\phi$.
 This observation helps to deduce the direction of the gradient.
 
 We derive $\diphi$ based on two observations: 
-1) the point $i$ only alters the direction of the $i$-$j$-$k$ plane or the vector $\vm$,
-    not the vector $\vn$;
+1) the position of $i$ affects vector $\vmh$, but not $\vnh$;
 2) any change of $\vr_i$ within the $i$-$j$-$k$ plane leaves $\vmh$ invariant.
-    So the gradient $\diphi$ must be along the direction that 
-    allows $i$ to move out of the $i$-$j$-$k$ plane,
+%
+Thus the gradient $\diphi$ must be along the direction that 
+    drives $i$ to move out of the $i$-$j$-$k$ plane,
 i.e., $\diphi$ must be parallel to $\vmh$ or 
 \[
 \diphi  = a \, \vmh,
@@ -97,10 +102,10 @@ where $a$ is a constant to be determined.
 The sign of $a$ should be positive according to Fig. \ref{dihfig} (i.e., moving along $\vmh$ the dihedral increases).
 %
 The amplitude of $a$ is determined as the follows.
-Consider rotating the point $i$ (keeping $j$, $k$, and $l$) around 
+Consider rotating the point $i$ (holding $j$, $k$, and $l$) around 
 the line connecting $j$ and $k$, whose direction can be represented by the unit vector $\vrh_{kj}$ or $\vzh$,
-by $-\delta \phi$, which would in turn increase the dihedral by $\delta \phi$.
-The involved coordinate change
+by $-\delta \phi$, which in turn increases the dihedral by $\delta \phi$.
+The rotation displaces $\vr_i$  by
 $\delta \vr_i = \vrh_{kj} \times \vr_{ij} \, (-\delta \phi)$.
 Compare with Eq. (\ref{eq:m}), we found 
 \[
@@ -122,19 +127,19 @@ By symmetry, we have
 \[
 \dlphi = -(r_{kj}/n) \, \vnh = -r_{kj} \, \vnhh.
 \]
-Notice however the change of the sign due to that 
+Note the change of the sign due to that 
 the vector $\vnh$ is along a direction that decreases the dihedral.
 
-To derive $\djphi$, we note that a displacement along $\vr_{kj}$ 
+To derive $\djphi$, we note that a displacement along $\vrh_{kj}$ 
 leaves the dihedral invariant. 
-Accordingly $\djphi$ must be perpendicular to $\vzh = \vrh_{kj}$ 
+Accordingly $\djphi$ must be perpendicular to $\vrh_{kj}$ 
 and thus can be expressed as a linear combination of $\vmh$ and $\vnh$, i.e.,
 \[
 \djphi = b \, \vmh + c \, \vnh.
 \]
 
 To derive $c$, we rotate $j$ (holding $i$, $k$ and $l$) around 
-an axis parallel to $\vmh$ (or $-\vyh$) and passing through $k$ by $\delta \, \theta$.
+an axis parallel to $\vmh$ (or $-\vyh$) and passing through $k$ by $\delta \theta$.
 Such a rotation displaces $\vr_j$ by 
 %
 $\delta \vr_j = r_{kj} \, \delta \theta \, \vxh$,
@@ -158,19 +163,21 @@ The overall effect of the two rotations is that
    while $j$ and $k$ remain unchanged.
 %
 %
-Further, the rotation leaves $\vr_i$ within in the $i$-$j$-$k$ plane,
-the change of $\vr_i$ does not affect the dihedral.
+Further, the rotation leaves $\vr_i$ in the $i$-$j$-$k$ plane,
+so the change of $\vr_i$ does not affect the dihedral.
 %
-Thus the dihedral change $\delta \phi$ can be computed as 
+Thus $\delta \phi$ can be computed as 
 \begin{equation*}
 \begin{split}
 \delta \phi
   &= \dlphi \cdot \delta \vr_l = 
  \frac{-r_{kj} \vnh}{n} \cdot (-\vmh \times \vr_{lk}) \, \delta \theta  \\
   &= \frac{r_{kj}}{n} \, \vr_{lk} \cdot (\vnh \times \vmh) \, \delta \theta
-  = -(\vr_{lk} \cdot \vrh_{kj} / n )\, r_{kj} \, \sin \phi \, \delta \theta.
+  = -(\vr_{lk} \cdot \vrh_{kj} / n )\, r_{kj} \, \sin \phi \, \delta \theta,
 \end{split}
 \end{equation*}
+%
+where we have used Eq. (\ref{eq:sinphi}) in the last step.
 %
 Compare with Eq. (\ref{eq:dphij1}), we find $c=-\vr_{lk}\cdot\vrh_{kj}/n$.
 
@@ -199,13 +206,16 @@ $\dkphi$ can be obtained by symmetry.
 In summary, we have:
 \begin{equation}
 \begin{split}
-\diphi   &=  r_{kj} \, \vmhh, \\
-\djphi   &=  (\vr_{ik} \cdot \vrh_{kj}) \, \vmhh - (\vr_{lk} \cdot \vrh_{kj}) \, \vnhh, \\
-\dkphi   &=  (\vr_{lj} \cdot \vrh_{kj}) \, \vnhh - (\vr_{ij} \cdot \vrh_{kj}) \, \vmhh, \\
-\dlphi   &= -r_{kj} \, \vnhh.
+\diphi   &=  r_{kj} \, \vmhh  \\
+\djphi   &=  (\vr_{ik} \cdot \vrh_{kj}) \, \vmhh - (\vr_{lk} \cdot \vrh_{kj}) \, \vnhh 
+         = -r_{kj} \, \vmhh + \vct S \\
+\dkphi   &=  (\vr_{lj} \cdot \vrh_{kj}) \, \vnhh - (\vr_{ij} \cdot \vrh_{kj}) \, \vmhh
+         =  r_{kj} \, \vnhh - \vct S \\
+\dlphi   &= -r_{kj} \, \vnhh,
 \end{split}
 \label{eq:gradall}
 \end{equation}
+where $\vct S \equiv (\vr_{ij}\cdot \vrh_{kj}) \vmhh + (\vr_{kl} \cdot \vrh_{kj}) \, \vnhh$.
 We observe $\diphi + \djphi + \dkphi + \dlphi = 0$ as it should be, 
 because the dihedral is an invariant under an arbitrary global translation.
 
@@ -213,17 +223,18 @@ because the dihedral is an invariant under an arbitrary global translation.
 
 
 \subsubsection{Derivation using vectors and tensors}
+
 From Eq. (\ref{eq:cosphi})
 \begin{eqnarray*}
 d \phi  &=&  -\frac{ (d\,\vmh) \cdot \vnh + \vmh \cdot (d\,\vnh) } {\sin \phi} 
 \end{eqnarray*}
 where 
-$vrh_{kj} = \vr_{kj}/r_{kj}$, with $r_{kj} = |\vr_{kj}|$,
+$\vrh_{kj} = \vr_{kj}/r_{kj}$, with $r_{kj} = |\vr_{kj}|$,
 and 
 $\sin\phi = \vmh \times \vnh \cdot \vrh_{kj} $.
 
 To derive derivatives of $\vmh$ with respect to coordinates, 
-we use notations in tensor notations.
+we use notations in tensor analysis (but treat contravariant and covariant vectors as the same).
 Eq. (\ref{eq:m}) is equivalent to
 $m_\alpha = \epsilon_{\alpha \beta \gamma} r_{ij \beta} r_{kj \gamma}$.
 %
@@ -250,50 +261,53 @@ $\nabla_i m$ is
 %
 
 We now show that
-\begin{equation}
+\begin{equation*}
 \nabla_i \otimes \vmh   
 = \frac{ \nabla_i \otimes \vm   } {m}
 - \frac{ \nabla_i m \otimes \vm } {m^2}   
 = \vmhh \otimes (\vmh \times \vr_{kj}),
-\label{eq:dim1}
-\end{equation}
+\end{equation*}
 %
-\begin{eqnarray*}
+\begin{equation*}
+\begin{split}
+  \frac {\partial (m_{\alpha} / m)} {\partial r_{i \beta} } 
+  &=
   \frac {\partial m_{\alpha}} {m \, \partial r_{i \beta} } 
   -
   \frac {\partial m} {\partial r_{i \beta}} 
-  \frac {m_\alpha} {m^2} 
-  &=&
+  \frac {m_\alpha} {m^2}
+  =
   \frac{ \epsilon_{\alpha \beta \gamma} r_{kj \gamma} } { m }
   - \frac{ \epsilon_{\alpha' \beta \gamma} m_{\alpha'} r_{k j \gamma} m_\alpha }
     { m^3 } \\ 
-  &=& 
+  &= 
   \left( 
        \delta_{\alpha \alpha'} 
        - \frac{ m_\alpha m_{\alpha'} }{ m^2 } 
   \right)  
   \frac{\epsilon_{\alpha' \beta \gamma} \, r_{kj \gamma} } {m} \\
-  &=&
+  &=
    \epsilon_{\alpha \mu \eta} \epsilon_{\alpha' \nu \eta}
    m_\mu m_\nu
   \frac{\epsilon_{\alpha' \beta \gamma} \, r_{kj \gamma} } {m^3} \\
-  &=&
+  &=
   \epsilon_{\alpha \mu \eta}   m_\mu m_\nu
   (\delta_{\nu \beta} \delta_{\eta \gamma} - 
    \delta_{\nu \gamma} \delta_{\eta \beta})
   \frac{ r_{kj \gamma} } {m^3} \\
-  &=&
+  &=
   (\epsilon_{\alpha \mu \gamma}   m_\mu m_\beta  - 
    \epsilon_{\alpha \mu \beta}   m_\mu m_\gamma )
   \frac{ r_{kj \gamma} } {m^3} \\
-  &=&
+  &=
   \frac{m_\beta \, \epsilon_{\alpha \mu \gamma}  m_\mu  r_{kj \gamma}} {m^3},
-\end{eqnarray*}
+\end{split}
+\end{equation*}
 %
 where, on the third line we have used the identity 
 $ \delta_{\alpha \alpha'} - s_\alpha s_{\alpha'} 
  = \epsilon_{\alpha \mu \eta} \epsilon_{\alpha' \nu \eta} s_\mu s_\nu $
-for a unit vector $\vec s$; 
+for a unit vector $\vct s$; 
 %
 on the last line, the second term is dropped because 
 $m_\gamma r_{kj \gamma}  = \vm \cdot \vr_{kj} = 0$.
@@ -308,6 +322,7 @@ We thus have
 \nabla_j \otimes \vmh   &=  -\vmhh \otimes (\vmh \times \vr_{ki}) \\
 \nabla_k \otimes \vmh   &=  -\vmhh \otimes (\vmh \times \vr_{ij}),
 \end{split}
+\label{eq:dim1}
 \end{equation}
 where the last two equations follow from symmetry.  Similarly we have
 %
@@ -322,7 +337,7 @@ where the last two equations follow from symmetry.  Similarly we have
 
 The gradient $\phi$ with respect to coordinates are now readily obtained:
 \begin{eqnarray*}
-\diphi &=& -\frac{ \nabla \otimes \vmh \cdot \vnh  + m_1 \cdot \nabla \otimes \vnh }
+\diphi &=& -\frac{ \nabla_i \otimes \vmh \cdot \vnh  + \vmh \cdot \nabla_i \otimes \vnh }
                   {\sin \phi} \\
               &=& -\frac{ \vmhh (\vmh \times \vr_{kj} \cdot \vnh) + 0 }
                   {\sin \phi} \\
@@ -408,11 +423,9 @@ $\nabla_j r_{jk} = \vrh_{jk}$,
 $\nabla_j \cdot \diphi = \nabla_k \cdot \diphi = 0$.
 %
 
-
-
-Last, $\nabla \cdot \djphi$, involves evaluating $\nabla \cdot \vec S$,
+Last, $\nabla \cdot \djphi$, involves evaluating $\nabla \cdot \vct S$,
 \begin{eqnarray*}
-\nabla_k \cdot [ ( \vr_{ij} \cdot \vrh_{kj}) \vmhh]
+\nabla_k \cdot [ ( \vr_{ij} \cdot \vrh_{kj}) \, \vmhh]
 &=& 
 \nabla_k ( \vr_{ij} \cdot \vrh_{kj}) \cdot \vmhh
 +
@@ -430,7 +443,7 @@ $ \nabla_k \otimes \vr_{kj}
 %
 we have
 \begin{eqnarray*}
-\nabla_k \cdot [ ( \vr_{ij} \cdot \vrh_{kj}) \vmhh]
+\nabla_k \cdot [ ( \vr_{ij} \cdot \vrh_{kj}) \, \vmhh]
 =
 \vmhh \cdot \frac { {\mathbf I - \vrh_{kj} \otimes \vrh_{kj}} } { r_{kj}} \cdot \vr_{ij} 
 = 0 + 0 = 0.
@@ -461,33 +474,25 @@ D_{ii}
 &=& 0 + 0 = 0
 \end{eqnarray*}
 where we have used a similar technique in deriving Eq. (\ref{eq:dim1}),
-and $\nabla_i m = \vr_{kj} \times \hat m$, 
+and $\nabla_i m = \vr_{kj} \times \vmh$, 
 and thus $\diphi \cdot \nabla_i m = 0$.
-We list the rest of nonzero items:
+We list the nonzero items:
 
-\begin{eqnarray}
-D_{ij} 
-&=& \frac {\sin \phi} {mn} \; \frac {r_{kj}^2} {m^2} \;
-  z_{ki} \; z_{kl}, \\
+\begin{equation}
+\begin{split}
+D_{ij} &= s \, z_{ki} \, z_{kl} \; r_{kj}^2/m^2   \\
 %
-D_{ik} 
-&=&  \frac {\sin \phi} {mn} \; \frac {r_{kj}^2} {m^2} \; 
-  z_{ij} \; z_{lj}, \\
+D_{ik} &= s \, z_{ij} \, z_{lj} \; r_{kj}^2/m^2 \\
 %
-D_{kl}
-&=& \frac {\sin \phi} {mn} \; \frac {r_{kj}^2}{n^2} \; 
-  z_{ij} \; z_{lj} , \\
+D_{kl} &= s \, z_{ij} \, z_{lj} \; r_{kj}^2 / n^2 \\
 %
-D_{jl}
-&=& \frac {\sin \phi} {mn} \; \frac {r_{kl}^2} {n^2} \;
-  z_{ki} \; z_{kl} , \\
+D_{jl} &= s \, z_{ki} \, z_{kl} \; r_{kl}^2/n^2 \\
 %
 D_{jj} 
-&=& - \frac{
-    (\djphi \otimes \djphi)  : 
+&= - (\djphi \otimes \djphi)  : 
     (\vr_{ij} \otimes \vmhh + \vr_{kl} \otimes \vnhh)
-  } {r_{kj}} \nonumber \\
-& & - 2 \frac {\sin \phi} {mn}  
+  / r_{kj} \\
+&  - 2 s \, 
   z_{ki} \; z_{kl} \;
   [
     (\djphi \cdot \vmhh) \; z_{ki}
@@ -495,20 +500,18 @@ D_{jj}
   ], \\
 %
 D_{jk} 
-&=&
-\frac{ 
-    (\djphi \otimes \dkphi)  : 
+&= (\djphi \otimes \dkphi)  : 
     (\vr_{ij} \otimes \vmhh + \vr_{kl} \otimes \vnhh)
-} {r_{kj}} \nonumber \\
-& & 
-{} -\frac {\sin \phi} {mn}
+ / r_{kj}  \\
+&  
+ - s \,
   z_{ij} \; z_{ki} \;
   [
     (\djphi \cdot \vmhh) \; z_{lj}
    +(\dkphi \cdot \vmhh) \; z_{kl}
   ] \nonumber \\
-& &
- {} +\frac {\sin \phi} {mn}
+& 
+ +s \,
   z_{lj} \; z_{kl} \;
   [
     (\djphi \cdot \vnhh) \; z_{kl}
@@ -516,19 +519,22 @@ D_{jk}
   ], \\
 %
 D_{kk}
-&=& - \frac{
+&= - 
     (\dkphi \otimes \dkphi)  : 
     (\vr_{ij} \otimes \vmhh + \vr_{kl} \otimes \vnhh)
-  } {r_{kj}} \nonumber \\
-& & {}- 2 \frac {\sin \phi} {mn}  
+   /r_{kj} \\
+&  - 2 s \,
   z_{lj} \; z_{ij} \;
-  [
-    (\dkphi \cdot \vmhh) \; z_{ij}
-   -(\dkphi \cdot \vnhh) \; z_{lj}
+  [ \
+    (\dkphi \cdot \vmhh) \; z_{ij} \
+   -(\dkphi \cdot \vnhh) \; z_{lj} \
   ],
-\end{eqnarray}
+\end{split}
+\end{equation}
 where, component parallel to $\vrh_{kj}$ is denoted by $z$, e.g., 
-$z_{ij} \equiv \vr_{ij} \cdot \vrh_{kj}$.
+$z_{ij} \equiv \vr_{ij} \cdot \vrh_{kj}$, 
+%
+$s \equiv \frac {\sin \phi} {mn}$.
 Note, although not obvious, the expression for $D_{jk}$ is symmetrical to $j$ and $k$. 
 \begin{align*}
 &\ \ \ (\djphi \otimes \dkphi) : (\vr_{ij} \otimes \vmhh)
