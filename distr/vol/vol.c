@@ -1,4 +1,5 @@
-/* integral identity for a volume distribution */
+/* integral identity for a volume distribution 
+ * what to do depdends on fncfg  */
 #define ZCOM_PICK
 #define ZCOM_LJ
 #define ZCOM_DISTR
@@ -196,11 +197,13 @@ INLINE void distr_mfwinX(distr_t *d, distrwin_t *win, int ii)
   }
 }
 
-/* adjust the volume distribution, by a factor p(V)*beta */
+/* adjust the volume distribution, by
+ *  rho*(V) ~ rho(V) * p(V) * beta */
 static void volcorr(distr_t *d)
 {
   int i, n = d->n;
-  double tot, tot1, x;
+  double tot, tot1, p;
+  tot1 *= d->dx;
   distrwin_t *win;
 
   distr_mf0(d);
@@ -209,17 +212,14 @@ static void volcorr(distr_t *d)
   distr_mfwinX(d, win, 1); /* compute mean force from the window of ii */
   //distr_mfwin(d, 20, 1);
   for (tot = tot1 = 0, i = 0; i <= n; i++) {
-    x = 0;
-    if (i < n) x += .5 * d->mf[i];
-    if (i > 0) x += .5 * d->mf[i-1];
-    x += pressure / tp;
-    tot += (d->rho[i] *= x);
-    tot1 += exp(d->lnrho[i] += log(x));
+    p = pressure / tp; /* ideal gas */
+    if (i < n) p += .5 * d->mf[i];    /* right bin */
+    if (i > 0) p += .5 * d->mf[i-1];  /* left bin */
+    tot += (d->rho[i] *= p);
+    tot1 += exp(d->lnrho[i] += log(p));
   }
   tot *= d->dx;
-  tot1 *= d->dx;
-  printf("tot = %g, tot1 = %g\n", tot, tot1);
-  tot1 = log(tot1/d->dx);
+  tot1 = log(tot1);
   for (i = 0; i <= n; i++) {
     d->rho[i] /= tot;
     d->lnrho[i] -= tot1;
@@ -238,7 +238,7 @@ int main(void)
     die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
     die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
   }
-  if (dosimul)
+  if (dosimul) /* do simulation if needed */
     simul(d, db);
 
   distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);

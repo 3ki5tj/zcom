@@ -6,10 +6,14 @@ set terminal postscript landscape enhanced "Helvetica" 20
 set output "vol.ps"
 
 binh = 0.5
+nfreq = 20
+ps4 = 0.9
+ps6 = 0.9
 tcfont = "Helvetica, 14"
 tcsfont = "Helvetica, 12"
 keyfont = "Helvetica, 16"
 zcut = 1e-9
+darkgray = "#404040"
 lightgray = "#aaaaaa"
 nicegray = "#606060"
 lightgreen = "#ccffcc"
@@ -39,10 +43,10 @@ set key font keyfont
 pres = 0.115
 bp = pres / 1.24
 plot [400:2100][1e-5:3e-3] \
-     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/0.0901) w l lt 4 lc rgb lightgray t "histogram", \
-     "dsb.dat" u 1:(exp($7)) w l lt 2 lw 3 lc rgb nicered t "m.f. integration", \
-     "dsb.dat" u 1:($6) w l lt 1 lw 4 lc rgb niceblue t "fractional identity", \
-     "ds.dat"  u 1:($6) w l lt 1 lw 1 t "reference", \
+     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/0.0901) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
+     "dsb.dat" u 1:($6) every nfreq w p pt 6 ps ps6 lt 1 lw 1.5 lc rgb niceblue t "fractional identity", \
+     "dsb.dat" u 1:(exp($7)) every nfreq w p pt 4 ps ps4 lt 1 lw 1.5 lc rgb nicered t "m.f. integration", \
+     "ds.dat"  u 1:($6) w l lt 1 lw 3 t "reference", \
      0 w l lt 1 lw 0.5 notitle
 unset logscale y
 
@@ -65,7 +69,7 @@ set mytics 2
 #set mytics 10
 set tics front
 plot [400:2200][5:120] \
-  "dsb.dat" u 1:($12-$11) w l lt 1 lw 4 lc rgb niceblue notitle
+  "dsb.dat" u 1:($12-$11) every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue notitle
 unset logscale 
 
 unset multiplot

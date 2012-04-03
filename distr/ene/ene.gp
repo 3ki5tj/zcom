@@ -1,5 +1,6 @@
 # gray scale
 
+unset multiplot
 reset
 set terminal push
 # large size 10,14
@@ -8,11 +9,16 @@ set terminal postscript landscape enhanced "Helvetica" 14
 set output "ene.ps"
 
 binh = 0.05  # half bin width
+nfreq = 20
+ps4 = 0.8
+ps6 = 0.8
 tcfont = "Helvetica, 9"
 tcsfont = "Helvetica, 7"
 keyfont = "Helvetica, 10"
-zcut = 1e-9
+zcut = 1e-14
+darkgray = "#404040"
 lightgray = "#cccccc"
+nicegray = "#aaaaaa"
 lightgreen = "#99ffaa"
 nicered = "#ff4040"
 niceblue = "#40b0ff"
@@ -46,10 +52,12 @@ set ylabel "{/Symbol r}(U)" offset 1, 0 font keyfont
 set key font keyfont
 set logscale y
 plot [][1e-7:1] \
-     "dsb_c_ii.dat"     u ($1+binh):($2/1e3) w l lt 4 lc rgb lightgray t "histogram", \
-     "dsb_c_ii.dat"     u 1:6 w l lt 1 lw 3 lc rgb niceblue t "fractional, fixed window", \
-     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) w l lt 2 lw 3 lc rgb nicered t "AJ identity", \
-     "dsmerge.dat"      u 1:6 w l lt 1 lw 1  t "reference"
+     "dsb_c_ii.dat"     u ($1+binh):($2/1e3) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
+     "dsb_c_ii.dat"     u 1:6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue t "fractional, fixed window", \
+     "dsb_c_ii.dat"     u 1:6 w l lt 2 lw 1 lc rgb niceblue notitle, \
+     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) every nfreq w p pt 4 ps ps4 lt 1 lw 1 lc rgb nicered t "AJ identity", \
+     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) w l lt 4 lw 1 lc rgb nicered notitle, \
+     "dsmerge.dat"      u 1:6 w l lt 1 lw 2  t "reference"
 
 #########################################################################################
 # (b)/(c) errors
@@ -72,7 +80,7 @@ set ylabel "KS difference" offset 3, 0 font keyfont
 set format y "%g"
 set key font keyfont
 #unset logscale y
-plot [0:40][0:1.15] \
+plot [0:40][0:1.4] \
   "err.dat" u ($1*.2):2 w l lt 4 lw 3 lc rgb "#000000" t "histogram", \
   ""        u ($1*.2):5 w l lt 1 lw 3 lc rgb niceblue t "fractional", \
   ""        u ($1*.2):8 w l lt 2 lw 3 lc rgb nicered t "AJ"
@@ -102,7 +110,7 @@ unset logscale y
 
 
 #########################################################################################
-# (d) canonical ensemble, improving mean force
+# (d) multiple histogram
 
 set size 0.5, 0.5
 set origin 0.0, 0.0
@@ -118,14 +126,17 @@ set mytics 100
 set format y "10^{%L}"
 set ylabel "{/Symbol r}(U)" offset 2, 0 font keyfont
 set key font keyfont
+zcut2 = 1e-12
 set logscale y
 plot [-1410:-1200][1e-10:1e1] \
-     "../datal/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray t "histograms", \
-     "../data/dsb_c.dat"  u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
-     "../datah/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
-     "dsbmerge0.dat" u ($1):6 w l lt 2 lw 1 lc rgb nicered   t "weighted histogram", \
-     "dsbmerge.dat"  u ($1):6 w l lt 1 lw 3 lc rgb niceblue  t "fractional identity", \
-     "dsmerge.dat"   u ($1):6 w l lt 1 lw 1 lc rgb "#000000" t "reference"
+     "../datal/dsb_c.dat" u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray notitle, \
+     "../data/dsb_c.dat"  u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray t "histograms", \
+     "../datah/dsb_c.dat" u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray notitle, \
+     "dsbmerge0.dat" u ($1):($6 < zcut2 ? zcut2 : $6) every nfreq w p pt 4 ps ps4 lt 1 lw 1 lc rgb nicered   t "weighted histogram", \
+     "dsbmerge0.dat" u ($1):($6 < zcut2 ? zcut2 : $6) w l lt 4 lw 1 lc rgb nicered notitle, \
+     "dsbmerge.dat"  u ($1):6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue  t "fractional identity", \
+     "dsbmerge.dat"  u ($1):6 w l lt 2 lw 1 lc rgb niceblue notitle, \
+     "dsmerge.dat"   u ($1):6 w l lt 1 lw 2 lc rgb "#000000" t "reference"
 
 
 #########################################################################################
