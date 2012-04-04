@@ -10,6 +10,14 @@ README          this file
 
 Usage
 =====
-To compile: enter make under Linux, or under windows cl rdf.c
-To run: edit rdf.cfg for parameters, then type ./rdf or rdf.exe under windows
+To compile: enter 
+    make 
+under Linux, or under windows (assuming visual C++)
+    cl rdf.c
+
+To run: edit `rdf.cfg' for parameters, then type 
+  ./rdf 
+for Linux or 
+  rdf
+under windows
 

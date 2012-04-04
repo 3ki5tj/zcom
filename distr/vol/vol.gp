@@ -31,7 +31,7 @@ set rmargin 3.0
 set lmargin 8.0
 set tmargin 1.0
 set bmargin 3.0
-set xlabel "V" offset 0, 1 font keyfont
+set xlabel "V" offset 0, 0.5 font keyfont
 set xtics 500 font tcfont
 set mxtics 5
 set logscale y
@@ -41,13 +41,27 @@ set mytics 10
 set ylabel '~{/Symbol r}{.3\^}(V) ({/Symbol \264} 10^{-3})' offset 0.0, 0 font keyfont
 set key font keyfont
 pres = 0.115
-bp = pres / 1.24
+tp = 1.24
+bp = pres / tp
+pcorrhis = 0.0905044
 plot [400:2100][1e-5:3e-3] \
-     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/0.0901) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
+     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/pcorrhis) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
      "dsb.dat" u 1:($6) every nfreq w p pt 6 ps ps6 lt 1 lw 1.5 lc rgb niceblue t "fractional identity", \
      "dsb.dat" u 1:(exp($7)) every nfreq w p pt 4 ps ps4 lt 1 lw 1.5 lc rgb nicered t "m.f. integration", \
      "ds.dat"  u 1:($6) w l lt 1 lw 3 t "reference", \
      0 w l lt 1 lw 0.5 notitle
+#
+# about the first line
+# we attempt to correct the histogram 
+# $9 is the mean force, the difference between beta (pvir - p)
+#   so $9 + bp = beta * pvir,
+# pcorrhis is the averaged beta*pressure, which serves as a normalization,
+#   this can be found from the output of volcorr as
+#
+# volcorr test, sample size: 100000, p corr 0.0905044
+#                                           ~~~~~~~~~
+#
+
 unset logscale y
 
 # (a) inset: window size

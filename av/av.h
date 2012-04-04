@@ -1,4 +1,6 @@
+#ifndef INLINE
 #define INLINE __inline static
+#endif
 #ifndef AV_H__
 #define AV_H__
 #include <stdio.h>

@@ -154,7 +154,7 @@ static double reweight(distr_t *d, double tp, double dp, double *vav, int type)
   return -tp * (lnz - log(tot));
 }
 
-/* do reweighting */
+/* do reweighting to another pressure */
 static void dorew(distr_t *d, distr_t *db, const char *fn)
 {
   int i;
@@ -199,26 +199,35 @@ INLINE void distr_mfwinX(distr_t *d, distrwin_t *win, int ii)
 
 /* adjust the volume distribution, by
  *  rho*(V) ~ rho(V) * p(V) * beta */
-static void volcorr(distr_t *d)
+static void volcorr(distr_t *d, const char *name)
 {
   int i, n = d->n;
   double tot, tot1, p;
-  tot1 *= d->dx;
+  double s0 = 1e-100, sp = 1e-200;
   distrwin_t *win;
 
+  /* computing the mean force, d->mf[], i.e. the pressure difference */
   distr_mf0(d);
   xnew(win, n + 1);
   distr_winadp0(d, win, 3.0, -1);
   distr_mfwinX(d, win, 1); /* compute mean force from the window of ii */
   //distr_mfwin(d, 20, 1);
+
+  /* multiply d->rho by the pressure */
   for (tot = tot1 = 0, i = 0; i <= n; i++) {
     p = pressure / tp; /* ideal gas */
     if (i < n) p += .5 * d->mf[i];    /* right bin */
     if (i > 0) p += .5 * d->mf[i-1];  /* left bin */
+
+    /* correction for the histogram, to be used by gnuplot */
+    if (i < n) { s0 += d->arr[i].s; sp += d->arr[i].s * p; }
+    
     tot += (d->rho[i] *= p);
     tot1 += exp(d->lnrho[i] += log(p));
   }
   tot *= d->dx;
+  printf("volcorr %s, sample size: %g, p corr %g\n", name, s0, sp/s0);
+  //printf("volcorr for %s: tot %g, tot1 %g\n", name, tot, tot1*d->dx);
   tot1 = log(tot1);
   for (i = 0; i <= n; i++) {
     d->rho[i] /= tot;
@@ -242,10 +251,10 @@ int main(void)
     simul(d, db);
 
   distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
-  volcorr(d);
+  volcorr(d, "ref.");
   distr_save(d, fnds);
   distr_iiez(db, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
-  volcorr(db);
+  volcorr(db, "test");
   distr_save(db, fndsb);
   dorew(d, db, "fe.dat");
   distr_close(d);

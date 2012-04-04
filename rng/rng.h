@@ -1,3 +1,6 @@
+#ifndef INLINE
+#define INLINE __inline static
+#endif
 #ifndef RNG_H__
 #define RNG_H__
 

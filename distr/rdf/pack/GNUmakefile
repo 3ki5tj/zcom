@@ -14,11 +14,14 @@ rdf: rdf.c $(dep)
 run: rdf
 	python run.py
 
+zip: zcom.h
+	zip rdf rdf.c zcom.h rdf.cfg Makefile README
+
 zcom.h::
 	./zcompick.py -i ../zcom.h -o zcom.h -k "def util ss rng opt cfg distr av rc rv2 rv3 md specfunc lj" 
 
 clean:
-	rm -f *~ *.out MTSEED $(bin) lj.pos
+	rm -f *~ *.out MTSEED $(bin) lj.pos rdf.zip zcom.h
 	rm -rf bin obj *.depend *.layout ds.dat dsb.dat
 
 .PHONY: clean all
