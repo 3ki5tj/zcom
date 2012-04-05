@@ -153,26 +153,38 @@ static void simul(distr_t *d, distr_t *db)
   lj_close(lj);
 }
 
-/* make an array of normalization factor */
-static void mkrdfnorm(distr_t *d, double vol)
+/* make an array of normalization factor
+ * np is the number of particles
+ * vol is the volume of the box 
+ * nsamp is the number of frames */
+static void mkrdfnorm(distr_t *d, int np, double vol, int nsamp)
 {
-  double dr = d->dx, r;
+  double dr = d->dx, r, sum;
   int i, max = d->n + 100;
 
-  vol *= M_PI/6;
   xnew(d->norm, max);
+  for (sum = 0., i = 0; i < d->n; i++) /* total within the sphere */
+    sum += d->arr[i].s;
+   
+  /* the ratio of the number of pairs inside the sphere
+   * to the total number of pairs */
+  r = sum / (nsamp * np * (np - 1)/2);
+  printf("# of samples %d, ratio %g/%g, # of pairs, sphere %g/total %d\n",
+      nsamp, r, M_PI/6, sum, nsamp*np*(np-1)/2);
+  sum = r*vol;
   for (i = 0; i < max; i++) {
     r = i * dr;
-    d->norm[i] = 4*M_PI*r*r/vol;
+    d->norm[i] = 4*M_PI*r*r/sum;
   }
 }
 
 /* the Adib-Jazynski identity from the original paper
+ * Eq. (20) in J. Chem. Phys. 122, 014114 (2005)
  * for rdf only */
-INLINE void distr_ajrdf(distr_t *d, double R1)
+INLINE void distr_ajrdf(distr_t *d, double R1, int nsamp)
 {
   int i1, i, j, n = d->n;
-  double hbox, vol, bet = 1.0/tp, his;
+  double Rmax, vol, bet = 1.0/tp, his;
   double tot, s1, den, den0, dx = d->dx;
   double u, *ua, *ub, *xp, *fr;
   real r, fscal, psi, xi, vr;
@@ -181,13 +193,14 @@ INLINE void distr_ajrdf(distr_t *d, double R1)
   lj_initsw(lj, rs);
 
   /* compute the total visits */
-  for (tot = 0., i = 0; i < n; i++) tot += d->arr[i].s;
+  //for (tot = 0., i = 0; i < n; i++) tot += d->arr[i].s;
+  tot = M_PI/6.0*nsamp*N*(N - 1)/2;
 
   i1 = (int)(R1/dx + .1);
   R1 = i1 * dx;
   vol = N/rho;
-  hbox = pow(vol, 1.0/3) * .5;
-  den0 = tot * (1 - R1*R1*R1/(hbox*hbox*hbox));
+  Rmax = pow(vol, 1.0/3) * .5;  /* Rmax */
+  den0 = tot * (1 - R1*R1*R1/(Rmax*Rmax*Rmax));
 
   /* preparation */
   xnew(xp, n + 1);
@@ -196,34 +209,40 @@ INLINE void distr_ajrdf(distr_t *d, double R1)
   xnew(fr, n + 1);
   for (his = 0, i = 0; i <= n; i++) {
     r = (real) ((i + .5) * d->dx);
-    vr = lj_potsw(lj, r, &fscal, &psi, &xi);
+    vr = lj_potsw(lj, r, &fscal, &psi, &xi); /* fscal = -u'/r */
     xp[i] = ua[i] = ub[i] = fr[i] = 0.;
-    vr *= bet;
+    vr *= bet; /* beta*u(r) */
     if (vr > 100) vr = 100;
-    fr[i] = fscal * r;
+    fr[i] = fscal * r; /* fi . rhat = -u' = fscal * r */
     xp[i] = exp(vr);
     d->lnrho[i] = fr[i];
 
-    /* sum exp(bet*vr) within the volume omega* to his */
+    /* sum exp(bet*vr) within the spheric shell Omega*, from R1 to Rmax */
     if (i >= i1 && i < n)
       his += d->arr[i].s * xp[i];
     
     /* compute vector field exp(bet*vr)/(3r^2) * (r^3 - R1^3) */
-    if (i > i1)
+    if (i > i1) /* the first term in Eq. (17) of the reference, for r > R1 */
       ua[i] = xp[i]/(3*r*r)*(r*r*r - R1*R1*R1);
 
-    /* compute vector field exp(bet*vr)/(3r^2) * (R1^3 - R^3) */
-    ub[i] = xp[i]/(3*r*r)*(R1*R1*R1 - hbox*hbox*hbox); 
+    /* compute vector field exp(bet*vr)/(3r^2) * (R1^3 - Rmax^3)
+     * the second term in Eq. (18) of the reference, for r < R,
+     * where R is the point of interest */
+    ub[i] = xp[i]/(3*r*r)*(R1*R1*R1 - Rmax*Rmax*Rmax); 
   }
-  printf("his = %g den0 %g\n", his, den0);
+  printf("his %g, den0 %g\n", his, den0);
 
-  /* estimate using integral identity */
+  /* estimate using integral identity, Eq. (20) */
   for (i = 0; i <= n; i++) {
     /* compute u'*f */
     for (s1 = 0, j = 0; j < n; j++) {
       ds = d->arr + j;
       if (ds->s <= 0.) continue;
-      if (j >= i) u = ub[j]; else u = ua[j];
+      u = 0;
+      if (j >= i) u = ub[j];
+      if (j >= i1) u += ua[j];
+      /* beta sum'_{i in Omega} u_i . f'_i, 
+       * where f'_i = f_i + v'(r) */
       s1 += u * (ds->sf - bet * ds->s * fr[j]);
     }
     den = den0 * xp[i];
@@ -236,10 +255,10 @@ INLINE void distr_ajrdf(distr_t *d, double R1)
   free(ub);
 }
 
-static void doii(distr_t *d, const char *fn)
+static void doii(distr_t *d, const char *fn, int nsamp)
 {
   if (iitype == 9) {
-    distr_ajrdf(d, ajR1);
+    distr_ajrdf(d, ajR1, nsamp);
   } else {
     distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
   }
@@ -252,20 +271,20 @@ int main(void)
 
   loadcfg(fncfg);
   rmax = (real) ((int) (.5 * pow(N/rho, 1.0/3)/rdel) * rdel);
-  printf("rmax = %g\n", rmax);
+  printf("range rmax %g\n", rmax);
   d = distr_open(0, rmax, rdel);
   db = distr_open(0, rmax, rdel);
   if (initload) { /* load previous data */
     die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
     die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
   }
-  mkrdfnorm(d, N/rho);
-  mkrdfnorm(db, N/rho);
+  mkrdfnorm(d, N, N/rho, nsteps/nstrdf);
+  mkrdfnorm(db, N, N/rho, nsteps/nstrdf/nstdb);
   if (dosimul)
     simul(d, db);
 
-  doii(d, fnds);
-  doii(db, fndsb);
+  doii(d, fnds, nsteps/nstrdf);
+  doii(db, fndsb, nsteps/nstrdf/nstdb);
   distr_close(d);
   distr_close(db);
   return 0;

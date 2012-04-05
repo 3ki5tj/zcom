@@ -227,7 +227,6 @@ static void volcorr(distr_t *d, const char *name)
   }
   tot *= d->dx;
   printf("volcorr %s, sample size: %g, p corr %g\n", name, s0, sp/s0);
-  //printf("volcorr for %s: tot %g, tot1 %g\n", name, tot, tot1*d->dx);
   tot1 = log(tot1);
   for (i = 0; i <= n; i++) {
     d->rho[i] /= tot;

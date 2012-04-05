@@ -355,7 +355,7 @@ INLINE void distr_iimf(distr_t *d)
   }
 }
 
-/* modulated integral identity
+/* fractional integral identity (low level)
  * set rho[], lnrho[], his[]
  * before calling this function
  * first call mfX() to compute the mean force, 
@@ -363,7 +363,7 @@ INLINE void distr_iimf(distr_t *d)
 INLINE void distr_ii0(distr_t *d, distrwin_t *win)
 {
   int i, j, jl, jr, n = d->n;
-  double x, den, tot, dx = d->dx;
+  double x, delx, den, tot, dx = d->dx;
 
   /* construct ln(rho) from the mean force */
   distr_iimf(d);
@@ -381,14 +381,17 @@ INLINE void distr_ii0(distr_t *d, distrwin_t *win)
 
     /* integrate over exp(lnrho[j] - lnrho[i])
      * Note: we can loop from j0 to j1, with little difference */
-    for (den = 0., j = jl; j <= jr; j++) {
+    for (den = 0., delx = 0., j = jl; j <= jr; j++) {
       x = exp(d->lnrho[j] - d->lnrho[i]);
-      if (d->norm) x *= d->norm[j];
+      if (d->norm) x *= d->norm[j]; /* apply the normalization factor */
       den += (j == jl || j == jr) ? x * .5 : x;
+      if (d->norm)
+        delx += d->norm[j] * ((j == jl || j == jr) ? .5 : 1.);
     }
     den *= tot * dx;
     d->rho[i] = (den > 0.) ? d->his[i] / den : 0.;
-    d->his[i] /= tot * dx * (jr - jl);
+    if (d->norm == NULL) delx = jr - jl;
+    if (tot > 0.) d->his[i] /= tot * dx * delx;
   }
 }
 
@@ -433,12 +436,14 @@ INLINE void distr_iiez(distr_t *d, int iitype, int halfwin, int mfhalfwin,
     /* compute the distribution */
     if (iitype == 1) {
       if (halfwin >= -1) {
+        /* computing the window */
         if (halfwin >= 0) {
           distr_winfixed(d, d->win, gam, halfwin);
         } else {
           distr_mfsig0(d, sampmin);
           distr_winadp0(d, d->win, gam, mlimit);
         }
+        /* using the integral identity */
         distr_ii0(d, d->win);
       } else {
         distr_iiadp(d, mlimit, sampmin);

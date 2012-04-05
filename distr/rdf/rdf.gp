@@ -33,7 +33,7 @@ set label "(b)" at screen 0.02, 0.48
 rmin = 0.7
 rmax = 3.5
 
-# (a) distribution
+# (a) distribution at T = 0.85
 
 set size 1.0, 0.5
 set origin 0.0, 0.5
@@ -64,7 +64,7 @@ unset logscale y
 
 # "dsaj0.85.dat" u 1:($6) w l lt 6 lw 3 lc rgb nicegreen t "AJ, larger data set", \
 
-# (b) volume vs pressure
+# (b) distribution at T = 0.4
 set size 1.0, 0.5
 set origin 0.0, 0.0
 set rmargin 3.0
