@@ -278,10 +278,10 @@ int main(void)
     die_if(0 != distr_load(d, fnds), "failed to load data from %s\n", fnds);
     die_if(0 != distr_load(db, fndsb), "failed to load data from %s\n", fndsb);
   }
-  mkrdfnorm(d, N, N/rho, nsteps/nstrdf);
-  mkrdfnorm(db, N, N/rho, nsteps/nstrdf/nstdb);
   if (dosimul)
     simul(d, db);
+  mkrdfnorm(d, N, N/rho, nsteps/nstrdf);
+  mkrdfnorm(db, N, N/rho, nsteps/nstrdf/nstdb);
 
   doii(d, fnds, nsteps/nstrdf);
   doii(db, fndsb, nsteps/nstrdf/nstdb);

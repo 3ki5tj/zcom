@@ -1,0 +1,47 @@
+a self-contained package for distribution
+
+FILES
+======
+ene.c           code for the energy distribution
+ene.cfg         typical configuration file for the energy distribution
+vol.c           code for the volume distribution
+vol.cfg         typical configuration file for the volume distribution
+rdf.c           main source code for the RDF
+rdf.cfg         typical configuration file for the RDF
+zcom.h          common modules (abridged)
+Makefile        build file
+README          this file
+
+Compile
+=======
+To compile: enter 
+    make 
+under Linux, or under windows (assuming visual C++)
+    cl ene.c
+    cl vol.c
+    cl rdf.c
+
+Run
+====
+To run (use rdf for example):
+first edit `rdf.cfg' for parameters, then type (under Linux)
+  ./rdf 
+or (under windows)
+  rdf
+
+
+Reading data
+============
+Output data are saved to ds.dat (reference sample) and dsb.dat (test sample), no matter what the program is.
+Data are organized in columns, and can be plotted using gnuplot.
+For example, to plot the resulting distributions from the test and reference samples
+
+  gnuplot
+  gnuplot> plot "dsb.dat" u 1:6 w l, "ds.dat" u 1:6 w l
+
+
+Notes
+======
+We have adjusted the parameters, so each program can run quickly (within two minutes in the test machine).
+For actual production runs, consider increase simulation length and adjust other parameters.
+
