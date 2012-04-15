@@ -6,9 +6,9 @@ set terminal postscript landscape enhanced "Helvetica" 20
 set output "vol.ps"
 
 binh = 0.5
-nfreq = 20
-ps4 = 0.9
-ps6 = 0.9
+nfreq = 50
+ps4 = 1.5
+ps6 = 1.5
 tcfont = "Helvetica, 14"
 tcsfont = "Helvetica, 12"
 keyfont = "Helvetica, 16"
@@ -45,10 +45,14 @@ tp = 1.24
 bp = pres / tp
 pcorrhis = 0.0905044
 plot [400:2100][1e-5:3e-3] \
-     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/pcorrhis) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
-     "dsb.dat" u 1:($6) every nfreq w p pt 6 ps ps6 lt 1 lw 1.5 lc rgb niceblue t "fractional identity", \
-     "dsb.dat" u 1:(exp($7)) every nfreq w p pt 4 ps ps4 lt 1 lw 1.5 lc rgb nicered t "m.f. integration", \
      "ds.dat"  u 1:($6) w l lt 1 lw 3 t "reference", \
+     "dsb.dat" u ($1 + binh):($2/1e5*(bp + $9)/pcorrhis) w l lt 4 lc rgb lightgray t "histogram", \
+     "dsb.dat" u 1:($6) every nfreq w p pt 6 ps ps6 lt 1 lw 1.5 lc rgb niceblue not, \
+     "dsb.dat" u 1:($6) w l lt 2 lw 1.5 lc rgb niceblue not, \
+     1e8 w lp lt 2 lw 1.5 lc rgb niceblue pt 6 ps ps6 t "fractional identity", \
+     "dsb.dat" u 1:(exp($7)) every nfreq w p pt 4 ps ps4 lt 1 lw 1.5 lc rgb nicered not, \
+     "dsb.dat" u 1:(exp($7)) w l lt 5 lw 1.5 lc rgb nicered not, \
+     1e8 w lp lt 5 lw 1.5 lc rgb nicered pt 4 ps ps4 t "m.f. integration", \
      0 w l lt 1 lw 0.5 notitle
 #
 # about the first line
@@ -83,7 +87,8 @@ set mytics 2
 #set mytics 10
 set tics front
 plot [400:2200][5:120] \
-  "dsb.dat" u 1:($12-$11) every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue notitle
+  "dsb.dat" u 1:($12-$11) every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue notitle, \
+  "dsb.dat" u 1:($12-$11) w l lt 2 lw 1 lc rgb niceblue notitle
 unset logscale 
 
 unset multiplot

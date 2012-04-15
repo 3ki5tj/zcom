@@ -9,9 +9,9 @@ set terminal postscript landscape enhanced "Helvetica" 14
 set output "ene.ps"
 
 binh = 0.05  # half bin width
-nfreq = 20
-ps4 = 0.8
-ps6 = 0.8
+nfreq = 50
+ps4 = 1.0
+ps6 = 1.0
 tcfont = "Helvetica, 9"
 tcsfont = "Helvetica, 7"
 keyfont = "Helvetica, 10"
@@ -51,13 +51,16 @@ set format y "10^{%L}"
 set ylabel "{/Symbol r}(U)" offset 1, 0 font keyfont
 set key font keyfont
 set logscale y
-plot [][1e-7:1] \
-     "dsb_c_ii.dat"     u ($1+binh):($2/1e3) every nfreq w p pt 8 ps 1.0 lt 1 lc rgb darkgray t "histogram", \
-     "dsb_c_ii.dat"     u 1:6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue t "fractional, fixed window", \
+plot [][1e-7:2] \
+     "dsmerge.dat"      u 1:6 w l lt 1 lw 3  t "reference", \
+     "dsb_c_ii.dat"     u ($1+binh):($2/1e3) w l lt 4 lc rgb lightgray t "histogram", \
+     "dsb_c_ii.dat"     u 1:6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue notitle, \
      "dsb_c_ii.dat"     u 1:6 w l lt 2 lw 1 lc rgb niceblue notitle, \
-     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) every nfreq w p pt 4 ps ps4 lt 1 lw 1 lc rgb nicered t "AJ identity", \
-     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) w l lt 4 lw 1 lc rgb nicered notitle, \
-     "dsmerge.dat"      u 1:6 w l lt 1 lw 2  t "reference"
+     -1 w lp pt 6 ps ps6 lt 2 lw 1 lc rgb niceblue t "fractional identity", \
+     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) every nfreq w p pt 4 ps ps4 lt 1 lw 1 lc rgb nicered notitle, \
+     "dsb_c_aj.dat"     u 1:($6 > zcut ? $6 : zcut) w l lt 5 lw 1 lc rgb nicered notitle, \
+     -1 w lp pt 4 ps ps4 lt 5 lw 1 lc rgb nicered t "AJ identity"
+
 
 #########################################################################################
 # (b)/(c) errors
@@ -82,8 +85,8 @@ set key font keyfont
 #unset logscale y
 plot [0:40][0:1.4] \
   "err.dat" u ($1*.2):2 w l lt 4 lw 3 lc rgb "#000000" t "histogram", \
-  ""        u ($1*.2):5 w l lt 1 lw 3 lc rgb niceblue t "fractional", \
-  ""        u ($1*.2):8 w l lt 2 lw 3 lc rgb nicered t "AJ"
+  ""        u ($1*.2):5 w l lt 2 lw 3 lc rgb niceblue t "fractional", \
+  ""        u ($1*.2):8 w l lt 5 lw 3 lc rgb nicered t "AJ"
 
 # (c) entropic distance 
 set size 0.23, 0.5
@@ -104,8 +107,8 @@ set format y "10^{%L}"
 set key font keyfont
 plot [0:40][1e-4:0.5] \
   "err.dat" u ($1*0.2):4  w l lt 4 lw 3 lc rgb "#000000" t "histogram", \
-  ""        u ($1*0.2):7  w l lt 1 lw 3 lc rgb niceblue t "fractional", \
-  ""        u ($1*0.2):10 w l lt 2 lw 3 lc rgb nicered t "AJ"
+  ""        u ($1*0.2):7  w l lt 2 lw 3 lc rgb niceblue t "fractional", \
+  ""        u ($1*0.2):10 w l lt 5 lw 3 lc rgb nicered t "AJ"
 unset logscale y
 
 
@@ -129,15 +132,15 @@ set key font keyfont
 zcut2 = 1e-12
 set logscale y
 plot [-1410:-1200][1e-10:1e1] \
-     "../datal/dsb_c.dat" u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray notitle, \
-     "../data/dsb_c.dat"  u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray t "histograms", \
-     "../datah/dsb_c.dat" u ($1+binh):($2/1000) every nfreq w p pt 8 lt 1 lw 1 lc rgb nicegray notitle, \
-     "dsbmerge0.dat" u ($1):($6 < zcut2 ? zcut2 : $6) every nfreq w p pt 4 ps ps4 lt 1 lw 1 lc rgb nicered   t "weighted histogram", \
-     "dsbmerge0.dat" u ($1):($6 < zcut2 ? zcut2 : $6) w l lt 4 lw 1 lc rgb nicered notitle, \
-     "dsbmerge.dat"  u ($1):6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue  t "fractional identity", \
+     "dsmerge.dat"   u ($1):6 w l lt 1 lw 3 lc rgb "#000000" t "reference", \
+     "dsbmerge0.dat" u ($1):($6 < zcut2 ? zcut2 : $6) w l lt 4 lw 1 lc rgb nicegray t "reweighted histogram", \
+     "dsbmerge.dat"  u ($1):6 every nfreq w p pt 6 ps ps6 lt 1 lw 1 lc rgb niceblue notitle, \
      "dsbmerge.dat"  u ($1):6 w l lt 2 lw 1 lc rgb niceblue notitle, \
-     "dsmerge.dat"   u ($1):6 w l lt 1 lw 2 lc rgb "#000000" t "reference"
+     -1 w lp pt 6 ps ps6 lt 2 lw 1 lc rgb niceblue t "fractional identity"
 
+#     "../datal/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
+#     "../data/dsb_c.dat"  u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray t "histograms", \
+#     "../datah/dsb_c.dat" u ($1+binh):($2/1000) w l lt 4 lw 1 lc rgb lightgray notitle, \
 
 #########################################################################################
 # (e) comparison with microcanonical ensemble

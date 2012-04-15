@@ -33,7 +33,7 @@ int halfwin = 50; /* half window size */
 int mfhalfwin = 0; /* half window size for mean force */
 
 /* adaptive window parameters */
-double gam;
+double gam = 1.5;
 int mlimit = -1; /* maximal # of bins for a window in adaptive window */
 double sampmin = 400; /* minimal number of samples to estimate sig(mf) */
 

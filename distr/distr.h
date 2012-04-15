@@ -503,22 +503,30 @@ INLINE void distr_add(distr_t *d, double x, double f, double dv, double w)
   }
 }
 
-INLINE int distr_save(distr_t *d, const char *fn)
+
+#define DISTR_KEEPLEFT   0x0040
+#define DISTR_KEEPRIGHT  0x0080
+#define DISTR_KEEPEDGE   (DISTR_KEEPLEFT | DISTR_KEEPRIGHT)
+#define distr_save(d, fn) distr_savex(d, fn, 0)
+
+INLINE int distr_savex(distr_t *d, const char *fn, unsigned flags)
 {
   FILE *fp;
   int i, i0 = 0, i1 = d->n, n = d->n;
   distrsum_t *ds = d->arr;
 
-  /* determine the range */
-  for (i0 = 0; i0 <= n; i0++)
-    if (d->his[i0] > 0. || d->arr[i0].s > 0.)
-      break;
-  for (; i1 >= i0; i1--)
-    if (d->his[i1] > 0. || d->arr[i1].s > 0.)
-      break;
-  if (i0 > i1) {
-    printf("histogram is empty\n");
-    return 1;
+  if (!(flags & DISTR_KEEPEDGE)) {
+    /* determine the range */
+    for (i0 = 0; i0 <= n; i0++)
+      if (d->his[i0] > 0. || d->arr[i0].s > 0.)
+        break;
+    for (; i1 >= i0; i1--)
+      if (d->his[i1] > 0. || d->arr[i1].s > 0.)
+        break;
+    if (i0 > i1) {
+      printf("histogram is empty\n");
+      return 1;
+    }
   }
 
   xfopen(fp, fn, "w", return -1);

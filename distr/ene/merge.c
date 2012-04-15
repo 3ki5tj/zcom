@@ -144,8 +144,8 @@ INLINE void iimhc(distr_t *d, distr_t **darr, double *dbeta, double *wt,
     /* estimate using integral identity */
     for (i = 0; i <= n; i++) {
       /* compute # of visits in a window around i */
-      jl = d->jl[i];
-      jr = d->jr[i];
+      jl = d->win[i].il;
+      jr = d->win[i].ir;
       d->his[i] = d->hsum[jr] - d->hsum[jl];
 
       for (den = 0, k = 0; k < narr; k++) {
@@ -209,7 +209,7 @@ static void merge(distr_t *d, distr_t **darr, double *dbeta, double *wt,
 
   mfmhc(d, darr, dbeta, wt, narr); /* computing the mean force */
   if (m < 0) m = 0;
-  distr_winfixed(d, gam, m);
+  distr_winfixed(d, d->win, gam, m);
   iimhc(d, darr, dbeta, wt, dlnz, narr);
   decorate(d, darr, dbeta, wt, dlnz, narr);
 }

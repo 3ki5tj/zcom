@@ -262,7 +262,7 @@ static void doii(distr_t *d, const char *fn, int nsamp)
   } else {
     distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
   }
-  distr_save(d, fn);
+  distr_savex(d, fn, DISTR_KEEPEDGE);
 }
 
 int main(void)
