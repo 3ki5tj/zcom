@@ -4,19 +4,20 @@ set terminal push
 
 set encoding cp1250 # make minus sign longer
 #set encoding iso_8859_1
-set terminal postscript portrait enhanced "Helvetica" 18
+set terminal postscript landscape enhanced "Helvetica" 24
+#set terminal postscript portrait enhanced "Helvetica" 18
 
 set output "phi.ps"
 
-set multiplot
-set size 1.0, 0.5
-set origin 0.0, 0.5
+#set multiplot
+#set size 1.0, 0.5
+#set origin 0.0, 0.5
 
 set parametric
 
-set lmargin 5
-set bmargin 2
-set label 12 "(a)" at -0.2, 1.4
+#set lmargin 5
+#set bmargin 2
+#set label 12 "(a)" at -0.2, 1.4
 
 af = .25
 xaf = exp(-af)
@@ -28,7 +29,15 @@ set arrow 5 from 1.1, 0 to 1.1, 1.11 heads front
 set arrow 15 from 1.18, 1.11 to 1, 1.11 nohead front
 
 set arrow 17 from 0,1.1 to 0.5, 0.5 lt 1 head front
-set label 17 "{/Symbol \362@_{/Helvetica=8 x_{-}}^{/Helvetica=8 x_{+}}} {/=14 {/Symbol r}(x) dx}" \
+#
+# The integral sign
+# \362 is the integral sign
+# ~{a}{b}  means overprint b on a
+# &{m} means spaces to hold an m
+# ~{&{m}}{-0.2 \362} means print space of m first then overprint an integral sign, shift shift downwards by 0.2 point
+#
+#set label 17 "{/Symbol \362@_{/Helvetica=8 x_{-}}^{/Helvetica=8 x_{+}}} {/=14 {/Symbol r}(x) dx}" at -0.2, 1.2 front
+set label 17 "{/Symbol=42 ~{&{m}}{-0.2 \362}@_{/Helvetica=14 x_{-}}^{/Helvetica=14 x_{+}}}&{.}{/=20 {/Symbol r}(x) dx}" \
   at -0.2, 1.2 front
 
 set format x ""
@@ -41,14 +50,20 @@ plot [t=0:1][-0.3:2.3][0:1.49] \
     2*t, f(2*t-1) notitle w filledcurves x1 lt 1 lc rgb "#E0E0E0", \
     2.4*t-0.2, f(2.4*t-1.2) t "distribution {/Symbol r}(x)" w l lt 1 lw 4 lc rgb "#808080"
 
-set size 1.0,0.5
-set origin 0.0,0.0
+
+
+
+
+unset output
+set output "phiaj.ps"
+#set size 1.0,0.5
+#set origin 0.0,0.0
 
 
 unset label
 unset arrow
-set tmargin .5
-unset bmargin
+#set tmargin .5
+#unset bmargin
 
 bmin=0.0
 bmax=2.0
@@ -63,7 +78,7 @@ unset ylabel
 set ytics 0.5
 set mytics 5
 
-set label 11 "(b)" at -0.2, 1.1
+#set label 11 "(b)" at -0.2, 1.1
 
 sig(x, e, c) = (1+c)*x**e/(c + x**e)
 der(x, e, c) = (1+c)*c*e*x**(e-1)/(c + x**e)**2
@@ -99,7 +114,7 @@ plot [t=0:1][-0.3:2.3][-0.8:1.2] \
    1,1*t notitle w l lt 1 
 
 
-unset multiplot
+#unset multiplot
 unset output
 
 #set terminal windows enhanced

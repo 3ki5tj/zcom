@@ -32,6 +32,7 @@ double vmin = 400, vmax = 2000, vdel = 0.1;
 int halfwin = 50; /* half window size */
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int mfhalfwin = 0; /* half window size for mean force */
+int corr = 0;
 
 double gam = 1.0;
 int mlimit = -1;
@@ -61,6 +62,7 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, "
       "for the fractional identity; 0: guess, -1: adaptive");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
+  cfg_add(cfg, "corr", "%d", &corr, "correct the volume distribution: 0: false, 1: true");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
       "for mean force; 0: single bin, < 0: plain average");
   cfg_add(cfg, "gamma", "%lf", &gam, "half window amplification factor");
@@ -198,7 +200,7 @@ INLINE void distr_mfwinX(distr_t *d, distrwin_t *win, int ii)
 }
 
 /* adjust the volume distribution, by
- *  rho*(V) ~ rho(V) * p(V) * beta */
+ *  rho_hat(V) ~ rho(V) * p(V) * beta */
 static void volcorr(distr_t *d, const char *name)
 {
   int i, n = d->n;
@@ -250,11 +252,13 @@ int main(void)
     simul(d, db);
 
   distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
-  volcorr(d, "ref.");
+  if (corr) volcorr(d, "ref.");
   distr_save(d, fnds);
+
   distr_iiez(db, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
-  volcorr(db, "test");
+  if (corr) volcorr(db, "test");
   distr_save(db, fndsb);
+  
   dorew(d, db, "fe.dat");
   distr_close(d);
   distr_close(db);
