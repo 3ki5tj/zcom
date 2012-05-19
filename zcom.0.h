@@ -127,7 +127,14 @@
   #pragma warning(disable:4505) /* unreferenced function */
   #pragma warning(disable:4514) /* unreferenced inline */
   #pragma warning(disable:4710) /* not inlined */
+  #define _CRT_SECURE_NO_DEPRECATE  /* suppress CRT _s functions warnings */
   #include <stdio.h> /* suppress CRT _s functions warnings */
+#endif
+
+#if (defined(_MSC_VER) || defined(__xlC__))
+  #ifndef M_PI
+  #define M_PI 3.14159265358979323846
+  #endif
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
