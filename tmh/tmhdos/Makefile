@@ -24,6 +24,7 @@ install:: $(bin)
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis TRACE
+	$(MAKE) -C dostest clean
 
 .PHONY: clean all
 

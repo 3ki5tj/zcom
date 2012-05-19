@@ -23,6 +23,8 @@ zcom.h::
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) shakefail* rattlefail* tmh*.e tmh*.t tmh*.ehis tmh*.tr ab*.pos
+	rm -rf bin obj
+	cd test && ./clean
 
 .PHONY: clean all
 

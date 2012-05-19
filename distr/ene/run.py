@@ -92,6 +92,8 @@ os.chdir(datadir)
 if active:
   run(run = 1)
 else:
+  shutil.copy2("../data/dsb_c_ii.dat", "dsb_c.dat")
+  shutil.copy2("../data/ds_c_ii.dat", "ds_c.dat")
   shutil.copy2("../data/dsb_c_ii.dat", "dsb.dat")
   shutil.copy2("../data/ds_c_ii.dat", "ds.dat")
 
@@ -123,7 +125,7 @@ if doextra:
   else:
     shutil.copy2("dsb_c.dat", "dsb.dat")
     shutil.copy2("ds_c.dat", "ds.dat")
-  run(halfwin = 100, mfhalfwin = 0, tp = tlow)
+  run(mfhalfwin = 0, tp = tlow)
 
   # higher temperature
   os.chdir(os.path.join("..", datadirh))
@@ -132,24 +134,28 @@ if doextra:
   else:
     shutil.copy2("dsb_c.dat", "dsb.dat")
     shutil.copy2("ds_c.dat", "ds.dat")  
-  run(halfwin = 100, mfhalfwin = 0, tp = thigh)
+  run(mfhalfwin = 0, tp = thigh)
 
   # compute error 
   os.chdir("..")
-  os.system("./merge")
-  os.system("./err > %s/err.dat" % datadir)
-
   # compute a version with regular multiple histogram method
   cfg = open(fncfg, "r").readlines()
   cfgbak = cfg[:]
   for i in range(len(cfg)):
     if cfg[i].startswith("halfwin"):
-      cfg[i] = "halfwin = 1"
+      cfg[i] = "halfwin = 1\n"
       break
   open(fncfg, "w").writelines(cfg)
   os.system("./merge")
+  os.chdir(datadir)
+  os.rename("dsmerge.dat", "dsmerge0.dat")
+  os.rename("dsbmerge.dat", "dsbmerge0.dat")
+  os.chdir("..")
 
   open(fncfg, "w").writelines(cfgbak)
+  os.system("./merge")
+  os.system("./err > %s/err.dat" % datadir)
+
 
   # switch back to data dir  
   os.chdir(datadir)

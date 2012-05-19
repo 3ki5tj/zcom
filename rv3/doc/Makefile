@@ -1,8 +1,8 @@
 .PHONY: clean
 
-dih.dvi: dih.tex dihfig.ps
-	latex $<
-	latex $<
+dih.pdf: dih.tex dihfig.ps
+	pdflatex $<
+	pdflatex $<
 
 dihfig.ps: dihfig.mp
 	mpost $<

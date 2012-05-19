@@ -32,6 +32,11 @@ usb: $(prj).h $(prj).zip
 	mv $(prj).zip $(usbdir)/
 	cp $(prj).h $(usbdir)/
 
+usball::
+	$(MAKE) clean
+	$(MAKE) usb
+	zip -r $(usbdir)/zcomall.zip *
+
 dodep:
 	git add [a-z0-9]*/*.h
 	git add [a-z0-9]*/*/zcom.h

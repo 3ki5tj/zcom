@@ -21,6 +21,8 @@ $(bin): $(deps)
 
 clean:
 	rm -f *~ *.out MTSEED *.dat *.pos $(bin) final.pdb ref.pdb
+	$(MAKE) -C tmhcago clean
+	$(MAKE) -C gl clean
 
 .PHONY: clean all
 

@@ -12,6 +12,7 @@ $(bin): def.h rv3.h Makefile
 
 clean:
 	rm -f $(bin) *~ *.o a.out
+	$(MAKE) -C doc clean
 
 .PHONY: all clean
 

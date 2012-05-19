@@ -25,7 +25,12 @@ zcom.h::
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos
-	rm -rf bin obj *.depend *.layout fe*.dat 
+	rm -rf bin obj *.depend *.layout fe*.dat ds.dat dsb.dat err.dat
+	rm -f data/ene.ps data/eneref.ps data/ds.dat data/dsb.dat \
+	  data/*_aj.dat data/*_mfav.dat data/*_mfii.dat data/*_c_ix.dat \
+	  data/dsb_c.dat data/ds_c.dat data/dsb_m.dat data/ds_m.dat \
+	  data/*merge*.dat data/err.dat data[lh]/dsb.dat data[lh]/ds.dat \
+	  data[lh]/dsb_c_ii.dat data[lh]/ds_c_ii.dat
 
 .PHONY: clean all
 

@@ -6,6 +6,7 @@ $(prj).pdf: $(prj).tex  $(prj)text.pdf Makefile \
 
 # collect data
 run::
+	$(MAKE) -C ../ene run
 	$(MAKE) -C ../vol run
 	$(MAKE) -C ../rdf run
 	$(MAKE) -C ../bb run
@@ -33,15 +34,21 @@ ref.pdf: ref.ps
 ref.ps: ref.gp
 	gpload $<
 
+phi.ps: phi.gp
+	gpload $<
+
+phiaj.ps: phi.gp
+	gpload $<
+
 .PHONY: clean deepclean
 
 clean:
 	rm -rf $(prj).log *.aux *~ 
-	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf ref.ps
+	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf
 
 deepclean: $(clean)
 	rm -rf $(prj).log *.aux *~ 
-	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf ref.ps
+	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf phi.ps phiaj.ps ref.pdf ref.ps
 	$(MAKE) -C ../ene clean
 	$(MAKE) -C ../vol clean
 	$(MAKE) -C ../rdf clean

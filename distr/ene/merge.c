@@ -26,7 +26,6 @@ double emin = -1400, emax = -1200, edel = 0.1;
 
 int iitype = 0; /* 0: Adib-Jarsynski; 1: modulated */
 int halfwin = 50; /* half window size */
-int halfwinb = 50; /* half window size for db */
 int mfhalfwin = 0; /* half window size for mean force */
 
 /* adaptive window parameters */
@@ -43,8 +42,6 @@ static void loadcfg(const char *fncfg)
   cfg_add(cfg, "emax", "%lf", &emax, "maximal energy");
   cfg_add(cfg, "edel", "%lf", &edel, "energy interval");
   cfg_add(cfg, "halfwin", "%d", &halfwin, "half of the number of bins in each side of the window, "
-      "for the fractional identity; 0: guess, -1: adaptive");
-  cfg_add(cfg, "halfwinb", "%d", &halfwinb, "half of the number of bins in each side of the window, "
       "for the fractional identity; 0: guess, -1: adaptive");
   cfg_add(cfg, "iitype", "%d", &iitype, "integral identity type: 0: Adib-Jarzynski, 1: modulated");
   cfg_add(cfg, "mfhalfwin", "%d", &mfhalfwin, "half of the number of bins in the window, "
@@ -267,7 +264,7 @@ int main(void)
         "failed to load data from %s\n", fndsbarr[s]);
   }
   
-  merge(db, dbarr, dbet, wtb, dlnz, S, halfwinb);
+  merge(db, dbarr, dbet, wtb, dlnz, S, halfwin);
 
   distr_save(db, fndsb);
   fene(d, db, 0.7, 1.5, 1.0, fnfe);
