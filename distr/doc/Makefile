@@ -36,10 +36,12 @@ ref.ps: ref.gp
 .PHONY: clean deepclean
 
 clean:
-	rm -rf $(prj).log *.aux *~ \ 
+	rm -rf $(prj).log *.aux *~ 
 	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf ref.ps
 
 deepclean: $(clean)
+	rm -rf $(prj).log *.aux *~ 
+	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf ref.ps
 	$(MAKE) -C ../ene clean
 	$(MAKE) -C ../vol clean
 	$(MAKE) -C ../rdf clean
