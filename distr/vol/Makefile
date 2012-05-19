@@ -11,7 +11,7 @@ all: $(bin)
 vol: vol.c $(dep)
 	$(CX) -o $@ $< 
 
-run: vol
+run: $(bin)
 	python run.py
 
 zcom.h::
@@ -20,6 +20,7 @@ zcom.h::
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos
 	rm -rf bin obj *.depend *.layout fe.dat
+	rm -rf data/fe.dat data/*_[uc].dat data/vol.ps
 
 .PHONY: clean all
 

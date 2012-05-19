@@ -11,15 +11,27 @@ all: $(bin)
 bb: bb.c $(dep)
 	$(CX) -o $@ $< 
 
-run: bb
-	python run.py
+# run bb from bbcompat.txt
+run: bb.png
+	ls bb.png
+
+bb.png: bbii.txt bb.gp
+	gpload bb.gp
+
+bbii.txt: $(bin) bbcompat.txt
+	./bb
+
+# forced run
+frun::
+	./bb
+	gpload bb.gp
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) 
-	rm -rf bin obj *.depend *.layout 
+	rm -rf bin obj *.depend *.layout bbii.txt bb.png 
 
 .PHONY: clean all
 

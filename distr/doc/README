@@ -1,0 +1,19 @@
+If all data are ready, type
+
+  make
+
+The corresponding cleaning is
+  
+  make clean
+
+
+If data need to be regenerated, type
+
+  make run
+
+The corresponding cleaning is
+
+  make deepclean
+
+
+
