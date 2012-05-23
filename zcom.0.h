@@ -1,6 +1,5 @@
 /*
   common routines
-
   Copyright (c) 2006-2012 Cheng Zhang
 
   This program is free software; you can redistribute it and/or
@@ -14,7 +13,8 @@
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
   Usage:
 
@@ -34,23 +34,24 @@
         #define ZCOM_ARGOPT
       before including this file, so other modules are skipped.
 
-  5.  If the compiler supports keywords inline and restrict,
+  5.  If the compiler supports keywords inline and restrict, write
         #define INLINE inline
         #define RESRICT restrict
-      before including this file.
+      before including this file. Otherwise the two keywords are guessed
+      according to the compiler.
       
   6.  Define HAVEVAM if the compiler supports variable-argument macros.
 
-  7.  The def module defines `real' as a double, to override
+  7.  The def module defines `real' as a double, to override it, write
         typedef float real;
         #define HAVEREAL 1
       before including this file (or equivalently define HAVE_REAL)
 */
 
-/* ZCOM_PICK or ZCOM_NONE is used include only subset of modules to
- * 1. reduce the # of warnings for unused functions
- * 2. accelerate the compiling
- * 3. avoid multiple inclusions
+/* ZCOM_PICK or ZCOM_NONE is used include only subset of modules
+ * 1. to reduce the number of warnings for unused functions
+ * 2. to reduce the compiling time
+ * 3. to avoid potential name conflicts
  * By default, ZCOM_PICK is undefined, so everything is used. */
 #ifdef ZCOM_NONE  /* equivalent to ZCOM_PICK */
 #define ZCOM_PICK
@@ -95,7 +96,8 @@
 
 /* restrict keyword */
 #ifndef RESTRICT
-  #if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__))
+  #if (defined(__GNUC__) || defined(__INTEL_COMPILER) || defined(__xlC__) \
+      || (defined(_MSC_VER) && _MSC_VER >= 1400))
     #define RESTRICT __restrict
   #elif defined(__STDC_VERSION__) && (STDC_VERSION__ >= 199901L)
     #define RESTRICT restrict
@@ -127,14 +129,7 @@
   #pragma warning(disable:4505) /* unreferenced function */
   #pragma warning(disable:4514) /* unreferenced inline */
   #pragma warning(disable:4710) /* not inlined */
-  #define _CRT_SECURE_NO_DEPRECATE  /* suppress CRT _s functions warnings */
   #include <stdio.h> /* suppress CRT _s functions warnings */
-#endif
-
-#if (defined(_MSC_VER) || defined(__xlC__))
-  #ifndef M_PI
-  #define M_PI 3.14159265358979323846
-  #endif
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
