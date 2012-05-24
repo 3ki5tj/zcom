@@ -46,11 +46,11 @@ int histadd(const double *x, double w, double *h, int rows,
 
 /* object oriented wrapper functions */
 typedef struct {
-  double *arr;
   int rows;
   int n;
   double xmin;
   double dx;
+  double *arr;
   int (*fwheader)(FILE *, void *);
   int (*frheader)(const char *, void *);
   double (*fnorm)(int, int, double, double, void *);
@@ -131,11 +131,11 @@ int hist2add(const double *xarr, const double *yarr, int skip,
     int n, double xmin, double dx, unsigned flags);
 
 typedef struct {
-  double *arr;
   int rows;
   int n;
   double xmin;
   double dx;
+  double *arr, *dumptr;
 } hist2_t;
 
 #define hs2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->n)

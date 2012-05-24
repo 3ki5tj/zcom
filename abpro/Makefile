@@ -25,7 +25,7 @@ $(bin): $(deps)
 	$(CM) -o $@ $<
 
 abpro.c: abpro.0.c mk2d.py
-	./mk2d.py $@
+	python mk2d.py $@
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* ab.pos guide.gvs

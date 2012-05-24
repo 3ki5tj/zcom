@@ -6,8 +6,14 @@ debug code in target.c is removed first by calling rmdbg
 C++ compments are also removed
 '''
 
-import os, shutil, getopt, sys
-import rmdbg, depls
+import os, sys, inspect, shutil, getopt
+
+# add the current path to the search path (unnecessary)
+#curdir = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
+#if curdir not in sys.path: sys.path.insert(0, curdir)
+
+from python import rmdbg, depls
+
 
 '''
 module attributes, set before use

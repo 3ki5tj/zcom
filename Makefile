@@ -8,8 +8,8 @@ subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
 	  distr abpro cago tmh
 
 $(prj).h::
-	cd lj && ./mk2d.py && cd ..
-	cd abpro && ./mk2d.py && cd ..
+	$(MAKE) -C lj lj.c
+	$(MAKE) -C abpro abpro.c
 	python assemble.py -a -v1
 
 $(prj).zip::

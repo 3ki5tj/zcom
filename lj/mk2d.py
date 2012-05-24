@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """ create 2d versions from 3d versions """
-import os, add2d
+import os, sys, inspect
+
+# add the parent path
+sys.path.insert(0, '..')
+from python import add2d
 
 if __name__ == "__main__":
   output = "lj.c"

@@ -18,7 +18,7 @@ $(bin): $(deps)
 	$(CX) -o $@ $< 
 
 lj.c: lj.0.c mk2d.py
-	./mk2d.py $@
+	python mk2d.py $@
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* lj.pos

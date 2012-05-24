@@ -4,8 +4,7 @@
 
   This program is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
-  as published by the Free Software Foundation; either version 2
-  of the License, or (at your option) any later version.
+  version 2 as published by the Free Software Foundation.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -129,7 +128,14 @@
   #pragma warning(disable:4505) /* unreferenced function */
   #pragma warning(disable:4514) /* unreferenced inline */
   #pragma warning(disable:4710) /* not inlined */
-  #include <stdio.h> /* suppress CRT _s functions warnings */
+  #define _CRT_SECURE_NO_DEPRECATE /* suppress CRT safety warnings */
+  #include <stdio.h>
+#endif
+
+#if (defined(_MSC_VER) || defined(__xlC__))
+  #ifndef M_PI
+  #define M_PI 3.14159265358979323846
+  #endif
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__

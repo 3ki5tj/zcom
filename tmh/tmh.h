@@ -10,16 +10,16 @@ typedef struct {
   double tp, ec; /* current temperature, and the expected energy there */
   int itp, iec; /* indices of tp and ec */
   double tp0, tp1, dtp; /* temperature range */
-  int tpn; /* number of temperature */
+  int tpn, dum1_; /* number of temperature */
   double emin, emax; /* energy range */
   double de; /* bin size of energy histogram */
-  int en; /* number of energy bins */
+  int en, dum2_; /* number of energy bins */
   double erg0, erg1; /* energy range (erg0, erg1) */
   double derg; /* bin size for the updating energy range */
-  int ergn; /* number of the updating energy bins */
+  int ergn, dum3_; /* number of the updating energy bins */
   double scl; /* prefactor in effective Hamiltonian */
   double dergdt; /* (erg1 - erg0)/(tp1 - tp0) */
-  int dhdeorder; /* order of dhde interpolation */
+  int dhdeorder, dum4_; /* order of dhde interpolation */
   double dhdemin; /* minimal of dhde */
   double dhdemax; /* maximal of dhde */
   double *dhde; /* dH / dE - 1 */
@@ -28,6 +28,7 @@ typedef struct {
   double *lnz; /* partition function */
   double *lng; /* density of states */
   double *mh; /* modified Hamiltonian  */
+  double *dum5_;
   double elimit; /* energy limit */
   double springk; /* elastic constant to ensure smoothness of dH/dE */
   unsigned flags; /* flags */
