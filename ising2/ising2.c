@@ -30,7 +30,7 @@ int is2_check(ising_t *is)
 {
   int i, e, m;
 
-  for (i = 0; i < is->n; i++) 
+  for (i = 0; i < is->n; i++)
     if (is->s[i] != 1 && is->s[i] != -1) {
       fprintf(stderr, "error: s[%d] = %d\n", i, is->s[i]);
       return -1;
@@ -40,7 +40,7 @@ int is2_check(ising_t *is)
   is2_em(is);
   if  (e != is->E || e < -2*is->n || e > 2*is->n
     || m != is->M || m < -is->n   || m > is->n) {
-    fprintf(stderr, "error: E = %d, %d; M = %d, %d\n", 
+    fprintf(stderr, "error: E = %d, %d; M = %d, %d\n",
         e, is->E, m, is->M);
     return -1;
   }
@@ -83,7 +83,7 @@ int is2_load(ising_t *is, const char *fname)
     fprintf(stderr, "missing first line %s\n", fname);
     return -1;
   }
-  if (4 != sscanf(s, "%d%d%d%d", &i, &lx, &ly, &n) 
+  if (4 != sscanf(s, "%d%d%d%d", &i, &lx, &ly, &n)
       || i != 2 || lx != ly || lx != is->l || n != is->n) {
     fprintf(stderr, "bad setting: %dD, %dx%d = %d\n", i, lx, ly, n);
     return -1;
@@ -136,7 +136,7 @@ ising_t *is2_open(int l)
   return is;
 }
 
-void is2_close(ising_t *is) 
+void is2_close(ising_t *is)
 {
   if (is != NULL) {
     free(is->s);
@@ -232,7 +232,7 @@ double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     f = lxh*g;
     lnz3 += lnadd(f, -f); /* log [2 cosh(f)] */
     lnz4 += (f < 0) ? lndif(-f, f) : lndif(f, -f); /* avoid neg. g0 */
-   
+
     ex = exp(-f);
     th = 2./(1. + ex*ex) - 1.;
     dg = (r == 0) ? dg0 : exp(lnch2b - lnsl)*cd;
@@ -266,6 +266,67 @@ double is2_exact(ising_t *is, double beta, double *eav, double *cv)
   ddz = (ddr1 + z21*ddr2 + z31*ddr3 + z41*ddr4)/za1;
   *cv = bsqr * (-2.*n/(sh2b*sh2b) + ddz - dz*dz);
   return lnz;
+}
+
+/* load the exact logarithmic density of states from file
+ * both n and m should be is->l
+ * Minimal Mathematica script to generate exact DOS files
+
+NDOS[m_, n_] := Module[{x, xp, prec = Floor[1.5 n m Log[2]/Log[10]], b, a, c2, s2, c0, s0, cn, sn},
+  b = 2 x (1 - x^2);
+  a[k_] := (1 + x^2)^2 - b Cos[Pi k/n];
+  c0 = (1 - x)^m + x^m (1 + x)^m;
+  s0 = (1 - x)^m - x^m (1 + x)^m;
+  cn = (1 + x)^m + x^m (1 - x)^m;
+  sn = (1 + x)^m - x^m (1 - x)^m;
+  c2[k_] := (Sum[ m!/(2 j)!/(m - 2 j)! (a[k]^2 - b^2)^j a[k]^(m - 2 j), {j, 0, IntegerPart[m/2]}] + b^m)/2^(m - 1);
+  s2[k_] := (Sum[ m!/(2 j)!/(m - 2 j)! (a[k]^2 - b^2)^j a[k]^(m - 2 j), {j, 0, IntegerPart[m/2]}] - b^m)/2^(m - 1);
+  xp = Expand[ N[ (1/2) If[Mod[n, 2] == 0,
+    Product[c2[2 k + 1], {k, 0, n/2 - 1}]
+  + Product[s2[2 k + 1], {k, 0, n/2 - 1}]
+  + c0 cn Product[c2[2 k], {k, 1, n/2 - 1}]
+  + s0 sn Product[s2[2 k], {k, 1, n/2 - 1}],
+    cn Product[c2[2 k + 1], {k, 0, (n - 3)/2}]
+  + sn Product[s2[2 k + 1], {k, 0, (n - 3)/2}]
+  + c0 Product[c2[2 k], {k, 1, (n - 1)/2}]
+  + s0 Product[s2[2 k], {k, 1, (n - 1)/2}]], prec]];
+  Take[Round[Chop[CoefficientList[xp, x]]], {1, -1, 2}]];
+
+savels[fn_, ls_] := Module[{fp = OpenWrite[fn], i},
+  For[i = 1, i <= Length[ls], i++, Write[fp, ls[[i]]]]; Close[fp]];
+
+easydos[n_, m_] := Module[{dos = NDOS[n, m], logdos = Table[0, {n m + 1}], i},
+  savels["IsingDOS" <> ToString[n] <> "x" <> ToString[m] <> ".txt", dos];
+  For[i = 1, i <= n m + 1, i++,
+    logdos[[i]] = If[dos[[i]] == 0, -10000, N[Log[dos[[i]]], 17]]];
+  savels["islogdos" <> ToString[n] <> "x" <> ToString[m] <> ".txt", logdos]];
+  */
+int is2loadlogdos(const char *fn, double *logdos, int n, int m)
+{
+  char s[1024];
+  FILE *fp;
+  int i, err = 0;
+
+  if (fn == NULL) { /* use standard file name */
+    sprintf(s, "islogdos%dx%d.txt", n, m);
+    fn = s;
+  }
+  xfopen(fp, fn, "r", return -1);
+
+  for (i = 0; i <= n*m;  i++) {
+    if (fgets(s, sizeof s, fp) == NULL) {
+      printf("file %s ended at line %d/%d\n", fn, i, n*m);
+      err = 1;
+      break;
+    }
+    if (1 != sscanf(s, "%lf", &logdos[i])) {
+      printf("sscanf failed in reading %s, line %d/%d\n", fn, i, n*m);
+      err = 2;
+      break;
+    }
+  }
+  fclose(fp);
+  return err;
 }
 
 #endif /* IS2_C__ */

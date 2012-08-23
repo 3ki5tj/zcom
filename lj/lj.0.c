@@ -205,11 +205,72 @@ INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
 {
   int i, dnpr;
   real xi[3];
-  
+
   i = lj_randmv3d(lj, xi, amp);
-  dnpr = lj_depotsq3d(lj, i, xi);
-  if (metroacc(dnpr, bet * dnpr)) {
+  dnpr = lj_depotsq3d(lj, i, xi); /* increase of pairs == decrease of energy */
+  if (metroacc1(-dnpr, bet)) {
     lj_commitsq3d(lj, i, xi, dnpr);
+    return 1;
+  }
+  return 0;
+}
+
+/* compute energy data for a particle pair, with switched potential  */
+INLINE int lj_pairsw3d(lj_t *lj, real *xi, real *xj, real l, real rc2,
+    real *u, real *vir)
+{
+  real dx[3], dr2, dr, fscal, psi, ksi;
+  dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
+  if (dr2 < rc2) {
+    dr = (real) sqrt(dr2);
+    *u = lj_potsw(lj, dr, &fscal, &psi, &ksi);
+    *vir = fscal * dr2; /* f.r */
+    return 1;
+  } else return 0;
+}
+
+/* return the energy change from displacing x[i] to xi */
+INLINE real lj_depotsw3d(lj_t *lj, int i, real *xi, real *vir)
+{
+  int j, n = lj->n;
+  real l = lj->l, rc2 = lj->rc2, u = 0.f, du = 0.f, dvir = 0.f;
+  rv3_t *x = (rv3_t *) lj->x;
+
+  *vir = 0.0f;
+  for (j = 0; j < n; j++) { /* pair */
+    if (j == i) continue;
+    if (lj_pairsw3d(lj, x[i], x[j], l, rc2, &du, &dvir)) {
+      u -= du;
+      *vir -= dvir;
+    }
+    if (lj_pairsw3d(lj, xi, x[j], l, rc2, &du, &dvir)) {
+      u += du;
+      *vir += dvir;
+    }
+  }
+  return u;
+}
+
+/* commit a particle displacement 
+ * like energysw3d, it does not set pair data, lj->pr
+ * call lj_forcesw3d() if it is needed */
+INLINE void lj_commitsw3d(lj_t *lj, int i, const real *xi, real du, real dvir)
+{
+  rv3_copy(lj->x + i*3, xi);
+  lj->epot += du;
+  lj->vir += dvir;
+}
+
+/* Metropolis algorithm */
+INLINE int lj_metrosw3d(lj_t *lj, real amp, real bet)
+{
+  int i;
+  real xi[3], du, dvir;
+
+  i = lj_randmv3d(lj, xi, amp);
+  du = lj_depotsw3d(lj, i, xi, &dvir);
+  if (metroacc1(du, bet)) {
+    lj_commitsw3d(lj, i, xi, du, dvir);
     return 1;
   }
   return 0;
@@ -234,7 +295,7 @@ INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
 INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 {
   int j, n = lj->n;
-  real l = lj->l, rc2 = lj->rc2, u = 0.f, du, dvir;
+  real l = lj->l, rc2 = lj->rc2, u = 0.f, du = 0.f, dvir = 0.f;
   rv3_t *x = (rv3_t *) lj->x;
 
   *vir = 0.0f;
@@ -257,18 +318,19 @@ INLINE void lj_commit3d(lj_t *lj, int i, const real *xi, real du, real dvir)
 {
   rv3_copy(lj->x + i*3, xi);
   lj->epot += du;
-  lj->vir += dvir; 
+  lj->vir += dvir;
 }
 
 INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
 {
   int i;
-  real xi[3], du, dvir;
-  
+  real xi[3], du = 0.f, dvir = 0.f;
+
   if (lj->usesq) return lj_metrosq3d(lj, amp, bet);
+  if (lj->usesw) return lj_metrosw3d(lj, amp, bet);
   i = lj_randmv3d(lj, xi, amp);
   du = lj_depot3d(lj, i, xi, &dvir);
-  if (metroacc(-du, -bet*du)) {
+  if (metroacc1(du, bet)) {
     lj_commit3d(lj, i, xi, du, dvir);
     return 1;
   }
@@ -443,7 +505,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial, real *eps)
 
 INLINE real lj_force3d(lj_t *lj)
 {
-  if (lj->usesw) return lj->epot = lj_forcesw3d(lj, (rv3_t *) lj->x, (rv3_t *) lj->f, 
+  if (lj->usesw) return lj->epot = lj_forcesw3d(lj, (rv3_t *) lj->x, (rv3_t *) lj->f,
       lj->pr, &lj->npr, &lj->vir, &lj->f2, &lj->lap);
   else if (lj->usesq) return lj->epot = lj_energysq3d(lj, (rv3_t *) lj->x); /* no force for square well */
   else return lj->epot = lj_forcelj3d(lj, (rv3_t *) lj->x, (rv3_t *) lj->f, &lj->vir, &lj->epots);
@@ -467,7 +529,7 @@ void lj_vv(lj_t *lj, real dt)
   lj_force(lj); /* calculate the new force */
   for (i = 0; i < nd; i++) /* VV part 2 */
     lj->v[i] += lj->f[i] * dt * .5f;
-  
+
   lj->ekin = md_ekin(lj->v, nd, lj->dof, &lj->tkin);
   lj->t += dt;
 }
@@ -523,7 +585,7 @@ INLINE real lj_bconfsw3d(lj_t *lj, real *udb)
        \partial bc/ \partial E = <d(bc)^2 + udb> */
     *udb = invg4*(gdlap - (lj->lap*m + h2 + gdm)*invg2 + 2.f*m*m*invg4);
   }
-  
+
   return bc;
 }
 
@@ -544,7 +606,7 @@ INLINE real lj_vir2sw3d(lj_t *lj)
 INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 {
   real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
-  double r;
+  double dex;
 
   lo = lj->l;
   vo = lj->vol;
@@ -556,11 +618,11 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
   vn = (real) pow(ln, lj->d);
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
-  r = -bet*(lj->epot - epo + p*(vn - vo)) + (lj->n + 1) * lj->d * (logln - loglo);
-/*  
+  dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
+/*
   printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
 */
-  if (metroacc(r, 1.0)) {
+  if (metroacc1(dex, 1.0)) {
     return 1;
   } else {
     lj_setrho(lj, lj->n/vo);

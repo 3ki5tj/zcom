@@ -20,6 +20,8 @@ int     is2_check(ising_t *is);
 int     is2_load(ising_t *is, const char *fname);
 int     is2_save(const ising_t *is, const char *fname);
 double  is2_exact(ising_t *is, double beta, double *eav, double *cv);
+int     is2loadlogdos(const char *fn, double *logdos, int n, int m);
+#define is2_loadlogdos(is, fn, logdos)  is2loadlogdos(fn, logdos, is->l, is->l)
 int     is2_pick(const ising_t *is, int *h);
 int     is2_flip(ising_t *is, int id, int h);
 ising_t*is2_open(int l);
