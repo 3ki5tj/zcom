@@ -189,39 +189,38 @@ INLINE int lj_depotsq3d(lj_t *lj, int i, real *xi)
     npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2);
     npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2);
   }
-  return npr;
+  return -npr; /* increased number of pairs == decreased energy */
 }
 
 /* commit a particle displacement for a square wel potential */
-INLINE void lj_commitsq3d(lj_t *lj, int i, const real *xi, int dnpr)
+INLINE void lj_commitsq3d(lj_t *lj, int i, const real *xi, int du)
 {
   rv3_copy(lj->x + i*3, xi);
-  lj->npr += dnpr;
-  lj->epot -= dnpr;
+  lj->npr -= du;
+  lj->epot += du;
 }
 
 /* metropolis for a square well */
 INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
 {
-  int i, dnpr;
+  int i, du;
   real xi[3];
 
   i = lj_randmv3d(lj, xi, amp);
-  dnpr = lj_depotsq3d(lj, i, xi); /* increase of pairs == decrease of energy */
-  if (metroacc1(-dnpr, bet)) {
-    lj_commitsq3d(lj, i, xi, dnpr);
+  du = lj_depotsq3d(lj, i, xi);
+  if (metroacc1(du, bet)) {
+    lj_commitsq3d(lj, i, xi, du);
     return 1;
   }
   return 0;
 }
 
 /* compute energy data for a particle pair, with switched potential  */
-INLINE int lj_pairsw3d(lj_t *lj, real *xi, real *xj, real l, real rc2,
-    real *u, real *vir)
+INLINE int lj_pairsw3d(lj_t *lj, real *xi, real *xj, real *u, real *vir)
 {
   real dx[3], dr2, dr, fscal, psi, ksi;
-  dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
-  if (dr2 < rc2) {
+  dr2 = lj_pbcdist2_3d(dx, xi, xj, lj->l);
+  if (dr2 < lj->rc2) {
     dr = (real) sqrt(dr2);
     *u = lj_potsw(lj, dr, &fscal, &psi, &ksi);
     *vir = fscal * dr2; /* f.r */
@@ -233,17 +232,17 @@ INLINE int lj_pairsw3d(lj_t *lj, real *xi, real *xj, real l, real rc2,
 INLINE real lj_depotsw3d(lj_t *lj, int i, real *xi, real *vir)
 {
   int j, n = lj->n;
-  real l = lj->l, rc2 = lj->rc2, u = 0.f, du = 0.f, dvir = 0.f;
+  real u = 0.f, du = 0.f, dvir = 0.f;
   rv3_t *x = (rv3_t *) lj->x;
 
   *vir = 0.0f;
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    if (lj_pairsw3d(lj, x[i], x[j], l, rc2, &du, &dvir)) {
+    if (lj_pairsw3d(lj, x[i], x[j], &du, &dvir)) {
       u -= du;
       *vir -= dvir;
     }
-    if (lj_pairsw3d(lj, xi, x[j], l, rc2, &du, &dvir)) {
+    if (lj_pairsw3d(lj, xi, x[j], &du, &dvir)) {
       u += du;
       *vir += dvir;
     }
@@ -277,7 +276,7 @@ INLINE int lj_metrosw3d(lj_t *lj, real amp, real bet)
 }
 
 /* compute energy data for a 3D Lennard-Jones pair */
-INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
+INLINE int lj_pairlj3d(real *xi, real *xj, real l, real rc2,
     real *u, real *vir)
 {
   real dx[3], dr2, invr2, invr6;
@@ -292,7 +291,7 @@ INLINE int lj_pair3d(real *xi, real *xj, real l, real rc2,
 }
 
 /* return the energy change from displacing x[i] to xi */
-INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
+INLINE real lj_depotlj3d(lj_t *lj, int i, real *xi, real *vir)
 {
   int j, n = lj->n;
   real l = lj->l, rc2 = lj->rc2, u = 0.f, du = 0.f, dvir = 0.f;
@@ -301,11 +300,11 @@ INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
   *vir = 0.0f;
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    if (lj_pair3d(x[i], x[j], l, rc2, &du, &dvir)) {
+    if (lj_pairlj3d(x[i], x[j], l, rc2, &du, &dvir)) {
       u -= du;
       *vir -= dvir;
     }
-    if (lj_pair3d(xi, x[j], l, rc2, &du, &dvir)) {
+    if (lj_pairlj3d(xi, x[j], l, rc2, &du, &dvir)) {
       u += du;
       *vir += dvir;
     }
@@ -314,30 +313,61 @@ INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 }
 
 /* commit a particle displacement */
-INLINE void lj_commit3d(lj_t *lj, int i, const real *xi, real du, real dvir)
+INLINE void lj_commitlj3d(lj_t *lj, int i, const real *xi, real du, real dvir)
 {
   rv3_copy(lj->x + i*3, xi);
   lj->epot += du;
   lj->vir += dvir;
 }
 
-INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
+INLINE int lj_metrolj3d(lj_t *lj, real amp, real bet)
 {
   int i;
   real xi[3], du = 0.f, dvir = 0.f;
 
-  if (lj->usesq) return lj_metrosq3d(lj, amp, bet);
-  if (lj->usesw) return lj_metrosw3d(lj, amp, bet);
   i = lj_randmv3d(lj, xi, amp);
-  du = lj_depot3d(lj, i, xi, &dvir);
+  du = lj_depotlj3d(lj, i, xi, &dvir);
   if (metroacc1(du, bet)) {
-    lj_commit3d(lj, i, xi, du, dvir);
+    lj_commitlj3d(lj, i, xi, du, dvir);
     return 1;
   }
   return 0;
 }
 
-/* 3D metropolis algorithm */
+/* return the pair energy between two particles at xi and xj */
+INLINE int lj_pair3d(lj_t *lj, real *xi, real *xj, real *u, real *vir)
+{
+  if (lj->usesq) return lj_pairsq3d(xi, xj, lj->l, lj->ra2, lj->rb2);
+  if (lj->usesw) return lj_pairsw3d(lj, xi, xj, u, vir);
+  return lj_pairlj3d(xi, xj, lj->l, lj->rc2, u, vir);
+}
+
+/* return the energy change from displacing x[i] to xi */
+INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
+{
+  if (lj->usesq) return lj_depotsq3d(lj, i, xi);
+  if (lj->usesw) return lj_depotsw3d(lj, i, xi, vir);
+  return lj_depotlj3d(lj, i, xi, vir);
+}
+
+/* this is defined as a macro for du is `int' in sq case, but real in other cases */
+#define lj_commit3d(lj, i, xi, du, dvir) { \
+  (lj->usesq) ? lj_commitsq3d(lj, i, xi, du) : \
+  (lj->usesw) ? lj_commitsw3d(lj, i, xi, du, dvir) : \
+  lj_commitlj3d(lj, i, xi, du, dvir); }
+
+/* commit a move */
+#define  lj_commit(lj, i, xi, du, dvir) \
+  (lj->d == 2 ? lj_commit2d(lj, i, xi, du, dvir) : lj_commit3d(lj, i, xi, du, dvir); )
+
+INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
+{
+  if (lj->usesq) return lj_metrosq3d(lj, amp, bet);
+  if (lj->usesw) return lj_metrosw3d(lj, amp, bet);
+  return lj_metrolj3d(lj, amp, bet);
+}
+
+/* metropolis algorithm */
 INLINE int lj_metro(lj_t *lj, real amp, real bet)
 { return lj->d == 2 ? lj_metro2d(lj, amp, bet) : lj_metro3d(lj, amp, bet); }
 

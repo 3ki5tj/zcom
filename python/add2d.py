@@ -1,22 +1,32 @@
 import re, os, copy
 
 def addfunc2d(lines, funcname):
-  ''' add 2D version of a 3d function '''
+  ''' add 2D version of a 3D function '''
+  
+  ismacro = 0
 
   # 1. search the beginning of the function
   for i0 in range(len(lines)):
     s = lines[i0]
-    if (s.startswith("static") or s.startswith("INLINE")) \
-        and s.find(funcname + "(") >= 0:
+    if ( (s.startswith("static") or s.startswith("INLINE") ) 
+        and s.find(funcname + "(") >= 0):
+      break
+    if ( s.startswith("#define")
+        and s.find(funcname + "(") >= 0):
+      ismacro = 1
       break
   else:
     print "cannot find function start of %s" % funcname
     raise Exception
 
   # 2. search the end of the function
-  for i1 in range(i0 + 1, len(lines)):
-    if lines[i1].rstrip() == '}':
-      break
+  for i1 in range(i0, len(lines)):
+    if ismacro: # macro
+      if lines[i1].strip() == "" or lines[i1].strip()[-1] != "\\":
+        break
+    else:  #  function
+      if lines[i1].rstrip() == '}':
+        break
     s = lines[i1].strip()
     if s.startswith("{") and s.endswith("}") and lines[i1 + 1].strip() == "":
       break
