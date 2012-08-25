@@ -191,4 +191,23 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
   }
 }
 
+/* dump the current values */
+void argopt_dump(const argopt_t *ao)
+{
+  int i, len = 2;
+  opt_t *ol = ao->opts;
+
+  /* get the widest the option */
+  for (i = 0; i < ao->nopt; i++)
+    len = intmax(len, strlen(ol[i].sflag));
+
+  /* print values of all options */
+  for (i = 0; i < ao->nopt; i++) {
+    printf("%*s: ", len+1, ol[i].sflag);
+    opt_printptr(ol + i);
+    printf(",  %s\n", ol[i].desc);
+  }
+}
+
+
 #endif

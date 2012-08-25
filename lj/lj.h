@@ -21,7 +21,8 @@ typedef struct {
 
   real * RESTRICT x; /* reduced unit (0, 1) */
   real * RESTRICT v, * RESTRICT f;
-  real epot, epots; /* potential energy and shifted potential energy */
+  real epot0, epot, epots; /* potential energy: pure, with tail correction and shifted potential energy */
+  int iepot;  /* integer energy for square-well potential */
   real ekin, tkin, etot;
   real vir; /* virial */
   real epot_shift, epot_tail, p_tail;

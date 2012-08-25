@@ -253,7 +253,7 @@ static void guess_erange(abpro_t *ab, double tp0, double tp1,
 static void doargs(int argc, char **argv)
 {
   double maxh = 1e9;
-  argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -h */
+  argopt_t *ao = argopt_open(ARGOPT_LONGOPT); /* for -maxh */
   argopt_add(ao, "-maxh", "%lf", &maxh, "maximal hours");
   argopt_add(ao, "-cfg", NULL, &fncfg, "configuration file");
   argopt_add(ao, "-g", NULL, &fnlog, "log file");

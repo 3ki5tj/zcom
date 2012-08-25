@@ -179,7 +179,7 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
     return NULL;
   }
   if (t != NULL)
-    for (p = s + sizes; (*p++ = *t++); ) /* copy/cat the string */
+    for (p = s + sizes; (*p++ = *t++) != '\0'; ) /* copy/cat the string */
       ;
   if (ps != NULL)
     *ps = s;

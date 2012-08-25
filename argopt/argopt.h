@@ -33,6 +33,7 @@ void argopt_close(argopt_t *ao);
 int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc);
 void argopt_parse(argopt_t *ao, int argc, char **argv); 
+void argopt_dump(const argopt_t *ao);
 
 #define argopt_addhelp(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$HELP")
 #define argopt_addversion(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$VERSION")
