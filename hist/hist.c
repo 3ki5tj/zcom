@@ -158,7 +158,7 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
   }
   fclose(fp);
   if (flags & HIST_VERBOSE) {
-    fprintf(stderr, "successful wrote %s\n", fn);
+    fprintf(stderr, "successfully wrote %s\n", fn);
     for (r = 0; r < rows; r++)
       fprintf(stderr, "%2d cnt: %20.4f av: %10.4f(%10.4f)\n", 
           r, sums[r], sums[r+rows], sums[r+rows*2]);
@@ -430,7 +430,7 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
   }
   fclose(fp);
   if (flags & HIST_VERBOSE) {
-    fprintf(stderr, "successful wrote %s\n", fn);
+    fprintf(stderr, "successfully wrote %s\n", fn);
     for (r = 0; r < rows; r++)
       fprintf(stderr, "%2d cnt: %20.4f xav: %10.4f(%10.4f) yav: %10.4f(%10.4f)\n", 
           r, sums[r], sums[r+rows], sums[r+rows*2], sums[r+rows*3], sums[r+rows*4]);
