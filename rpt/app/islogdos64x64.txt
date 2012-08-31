@@ -1,0 +1,1 @@
+../../ising2/data/islogdos64x64.txt

@@ -1,0 +1,1 @@
+../../ising2/data/islogdos16x16.txt

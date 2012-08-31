@@ -290,7 +290,7 @@ INLINE double rpti_bet1(const rpti_t *t, double *bet0)
 }
 
 /* a rough estimate for bet, return 1 if it's a special case  */
-INLINE rpti_prepbet(const rpti_t *t, double *bet)
+INLINE int rpti_prepbet(const rpti_t *t, double *bet)
 {
   int i, e;
   int hl, hr;

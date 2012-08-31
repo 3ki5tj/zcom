@@ -1,6 +1,6 @@
 CC = gcc -O0 -g3 -Wall -Wextra -pedantic -Wno-variadic-macros
 CX = icc -O3 -Wall
-usbdir = /media/RII
+usbdir = /media/C3
 prj = zcom
 
 subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \

@@ -131,6 +131,7 @@ ising_t *is2_open(int l)
   for (i = 0; i < n; i++) is->s[i] = -1;
   is->M = -n;
   is->E = -2*n;
+  xnew(is->logdos, n + 1);
   xnew(is->uproba, 2*is->d+1);
   is->uproba[0] = 0xffffffff;
   return is;
@@ -140,6 +141,7 @@ void is2_close(ising_t *is)
 {
   if (is != NULL) {
     free(is->s);
+    free(is->logdos);
     free(is->uproba);
     free(is);
   }
@@ -301,7 +303,7 @@ easydos[n_, m_] := Module[{dos = NDOS[n, m], logdos = Table[0, {n m + 1}], i},
     logdos[[i]] = If[dos[[i]] == 0, -10000, N[Log[dos[[i]]], 17]]];
   savels["islogdos" <> ToString[n] <> "x" <> ToString[m] <> ".txt", logdos]];
   */
-int is2loadlogdos(const char *fn, double *logdos, int n, int m)
+int is2loadlogdos(double *logdos, int n, int m, const char *fn)
 {
   char s[1024];
   FILE *fp;
