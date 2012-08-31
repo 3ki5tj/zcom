@@ -51,33 +51,14 @@ INLINE double rpt_bet1(const rpt_t *t)
   return (var > 0.) ? (2.0*ave/var) : 0.;
 }
 
-/* evaluate f = < exp(-bet*e) > and -df/dbet */
-INLINE double rpt_getf(const hist_t *hs, double bet, double *df)
+/* obtain a rough estimate of bet, return 1 if it's a special case */
+INLINE int rpt_prepbet(const rpt_t *t, double *bet)
 {
-  int i;
-  double f, cnt, e, xp, *h = hs->arr;
-
-  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
-    if (h[i] <= 0.) continue;
-    e = hs->xmin + (i + .5) * hs->dx;
-    xp = exp(-bet*e);
-    cnt += h[i];
-    f   += h[i] * xp;
-    *df += h[i] * xp * e;
-  }
-  f /= cnt;
-  *df /= cnt;
-  return f;
-}
-
-/* obtain the nontrivial solution of < exp(-bet * e) > = 1 */
-INLINE double rpt_bet(const rpt_t *t)
-{
-  int it, i, l = 0, r = 0;
-  double bet, dbet, dbmax, cnt, sm1, sm2, f, df, e, eps = 1e-10, *h = t->hs->arr;
+  int i, l = 0, r = 0, verbose = 0;
+  double cnt, sm1, sm2, e, eps = 1e-10, *h = t->hs->arr;
   hist_t *hs = t->hs;
-  int verbose = 1;
 
+  *bet = 0.;
   /* count the total number and get a rough estimate */
   if (verbose >= 2) printf("  e   #\n");
   for (cnt = sm1 = sm2 = 0, i = 0; i < hs->n; i++) {
@@ -90,29 +71,35 @@ INLINE double rpt_bet(const rpt_t *t)
     if (verbose >= 2) printf("%4g %g\n", e, h[i]);
   }
   if (verbose >= 2) printf("\n");
-  if (cnt <= 0.) return 0.; /* no data */
+  if (cnt <= 0.) return 1; /* no data */
   /* one-sided, beta = +/- inf. */
-  if (!l) return RPT_INF;
-  if (!r) return -RPT_INF;
-  if (fabs(sm1) < eps * cnt) return 0.0; /* even distribution, beta = 0 */
-  bet = dbet = 2.0*sm1/sm2; /* should be an underestimate */
+  if (!l) { *bet =  RPT_INF; return 1; }
+  if (!r) { *bet = -RPT_INF; return 1; }
+  if (fabs(sm1) < eps * cnt) return 1; /* even distribution, beta = 0 */
+  *bet = 2.0*sm1/sm2; /* should be an underestimate */
+  if (verbose)
+    printf("Compare: %g, %g;  %g, %g;  %g, %g\n", t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
+  return 0;
+}
+
+INLINE double rpt_refinebet(const rpt_t *t, double bet0,
+  double (*func)(const hist_t*, double, int, double*), int ord)
+{
+  int it, verbose = 0;
+  double bet, dbet, dbmax, f, df;
 
   /* increase bet, such that <exp(-bet*de)>  > 1 */
-  for (; ; bet *= 1.4)
-    if ((f = rpt_getf(t->hs, bet, &df)) > 1) break;
-
-  if (verbose) {
-    printf("Compare: %g, %g;  %g, %g;  %g, %g\n", t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
-    printf("first estimate being %g, cf. %g, expanded to %g\n", dbet, rpt_bet0(t), bet);
-  }
+  for (bet = bet0; ; bet *= 1.4)
+    if ((f = (*func)(t->hs, bet, ord, &df)) > 0) break;
+  if (verbose) printf("expanded bet from %g to %g, f %g, df %g\n", bet0, bet, f, df);
 
   dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
 
   /* iteratively refine the temperature */
   for (it = 0; it <= 1000; it++) {
-    f = rpt_getf(t->hs, bet, &df);
-    if (fabs(f - 1) < 1e-14) break;
-    dbet = dblconfine((f - 1)/df, -dbmax, dbmax);
+    f = (*func)(t->hs, bet, ord, &df);
+    if (fabs(f) < 1e-14) break;
+    dbet = dblconfine(f/df, -dbmax, dbmax);
     if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
     bet += dbet;  /* f should be one, derivative is -df */
   }
@@ -120,7 +107,36 @@ INLINE double rpt_bet(const rpt_t *t)
   return bet;
 }
 
-/* evaluate f = < min{1, exp(-bet * e)} sgn(e) |e|^ord > and -df/dbet */
+/* evaluate f = < exp(-bet*e) > - 1 and -df/dbet */
+INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *df)
+{
+  int i;
+  double f, cnt, e, xp, *h = hs->arr;
+
+  (void) ord;
+  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
+    if (h[i] <= 0.) continue;
+    e = hs->xmin + (i + .5) * hs->dx;
+    xp = exp(-bet*e);
+    cnt += h[i];
+    f   += h[i] * xp;
+    *df += h[i] * xp * e;
+  }
+  f /= cnt;
+  *df /= cnt;
+  return f - 1;
+}
+
+/* obtain the nontrivial solution of < exp(-bet * e) > = 1 */
+INLINE double rpt_bet(const rpt_t *t)
+{
+  double bet;
+
+  if (rpt_prepbet(t, &bet)) return bet;
+  return rpt_refinebet(t, bet, rpt_getf, 0);
+}
+
+/* evaluate f = (-bet) < min{1, exp(-bet * e)} sgn(e) |e|^ord > and -df/dbet */
 INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *df)
 {
   int i, sgn;
@@ -141,64 +157,50 @@ INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *df)
       f   += h[i] * xp;
       *df += h[i] * xp * e;
     }
-    //printf("i %d, e %g, f %g, df %g, h %g, xp %g\n", i, e, f, *df, h[i], xp);
   }
-  //printf("bet %g, f %g, df %g\n", bet, f, *df);
-  f /= cnt;
-  *df /= cnt;
+  f *= -bet/cnt;
+  *df *= -bet/cnt;
   return f;
 }
 
 /* obtain the nontrivial solution of < min{1, exp(-bet * e)} sgn(e) |e|^ord > = 0 */
 INLINE double rpt_bets(const rpt_t *t, int ord)
 {
-  int it, i, l = 0, r = 0;
-  double bet, dbet, dbmax, cnt, sm1, sm2, f, df, e, eps = 1e-10, *h = t->hs->arr;
-  hist_t *hs = t->hs;
-  int verbose = 1;
+  double bet;
 
-  /* count the total number and get a rough estimate */
-  if (verbose >= 2) printf("  e   #\n");
-  for (cnt = sm1 = sm2 = 0, i = 0; i < hs->n; i++) {
-    e = hs->xmin + (i + .5) * hs->dx;
-    if (h[i] <= 0.) continue;
-    if (e < -eps) l = 1; else if (e > eps) r = 1;
-    cnt += h[i];
-    sm1 += h[i] * e;
-    sm2 += h[i] * e * e;
-    if (verbose >= 2) printf("%4g %g\n", e, h[i]);
-  }
-  if (verbose >= 2) printf("\n");
-  if (cnt <= 0.) return 0.; /* no data */
-  /* one-sided, beta = +/- inf. */
-  if (!l) return RPT_INF;
-  if (!r) return -RPT_INF;
-  if (fabs(sm1) < eps * cnt) return 0.0; /* even distribution, beta = 0 */
-  dbet = 2.0*sm1/sm2; /* should be an underestimate */
-
-  /* increase bet, such that <exp(-bet*de)>  > 1 */
-  for (bet = dbet; ; bet *= 1.4)
-    if ((f = rpt_getfs(t->hs, bet, ord, &df))*bet < 0) break;
-
-  if (verbose) {
-    printf("Compare: %g, %g;  %g, %g;  %g, %g\n", t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
-    printf("first estimate being %g, cf. %g, expanded to %g\n", dbet, rpt_bet0(t), bet);
-  }
-
-  dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
-
-  /* iteratively refine the temperature */
-  for (it = 0; it <= 1000; it++) {
-    f = rpt_getfs(t->hs, bet, ord, &df);
-    if (fabs(f) < 1e-14) break;
-    dbet = dblconfine(f/df, -dbmax, dbmax);
-    if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
-    bet += dbet;  /* f should be one, derivative is -df */
-  }
-  if (verbose >= 2) printf("\n\n");
-  return bet;
+  if (rpt_prepbet(t, &bet)) return bet;
+  return rpt_refinebet(t, bet, rpt_getfs, ord);
 }
 
+/* evaluate f = (-bet) < exp(-bet/2 * e) sgn(e) |e|^ord > */
+INLINE double rpt_getfh(const hist_t *hs, double bet, int ord, double *df)
+{
+  int i, sgn;
+  double f, cnt, e, ep, xp, *h = hs->arr;
+
+  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
+    if (h[i] <= 0.) continue;
+    cnt += h[i];
+    e = hs->xmin + (i + .5) * hs->dx;
+    sgn = (e > 0.) ? 1 : (e < 0.) ? -1 : 0;
+    ep = pow(fabs(e), ord) * sgn;
+    xp   = exp(-.5*bet*e) * ep;
+    f   += h[i] * xp;
+    *df += .5* h[i] * xp * e;
+  }
+  f *= -bet/cnt;
+  *df *= -bet/cnt;
+  return f;
+}
+
+/* obtain the nontrivial solution of < exp(-bet/2 * e) sgn(e) |e|^ord > = 0 */
+INLINE double rpt_beth(const rpt_t *t, int ord)
+{
+  double bet;
+
+  if (rpt_prepbet(t, &bet)) return bet;
+  return rpt_refinebet(t, bet, rpt_getfh, ord);
+}
 
 /* write distribution to file */
 INLINE int rpt_wdist(rpt_t *t, const char *fn)
@@ -265,7 +267,7 @@ INLINE double rpti_cnt(rpti_t *t)
 
 
 /* estimate the temperature from 2 <e> / <e^2>, and 2 <e> / <De^2> */
-INLINE double rpti_bet1(rpti_t *t, double *bet0)
+INLINE double rpti_bet1(const rpti_t *t, double *bet0)
 {
   int i;
   double e, cnt = 0, sm = 0., sm2 = 0.;
@@ -287,12 +289,61 @@ INLINE double rpti_bet1(rpti_t *t, double *bet0)
   return 2.0*sm/sm2;
 }
 
-/* evaluate f = < exp(-bet*e) > and -df/dbet */
-INLINE double rpti_getf(const rpti_t *t, double bet, double *df)
+/* a rough estimate for bet, return 1 if it's a special case  */
+INLINE rpti_prepbet(const rpti_t *t, double *bet)
+{
+  int i, e;
+  int hl, hr;
+
+  /* I. get a rough estimate */
+  rpti_bet1(t, bet);
+  if (fabs(*bet) < 1e-14 || fabs(*bet) > .99*RPT_INF) return 1;
+
+  /* II. check if the distribution is single-sided, which means infinite beta */
+  for (hl = hr = 0, i = 0; i <= t->m; i++) {
+    e = t->emin + i * t->edel;
+    if (e < 0) hl += t->h[i];
+    else if (e > 0) hr += t->h[i];
+  }
+  if (hl <= 0.) { *bet = RPT_INF; return 1; }
+  if (hr <= 0.) { *bet =-RPT_INF; return 1; }
+  return 0;
+}
+
+/* adjust beta until (*func) becomes 0 */
+INLINE double rpti_refinebet(const rpti_t *t, double bet0,
+  double (*func)(const rpti_t*, double, int, double*), int ord)
+{
+  double bet, dbmax, dbet, f, df;
+  int it, verbose = 0;
+
+  /* I. increase |bet|, such that <func> > 0 */
+  for (bet = bet0; ; bet *= 1.4)
+    if ((f = (*func)(t, bet, ord, &df)) > 0) break;
+  if (verbose) printf("expanded bet from %g to %g, f %g, df %g\n", bet0, bet, f, df);
+
+  dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
+
+  /* II. iteratively refine the temperature */
+  for (it = 0; it <= 1000; it++) {
+    f = (*func)(t, bet, ord, &df);
+    /* f should be one, derivative is -df */
+    if (fabs(f) < 1e-14) break;
+    dbet = dblconfine(f/df, -dbmax, dbmax);
+    if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
+    bet += dbet;
+  }
+  if (verbose) printf("\n\n");
+  return bet;
+}
+
+/* evaluate f = < exp(-bet*e) - 1> and -df/dbet */
+INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
 {
   int i, e;
   double f, cnt, xp;
 
+  (void) ord; /* used */
   for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
     e = t->emin + i * t->edel;
     if (t->h[i] <= 0) continue;
@@ -304,50 +355,19 @@ INLINE double rpti_getf(const rpti_t *t, double bet, double *df)
   /* we should not include the infinity here */
   f /= cnt;
   *df /= cnt;
-  return f;
+  return f - 1;
 }
 
 /* estimated the temperature using the identity approach */
 INLINE double rpti_bet(rpti_t *t)
 {
-  double bet, dbet, dbmax, f, df;
-  int i, e, it, hl, hr, verbose = 0;
+  double bet;
 
-  /* I. get a rough estimate */
-  rpti_bet1(t, &bet);
-  if (fabs(bet) < 1e-14 || fabs(bet) > .99*RPT_INF) return bet;
-
-  /* II. check if the distribution is single-sided, which means infinite beta */
-  for (hl = hr = 0, i = 0; i <= t->m; i++) {
-    e = t->emin + i * t->edel;
-    if (e < 0) hl += t->h[i];
-    else if (e > 0) hr += t->h[i];
-  }
-  if (hl <= 0.) return RPT_INF;
-  if (hr <= 0.) return -RPT_INF;
-
-  /* III. increase |bet|, such that <exp(-bet*de)>  > 1 */
-  for (dbet = bet; ; bet *= 1.4)
-    if ((f = rpti_getf(t, bet, &df)) > 1) break;
-  if (verbose) printf("cnt %d (%d, %d), bet %g, expanded to %g, f %g, df %g\n", hl+hr, hl, hr, dbet, bet, f, df);
-
-  dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
-
-  /* IV. iteratively refine the temperature */
-  for (it = 0; it <= 1000; it++) {
-    f = rpti_getf(t, bet, &df);
-    /* f should be one, derivative is -df */
-    if (fabs(f - 1) < 1e-14) break;
-    dbet = dblconfine((f - 1)/df, -dbmax, dbmax);
-    if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
-    bet += dbet;
-  }
-  if (verbose) printf("\n\n");
-
-  return bet;
+  if (rpti_prepbet(t, &bet)) return bet;
+  return rpti_refinebet(t, bet, rpti_getf, 0);
 }
 
-/* evaluate f = < min{1, exp(-bet*e)} sgn(e) * |e|^ord > and -d f/d bet */
+/* evaluate f = (-bet) < min{1, exp(-bet*e)} sgn(e) * |e|^ord > and -d f/d bet */
 INLINE double rpti_getfs(const rpti_t *t, double bet, int ord, double *df)
 {
   int i, e, sgn, k, ep;
@@ -371,54 +391,53 @@ INLINE double rpti_getfs(const rpti_t *t, double bet, int ord, double *df)
       f     += t->h[i] * xp;
       *df   += t->h[i] * xp * e;
     }
-    //printf("bet %g, e %d, xp %g, cnt %d, %g\n", bet, e, xp, t->h[i], xp*t->h[i]);
   }
-  //printf("cnt %g, f %g, df %g\n", cnt, f, *df); getchar();
-  f /= cnt;
-  *df /= cnt;
+  f *= -bet/cnt;
+  *df *= -bet/cnt;
   return f;
 }
 
 /* estimated the temperature using area integrals */
 INLINE double rpti_bets(rpti_t *t, int ord)
 {
-  double bet, dbet, dbmax, f = 0.f, df = 0.f;
-  int i, e, it, hl, hr, verbose = 0;
+  double bet;
 
-  /* I. get a rough estimate */
-  rpti_bet1(t, &bet);
-  if (fabs(bet) < 1e-14 || fabs(bet) > .99*RPT_INF) return bet;
+  if (rpti_prepbet(t, &bet)) return bet;
+  return rpti_refinebet(t, bet, rpti_getfs, ord);
+}
 
-  /* II. check if the distribution is single-sided, which means infinite beta */
-  for (hl = hr = 0, i = 0; i <= t->m; i++) {
+
+/* evaluate f = (-bet) < exp(-bet/2*e) sgn(e) * |e|^ord > and -d f/d bet */
+INLINE double rpti_getfh(const rpti_t *t, double bet, int ord, double *df)
+{
+  int i, e, sgn, k, ep;
+  double f, cnt, xp;
+
+  die_if (bet < 0. && t->h[t->m] > 0, "bet %g must be positive with inf. (%d)\n", bet, t->h[t->m]);
+  for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
+    if (t->h[i] <= 0.) continue;
+    cnt += t->h[i];
     e = t->emin + i * t->edel;
-    if (e < 0) hl += t->h[i];
-    else if (e > 0) hr += t->h[i];
+    sgn = (e > 0) ? 1 : (e < 0) ? -1 : 0;
+    /*  double ep = pow(fabs(e), ord) * sgn; */
+    for (ep = 1, k = 0; k < ord; k++) ep *= e;
+    ep = abs(ep) * sgn;
+    xp     = exp(-.5*bet*e) * ep;
+    f     += t->h[i] * xp;
+    *df   += .5 * t->h[i] * xp * e;
   }
-  if (hl <= 0.) return RPT_INF;
-  if (hr <= 0.) return -RPT_INF;
-  //printf("ord %d cnt %d (%d, %d), bet %g\n", ord, hl+hr, hl, hr, bet);
+  f *= -bet/cnt;
+  *df *= -bet/cnt;
+  return f;
+}
 
-  /* III. increase |bet|, such that <min{1, exp(-bet*e)} sgn(e) |e|^ord>*bet < 0 */
-  for (dbet = bet; ; bet *= 1.4)
-    if ((f = rpti_getfs(t, bet, ord, &df))*bet < 0) break;
-  if (verbose) printf("ord %d, cnt %d (%d, %d), bet %g, expanded to %g, f %g, df %g\n",
-    ord, hl+hr, hl, hr, dbet, bet, f, df);
+/* estimated the temperature using area integrals */
+INLINE double rpti_beth(rpti_t *t, int ord)
+{
+  double bet;
 
-  dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
-
-  /* IV. iteratively refine the temperature */
-  for (it = 0; it <= 1000; it++) {
-    f = rpti_getfs(t, bet, ord, &df);
-    /* f should be one, derivative is -df */
-    if (fabs(f) < 1e-14) break;
-    dbet = dblconfine(f/df, -dbmax, dbmax);
-    if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
-    bet += dbet;
-  }
-  if (verbose) printf("\n\n");
-
-  return bet;
+  if (rpti_prepbet(t, &bet)) return bet;
+  return rpti_refinebet(t, bet, rpti_getfh, ord);
 }
 
 
