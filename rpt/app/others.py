@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import os, sys, runcom
 
-nsteps = 1000000
+nsteps = 100000
 
 def mcg(fnrep):
   ''' Monte Carlo, global move '''
   runcom.todatadir()
   fnlog = "mcg.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd = "..\ljmc -w -g -1 %s" % nsteps
+  cmd = os.path.join("..", "ljmc") + " -w -g -1 %s" % nsteps
   sz = 0.002
   lines = ["# cutoff-dist.      bp0       bp1       bpi       bps0      bps1      "
       "bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
@@ -30,7 +30,7 @@ def mdl(fnrep):
   runcom.todatadir()
   fnlog = "mdl.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd = "..\ljmd -w -1 %s" % nsteps
+  cmd = os.path.join("..", "ljmd") + " -w -1 %s" % nsteps
   sz = 0.01
   lines = ["# cutoff-dist.      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
@@ -53,10 +53,11 @@ def sqmcl(fnrep):
   runcom.todatadir()
   fnlog = "sqmcl.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd = "..\sqmc -1 %s" % nsteps
+  cmd0 = os.path.join("..", "sqmc") + " -1 %s" % nsteps
   for sz in (0.01, 0.02, 0.04):
     lines = ["# cutoff-dist.      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
+    cmd = cmd0
     cmd += " -M %s" % sz # set size
     cmd += " -o ehsqmclM%s.dat" % sz # output
     cmd += " -O ehsqmcldM%s.dat" % sz # output
@@ -74,7 +75,7 @@ def ismcl(fnrep):
   runcom.todatadir()
   fnlog = "ismcl.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd = "..\is -1 %s" % nsteps
+  cmd = os.path.join("..", "is") + " -1 %s" % nsteps
   lines = ["# cutoff-dist.      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
   cmd += " -o ehismcl.dat" # output
@@ -91,12 +92,14 @@ def isent():
   fnlog = "data/isent.log"
   open(fnlog, "w").write("") # clear the log file
   size = 32
-  fnprof = "profis%s.dat" % size
-  fnflow = "flowis%s.dat" % size
-  cmd = "..\isent -o %s -f %s" % (fnprof, fnflow)
+  fnprof = "data/profis%s.dat" % size
+  fnflow = "data/flowis%s.dat" % size
+  cmd = "isent" + " -o %s -f %s" % (fnprof, fnflow)
   d, lns = runcom.getoutp(cmd, fnlog)
-  shutil.move(fnprof, os.path.join("data", fnprof))
-  shutil.move(fnflow, os.path.join("data", fnflow))
+
+if len(sys.argv) > 1:
+  nsteps = int(sys.argv[1])
+print "simulation length: %s" % nsteps
 
 mcg("mcg.txt")
 
@@ -106,5 +109,5 @@ sqmcl("sqmcl.txt")
 
 ismcl("ismcl.txt")
 
-#isent()
+isent()
 

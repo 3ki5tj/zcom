@@ -47,7 +47,6 @@ static void doargs(int argc, char **argv)
 */
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-
   if (rb <= ra) {
     printf("rb %g is less than ra %g, simulating hard balls\n", rb, ra);
     exit(1); /* do not allow it */

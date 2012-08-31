@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import os, sys, runcom
 
-nsteps = 400000
+nsteps = 100000
 
 def rcdep_mcl(fnrep):
   ''' Monte Carlo, local for the cutoff dependence '''
   runcom.todatadir()
   fnlog = "rcdep_mcl.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd0 = "..\ljmc -1 %s" % nsteps
+  cmd0 = os.path.join("..", "ljmc") + " -1 %s" % nsteps
   sz = 0.01
   cmd0 += " -M %s" % sz # set size
   cmd0 += " -u %s -U %s " % (sz*.5, sz*5000) # set histogram  
@@ -27,6 +27,10 @@ def rcdep_mcl(fnrep):
     lines += [ s ]
   open(fnrep, "w").write('\n'.join(lines) + '\n')
   os.chdir("..")
+
+if len(sys.argv) > 1:
+  nsteps = int(sys.argv[1])
+print "simulation length: %s" % nsteps
 
 rcdep_mcl("rcmcl.txt")
 

@@ -1,6 +1,6 @@
 /* computing a temperature profile for the 2D Ising model
  * using entropic sampling to cover the energy space */
-#define  IS2_LB  4 /* L == 2^LB */
+#define  IS2_LB  5 /* L == 2^LB */
 
 /* local parameters for the 2D Ising model */
 #define L (1 << IS2_LB)
@@ -31,7 +31,7 @@ static void doargs(int argc, char **argv)
   argopt_add(ao, "-f", NULL, &fnflow, "name of the flow file (output)");
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-
+  nsteps *= N;
   argopt_dump(ao);
   argopt_close(ao);
 }

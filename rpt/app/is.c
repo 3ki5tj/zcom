@@ -18,7 +18,7 @@
 
 double tp = 1.0f;
 int nequil = 10000;
-int nsteps = 1000000;
+double nsteps = 1e5*N;
 int nevery = 1;  /* compute temperatures every this number of steps */
 char *fnehis = "ehismc.dat"; /* energy-increment distribution */
 char *fnehisd = NULL; /* adjusted energy-increment distribution */
@@ -27,15 +27,14 @@ char *fnehisd = NULL; /* adjusted energy-increment distribution */
 static void doargs(int argc, char **argv)
 {
   argopt_t *ao = argopt_open(0);
-  argopt_add(ao, "-T", "%lf", &tp,     "temperature");
+  argopt_add(ao, "-T", "%lf", &tp,    "temperature");
   argopt_add(ao, "-0", "%d", &nequil, "number of equilibration");
-  argopt_add(ao, "-1", "%d", &nsteps, "number of simulation steps");
+  argopt_add(ao, "-1", "%d", &nsteps, "number of simulation sweeps");
   argopt_add(ao, "-e", "%d", &nevery, "interval of computing temperatures");  
   argopt_add(ao, "-o", NULL, &fnehis, "output file for the energy-increment histogram");
   argopt_add(ao, "-O", NULL, &fnehisd,"output file for the adjusted energy-increment histogram");
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-
   argopt_dump(ao);
   argopt_close(ao);
 }
@@ -63,7 +62,7 @@ static int move(ising_t *is, int *de0)
 static int mc(ising_t *is, double bet, rpti_t *rpt, rpti_t *rptd)
 {
   int i, de, de0;
-  double U, du, bp0, bp1, bpi, bps0, bps1, bpd0, bpd1, bpdi;
+  double U, du, bp0, bp1, bpi, bps0, bps1, bph0, bph1, bpd0, bpd1, bpdi;
   static av_t avU[1], avu[1];  
   
   IS2_SETPROBA(is, bet);
@@ -84,11 +83,14 @@ static int mc(ising_t *is, double bet, rpti_t *rpt, rpti_t *rptd)
   bpi = rpti_bet(rpt);
   bps0 = rpti_bets(rpt, 0);
   bps1 = rpti_bets(rpt, 1);
+  bph0 = rpti_beth(rpt, 0);
+  bph1 = rpti_beth(rpt, 1);
   bpd1 = rpti_bet1(rptd, &bpd0);
   bpdi = rpti_bet(rptd);
   printf("epot %g, du %g, bp0 %.6f, bp1 %.6f, bpi %.6f, bps0 %.6f, bps1 %.6f, "
-    "bpd0 %.6f, bpd1 %.6f, bpdi %.6f\n",
-     U, du, bp0, bp1, bpi, bps0, bps1, bpd0, bpd1, bpdi);
+    "bph0 %.6f, bph1 %.6f, bpd0 %.6f, bpd1 %.6f, bpdi %.6f\n",
+     U, du, bp0, bp1, bpi, bps0, bps1, 
+     bph0, bph1, bpd0, bpd1, bpdi);
   return 0;
 }
 

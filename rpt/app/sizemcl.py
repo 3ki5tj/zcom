@@ -1,12 +1,14 @@
 #!/usr/bin/env/python
 import os, sys, runcom
 
+nsteps = 100000
+
 def sizedep_mcl(fnrep):
   ''' Monte Carlo, local for the size dependence '''
   runcom.todatadir()
   fnlog = "sizedep_mcl.log"
   open(fnlog, "w").write("") # clear the log file 
-  cmd0 = "..\ljmc -w -1 100000" # common parameters
+  cmd0 =  os.path.join("..", "ljmc") + " -w -1 %s" % nsteps
   lines = ["# perturb-size      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
   for sz in (0.001, 0.002, 0.005, 0.01, 0.02):
@@ -24,6 +26,10 @@ def sizedep_mcl(fnrep):
     lines += [ s ]
   open(fnrep, "w").write('\n'.join(lines) + '\n')
   os.chdir("..")
+
+if len(sys.argv) > 1:
+  nsteps = int(sys.argv[1])
+print "simulation length: %s" % nsteps
 
 sizedep_mcl("sizemcl.txt")
 
