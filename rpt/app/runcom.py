@@ -19,11 +19,11 @@ def getoutp(cmd, fnlog = None):
   data = lines[-1].strip().split(",")
   d = {}
   for dat in data:
-    try:
+    if not " " in dat.strip():
+      print "bad item", dat, "|", kd
+    else:
       kd = dat.strip().split()
       d[kd[0]] = kd[1]
-    except Exception:
-      print "error", dat, "|", kd
 
   if fnlog:
     open(fnlog, "a").write('\n'.join(lines) + "\n\n")

@@ -16,7 +16,7 @@
 #define ZCOM_ARGOPT
 #include "zcom.h"
 
-double nsteps = 1e6*N;
+double nsteps = 1e6; /* number of sweeps */
 int nevery = 1;  /* compute temperatures every this number of steps */
 char *fnprof = "profis.dat"; /* profile */
 char *fnflow = "flowis.dat"; /* profile */
@@ -31,7 +31,7 @@ static void doargs(int argc, char **argv)
   argopt_add(ao, "-f", NULL, &fnflow, "name of the flow file (output)");
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-  nsteps *= N;
+  nsteps *= N; /* convert to the number of steps */
   argopt_dump(ao);
   argopt_close(ao);
 }

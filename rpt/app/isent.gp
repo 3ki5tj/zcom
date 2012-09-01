@@ -87,7 +87,7 @@ unset xlabel
 
 set mytics 5
 set ytics 0.5  offset 0.5, 0.0  font insetfont
-set ylabel "{/=27 {/Symbol e}[log g(U)] = {/Symbol \362}@_{/=14 0}^{/=14 U} {/Symbol e}[{/Symbol b}_U(U')] dU' }" offset 3.0, 0 font insetfont
+set ylabel "{/=27 {/Symbol e}[log g(U)] = {/Symbol=32 \362}@_{/*0.5 0}^{/*.5 U} {/Symbol e}[{/Symbol b}_U(U')] dU' }" offset 2.5, 0 font insetfont
 unset key
 
 plot [-2:2][-1:0.5] 0 w l ls 8 not, \

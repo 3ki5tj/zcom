@@ -42,7 +42,7 @@ def mkexpnbe(fn):
 
 
 if len(sys.argv) <= 1:
-  fnls = "eh*.dat"
+  fnls = [ "eh*.dat" ]
 else:
   fnls = sys.argv[1:]
 

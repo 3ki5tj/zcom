@@ -94,13 +94,14 @@ def isent():
   size = 32
   fnprof = "data/profis%s.dat" % size
   fnflow = "data/flowis%s.dat" % size
-  cmd = "isent" + " -o %s -f %s" % (fnprof, fnflow)
+  cmd = os.path.join(".", "isent") + " -o %s -f %s -1 %s" % (fnprof, fnflow, nsteps)
   d, lns = runcom.getoutp(cmd, fnlog)
 
 if len(sys.argv) > 1:
   nsteps = int(sys.argv[1])
 print "simulation length: %s" % nsteps
 
+'''
 mcg("mcg.txt")
 
 mdl("mdl.txt")
@@ -108,6 +109,7 @@ mdl("mdl.txt")
 sqmcl("sqmcl.txt")
 
 ismcl("ismcl.txt")
+'''
 
 isent()
 

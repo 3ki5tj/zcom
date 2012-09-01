@@ -12,11 +12,9 @@ set label 2 "(b)" at screen 0.5+dx, 1-dy font "Arial, 32"
 set label 3 "(c)" at screen dx, 0.5-dy font "Arial, 32"
 set label 4 "(d)" at screen 0.5+dx, 0.5-dy font "Arial, 32"
 
-set size 0.5, 0.5
-set origin 0.0, 0.0
 
 # Line style for axes
-set style line 80 lt rgb "#404040"
+set style line 80 lt rgb "#404040" lw 2.0
 set border 15 back linestyle 80  # Remove border on top and right.
 
 # Line style for grid
@@ -26,12 +24,18 @@ set grid mxtics xtics mytics ytics back linestyle 81
 
 set tics
 
-set style line 1 lt rgb "#c04020" lw 3 pt 10  ps 4  # dark red
-set style line 2 lt rgb "#e0c040" lw 3 pt 12  ps 4  # yellow
-set style line 3 lt rgb "#e030a0" lw 3 pt 6   ps 3  # bright magenta
-set style line 4 lt rgb "#80d060" lw 3 pt 8   ps 3  # dark green
-set style line 5 lt rgb "#305080" lw 3 pt 4   ps 3  # navy blue
-set style line 9 lt rgb "#000000" lw 3 pt 3   ps 2      #
+
+
+
+set size 0.5, 0.5
+set origin 0.0, 0.0
+
+set style line 1 lt rgb "#c04020" lw 2 pt 10  ps 4  # dark red
+set style line 2 lt rgb "#e0c040" lw 2 pt 12  ps 4  # yellow
+set style line 3 lt rgb "#e030a0" lw 2 pt 6   ps 5  # bright magenta
+set style line 4 lt rgb "#80d060" lw 2 pt 8   ps 6  # dark green
+set style line 5 lt rgb "#305080" lw 2 pt 4   ps 4  # navy blue
+set style line 9 lt rgb "#000000" lw 3 pt 1   ps 4  # black for reference
 
 set logscale x
 set xtics offset 0, 0.1
@@ -98,25 +102,32 @@ set ytics 0.2
 set mytics 2
 set ylabel "p(e)" offset 1.0, 0.0
 
-set style line 11 lt rgb "#c01000" lw 0.75 pt 2 ps 1 # red, thin for
+#set style line 11 lt rgb "#000000" lw 0.75 pt 2 ps 1 # black, thin for small data set
+set style line 11 lt rgb "#000000" lw 2 pt 2 ps 1 # black, thin for large data set
 set style line 12 lt rgb "#ff2000" lw 0.5 pt 1 ps 2 # red
 set style line 13 lt rgb "#40e020" lw 0.5 pt 2 ps 2 # green
 set style line 14 lt rgb "#302080" lw 1 pt 4 ps 2 # navy blue
 
 set key right top Left reverse spacing 2.0
 
-set arrow 1 from 1.98,1.01 to 0.1, 1 ls 12 lw 2.0 front 
-set arrow 2 from 1.98,0.87 to 0.24, 0.83 ls 11 lw 2.0 front
-set arrow 3 from 1.98,0.72 to 0.24, 0.438 ls 14 lw 2.0 front 
-set arrow 4 from 2.50,0.58 to 1.30, 0.257 ls 13 lw 2.0 front 
+set arrow 1 from 1.40,1.01 to 0.1, 1 ls 12 lw 2.0 front 
+set arrow 2 from 1.40,0.86 to 0.23, 0.83 ls 11 front
+set arrow 3 from 1.40,0.72 to 0.24, 0.438 ls 14 lw 2.0 front 
+set arrow 4 from 2.40,0.54 to 1.30, 0.257 ls 13 lw 2.0 front 
 
 bin(x,w)=w*(floor(x/w)+.5)
 
+#plot [-3:12][0:1.1] \
+#  "ehmclM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
+#  "ehmdlM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs empty border ls 11 t "u_{max} = 0.01, single, MD", \
+#  "ehmclM0.02.dat"    u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
+#  "ehmcgM0.002.dat"   u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
+
 plot [-3:12][0:1.1] \
-  "ehmclM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
-  "ehmdlM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs empty border ls 11 t "u_{max} = 0.01, single, MD", \
-  "ehmclM0.02.dat"    u (bin($1, 0.15)):($2*1.0/15)  smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
-  "ehmcgM0.002.dat"   u (bin($1, 0.2)):($2*0.05) smooth freq with boxes fs transparent solid 0.4 border ls 13 t "u_{max} = 0.002, all, MC"
+  "ehmclM0.01.dat"    u (bin($1, 0.05)):($2*0.1) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
+  "ehmdlM0.01.dat"    u (bin($1, 0.05)):($2*0.1) smooth freq with l ls 11 t "u_{max} = 0.01, single, MD", \
+  "ehmclM0.02.dat"    u (bin($1, 0.01)):($2*1.0) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
+  "ehmcgM0.002.dat"   u (bin($1, 0.02)):($2*0.5) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
 
 unset arrow 1
 unset arrow 2
@@ -151,11 +162,11 @@ plot [0.0:1.1][0:1.7] \
   ""                   u 1:2 every 5 w p ls 2 not, \
   -1                   w lp ls 2 t "LJ, all", \
   "ehsqmclM0.02.eb"    u 1:2 w l ls 4 not, \
-  ""                   u 1:2 every 5 w p ls 4 not, \
-  -1                   w lp ls 4 t "Square-well, single", \
+  ""                   u 1:2 every 5 w p ls 4 ps 4 not, \
+  -1                   w lp ls 4 ps 4 t "Square-well, single", \
   "ehismcl.eb"         u 1:2 w l ls 5 not, \
-  ""                   u 1:2 every 5 w p ls 5 not, \
-  -1                   w lp ls 5 t "Ising model, single"
+  ""                   u 1:2 every 5 w p ls 5 ps 4 not, \
+  -1                   w lp ls 5 ps 4 t "Ising model, single"
 
 
 unset multiplot
