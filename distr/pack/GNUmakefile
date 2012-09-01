@@ -18,7 +18,7 @@ rdf: rdf.c $(dep)
 	$(CX) -o $@ $< 
 
 zip: zcom.h
-	zip dsprog ene.c ene.cfg vol.c vol.cfg rdf.c rdf.cfg zcom.h Makefile README
+	zip dsprog *.c *.cfg zcom.h Makefile README
 
 zcom.h: zcom.full.h GNUmakefile
 	./zcompick.py -i zcom.full.h -o zcom.h -k "def util ss rng opt cfg distr av rc rv2 rv3 md specfunc lj" 

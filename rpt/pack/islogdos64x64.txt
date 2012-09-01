@@ -1,0 +1,1 @@
+../app/islogdos64x64.txt

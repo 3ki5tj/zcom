@@ -8,6 +8,8 @@ sqmc.c          code for Metropolis algorithm on a square-well fluid
 is.c            code for Ising model
 isent.c         code for Ising model, entropic sampling
 zcom.h          common modules (abridged, the ZCOM_RPT portion is the code for the perturbation temperature)
+is2dos0.ma      Mathematica script to compute the exact density of states of 2D Ising model
+islogdos*.txt   pre-computed density of states for 2D Ising model
 Makefile        build file
 README          this file
 

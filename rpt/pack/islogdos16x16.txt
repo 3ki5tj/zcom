@@ -1,0 +1,1 @@
+../app/islogdos16x16.txt
