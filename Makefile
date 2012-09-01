@@ -13,7 +13,7 @@ $(prj).h::
 	python assemble.py -a -v1
 
 $(prj).zip::
-	git archive --format=zip HEAD > $@
+	git archive --format=zip -9 HEAD > $@
 
 # test object file
 $(prj).o: $(prj).c $(prj).h Makefile
@@ -35,7 +35,7 @@ usb: $(prj).h $(prj).zip
 usball::
 	$(MAKE) clean
 	$(MAKE) usb
-	zip -r $(usbdir)/zcomall.zip *
+	zip -r --symlinks --filesync -9 $(usbdir)/zcomall.zip *
 
 dodep:
 	git add [a-z0-9]*/*.h
