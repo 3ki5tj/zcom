@@ -1,0 +1,47 @@
+A self-contained package for the perturbation temperature.
+
+FILES
+======
+ljmc.c          code for Metropolis algorithm (Monte Carlo) on a Lennard-Jones fluid
+ljmd.c          code for molecular dynamics on a Lennard-Jones fluid
+sqmc.c          code for Metropolis algorithm on a square-well fluid
+is.c            code for Ising model
+isent.c         code for Ising model, entropic sampling
+zcom.h          common modules (abridged, the ZCOM_RPT portion is the code for the perturbation temperature)
+Makefile        build file
+README          this file
+
+Compile
+=======
+To compile: enter 
+    make 
+under Linux, or under windows (assuming visual C++)
+    cl ljmc.c
+    cl ljmd.c
+    cl sqmc.c
+    cl is.c
+    cl isent.c
+
+Run
+====
+To run a program (e.g., ljmc):
+  ./ljmc
+or (under windows)
+  ljmc
+
+
+Reading data
+============
+Output data are saved to ds.dat (reference sample) and dsb.dat (test sample), no matter what the program is.
+Data are organized in columns, and can be plotted using gnuplot.
+For example, to plot the resulting distributions from the test and reference samples
+
+  gnuplot
+  gnuplot> plot "dsb.dat" u 1:6 w l, "ds.dat" u 1:6 w l
+
+
+Notes
+======
+We have adjusted the parameters, so each program can run quickly.
+For actual production runs, increase simulation length and adjust other parameters.
+

@@ -64,7 +64,7 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
   o->sflag = sflag;
   o->key = key;
   o->flags = 0;
-  die_if (ptr == NULL, "null pass to argopt with %s: %s\n", sflag, desc);
+  die_if (ptr == NULL, "null pass to opt with %s: %s\n", sflag, desc);
   o->ptr = ptr;
   if (fmt == NULL) fmt = "";
   if (fmt[0] == '!') {
