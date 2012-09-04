@@ -9,9 +9,9 @@ def rcdep_mcl(fnrep):
   fnlog = "rcdep_mcl.log"
   open(fnlog, "w").write("") # clear the log file 
   cmd0 = os.path.join("..", "ljmc") + " -1 %s" % nsteps
-  sz = 0.01
+  sz = 0.05
   cmd0 += " -M %s" % sz # set size
-  cmd0 += " -u %s -U %s " % (sz*.5, sz*5000) # set histogram  
+  cmd0 += " -u %s -U %s " % (sz*.1, sz*1000) # set histogram  
   lines = ["# cutoff-dist.      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
   for rc in (1.2, 1.4, 1.6, 2.0, 2.5):

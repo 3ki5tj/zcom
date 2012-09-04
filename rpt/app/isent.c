@@ -25,7 +25,7 @@ char *fnflow = "flowis.dat"; /* profile */
 static void doargs(int argc, char **argv)
 {
   argopt_t *ao = argopt_open(0);
-  argopt_add(ao, "-1", "%lf", &nsteps, "number of simulation steps");
+  argopt_add(ao, "-1", "%lf", &nsteps, "number of simulation SWEEPS");
   argopt_add(ao, "-e", "%d", &nevery, "interval of computing temperatures");  
   argopt_add(ao, "-o", NULL, &fnprof, "name of the profile file (output)");
   argopt_add(ao, "-f", NULL, &fnflow, "name of the flow file (output)");
@@ -260,10 +260,7 @@ int main(int argc, char **argv)
   ising_t *is;
 
   doargs(argc, argv);
-  if ((is = is2_open(L)) == NULL) {
-    fprintf(stderr, "cannot init is2\n");
-    return -1;
-  }
+  die_if ((is = is2_open(L)) == NULL, "cannot open is2\n");
 
   /* read in the density of states */
   die_if (is2_loadlogdos(is, NULL) != 0,

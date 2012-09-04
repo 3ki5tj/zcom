@@ -12,13 +12,13 @@ real rho = 0.7f;
 real rcdef = 2.5f; /* cut-off distance */
 real rcshf = 2.0f; /* shift distance */
 real tp = 1.0f;
-real amp = 0.04f;
+real amp = 0.2f;
 int nequil = 1000;
 int nsteps = 10000;
 int nevery = 1;  /* compute temperatures every this number of steps */
 int usesw = 0;  /* use the switched LJ potential */
 
-real ampp = 0.01f; /* amplitude for perturbation */
+real ampp = 0.05f; /* amplitude for perturbation */
 int gpert = 0;  /* use global perturbation */
 real dumax = 100.0f, dudel = 0.001f; /* histogram dimension */
 char *fnehis = "eh.dat"; /* energy-increment distribution */

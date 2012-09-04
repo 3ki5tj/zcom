@@ -29,7 +29,7 @@ static void doargs(int argc, char **argv)
   argopt_t *ao = argopt_open(0);
   argopt_add(ao, "-T", "%lf", &tp,    "temperature");
   argopt_add(ao, "-0", "%d", &nequil, "number of equilibration");
-  argopt_add(ao, "-1", "%d", &nsteps, "number of simulation sweeps");
+  argopt_add(ao, "-1", "%lf", &nsteps, "number of simulation steps");
   argopt_add(ao, "-e", "%d", &nevery, "interval of computing temperatures");  
   argopt_add(ao, "-o", NULL, &fnehis, "output file for the energy-increment histogram");
   argopt_add(ao, "-O", NULL, &fnehisd,"output file for the adjusted energy-increment histogram");
@@ -100,10 +100,7 @@ int main(int argc, char **argv)
   rpti_t *rpt, *rptd;
 
   doargs(argc, argv);
-  if ((is = is2_open(L)) == NULL) {
-    fprintf(stderr, "cannot init is2\n");
-    return -1;
-  }
+  die_if ((is = is2_open(L)) == NULL, "cannot init is2\n");
   rpt = rpti_open(-8, 8, 4, 0);
   rptd = rpti_open(-8, 8, 4, 0);
 

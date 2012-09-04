@@ -1,1 +1,0 @@
-../app/islogdos8x8.txt

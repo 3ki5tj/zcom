@@ -63,7 +63,7 @@ INLINE double *dv3_fromrv3(double *x, const real *rx)
 INLINE double *dv3_zero(double *x) { return dv3_make(x, 0, 0, 0); }
 INLINE double *dv3_copy(double *x, const double *src)
   { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
-#define dv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
+#define dv3_ncopy(x, src, n) memcpy(x, src, 3*n*sizeof(double))
 INLINE void dv3_swap(double *x, double *y)
   { double z[3]; dv3_copy(z, x); dv3_copy(x, y); dv3_copy(y, z); }
 
@@ -200,7 +200,7 @@ INLINE real *rv3_zero(real *x) { return rv3_make(x, 0, 0, 0); }
 INLINE real *rv3_copy(real *x, const real *src)
   { x[0] = src[0]; x[1] = src[1]; x[2] = src[2]; return x; }
 /* use macro to avoid const qualifier of src */
-#define rv3_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
+#define rv3_ncopy(x, src, n) memcpy(x, src, 3*n*sizeof(real))
 INLINE void rv3_swap(real *x, real *y)
   { real z[3]; rv3_copy(z, x); rv3_copy(x, y); rv3_copy(y, z); }
 
@@ -1129,7 +1129,7 @@ INLINE int dm3_eigvecs(double (*vecs)[3], double mat[3][3], double val, double t
 INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int nt)
 {
   double vs[5][3], sq, tol, nv; /* for safty, vs needs 5 rows */
-  int n, nn, i;
+  int n = 0, nn, i;
  
   dm3_eigval(v, mat);
   for (sq = 0, i = 0; i < 3; i++) sq += dv3_sqr(mat[i]);

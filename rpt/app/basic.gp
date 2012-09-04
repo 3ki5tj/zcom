@@ -50,7 +50,7 @@ set key left bottom Left reverse spacing 1.2
 # {/Symbol \341}, left angle, <
 # {/Symbol \361}, right angle, >
 
-plot [0.001:0.02][0:] \
+plot [0.005:0.1][0:] \
   "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (4)", \
             ""  u 1:2  w lp ls 1 t "Eq. (5), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol e}^2{/Symbol \361}", \
             ""  u 1:3  w lp ls 2 t "Eq. (6'), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol De^2}{/Symbol \361}", \
@@ -118,16 +118,16 @@ set arrow 4 from 2.40,0.54 to 1.30, 0.257 ls 13 lw 2.0 front
 bin(x,w)=w*(floor(x/w)+.5)
 
 #plot [-3:12][0:1.1] \
-#  "ehmclM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
-#  "ehmdlM0.01.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs empty border ls 11 t "u_{max} = 0.01, single, MD", \
-#  "ehmclM0.02.dat"    u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
-#  "ehmcgM0.002.dat"   u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
+#  "ehmclM0.05.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
+#  "ehmdlM0.05.dat"    u (bin($1, 0.1)):($2*0.05) smooth freq with boxes fs empty border ls 11 t "u_{max} = 0.01, single, MD", \
+#  "ehmclM0.1.dat"    u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
+#  "ehmcgM0.01.dat"   u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
 
 plot [-3:12][0:1.1] \
-  "ehmclM0.01.dat"    u (bin($1, 0.05)):($2*0.1) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.01, single, MC", \
-  "ehmdlM0.01.dat"    u (bin($1, 0.05)):($2*0.1) smooth freq with l ls 11 t "u_{max} = 0.01, single, MD", \
-  "ehmclM0.02.dat"    u (bin($1, 0.01)):($2*1.0) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
-  "ehmcgM0.002.dat"   u (bin($1, 0.02)):($2*0.5) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
+  "ehmclM0.05.dat"   u (bin($1, 0.05)):($2*0.1) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.05, single, MC", \
+  "ehmdlM0.05.dat"   u (bin($1, 0.05)):($2*0.1) smooth freq with l ls 11 t "u_{max} = 0.05, single, MD", \
+  "ehmclM0.1.dat"    u (bin($1, 0.01)):($2*1.0) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.1, single, MC", \
+  "ehmcgM0.01.dat"   u (bin($1, 0.02)):($2*0.5) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.01, all, MC"
 
 unset arrow 1
 unset arrow 2
@@ -147,6 +147,7 @@ set mytics 2
 set ylabel "{/Symbol \341}exp({/Symbol - b e}){/Symbol \361}" offset 1.0, 0
 # try {/Symbol-Oblique b} in postscript
 
+set arrow 1 from 1, 0.94 to 1, 0.05 ls 9
 
 set key left top Left opaque reverse spacing 1.2
 
@@ -155,18 +156,21 @@ set key left top Left opaque reverse spacing 1.2
 
 plot [0.0:1.1][0:1.7] \
   1  w l ls 9 not, \
-  "ehmclM0.02.eb"      u 1:2 w l  ls 1 not, \
+  "ehmclM0.1.eb"      u 1:2 w l  ls 1 not, \
   ""                   u 1:2 every 5 w p ls 1 not, \
   -1                   w lp ls 1 t "LJ, single", \
-  "ehmcgM0.002.eb"     u 1:2 w l ls 2 not, \
+  "ehmcgM0.01.eb"     u 1:2 w l ls 2 not, \
   ""                   u 1:2 every 5 w p ls 2 not, \
   -1                   w lp ls 2 t "LJ, all", \
-  "ehsqmclM0.02.eb"    u 1:2 w l ls 4 not, \
+  "ehsqmclM0.1.eb"    u 1:2 w l ls 4 not, \
   ""                   u 1:2 every 5 w p ls 4 ps 4 not, \
   -1                   w lp ls 4 ps 4 t "Square-well, single", \
   "ehismcl.eb"         u 1:2 w l ls 5 not, \
   ""                   u 1:2 every 5 w p ls 5 ps 4 not, \
   -1                   w lp ls 5 ps 4 t "Ising model, single"
+
+unset arrow 1
+
 
 
 unset multiplot

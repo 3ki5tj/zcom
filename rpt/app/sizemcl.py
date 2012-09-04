@@ -1,4 +1,4 @@
-#!/usr/bin/env/python
+#!/usr/bin/env python
 import os, sys, runcom
 
 nsteps = 100000
@@ -11,11 +11,11 @@ def sizedep_mcl(fnrep):
   cmd0 =  os.path.join("..", "ljmc") + " -w -1 %s" % nsteps
   lines = ["# perturb-size      bp0       bp1       bpi       bps0      bps1      "
       "bph0      bph1      bpd0      bpd1      bpdi      bc        bc0       bcr       g",]
-  for sz in (0.001, 0.002, 0.005, 0.01, 0.02):
+  for sz in (0.005, 0.01, 0.02, 0.05, 0.1):
     cmd = cmd0
     # set size and histogram range
     cmd += " -M %s" % sz # set size
-    cmd += " -u %s -U %s " % (sz*.5, sz*5000) # set histogram
+    cmd += " -u %s -U %s " % (sz*.1, sz*1000) # set histogram
     cmd += " -o ehmclM%s.dat" % sz # output
     cmd += " -O ehmcldM%s.dat" % sz # output
     d, lns = runcom.getoutp(cmd, fnlog)

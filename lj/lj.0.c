@@ -238,6 +238,14 @@ INLINE real lj_energyx3d(lj_t *lj, rv3_t *x, real *vir, int *iep, real *ep0, rea
   return u;
 }
 
+/* energy evaluation, do not change members of `lj' */
+INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *ep0, real *eps, real *lap)
+{
+  return lj->d == 2 ?
+         lj_energyx2d(lj, (rv2_t *)x, vir, iep, ep0, eps, lap) :
+         lj_energyx3d(lj, (rv3_t *)x, vir, iep, ep0, eps, lap);
+}
+
 /* compute the energy of the current configuration and set lj->epot */
 INLINE real lj_energy3d(lj_t *lj)
 {
@@ -342,7 +350,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
 
 INLINE real lj_force3d(lj_t *lj)
 {
-  if (lj->usesq) return lj->epot = lj->epot0 = lj->epots = lj_energysq3d(lj,
+  if (lj->usesq) return lj->epot = lj->epot0 = lj->epots = (real) lj_energysq3d(lj,
     (rv3_t *) lj->x); /* no force for square well */
   if (lj->usesw) return lj->epot = lj->epot0 = lj->epots = lj_forcesw3d(lj,
     (rv3_t *) lj->x, (rv3_t *) lj->f,
@@ -362,6 +370,7 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
   int i, d;
 
   i = (int)(rnd0() * lj->n);
+  amp /= lj->l;
   rv3_copy(xi, lj->x + i*3);
   for (d = 0; d < 3; d++) /* displacement */
     xi[d] += (real)(amp * (2.*rnd0() - 1.));
@@ -543,12 +552,24 @@ INLINE int lj_pair3d(lj_t *lj, real *xi, real *xj, real *u, real *vir)
   return lj_pairlj3d(xi, xj, lj->l, lj->rc2, u, vir);
 }
 
+/* return the pair energy between two particles at xi and xj */
+INLINE int lj_pair(lj_t *lj, real *xi, real *xj, real *u, real *vir)
+{
+  return lj->d == 2 ?  lj_pair2d(lj, xi, xj, u, vir) : lj_pair3d(lj, xi, xj, u, vir);
+}
+
 /* return the energy change from displacing x[i] to xi */
 INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
 {
-  if (lj->usesq) return lj_depotsq3d(lj, i, xi);
+  if (lj->usesq) return (real) lj_depotsq3d(lj, i, xi);
   if (lj->usesw) return lj_depotsw3d(lj, i, xi, vir);
   return lj_depotlj3d(lj, i, xi, vir);
+}
+
+/* return the energy change from displacing x[i] to xi */
+INLINE real lj_depot(lj_t *lj, int i, real *xi, real *vir)
+{
+  return lj->d == 2 ? lj_depot2d(lj, i, xi, vir) : lj_depot3d(lj, i, xi, vir);
 }
 
 /* this is defined as a macro for du is `int' in sq case, but real in other cases */
@@ -582,6 +603,9 @@ INLINE real lj_dupertl3d(lj_t *lj, real amp)
   return lj_depot3d(lj, i, xi, &dvir);
 }
 
+INLINE real lj_dupertl(lj_t *lj, real amp)
+{ return lj->d == 2 ? lj_dupertl2d(lj, amp) : lj_dupertl3d(lj, amp); }
+
 /* return the energy change by random displacements of all atoms */
 INLINE real lj_dupertg3d(lj_t *lj, real amp)
 {
@@ -590,15 +614,34 @@ INLINE real lj_dupertg3d(lj_t *lj, real amp)
   real du, vir, ep0, eps, lap;
 
   xnew(nx, lj->n);
+  amp /= lj->l; /* convert to the reduced unit */
   for (i = 0; i < lj->n; i++)
     for (d = 0; d < 3; d++)
-      nx[i][d] = lj->x[i*3 + d] + amp * (2*rnd0() - 1);
+      nx[i][d] = (real) (lj->x[i*3 + d] + amp * (2*rnd0() - 1));
   du = lj_energyx3d(lj, nx, &vir, &iep, &ep0, &eps, &lap) - lj->epot;
   free(nx);
   return du;
 }
 
+INLINE real lj_dupertg(lj_t *lj, real amp)
+{ return lj->d == 2 ? lj_dupertg2d(lj, amp) : lj_dupertg3d(lj, amp); }
 
+/* return the energy caused by inserting a random atom
+   the tail correction is not applied */
+INLINE real lj_duinsert3d(lj_t *lj, real *xt)
+{
+  int j, n = lj->n;
+  real xt0[3], u, du, dvir;
+  
+  if (xt == NULL) for (xt = xt0, j = 0; j < 3; j++) xt[j] = (real) rnd0();
+  for (u = 0.f, j = 0; j < n; j++) /* pair energy */
+    if (lj_pair(lj, xt, lj->x + 3*j, &du, &dvir)) 
+      u += du;
+  return u;
+}
+
+INLINE real lj_duinsert(lj_t *lj, real *xt)
+{ return lj->d == 2 ? lj_duinsert2d(lj, xt) : lj_duinsert3d(lj, xt); }
 
 /* velocity verlet */
 void lj_vv(lj_t *lj, real dt)

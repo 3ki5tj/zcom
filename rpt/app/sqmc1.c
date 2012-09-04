@@ -14,7 +14,7 @@ real rho = 0.7f;
 real ra = 1.0f; /* barrier distance of the square-well potential */
 real rb = 1.5f; /* cutoff distance of the square-well potential */
 real tp = 1.0f;
-real amp = 0.04f;
+real amp = 0.2f;
 int iumin = -1000;
 int iumax = 0;
 int iucnt; 

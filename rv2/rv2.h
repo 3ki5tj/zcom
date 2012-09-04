@@ -19,7 +19,7 @@ INLINE real *rv2_make(real *x, real a, real b) { x[0] = a; x[1] = b; return x; }
 INLINE real *rv2_zero(real *x) { return rv2_make(x, 0, 0); }
 INLINE real *rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; return x; }
 /* use macro to avoid const qualifier of src */
-#define rv2_ncopy(x, src, n) memcpy(x, src, n*sizeof(x[0]))
+#define rv2_ncopy(x, src, n) memcpy(x, src, 2*n*sizeof(real))
 
 INLINE real rv2_sqr(const real *x) { return x[0]*x[0]+x[1]*x[1]; }
 INLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); }

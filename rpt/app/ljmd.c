@@ -20,7 +20,7 @@ int nevery = 1;  /* compute temperatures every this number of steps */
 int usesw = 0;  /* use the switched LJ potential */
 
 int gpert = 0;  /* use global perturbation */
-real ampp = 0.01f; /* amplitude for perturbation */
+real ampp = 0.05f; /* amplitude for perturbation */
 real dumax = 100.0f, dudel = 0.001f; /* histogram dimension */
 char *fnehis = "eh.dat"; /* energy-increment distribution */
 char *fnehisd = NULL;
