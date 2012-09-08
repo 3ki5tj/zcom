@@ -116,16 +116,17 @@ static int tmhrun(tmh_t *m, potts_t *pt, double opinit, double trun, double t,
   return 0;
 }
 
-/* compile mh according to dhde, similar to tmh_caclmh()
+/* obtain the modified Hamiltonian by integrating dhde, similar to tmh_calcmh()
  * for dhdeorder == 0, assume EDEL = 1.0 */
 INLINE void tmhcalcmh0(tmh_t *m)
 {
-#if 0
   /* simple implementation */
+/*  
   int i, en = m->en;
   for (m->mh[0] = EMIN, i = 0; i < en; i++)
     m->mh[i+1] = m->mh[i] + tmh_getdhde(m, EMIN + i * EDEL);
-#endif
+*/
+
   /* slightly faster implementation */
   int i, j, k, en = m->en, i0 = (int)(m->erg0 - EMIN + .5), di = (int)(m->derg + .5);
   double x = EMIN, dh = m->dhde[0];
@@ -140,23 +141,23 @@ INLINE void tmhcalcmh0(tmh_t *m)
 typedef struct {
   double ec;
   int iec;
-} e2tdata_t;
+} e2ecdata_t;
 
-e2tdata_t e2tarr[ECNT];
+e2ecdata_t e2ecarr[ECNT];
 
-static void tmhcalce2tarr(tmh_t *m)
+static void tmhcalce2ecarr(tmh_t *m)
 {
   int e, ie;
   for (e = EMIN; e <= EMAX; e++) {
     tmh_setec(m, e);
     ie = e - EMIN;
-    e2tarr[ie].ec = m->ec;
-    e2tarr[ie].iec = m->iec;
+    e2ecarr[ie].ec = m->ec;
+    e2ecarr[ie].iec = m->iec;
   }
 }
 
 /* static energy move */
-INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta)
+INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta, int ent)
 {
   int id, so, sn, de, nb[PT2_Q], acc;
   double dh;
@@ -169,9 +170,12 @@ INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta)
     int en = eo + de;
     dh = m->mh[en - EMIN] - m->mh[eo - EMIN]; /* modified Hamiltonian */
     acc = (dh <= 0) || (rnd0() < exp(-dh*beta));
-  } else acc = 1;
+  } else {
+    de = 0;
+    acc = 1;
+  }
   if (acc) { PT2_FLIP(pt, id, so, sn, nb); return de; }
-  else return 0;
+  return de;
 }
 
 /* entropic sampling: simple implementation */
@@ -210,29 +214,29 @@ static int tmhrun_ent1(tmh_t *m, potts_t *pt, double bet, double trun, double t,
   double amp = entampmax;
   int it, ie, de, wt = 1, ierg0 = (int)(erg0 - .5), ierg1 = (int)(erg1 - .5);
 
-/* map energy to temperature, set ec, iec, tp, itp */
-#define E2T(ie) { e2tdata_t *e2t = e2tarr + (ie); \
-  m->ec = e2t->ec; m->iec = e2t->iec; }
+/* map energy to set ec, iec, tp, itp */
+#define I2EC(ie) { e2ecdata_t *e2ec = e2ecarr + (ie); \
+  m->ec = e2ec->ec; m->iec = e2ec->iec; }
 
-  tmhcalce2tarr(m);
-  E2T(pt->E - EMIN);
+  tmhcalce2ecarr(m);
+  I2EC(pt->E - EMIN);
   tmhcalcmh0(m);
 
   /* production run */
   for (; t < trun; t += BLOCK) {
     amp = dblmin(entampc/(t + .1), entampmax);
     for (it = 0; it < BLOCK; it++) {
-      de = tmhmove0(m, pt, bet);
+      de = tmhmove0(m, pt, bet); /* move according to the compiled dh/de */
       if (de != 0 || pt->E < ierg0 || pt->E > ierg1) {
         ie = pt->E - EMIN;
         m->tpehis[ie] += wt; wt = 1;
         tmh_updhde(m, (pt->E - m->ec) * amp);
-        E2T(ie);
+        I2EC(ie);
       } else wt++;
     }
 
     if ((int) fmod(t, 1000) == 0) {
-      tmhcalcmh0(m);
+      tmhcalcmh0(m); /* compile dh/de */
       if ((int) fmod(t, trep) == 0)
         log_printf(log, "%g %d %g %g %g\n", t, pt->E, 1.0/bet, m->dhde[m->iec], amp);
     }
@@ -282,7 +286,7 @@ INLINE int tmhmove1(potts_t *pt)
   } else return 0;
 }
 
-/* entropic sampling: constant dhde, only for verify */
+/* entropic sampling: constant dhde, only for verification */
 static int tmhrun_entvrf(tmh_t *m, potts_t *pt, double bet, double trun, double t,
     logfile_t *log)
 {

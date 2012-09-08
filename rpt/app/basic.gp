@@ -1,5 +1,6 @@
 #!/usr/bin/env gnuplot
 reset
+unset multiplot
 set terminal pngcairo enhanced font 'Arial, 27' linewidth 2 round size 2048, 1536
 set output "basic.png"
 
@@ -94,26 +95,25 @@ plot [1.2:2.5][0.9:1.2] \
 
 set origin 0., 0.5
 
-set xtics 2 offset 0, 0.5
+set xtics 2 offset 0, 0.0
 set mxtics 2
-set xlabel "{/Symbol e}" offset 1.0, 1.0
+set xlabel "{/Symbol e}" offset 1.0, 0.5
 
 set ytics 0.2
 set mytics 2
-set ylabel "p(e)" offset 1.0, 0.0
+set ylabel "p({/Symbol e})" offset 1.0, 0.0
 
-#set style line 11 lt rgb "#000000" lw 0.75 pt 2 ps 1 # black, thin for small data set
-set style line 11 lt rgb "#000000" lw 2 pt 2 ps 1 # black, thin for large data set
-set style line 12 lt rgb "#ff2000" lw 0.5 pt 1 ps 2 # red
-set style line 13 lt rgb "#40e020" lw 0.5 pt 2 ps 2 # green
-set style line 14 lt rgb "#302080" lw 1 pt 4 ps 2 # navy blue
+set style line 11 lt rgb "#c04020" lw 2 pt 10 ps 3  # dark red
+set style line 12 lt rgb "#305080" lw 2 pt 8  ps 3  # navy blue
+set style line 13 lt rgb "#40ff20" lw 0.5 pt 2 ps 2 # magenta
+set style line 14 lt rgb "#c020a0" lw 1 pt 4 ps 2   # green
 
 set key right top Left reverse spacing 2.0
 
-set arrow 1 from 1.40,1.01 to 0.1, 1 ls 12 lw 2.0 front 
-set arrow 2 from 1.40,0.86 to 0.23, 0.83 ls 11 front
-set arrow 3 from 1.40,0.72 to 0.24, 0.438 ls 14 lw 2.0 front 
-set arrow 4 from 2.40,0.54 to 1.30, 0.257 ls 13 lw 2.0 front 
+#set arrow 1 from 1.40,1.01 to 0.1, 1 ls 12 lw 2.0 front 
+#set arrow 2 from 1.40,0.86 to 0.23, 0.83 ls 11 front
+#set arrow 3 from 1.40,0.72 to 0.24, 0.438 ls 14 lw 2.0 front 
+#set arrow 4 from 2.40,0.54 to 1.30, 0.257 ls 13 lw 2.0 front 
 
 bin(x,w)=w*(floor(x/w)+.5)
 
@@ -123,16 +123,25 @@ bin(x,w)=w*(floor(x/w)+.5)
 #  "ehmclM0.1.dat"    u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.02, single, MC", \
 #  "ehmcgM0.01.dat"   u (bin($1, 0.05)):($2*0.2) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.002, all, MC"
 
-plot [-3:12][0:1.1] \
-  "ehmclM0.05.dat"   u (bin($1, 0.05)):($2*0.1) smooth freq with boxes fs transparent solid 0.5 noborder ls 12 t "u_{max} = 0.05, single, MC", \
-  "ehmdlM0.05.dat"   u (bin($1, 0.05)):($2*0.1) smooth freq with l ls 11 t "u_{max} = 0.05, single, MD", \
-  "ehmclM0.1.dat"    u (bin($1, 0.01)):($2*1.0) smooth freq with boxes fs transparent solid 0.8 noborder ls 14 t "u_{max} = 0.1, single, MC", \
-  "ehmcgM0.01.dat"   u (bin($1, 0.02)):($2*0.5) smooth freq with boxes fs transparent solid 0.4 noborder ls 13 t "u_{max} = 0.01, all, MC"
+plot [-2:7][0:1.3] \
+  "ehmdlM0.05.dat"   u 1:2 every 40::108  with p  ls 1  ps 3   not, \
+  ""                 u 1:2                with l  ls 1         not, \
+  -1                                      with lp ls 1  ps 3   t "u_{max} = 0.05, single, MD", \
+  "ehmclM0.05.dat"   u 1:2 every 40::156  with p  ls 4  ps 3   not, \
+  ""                 u 1:2                with l  ls 4         not, \
+  -1                                      with lp ls 4  ps 3   t "u_{max} = 0.05, single, MC", \
+  "ehmdlM0.1.dat"    u 1:2 every 20::8    with p  ls 3  ps 3   not, \
+  ""                 u 1:2                with l  ls 3         not, \
+  -1                                      with lp ls 3  ps 3   t "u_{max} = 0.1, single, MC", \
+  "ehmcgM0.01.dat"   u 1:2 every 20::75   with p  ls 5  ps 2.5 not, \
+  ""                 u 1:2                with l  ls 5         not, \
+  -1                                      with lp ls 5  ps 2.5 t "u_{max} = 0.01, all, MC", \
+  -1  not
 
-unset arrow 1
-unset arrow 2
-unset arrow 3
-unset arrow 4
+#unset arrow 1
+#unset arrow 2
+#unset arrow 3
+#unset arrow 4
 
 
 set origin 0.5, 0.5
@@ -140,7 +149,7 @@ set origin 0.5, 0.5
 
 set xtics .2
 set mxtics 2
-set xlabel "{/Symbol b}" offset 0, 1.0
+set xlabel "{/Symbol b}" offset 0, 0.5
 
 set ytics .2
 set mytics 2
