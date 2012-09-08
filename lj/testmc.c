@@ -32,3 +32,4 @@ int main(void)
   lj_close(lj);
   return 0;
 }
+
