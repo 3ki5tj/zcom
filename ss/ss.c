@@ -23,7 +23,7 @@ struct ssheader {
  * to struct ssheader to compute the Hash value,
  * because the former is more frequently used in e.g. looking-up
  * */
-static size_t sshashval_(const char *p)
+INLINE size_t sshashval_(const char *p)
 {
   size_t val = (size_t) p * 1664525u + 1013904223u;
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
@@ -33,7 +33,7 @@ static size_t sshashval_(const char *p)
  * return the *previous* header to the one that associates with s
  * first locate the list from the Hash value, then enumerate the linked list.
  * */
-static struct ssheader *sslistfind_(const char *s)
+INLINE struct ssheader *sslistfind_(const char *s)
 {
   struct ssheader *hp, *head;
 
@@ -51,7 +51,7 @@ static struct ssheader *sslistfind_(const char *s)
  * we do not accept a precalculated hash value,
  * since realloc might have changed it
  * */
-static struct ssheader *sslistadd_(struct ssheader *h)
+INLINE struct ssheader *sslistadd_(struct ssheader *h)
 {
   struct ssheader *head;
 
@@ -64,7 +64,7 @@ static struct ssheader *sslistadd_(struct ssheader *h)
 }
 
 /* remove hp->next */
-static void sslistremove_(struct ssheader *hp, int f)
+INLINE void sslistremove_(struct ssheader *hp, int f)
 {
   struct ssheader *h = hp->next;
 
@@ -77,7 +77,7 @@ static void sslistremove_(struct ssheader *hp, int f)
  * create a new header if *php is NULL, in this case, the first character
  * of the string is '\0'
  * */
-static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
+INLINE char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
 {
   struct ssheader *h = NULL, *hp;
   size_t size;
@@ -109,7 +109,7 @@ static char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   return (char *)(hp->next + 1);
 }
 
-static void ssmanage_low_(struct ssheader *hp, unsigned opt)
+INLINE void ssmanage_low_(struct ssheader *hp, unsigned opt)
 {
   if (opt == SSDELETE)
     sslistremove_(hp, 1);
@@ -118,7 +118,7 @@ static void ssmanage_low_(struct ssheader *hp, unsigned opt)
 }
 
 /* delete a string, shrink memory, etc ... */
-int ssmanage(char *s, unsigned flags)
+INLINE int ssmanage(char *s, unsigned flags)
 {
   struct ssheader *hp, *head;
   unsigned opt = flags & 0xFF;
@@ -153,7 +153,7 @@ int ssmanage(char *s, unsigned flags)
  * If flags & SSCAT:
  * append t after *ps. Equivalent to cpy if ps or *ps is NULL.
  * */
-char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
+INLINE char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
 {
   struct ssheader *hp = NULL;
   size_t size = 0u, sizes = 0u;
@@ -191,7 +191,7 @@ char *sscpycatx(char **ps, const char *t, size_t minsize, unsigned flags)
  * *pn is number of characters read (including '\n', but not the terminal null)
  * delim is the '\n' for reading a singe line
  * */
-char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
+INLINE char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
 {
   size_t n, max;
   int c;

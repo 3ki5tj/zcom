@@ -1,45 +1,27 @@
 src=rng.c
 hdr=rng.h
 dep=$(src) $(hdr) Makefile
-CC = icc -Wall -O0 -g3
-CX = icc -Wall -O3 
-#CX = gcc -Wall -O3 -g -march=pentium4 -funroll-all-loops -mfpmath=sse
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic -lm
+# optimized compiling
+CX = icc -Wall -O3 -g -vec_report0 -fno-alias -fargument-noalias
+#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm -Wstrict-aliasing -fstrict-aliasing
 
-all: cmp1 cmp2
+deps = Makefile
+bin = $(patsubst %.c,%, $(wildcard test*.c)) \
+      $(patsubst %.c,%_d, $(wildcard test*.c))
 
-# compares the result from test and testref
-cmp1: test testref
-	rm -f out1 out2
-	./test > out1
-	./testref > out2
-	diff out1 out2
+all: $(bin)
 
-# test if two short runs produce the same result
-# as a long run
-cmp2: testsv test
-	rm -f MTSEED out1 out3
-	./test > out1
-	./testsv > out3
-	./testsv >> out3
-	diff out1 out3
+$(bin): $(deps)
 
-test: test.c $(dep) 
-	$(CC) -o $@ $< -lm
+%_d: %.c
+	$(CC) -o $@ $< 
 
-testref: test.c zcomref.h
-	$(CC) -DREF -o $@ $< -lm
-
-testsv: testsv.c $(dep)
-	$(CC) -o $@ $< -lm
-
-testsp: testsv.c $(dep) 
-	$(CX) -DTESTSP -DN=2000000000 -o $@ $< -lm
-
-testgr: testgr.c $(dep)
-	$(CX) -o $@ $< -lm
+%: %.c
+	$(CX) -o $@ $< 
 
 clean:
-	rm -f test testsv testsp testref out* MTSEED mt.dat *~
+	rm -f $(bin) out* MTSEED mt.dat *~
 
 .PHONY: all clean
 

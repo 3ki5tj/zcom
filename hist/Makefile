@@ -1,20 +1,23 @@
-all: test1 testrdf test2
+CC = gcc -Wall -O0 -g3 -lm -pedantic
+# optimized compiling
+CX = icc -Wall -O3 -g -lm -vec_report0
+#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+dep = util.h Makefile
+bin = $(patsubst %.c,%, $(wildcard test*.c)) \
+      $(patsubst %.c,%_d, $(wildcard test*.c))
 
-src=hist.c hist.h
+all: $(bin)
 
-CC=gcc -Wall -lm
+$(bin): $(deps)
 
-test1: test1.c $(src)
+%_d: %.c
 	$(CC) -o $@ $< 
 
-testrdf: testrdf.c $(src)
-	$(CC) -o $@ $< 
-
-test2: test2.c $(src)
-	$(CC) -o $@ $< 
+%: %.c
+	$(CX) -o $@ $< 
 
 clean:
-	rm -f test1 testrdf test2 a.out *~ *.o *.log HIST* RDF* rdf*.dat
+	rm -f *~ *.out MTSEED *.dat $(bin)
 
 .PHONY: all clean
 

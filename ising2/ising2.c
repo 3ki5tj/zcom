@@ -1,4 +1,4 @@
-#include "rng.h"
+#include "rng.c"
 #include "util.h"
 
 #ifndef ISING2_C__
@@ -7,7 +7,7 @@
 #include "ising2.h"
 
 /* compute total energy and magnetization */
-int is2_em(ising_t *is)
+INLINE int is2_em(ising_t *is)
 {
   int l, i, j, s, u, e, m, *p, *pu;
 
@@ -26,7 +26,7 @@ int is2_em(ising_t *is)
   return is->E = -e;
 }
 
-int is2_check(ising_t *is)
+INLINE int is2_check(ising_t *is)
 {
   int i, e, m;
 
@@ -48,7 +48,7 @@ int is2_check(ising_t *is)
 }
 
 /* pick a random site, count neighbors with different spins */
-int is2_pick(const ising_t *is, int *h)
+INLINE int is2_pick(const ising_t *is, int *h)
 {
   int id, ix, iy, l, lm, n, nm, *p;
 
@@ -65,14 +65,14 @@ int is2_pick(const ising_t *is, int *h)
 }
 
 /* flip site id, with h different neighbors */
-int is2_flip(ising_t *is, int id, int h)
+INLINE int is2_flip(ising_t *is, int id, int h)
 {
   assert(id < is->n);
   is->M += (is->s[id] = -is->s[id])*2;
   return is->E += h*2;
 }
 
-int is2_load(ising_t *is, const char *fname)
+INLINE int is2_load(ising_t *is, const char *fname)
 {
   FILE *fp;
   int i, lx, ly, n, c;
@@ -100,7 +100,7 @@ int is2_load(ising_t *is, const char *fname)
   return 0;
 }
 
-int is2_save(const ising_t *is, const char *fname)
+INLINE int is2_save(const ising_t *is, const char *fname)
 {
   FILE *fp;
   int i, j, l, *p;
@@ -148,7 +148,7 @@ void is2_close(ising_t *is)
 }
 
 /* exact solution of ising model */
-double is2_exact(ising_t *is, double beta, double *eav, double *cv)
+INLINE double is2_exact(ising_t *is, double beta, double *eav, double *cv)
 {
   double lxh, n, ex, f, th, sech, bet2, bsqr, log2, x;
   double lnz, lnz1, lnz2, lnz3, lnz4, dz, ddz;
@@ -303,7 +303,7 @@ easydos[n_, m_] := Module[{dos = NDOS[n, m], logdos = Table[0, {n m + 1}], i},
     logdos[[i]] = If[dos[[i]] == 0, -10000, N[Log[dos[[i]]], 17]]];
   savels["islogdos" <> ToString[n] <> "x" <> ToString[m] <> ".txt", logdos]];
   */
-int is2loadlogdos(double *logdos, int n, int m, const char *fn)
+INLINE int is2loadlogdos(double *logdos, int n, int m, const char *fn)
 {
   char s[1024];
   FILE *fp;

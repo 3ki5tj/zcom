@@ -12,7 +12,7 @@ int mtidx_ = -1; /* index in mt_, -1: uninitialized */
 uint32_t mt_[MT_N]; /* array for the mt state vector */
 
 /* save the current mt state to file */
-int mtsave(const char *fname)
+INLINE int mtsave(const char *fname)
 {
   FILE *fp;
   int k;
@@ -30,7 +30,7 @@ int mtsave(const char *fname)
 }
 
 /* load mt state from `fname', or if it fails, use `seed' to initialize mt  */
-int mtload(const char *fname, uint32_t seed)
+INLINE int mtload(const char *fname, uint32_t seed)
 {
   static char s[64];
   int k, z, err = 1;

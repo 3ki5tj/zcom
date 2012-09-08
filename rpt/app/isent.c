@@ -260,7 +260,7 @@ int main(int argc, char **argv)
   ising_t *is;
 
   doargs(argc, argv);
-  die_if ((is = is2_open(L)) == NULL, "cannot open is2\n");
+  die_if ((is = is2_open(L)) == NULL, "cannot open is2, L %d\n", L);
 
   /* read in the density of states */
   die_if (is2_loadlogdos(is, NULL) != 0,

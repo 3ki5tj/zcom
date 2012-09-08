@@ -33,7 +33,7 @@ static void lj_setrho(lj_t *lj, real rho)
 }
 
 /* initialize coefficients for the switched potential */
-void lj_initsw(lj_t *lj, real rs)
+INLINE void lj_initsw(lj_t *lj, real rs)
 {
   real rs2, rs3, rs6, rs15, dr, dr2, dr3, dr4, f1, f2, f26, f13;
 
@@ -644,7 +644,7 @@ INLINE real lj_duinsert(lj_t *lj, real *xt)
 { return lj->d == 2 ? lj_duinsert2d(lj, xt) : lj_duinsert3d(lj, xt); }
 
 /* velocity verlet */
-void lj_vv(lj_t *lj, real dt)
+INLINE void lj_vv(lj_t *lj, real dt)
 {
   int i, nd = lj->n*lj->d;
   real dtl = dt/lj->l;
@@ -746,9 +746,7 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
-/*
-  printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
-*/
+  //printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
   if (metroacc1(dex, 1.0)) {
     return 1;
   } else {
@@ -774,9 +772,7 @@ INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
   ln = (real) exp(logvn/3);
   if (ln < lj->rc * 2) return 0; /* box too small */
   for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
-/*
-  printf("pvir %g, bp %g, dlogv %g, rho %g -> %g, p %g\n", (lj->n + 1 + bet*lj->vir/3)/lj->vol, bet*p, dlogv, lj->n/lj->vol, lj->n/vn, lj_calcp(lj, tp));
-*/
+  //printf("pvir %g, bp %g, dlogv %g, rho %g -> %g, p %g\n", (lj->n + 1 + bet*lj->vir/3)/lj->vol, bet*p, dlogv, lj->n/lj->vol, lj->n/vn, lj_calcp(lj, tp));
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   /* safety check! */
@@ -826,7 +822,7 @@ void lj_close(lj_t *lj)
 /* write position (and velocity)
  * Note 1: *actual* position, not unit position is used
  * Note 2: coordinates are *not* wrapped back into the box */
-int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
+INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
 {
   FILE *fp;
   int i, j, d = lj->d, n = lj->n;
@@ -847,7 +843,7 @@ int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
 }
 
 /* read position file (which may include velocity) */
-int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags)
+INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags)
 {
   char s[1024], *p;
   FILE *fp;

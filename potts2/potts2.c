@@ -1,11 +1,11 @@
-#include "rng.h"
+#include "rng.c"
 #ifndef POTTS2_C__
 #define POTTS2_C__
 
 #include "potts2.h"
 
 /* compute the total energy and magnetization */
-int pt2_em(potts_t *pt)
+INLINE int pt2_em(potts_t *pt)
 {
   int i, j, l, s, s1, s2, *p;
 
@@ -28,7 +28,7 @@ int pt2_em(potts_t *pt)
 /* pick a random site (return its id)
  * compute h[j], the numbers of neighboring spins with value j */
 /* load spin configuration */
-int pt2_load(potts_t *pt, const char *fname)
+INLINE int pt2_load(potts_t *pt, const char *fname)
 {
   FILE *fp;
   int i, lx, ly, n, c;
@@ -64,7 +64,7 @@ int pt2_load(potts_t *pt, const char *fname)
 }
 
 /* save spin configuration */
-int pt2_save(const potts_t *pt, const char *fname)
+INLINE int pt2_save(const potts_t *pt, const char *fname)
 {
   FILE *fp;
   int i, j, l, *p;

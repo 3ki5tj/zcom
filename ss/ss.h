@@ -1,3 +1,6 @@
+#ifndef INLINE
+#define INLINE __inline static
+#endif
 #ifndef SS_H__
 #define SS_H__
 #include <stdio.h>
@@ -19,9 +22,9 @@ enum { SSCAT = 1, SSDELETE = 2, SSSHRINK = 3, SSSINGLE = 0x1000 };
 #define ssfgets(s, pn, fp)    ssfgetx(&(s), (pn), '\n', (fp))
 #define ssfgetall(s, pn, fp)  ssfgetx(&(s), (pn), EOF, (fp))
 
-int   ssmanage(char *, unsigned);
-char *sscpycatx(char **, const char *, size_t, unsigned);
-char *ssfgetx(char **, size_t *, int, FILE *fp);
+INLINE int   ssmanage(char *, unsigned);
+INLINE char *sscpycatx(char **, const char *, size_t, unsigned);
+INLINE char *ssfgetx(char **, size_t *, int, FILE *fp);
 
 #endif
 

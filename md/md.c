@@ -4,7 +4,7 @@
 #include "md.h"
 
 /* shift the center of mass to zero */
-void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int d)
+INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int d)
 {
   int i, j;
   real rc, wtot = 0;
@@ -21,7 +21,7 @@ void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int d)
 }
 
 /* annihilate angular momentum 2d */
-void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
+INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 {
   int i;
   real am, r2, xc[2] = {0,0}, xi[2];
@@ -50,7 +50,7 @@ void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
  *    v = c X r
  *   */
 
-void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
+INLINE void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 {
   int i;
   real xc[3] = {0,0,0}, xi[3], ang[3], am[3] = {0,0,0}, dv[3], mat[3][3], inv[3][3];
@@ -88,7 +88,7 @@ void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 }
 
 /* return kinetic energy */
-real md_ekin(const real *v, int nd, int dof, real *tkin)
+INLINE real md_ekin(const real *v, int nd, int dof, real *tkin)
 {
   int i;
   real ekin;
@@ -100,7 +100,7 @@ real md_ekin(const real *v, int nd, int dof, real *tkin)
 
 /* velocity scaling: for regular MD
  * ekt is the time-averaged ek, may not be *ekin  */
-void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tkin)
+INLINE void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tkin)
 {
   int i;
   real ekav = .5f*tp*dof, s;
@@ -113,7 +113,7 @@ void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tk
 }
 
 /* velocity rescaling thermostat */
-void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
+INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
   real ekav = .5f*tp*dof, ek1 = *ekin, ek2, s;

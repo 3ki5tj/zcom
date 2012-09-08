@@ -59,10 +59,10 @@ plot [-2:2][-1:1] 0 w l ls 8 not, \
   -10                        w lp ls 3 t "Eq. (6)", \
   ""             u ($1/N):7  w l ls 4 not, \
   ""             u ($1/N):7  every 32 w p ls 4 not, \
-  -10                        w lp ls 4 t "Eq. (11), k = 1", \
+  -10                        w lp ls 4 t "Eq. (11), {/Arial-Italic k} = 1", \
   ""             u ($1/N):9  w l ls 5 not, \
   ""             u ($1/N):9  every 32 w p ls 5 not, \
-  -10                        w lp ls 5 t "Eq. (12), k = 1"
+  -10                        w lp ls 5 t "Eq. (12), {/Arial-Italic k} = 1"
 
 #  "profis16.dat" u ($1/N16):5  w l ls 6 not, \
 #  ""             u ($1/N16):5  every 32 w p ls 6 not, \
@@ -90,7 +90,8 @@ set mytics 5
 set ytics 0.5  offset 0.5, 0.0  font insetfont
 # {/Symbol \362} is the integral sign
 # make it a subscript but with larger font
-set ylabel "{/=12 {/Symbol-Oblique e} [log {/Arial-Italic g}_{/Arial-Italic U} ({/Arial-Italic U })] = &{i}_{/*2.0 {/Symbol \362}}&{i}@_{/*0.8 0}^{/*.8 U} {/Symbol-Oblique e} [{/Symbol-Oblique b}_{/Arial-Italic U} ({/Arial-Italic U'} )] d{/Arial-Italic U'} }" offset 3.0, 0 font insetfont
+# &{i} is a thin space
+set ylabel "{/=11 {/Symbol-Oblique D}[ log {/Arial-Italic g}_{/Arial-Italic U} ({/Arial-Italic U }) ] = &{i}_{/*2.0 {/Symbol-Oblique \362}}@_{/*0.8 &{i}0}^{/*.8 &{n}{/Arial-Italic U}} {/Symbol-Oblique D}[ {/Symbol-Oblique b}_{/Arial-Italic U} ({/Arial-Italic U'} ) ] d{/Arial-Italic U'} }" offset 3.0, 0 font insetfont
 unset key
 
 plot [-2:2][-1:0.5] 0 w l ls 8 not, \

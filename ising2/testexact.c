@@ -1,6 +1,5 @@
 #include <stdio.h>
-#include "rng.c"
-#include "ising2.h"
+#include "ising2.c"
 
 int main(void)
 {

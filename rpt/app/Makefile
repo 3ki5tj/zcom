@@ -4,27 +4,18 @@ CX = icc -Wall -O3 -g -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
-bin = ljmd ljmc sqmc sqmc1 is isent
+bin = $(patsubst %.c,%, $(wildcard *.c)) \
+      $(patsubst %.c,%_d, $(wildcard *.c))
 
 all: $(bin)
 
-ljmc: ljmc.c $(dep)
-	$(CX) -o $@ $< 
+$(bin): $(dep)
 
-ljmd: ljmd.c $(dep)
-	$(CX) -o $@ $< 
+%_d: %.c
+	$(CC) -o $@ $<
 
-sqmc: sqmc.c $(dep)
-	$(CX) -o $@ $< 
-
-sqmc1: sqmc1.c $(dep)
-	$(CX) -o $@ $< 
-
-is: is.c $(dep)
-	$(CX) -o $@ $< 
-
-isent: isent.c $(dep)
-	$(CX) -o $@ $< 
+%: %.c
+	$(CX) -o $@ $<
 
 run: $(bin)
 	python sizemcl.py

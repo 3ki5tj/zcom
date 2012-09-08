@@ -40,12 +40,12 @@ typedef struct {
 
 lj_t *lj_open(int n, int d, real rho, real rcdef);
 void lj_close(lj_t *lj);
-int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
+INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
 #define LJ_LOADBOX 0x10
-int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);
+INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);
 real lj_energy(lj_t *lj);
 real lj_force(lj_t *lj);
-void lj_vv(lj_t *lj, real dt);
+INLINE void lj_vv(lj_t *lj, real dt);
 
 #define lj_shiftcom(lj, v)    md_shiftcom(v, lj->n, lj->d)
 #define lj_shiftang(lj, x, v) md_shiftang(x, v, lj->n, lj->d)
@@ -60,7 +60,7 @@ INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt)
 INLINE real lj_calcp(lj_t *lj, real tp)
   { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
 
-void lj_initsw(lj_t *lj, real rs);
+INLINE void lj_initsw(lj_t *lj, real rs);
 
 /* initialize square well potential */
 INLINE void lj_initsq(lj_t *lj, real ra, real rb)

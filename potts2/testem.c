@@ -1,6 +1,5 @@
 /* check if pick() and flip() correctly computes the energy */
 #include <stdio.h>
-#include "rng.c"
 
 
 #define PT2_LB 5

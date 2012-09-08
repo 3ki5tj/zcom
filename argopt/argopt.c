@@ -192,7 +192,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
 }
 
 /* dump the current values */
-void argopt_dump(const argopt_t *ao)
+INLINE void argopt_dump(const argopt_t *ao)
 {
   int i, len = 2;
   opt_t *ol = ao->opts;

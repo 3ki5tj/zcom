@@ -21,7 +21,7 @@ INLINE rpt_t *rpt_open(double emin, double emax, double edel)
   xnew(t, 1);
   av_clear(&t->av);
   t->hs = hs_open(1, emin, emax, edel);
-  die_if (t->hs == NULL, "failed to initialize rpt\n");
+  die_if (t->hs == NULL, "failed to initialize rpt, (%g: %g: %g)\n", emin, edel, emax);
   return t;
 }
 

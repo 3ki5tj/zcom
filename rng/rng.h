@@ -38,10 +38,10 @@
 
 #define MTFILE    "MTSEED"  /* default file */
 #define MTSEED    5489UL    /* default seed */
-int mtsave(const char *fname);
-int mtload(const char *fname, uint32_t seed);
-uint32_t mtrand(void);
-double grand0(void);
+INLINE int mtsave(const char *fname);
+INLINE int mtload(const char *fname, uint32_t seed);
+INLINE uint32_t mtrand(void);
+INLINE double grand0(void);
 
 /* metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
 INLINE int metroacc0(double r) { r = exp(r); return rnd0() < r; }

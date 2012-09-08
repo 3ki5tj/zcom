@@ -28,7 +28,7 @@
 #define histsave(h,rows,n,xmin,dx,flags,fname) \
   histsavex((const double *)h,rows,n,xmin,dx,flags,NULL,NULL,NULL,fname)
 
-int histsavex(const double *h, int rows, int n, double xmin, double dx, 
+INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx, 
     unsigned flags, int (*fwheader)(FILE *, void *),
     double (*fnorm)(int, int, double, double, void *), 
     void *pdata, const char *fname);
@@ -36,12 +36,12 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
 #define histload(h,rows,n,xmin,dx,flags,fname) \
   histloadx((double *)h,rows,n,xmin,dx,flags,NULL,NULL,NULL,fname)
 
-int histloadx(double *hist, int rows, int n, double xmin, double dx,
+INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, int (*frheader)(const char *, void *),
     double (*fnorm)(int, int, double, double, void *), 
     void *pdata, const char *fn);
 
-int histadd(const double *x, double w, double *h, int rows, 
+INLINE int histadd(const double *x, double w, double *h, int rows, 
     int n, double xmin, double dx, unsigned flags);
 
 /* object oriented wrapper functions */
@@ -122,11 +122,11 @@ INLINE int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 }
 
 /* two dimensional version */
-int hist2save(const double *h, int rows, int n, double xmin, double dx,
+INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fname);
-int hist2load(double *hist, int rows, int n, double xmin, double dx,
+INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fname);
-int hist2add(const double *xarr, const double *yarr, int skip,
+INLINE int hist2add(const double *xarr, const double *yarr, int skip,
     double w, double *h, int rows, 
     int n, double xmin, double dx, unsigned flags);
 

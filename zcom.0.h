@@ -132,10 +132,8 @@
   #include <stdio.h>
 #endif
 
-#if (defined(_MSC_VER) || defined(__POCC__) || defined(__xlC__))
-  #ifndef M_PI
-  #define M_PI 3.14159265358979323846
-  #endif
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__

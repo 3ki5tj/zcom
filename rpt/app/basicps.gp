@@ -54,11 +54,11 @@ set key left bottom Left reverse width -9
 
 plot [0.005:0.1][0:] \
   "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (4)", \
-            ""  u 1:2  w lp ls 1 t "Eq. (5), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol e}^2{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (6'), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol De^2}{/Symbol \361}", \
-            ""  u 1:4  w lp ls 3 t "Eq. (6), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
-            ""  u 1:6  w lp ls 4 t "Eq. (11), k = 1", \
-            ""  u 1:8  w lp ls 5 t "Eq. (12), k = 1"
+            ""  u 1:2  w lp ls 1 t "Eq. (5), {/Symbol-Oblique b} = 2{/Symbol \341}{/Symbol-Oblique e}{/Symbol \361}/{/Symbol \341}{/Symbol-Oblique e}^2{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (6'), {/Symbol-Oblique b} = 2{/Symbol \341}{/Symbol-Oblique e}{/Symbol \361}/{/Symbol \341}{/Symbol-Oblique De^2}{/Symbol \361}", \
+            ""  u 1:4  w lp ls 3 t "Eq. (6), {/Symbol \341}exp( {/Symbol-Oblique - b e}){/Symbol \361}= 1", \
+            ""  u 1:6  w lp ls 4 t "Eq. (11), {/Arial-Italic k} = 1", \
+            ""  u 1:8  w lp ls 5 t "Eq. (12), {/Arial-Italic k} = 1"
 
 unset logscale x
 
@@ -83,7 +83,7 @@ set key right top Left reverse
 
 plot [1.2:2.5][0.9:1.2] \
   "rcmcl.txt" u 1:14 w lp ls 9  t "Eq. (4)", \
-          ""  u 1:4  w lp ls 3  t "Eq. (6), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
+          ""  u 1:4  w lp ls 3  t "Eq. (6), {/Symbol \341}exp( {/Symbol-Oblique - b e} ){/Symbol \361}= 1", \
           ""  u 1:6  w lp ls 4  t "Eq. (11), k = 1", \
           ""  u 1:8  w lp ls 5  t "Eq. (12), k = 1"
 
@@ -96,7 +96,7 @@ set xlabel "{/Symbol-Oblique e}" offset 1.0, 0.5
 
 set ytics 0.2
 set mytics 2
-set ylabel "{/Arial-Italic p}({/Symbol-Oblique e})" offset 1.0, 0.0
+set ylabel "{/Arial-Italic p} ( {/Symbol-Oblique e} )" offset 1.0, 0.0
 
 set key right top Left reverse width -6 
 
@@ -125,7 +125,7 @@ set xlabel "{/Symbol-Oblique b}" offset 0, 0.5
 
 set ytics .2
 set mytics 2
-set ylabel "{/Symbol \341}exp( -{/Symbol-Oblique b e} ){/Symbol \361}" offset 2., 0
+set ylabel "{/Symbol \341}exp( {/Symbol-Oblique - b e} ){/Symbol \361}" offset 2., 0
 # try {/Symbol-Oblique b} in postscript
 
 set arrow 1 from 1, 0.94 to 1, 0.05 ls 9

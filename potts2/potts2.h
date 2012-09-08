@@ -21,9 +21,9 @@ typedef struct {
   double *dproba;
 } potts_t;
 
-int pt2_em(potts_t *pt);
-int pt2_load(potts_t *pt, const char *fname);
-int pt2_save(const potts_t *pt, const char *fname);
+INLINE int pt2_em(potts_t *pt);
+INLINE int pt2_load(potts_t *pt, const char *fname);
+INLINE int pt2_save(const potts_t *pt, const char *fname);
 potts_t *pt2_open(int l, int q);
 void pt2_close(potts_t *pt);
 

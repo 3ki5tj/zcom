@@ -2,7 +2,7 @@
 #define HIST_C__
 #include "hist.h"
 /* compute sum, average and standard deviation*/
-static double *gethistsums_(const double *h, int rows, int n, 
+INLINE double *gethistsums_(const double *h, int rows, int n, 
     double xmin, double dx)
 {
   double *sums, *xav, *xdv, x, w;
@@ -28,7 +28,7 @@ static double *gethistsums_(const double *h, int rows, int n,
   return sums;
 }
 
-static double *gethist2sums_(const double *h, int rows, int n, 
+INLINE double *gethist2sums_(const double *h, int rows, int n, 
     double xmin, double dx)
 {
   double *sums, *xav, *yav, *xdv, *ydv, x, y, w;
@@ -69,7 +69,7 @@ static double *gethist2sums_(const double *h, int rows, int n,
  * each contains 'n' entries, from 'xmin' to 'xmin+dx*n'
  * (*fwheader) is function to print additional information
  * (*fnorm) is advanced normalization function */
-int histsavex(const double *h, int rows, int n, double xmin, double dx,
+INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, 
     int (*fwheader)(FILE *fp, void *data), 
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
@@ -172,7 +172,7 @@ int histsavex(const double *h, int rows, int n, double xmin, double dx,
 }
 
 /* skip a | */
-static char *skipabar_(char *p)
+INLINE char *skipabar_(char *p)
 {
   int next = -1;
   sscanf(p, " | %n", &next);
@@ -182,7 +182,7 @@ static char *skipabar_(char *p)
 /* load a previous histogram
  * (*frheader) function to read additional header info.
  * (*fnorm) normalization factor */
-int histloadx(double *hist, int rows, int n, double xmin, double dx,
+INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, 
     int (*frheader)(const char *s, void *data), 
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
@@ -307,7 +307,7 @@ EXIT:
 
 /* add x of weight w, into histogram h
  * return number of success */
-int histadd(const double *xarr, double w, double *h, int rows, 
+INLINE int histadd(const double *xarr, double w, double *h, int rows, 
     int n, double xmin, double dx, unsigned flags)
 {
   int r, ix, good = 0, verbose = flags & HIST_VERBOSE;
@@ -333,7 +333,7 @@ int histadd(const double *xarr, double w, double *h, int rows,
 }
 
 /* write 'rows' 2d n^2 histograms to file */
-int hist2save(const double *h, int rows, int n, double xmin, double dx,
+INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fn)
 {
   const int version = 0;
@@ -439,7 +439,7 @@ int hist2save(const double *h, int rows, int n, double xmin, double dx,
   return 0;
 }
 
-int hist2load(double *hist, int rows, int n, double xmin, double dx,
+INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, const char *fn)
 {
   FILE *fp;
@@ -548,7 +548,7 @@ EXIT:
 
 /* add (xarr[skip*r], yarr[skip*r]) of weight w, into histogram h
  * return number of success */
-int hist2add(const double *xarr, const double *yarr, int skip,
+INLINE int hist2add(const double *xarr, const double *yarr, int skip,
     double w, double *h, int rows, 
     int n, double xmin, double dx, unsigned flags)
 {

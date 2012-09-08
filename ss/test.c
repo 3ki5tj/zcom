@@ -1,18 +1,18 @@
 #include <stdio.h>
-#include "ss.h"
+#include "ss.c"
 
 static int test_ssfgets(void)
 {
-  char *s=NULL, *fname="ss.c";
+  char *s = NULL, *fname = "ss.c";
   FILE *fp;
   int i;
-  size_t n=0;
+  size_t n = 0;
 
   if((fp=fopen(fname, "r")) == NULL){
     fprintf(stderr, "cannot open file, %s\n", fname);
     return -1;
   }
-  for(i=1; ssfgets(s, &n, fp); i++)
+  for(i = 1; ssfgets(s, &n, fp); i++)
     printf("%4d %4u | %s", i, n, s);
   rewind(fp);
   ssfgetall(s, &n, fp);
