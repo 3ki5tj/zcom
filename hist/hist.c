@@ -181,7 +181,8 @@ INLINE char *skipabar_(char *p)
 
 /* load a previous histogram
  * (*frheader) function to read additional header info.
- * (*fnorm) normalization factor */
+ * (*fnorm) normalization factor
+ * flags can have HIST_ADDITION and/or HIST_VERBOSE */
 INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, 
     int (*frheader)(const char *s, void *data), 

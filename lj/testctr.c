@@ -1,6 +1,5 @@
 #include "lj.c"
 #include "include/av.h"
-#include "include/hist.c"
 
 int n = 108;
 int d = 3;

@@ -1,4 +1,5 @@
 #include "md.c"
+#include "hist.c"
 #ifndef LJ_C__
 #define LJ_C__
 #include "lj.h"
@@ -816,6 +817,7 @@ void lj_close(lj_t *lj)
   free(lj->x);
   free(lj->v);
   free(lj->f);
+  if (lj->rdf) hs_close(lj->rdf);
   free(lj);
 }
 
@@ -900,6 +902,89 @@ ERR:
   fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fn, i, s);
   fclose(fp);
   return 1;
+}
+
+/* code for RDF, cf. hist/testrdf.c */
+
+/* header information in writing rdf */
+INLINE int lj_rdffwheader(FILE *fp, void *pdata)
+{
+  lj_t *lj = (lj_t *) pdata;
+  fprintf(fp, "RDF %d %d %d %.10e | ", 
+      lj->d, lj->rdfnfr, lj->n, lj->l);
+  return 0;
+}
+
+/* header information in reading rdf */
+INLINE int lj_rdffrheader(const char *s, void *pdata)
+{
+  lj_t *lj = (lj_t *) pdata;
+  int ret, d, n;
+  double l;
+
+  ret = sscanf(s, " RDF %d%d%d%lf | ", &d, &(lj->rdfnfr), &n, &l);
+  die_if (d != lj->d, "dimension mismatch %d vs. %d (file)\n", lj->d, d);
+  die_if (n != lj->n, "# of particle mismatch %d vs. %d (file)\n", lj->n, n);
+  die_if (fabs(l - lj->l) > 1e-3, "box size mismatch %d vs. %d (file)\n", lj->l, l);
+  return (ret == 4) ? 0 : 1;
+}
+
+INLINE double lj_rdfnorm(int row, int i, double xmin, double dx, void *pdata)
+{
+  lj_t *lj = (lj_t *) pdata;
+  int npr;
+  double x, vsph;
+ 
+  (void)row; 
+  x = xmin + i*dx;
+  if (lj->d == 2) 
+    vsph = 2.*M_PI*dx*(2*x + dx);
+  else
+    vsph = (4.*M_PI/3)*dx*(3*x*(x+dx) + dx*dx);
+  npr = lj->n * (lj->n - 1)/2;
+  return lj->vol / (vsph * npr * lj->rdfnfr);
+}
+
+INLINE hist_t *lj_rdfopen(lj_t *lj, double dr)
+{
+  lj->rdfnfr = 0;
+  return lj->rdf = hs_openx(1, 0, lj->l*.5, dr,
+      lj_rdffwheader, lj_rdffrheader, lj_rdfnorm);
+}
+
+/* add pairs to the RDF data */
+INLINE int lj_rdfadd(lj_t *lj)
+{
+  int i, j;
+  real rc2, dr2, dx[3];
+  double dr;
+
+  rc2 = lj->l/2;
+  rc2 = rc2*rc2;
+  for (i = 0; i < lj->n; i++) {
+    for (j = i + 1; j < lj->n; j++) {
+      if (lj->d == 2) 
+        dr2 = lj_pbcdist2_2d(dx, lj->x + 2*i, lj->x + 2*j, lj->l);
+      else
+        dr2 = lj_pbcdist2_3d(dx, lj->x + 3*i, lj->x + 3*j, lj->l);
+      if (dr2 >= rc2) continue;
+      dr = sqrt(dr2);
+      hs_add(lj->rdf, &dr, 1.0, HIST_VERBOSE);
+    }
+  }
+  return ++lj->rdfnfr; /* number of frames */
+}
+
+/* save rdf, flags can have HIST_NOZEROES */
+INLINE int lj_rdfsave(lj_t *lj, const char *fn, unsigned flags)
+{
+  return hs_savex(lj->rdf, fn, lj, (HIST_ADDAHALF|HIST_KEEPHIST)^flags);
+}
+
+/* load rdf, flags can have HIST_ADDITION and/or HIST_VERBOSE */
+INLINE int lj_rdfload(lj_t *lj, const char *fn, unsigned flags)
+{
+  return hs_loadx(lj->rdf, fn, lj, flags);
 }
 
 #endif

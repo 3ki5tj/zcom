@@ -1,5 +1,6 @@
 #include "def.h"
 #include "util.h"
+#include "hist.h"
 #ifndef LJ_H__
 #define LJ_H__
 
@@ -36,6 +37,9 @@ typedef struct {
 
   int usesq; /* square well potential */
   real ra, ra2, rb, rb2; /* -1 for (ra, rb) */
+
+  hist_t *rdf; /* histogram for radial distribution function */
+  int rdfnfr; /* number of frames in rdf */
 } lj_t;
 
 lj_t *lj_open(int n, int d, real rho, real rcdef);
