@@ -1,27 +1,22 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
+# CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+CC = icc -Wall -O3 -g -vec_report0
 src = zcom.h
 dep = $(src) GNUmakefile
-bin = ene vol rdf
+bin = $(patsubst %.c,%, $(wildcard *.c))
 
 all: $(bin)
 
-ene: ene.c $(dep)
-	$(CX) -o $@ $< 
+$(bin): $(dep)
 
-vol: vol.c $(dep)
-	$(CX) -o $@ $< 
-
-rdf: rdf.c $(dep)
-	$(CX) -o $@ $< 
+%: %.c
+	$(CC) -o $@ $<
 
 zip: zcom.h
 	zip dsprog *.c *.cfg zcom.h Makefile README
 
 zcom.h: zcom.full.h GNUmakefile
-	./zcompick.py -i zcom.full.h -o zcom.h -k "def util ss rng opt cfg distr av rc rv2 rv3 md specfunc lj" 
+	./zcompick.py -i zcom.full.h -o zcom.h -k "def util ss rng opt cfg distr av rc rv2 rv3 md specfunc hist lj" 
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos dsprog.zip zcom.h

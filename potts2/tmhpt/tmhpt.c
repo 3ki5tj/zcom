@@ -157,7 +157,7 @@ static void tmhcalce2ecarr(tmh_t *m)
 }
 
 /* static energy move */
-INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta, int ent)
+INLINE int tmhmove0(tmh_t *m, potts_t *pt, double beta)
 {
   int id, so, sn, de, nb[PT2_Q], acc;
   double dh;

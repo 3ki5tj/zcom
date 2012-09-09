@@ -1,30 +1,19 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
+# CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+CC = icc -Wall -O3 -g -vec_report0
 src = zcom.h
 dep = $(src) Makefile
-bin = ljmc ljmd sqmc is isent
+bin = $(patsubst %.c,%, $(wildcard *.c))
 
 all: $(bin)
 
-ljmc: ljmc.c $(dep)
-	$(CX) -o $@ $< 
+$(bin): $(dep)
 
-ljmd: ljmd.c $(dep)
-	$(CX) -o $@ $< 
-
-sqmc: sqmc.c $(dep)
-	$(CX) -o $@ $< 
-
-is: is.c $(dep)
-	$(CX) -o $@ $< 
-
-isent: isent.c $(dep)
-	$(CX) -o $@ $< 
+%: %.c
+	$(CC) -o $@ $<
 
 clean:
-	rm -f *~ *.out MTSEED $(bin) lj.pos
+	rm -f *~ *.out MTSEED $(bin) lj.pos 
 	rm -rf bin obj *.depend *.layout *.dat
 
 .PHONY: clean all

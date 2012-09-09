@@ -23,6 +23,7 @@ typedef struct {
   double dhdemin; /* minimal of dhde */
   double dhdemax; /* maximal of dhde */
   double *dhde; /* dH / dE - 1 */
+  double *dhdecnt; /* number of visits */
   double *tpehis; /* multipl-temperature energy histogram */
   double ensexp; /* w(T) = 1/T^ensexp */
   double *lnz; /* partition function */

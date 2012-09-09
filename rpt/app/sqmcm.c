@@ -1,6 +1,6 @@
 /* random perturbation temperature with Monte Carlo simulation
-   applied to square-well potential 
-   only use adujested move */
+   applied to square-well potential,
+   try to match the Lennard-Jones potential */
 #define ZCOM_PICK
 #define ZCOM_LJ
 #define ZCOM_RPT
@@ -17,13 +17,13 @@ real tp = 1.0f;
 real amp = 0.2f;
 int nequil = 10000;
 int nsteps = 100000;
-int nevery = 1;  /* compute temperatures every this number of steps */
-
-
+int nevery = 10;  /* compute temperatures every this number of steps */
+int calcUlj = 0;  /* whether to compute LJ energy or not */
+real scaleU = 1.0; /* scaling for hard-sphere potential */
 real ampp = 0.1f;
 int dumax = 1000; /* histogram dimension */
 char *fnehis = "ehsqmc.dat"; /* energy-increment distribution */
-char *fnehisd = NULL; /* adjusted energy-increment distribution */
+char *fnehislj = "ehljmc.dat"; /* from the Lennard-Jones potential */
 
 /* handle input arguments */
 static void doargs(int argc, char **argv)
@@ -40,8 +40,10 @@ static void doargs(int argc, char **argv)
   argopt_add(ao, "-m", "%r", &amp,    "amplitude of a MC move");
   argopt_add(ao, "-M", "%r", &ampp,   "amplitude of a perturbation");
   argopt_add(ao, "-U", "%d", &dumax,  "maximal energy change for histogram");
+  argopt_add(ao, "-V", "%b", &calcUlj, "whether to computer Lennard-Jones energy and pressure");
+  argopt_add(ao, "-S", "%r", &scaleU,  "potential scaling for hard-sphere potential");
   argopt_add(ao, "-o", NULL, &fnehis, "output file for the energy-increment histogram");
-  argopt_add(ao, "-O", NULL, &fnehisd,"output file for the adjusted energy-increment histogram");
+  argopt_add(ao, "-O", NULL, &fnehislj,"output file for that using the Lennard-Jones potential");
 /*
   argopt_add(ao, "-g", NULL, &fnlog, "log file");
 */
@@ -56,18 +58,24 @@ static void doargs(int argc, char **argv)
 }
 
 /* do Monte Carlo simulation and compute the perturbation temperature */
-static void domc(lj_t *lj, rpti_t *rpt, rpti_t *rptd)
+static void domc(lj_t *lj)
 {
   int t, acc = 0;
   int id, idu;
-  double u, du, bp0, bp1, bpi, bps0, bps1, bph0, bph1, bpd0, bpd1, bpdi;
-  static av_t avU[1], avu[1];
+  double u, eps, epslj, vir, bp0, bp1, bpi, bplj0, bplj1, bplji;
+  double Ulj, Uljref, plj, pljref;
+  static av_t avU[1], aveps[1], avUlj[1], avplj[1], avepslj[1];
+  rpti_t *rpt;
+  rpt_t *rptlj;
 
+  rpt = rpti_open(-dumax, dumax, 1, RPTI_HASINF);
+  rptlj = rpt_open(-100.0, 100.0, 0.001);
+  
   for (t = 0; t < nequil; t++) /* warm up */
-    lj_metrosq3d(lj, amp, 1.0f/tp);
+    lj_metrosq3d(lj, amp, scaleU/tp);
 
   for (t = 1; t <= nsteps; t++) { /* real simulation */
-    acc += lj_metrosq3d(lj, amp, 1.0f/tp);
+    acc += lj_metrosq3d(lj, amp, scaleU/tp);
 
     if (t % nevery == 0) {
       real xi[3];
@@ -75,47 +83,58 @@ static void domc(lj_t *lj, rpti_t *rpt, rpti_t *rptd)
       idu = lj_depotsq3d(lj, id, xi);
       rpti_add(rpt, idu);
       
-      if (!metroacc1(idu, 1.0f/tp)) idu = 0;
-      rpti_add(rptd, idu);
+      epslj = lj_depotlj3d(lj, id, xi, &vir);
+      rpt_add(rptlj, epslj);
       
-      av_add(avu, (double) idu);
+      //if (!metroacc1(idu, 1.0f/tp)) idu = 0;
+      //rpti_add(rptd, idu);
+      
+      if (calcUlj) {
+        Ulj = lj_energylj3d(lj, (rv3_t *) lj->x, &lj->vir, NULL, NULL);
+        av_add(avUlj, Ulj);
+        av_add(avplj, lj_calcp(lj, tp));
+      }
+      av_add(aveps, (double) idu);
+      av_add(avepslj, epslj);
     }
     av_add(avU, lj->epot);
     //if (acc) {   printf("%d, %d, %g", idu, lj->iepot, lj->epot); getchar(); }
   }
   u = av_getave(avU)/lj->n;
-  du = av_getdev(avu);
-  bp1 = rpti_bet1(rpt, &bp0);
-  bpi = rpti_bet(rpt);
-  bps0 = rpti_bets(rpt, 0);
-  bps1 = rpti_bets(rpt, 1);
-  bph0 = rpti_beth(rpt, 0);
-  bph1 = rpti_beth(rpt, 1);
-  bpd1 = rpti_bet1(rptd, &bpd0);
-  bpdi = rpti_bet(rptd);
-  printf("epot %g, acc %g, dudev %g, bp0 %.6f, bp1 %.6f, bpi %.6f, bps0 %.6f, bps1 %.6f, "
-    "bph0 %.6f, bph1 %.6f, bpd0 %.6f, bpd1 %.6f, bpdi %.6f\n",
-     u, 1.*acc/nsteps, du, bp0, bp1, bpi, bps0, bps1, 
-     bph0, bph1, bpd0, bpd1, bpdi);
+  Ulj = av_getave(avUlj)/lj->n;
+  plj = av_getave(avplj);
+  Uljref = lj_eos3d(rho, tp, &pljref, 0, 0);
+  eps = av_getdev(aveps);
+  bp1 = rpti_bet1(rpt, &bp0)/scaleU; bp0 /= scaleU;
+  bpi = rpti_bet(rpt)/scaleU;
+  epslj = av_getdev(avepslj);
+  bplj0 = rpt_bet0(rptlj);
+  bplj1 = rpt_bet1(rptlj);
+  bplji = rpt_bet(rptlj);
+
+  printf("epot %g, acc %g, epsdev %g, bp0 %.6f, bp1 %.6f, bpi %.6f, "
+         "Ulj %.6f, Uljref %.6f, plj %.6f, pljref %.6f, "
+         "epsljdev %g, bplj0 %.6f, bplj1 %.6f, bplji %.6f\n",
+     u, 1.*acc/nsteps, eps, bp0, bp1, bpi,
+     Ulj, Uljref, plj, pljref,
+     epslj, bplj0, bplj1, bplji);
+     
+  rpti_wdist(rpt, fnehis);
+  rpt_wdist(rptlj, fnehislj);
+  rpti_close(rpt);
+  rpt_close(rptlj);     
 }
 
 int main(int argc, char **argv)
 {
   lj_t *lj;
-  rpti_t *rpt, *rptd;
 
   doargs(argc, argv);
   lj = lj_open(N, D, rho, rb);
   lj_initsq(lj, ra, rb);
-  rpt = rpti_open(-dumax, dumax, 1, RPTI_HASINF);
-  rptd = rpti_open(-dumax, dumax, 1, 0);
-   
-  domc(lj, rpt, rptd);
-  
-  rpti_wdist(rpt, fnehis);
-  if (fnehisd) rpti_wdist(rptd, fnehisd);
-  rpti_close(rpt);
-  rpti_close(rptd);
+
+  domc(lj);
+
   lj_close(lj);
   return 0;
 }

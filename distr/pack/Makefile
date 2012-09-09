@@ -1,21 +1,16 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
+# CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+CC = icc -Wall -O3 -g -vec_report0
 src = zcom.h
 dep = $(src) Makefile
-bin = ene vol rdf
+bin = $(patsubst %.c,%, $(wildcard *.c))
 
 all: $(bin)
 
-ene: ene.c $(dep)
-	$(CX) -o $@ $< 
+$(bin): $(dep)
 
-vol: vol.c $(dep)
-	$(CX) -o $@ $< 
-
-rdf: rdf.c $(dep)
-	$(CX) -o $@ $< 
+%: %.c
+	$(CC) -o $@ $<
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos

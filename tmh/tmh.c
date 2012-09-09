@@ -43,6 +43,8 @@ tmh_t *tmh_open(double tp0, double tp1, double dtp,
   for (i = 0; i < m->ergn + 3; i++)
     m->dhde[i] = 1.;
   m->dhde++;
+  xnew(m->dhdecnt, m->ergn + 3);
+  m->dhdecnt++;
 
   die_if((tp1 - tp0)*dtp < 0, "Error: tp0 %g, tp1 %g, dtp %g\n", tp0, tp1, dtp);
   if (fabs(dtp) > 0) { /* dtp is explicitly specified */
@@ -79,6 +81,7 @@ void tmh_close(tmh_t *m)
 {
   if (m == NULL) return;
   free(m->dhde - 1);
+  free(m->dhdecnt - 1);
   free(m->tpehis);
   free(m->lnz);
   free(m->lng);
