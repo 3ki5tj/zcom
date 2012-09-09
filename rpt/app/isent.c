@@ -158,8 +158,8 @@ static double *getserr(double *bet, double *ref, int n)
   int i;
   double *serr;
   
-  xnew(serr, L*L+2);
-  for (i = n/2; i <= n; i++)
+  xnew(serr, L*L+1);
+  for (i = n/2; i < n; i++)
     serr[i+1] = serr[i] + .5*EDEL*(bet[i] - ref[i] + bet[i+1] - ref[i+1]);  
   for (i = n/2; i > 0; i--)
     serr[i-1] = serr[i] - .5*EDEL*(bet[i] - ref[i] + bet[i-1] - ref[i-1]);
@@ -209,7 +209,11 @@ static int savedata(int *hist, rpti_t **ta, double *refbet, const char *fn)
     EMIN+i*EDEL, bet0, bet1, beti[i]); getchar(); }
   }
   free(beti);
-  free(serr);
+  free(bets0);
+  free(bets1);
+  free(beth0);
+  free(beth1);
+  free(serr); free(serr0); free(serr1); free(serr2); free(serr3);
   fclose(fp);
   return 0;
 }

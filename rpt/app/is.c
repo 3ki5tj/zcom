@@ -100,7 +100,7 @@ int main(int argc, char **argv)
   rpti_t *rpt, *rptd;
 
   doargs(argc, argv);
-  die_if ((is = is2_open(L)) == NULL, "cannot init is2\n");
+  die_if ((is = is2_open(L)) == NULL, "cannot init is2, L %d\n", L);
   rpt = rpti_open(-8, 8, 4, 0);
   rptd = rpti_open(-8, 8, 4, 0);
 

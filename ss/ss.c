@@ -4,7 +4,7 @@
 #include "ss.h"
 
 #ifndef SSMINSIZ /* to override the block size, define it before inclusion */
-#define SSMINSIZ 256 /* change this value to 1 for debugging */
+#define SSMINSIZ 256 /* at least sizeof(int), but change this value to 1 for debugging */
 #endif
 #ifndef SSHASHBITS
 #define SSHASHBITS 8
@@ -79,7 +79,7 @@ INLINE void sslistremove_(struct ssheader *hp, int f)
  * */
 INLINE char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
 {
-  struct ssheader *h = NULL, *hp;
+  struct ssheader *h = NULL, *hn, *hp;
   size_t size;
 
   if (php == NULL) {
@@ -91,17 +91,19 @@ INLINE char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
   if ((hp = *php) == NULL || (h = hp->next)->size < n + 1 || !(flags & SSOVERALLOC)) {
     size = sscalcsize_(n);
     if (h == NULL || size != h->size) {
-      /* since realloc will change the hash value of h
-       * we have to remove the old entry first without free()
-       * hp->next will be freed by realloc */
-      if (hp != NULL)
-        sslistremove_(hp, 0);
-      if ((h = realloc(h, sizeof(*h)+size)) == NULL) {
+      /* remove h from the list  */
+      if (hp != NULL) sslistremove_(hp, 0);
+      if ((hn = calloc(sizeof(*h) + size, 1)) == NULL) {
         fprintf(stderr, "ssresize_: no memory for %u\n", (unsigned) size);
         return NULL;
       }
-      if (hp == NULL) /* clear the first byte if we start from nothing */
-        *(char *)(h + 1) = '\0';  /* h + 1 is the beginning of the string */
+      if (h != NULL) {
+        //printf("hn %p, h %p, h->size %u, size %u\n", (void *)hn, (void *)h, h->size, size);
+        memcpy(hn, h, sizeof(*hn) + (size > h->size ? h->size : size));
+        free(h);
+      }
+      h = hn;
+      
       *php = hp = sslistadd_(h);
       hp->next->size = size;
     }
