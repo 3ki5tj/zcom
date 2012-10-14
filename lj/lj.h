@@ -60,7 +60,13 @@ INLINE void lj_vscale(lj_t *lj, real tp, real ekt)
 INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt) 
  { md_vrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
- /* compute pressure */
+INLINE void lj_vrescalex(lj_t *lj, real tp, real thermdt)
+ { md_vrescalex(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
+
+INLINE int lj_mcvrescale(lj_t *lj, real tp, real thermdt)
+ { return md_mcvrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
+
+/* compute pressure */
 INLINE real lj_calcp(lj_t *lj, real tp)
   { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
 

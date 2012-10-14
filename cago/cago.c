@@ -159,8 +159,8 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
         go->x[i][j] += rndamp*(2.f*rnd0() - 1);
     }
   }
-  go->epotref = cago_force(go, go->f, go->xref);
-  go->epot = cago_force(go, go->f, go->x);
+  go->epotref = cago_force(go, go->xref, go->f);
+  go->epot = cago_force(go, go->x, go->f);
 
   /* initialize velocities */
   for (j = 0; j < 3; j++)
@@ -179,7 +179,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   return 0;
 }
 
-real cago_force(cago_t *go, rv3_t *f, rv3_t *x)
+real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
 {
   int i, j, n = go->n;
   real ene = 0, dr, del, ang, amp, invr2, dr2, dr4, dr6, dr10;
@@ -269,7 +269,7 @@ int cago_vv(cago_t *go, real fscal, real dt)
     rv3_sinc(x[i], v[i], dt);
   }
 
-  go->epot = cago_force(go, go->f, go->x); /* calculate force */
+  go->epot = cago_force(go, go->x, go->f); /* calculate force */
 
   for (i = 0; i < n; i++) { /* vv part 2 */
     rv3_sinc(v[i], f[i], dth*fscal);

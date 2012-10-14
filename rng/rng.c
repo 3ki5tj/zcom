@@ -67,7 +67,7 @@ INLINE int mtload(const char *fname, uint32_t seed)
 }
 
 /* return an unsigned random number */
-uint32_t mtrand(void)
+INLINE uint32_t mtrand(void)
 {
   uint32_t x;
   static const uint32_t mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
@@ -103,7 +103,7 @@ uint32_t mtrand(void)
 
 /* Gaussian distribution with zero mean and unit variance
  * using ratio method */
-double grand0(void)
+INLINE double grand0(void)
 {
   double x, y, u, v, q;
   do {
@@ -116,5 +116,56 @@ double grand0(void)
   } while (q > 0.27846 || v*v > -4*u*u*log(u));
   return v/u;
 }
+
+
+/* return a random number that satisfies a gamma distribution
+   p(x) = x^(k - 1) e^(-x) / (k - 1)!. */
+INLINE double randgam(int k)
+{
+  int i;
+  double x, k1 = k - 1, r, y, v1, v2, s;
+
+  die_if(k < 0, "k %d must be positive\n", k);
+  if (k == 0) return 0.; /* nothing */
+  if (k <= 7) { /* adding numbers of exponential distribution */
+    /* exp(- x1 - x2 - x3 - x4) dx1 dx2 dx3 dx4 */
+    for (x = 1.0, i = 0; i < k; i++)
+      x *= rnd0();
+    return -log(x);
+  }
+
+  /* generate gamma distribution by the rejection method */
+  for(;;) {
+    /* generate lorentz distribution, centered at k1, width is sqrt(2.0*k - 1)
+     p(y) = 1/pi/(1 + y^2), x = y*w + k1, w = sqrt(2.0*k - 1) */
+    for (;;) { /* get a unit circle */
+      v1 = 2.0*rnd0() - 1.0;
+      v2 = 2.0*rnd0() - 1.0;
+      if (v1*v1 + v2*v2 <= 1.0) {
+        y = v2/v1; /* tan */
+        s = sqrt(2.0*k - 1);
+        x = s*y + k1;
+        if (x > 0.0) break; /* drop the negative value */
+      }
+    }
+    /* compare with the gamma distribution
+       r peaks at x = k1, where, y = 0 and r = 1 */
+    r = (1.0 + y*y)*exp(k1*log(x/k1) - x + k1);
+    if (rnd0() <= r) break;
+  }
+
+  return x;
+}
+
+/* return the sum of the square of Gaussian random numbers  */
+INLINE double randgausssum(int n)
+{
+  double x, r; 
+  if (n <= 0) return 0.0;
+  x = 2.0*randgam(n/2);
+  if (n % 2) { r = grand0(); x += r*r; }
+  return x;
+}
+
 
 #endif

@@ -2,14 +2,15 @@
 #ifndef CAGO_H__
 #define CAGO_H__
 
-/* alpha-carbon based GO-model */
+/* alpha-carbon based Go-model 
+ * J. Mol. Biol, Vol. 298 (2000) 937-953 */
 typedef struct {
   int n; /* number of residues */
   int dof; /* degree of freedom */
-  real kb; /* .5 kb (b - b0)^2 */
-  real ka; /* .5 ka (a - a0)^2 */
-  real kd1, kd3; /* kd1 (1 - cos(d - d0)) + kd3 (1 - cos(3*(d-d0))) */
-  real nbe, nbc;
+  real kb; /* .5 kb (b - b0)^2, usually 200 */
+  real ka; /* .5 ka (a - a0)^2, usually 40 */
+  real kd1, kd3; /* kd1 (1 - cos(d - d0)) + kd3 (1 - cos(3*(d-d0))), 1 & 0.5 */
+  real nbe, nbc; /* nbc = 4 A */
   rv3_t *xref;
   real epotref; /* energy of the reference structure */
   int *aa;
@@ -24,7 +25,7 @@ typedef struct {
   
   /* variables for MD simulations */
   rv3_t *x, *v, *f, *x1;
-  real ekin, tkin, epot, t;
+  real ekin, tkin, epot, etot, t;
   real rmsd; /* result from a rotfit call  */
 } cago_t;
 
@@ -39,6 +40,8 @@ INLINE real cago_ekin(cago_t *go, rv3_t *v)
   { return go->ekin = md_ekin((real *)v, go->n*3, go->dof, &go->tkin); }
 INLINE void cago_vrescale(cago_t *go, real tp, real dt)
   { md_vrescale3d(go->v, go->n, go->dof, tp, dt, &go->ekin, &go->tkin); }
+INLINE int cago_mcvrescale(cago_t *go, real tp, real dt)
+  { return md_mcvrescale3d(go->v, go->n, go->dof, tp, dt, &go->ekin, &go->tkin); }
 int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);

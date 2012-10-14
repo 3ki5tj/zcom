@@ -220,7 +220,7 @@ INLINE int iscontactatom(int level, const char *atnm)
  * */
 int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
 {
-  int ir, jr, i, j, im, jm, ica, jca, n = pm->natm, nres = pm->nres, ct;
+  int ir, jr, i, j, im, jm, ica, jca, n = pm->natm, nres = pm->nres, ct, cnt = 0;
   pdbatom_t *atm = pm->atm;
   real d, dmin, dca;
   int *ds;
@@ -244,9 +244,10 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
         }
       }
       ds[ir*nres+jr] = ds[jr*nres+ir] = ct = (dmin < rc) ? 1 : 0;
+      if (ct) cnt++;
       if (dbg > 1 || (dbg && ct))/* print decision */
-        printf("[%d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
-          ct, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin, 
+        printf("[%d/%3d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
+          ct, cnt, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin, 
           atm[im].atnm, im+1, atm[jm].atnm, jm+1);
     }
   }

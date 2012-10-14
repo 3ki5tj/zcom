@@ -91,7 +91,7 @@ int ab_milcrattle(abpro_t *ab, const real *x0, real *v);
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
     int sh_itmax, double sh_tol, unsigned flags);
 real ab_energy(abpro_t *ab, const real *r, int soft);
-real ab_force(abpro_t *ab, real *f, const real *r, int soft);
+real ab_force(abpro_t *ab, real *r, const real *f, int soft);
 
 INLINE real ab_ekin(abpro_t *ab)
   { return ab->ekin = md_ekin(ab->v, ab->n*ab->d, ab->dof, &ab->tkin); }

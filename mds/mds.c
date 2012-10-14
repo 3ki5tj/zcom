@@ -6,7 +6,7 @@
 #include "mds.h"
 
 /* compute force and energy */
-static real mds_force(real *f, real *x, real *dm, int n, int dim)
+static real mds_force(real *x, real *f, real *dm, int n, int dim)
 {
   const real dmin = 1e-6f;
   int i, j, k;
@@ -108,7 +108,7 @@ real mds_min0(real *x, real *dm, int n, int dim, double tol)
   xnew(fp, n*dim);
   for (i = 0; i < n*dim; i++)
     x[i] = 1.f*rand()/RAND_MAX;
-  ene = mds_force(f, x, dm, n, dim);
+  ene = mds_force(x, f, dm, n, dim);
   for (it = 0; it < itermax; it++) {
     enep = ene;
     for (i = 0; i < n*dim; i++) { /* backup */
@@ -116,7 +116,7 @@ real mds_min0(real *x, real *dm, int n, int dim, double tol)
       fp[i] = f[i];
     }
     for (i = 0; i < n*dim; i++) x[i] += f[i]*dt;
-    ene = mds_force(f, x, dm, n, dim);
+    ene = mds_force(x, f, dm, n, dim);
     if (ene > enep) {
       dt *= 0.7f;
       for (i = 0; i < n*dim; i++) { /* recover */

@@ -27,5 +27,19 @@ INLINE void av_addw(av_t *av, double x, double w)
 }
 #define av_add(av, x) av_addw(av, x, 1)
 
+/* update: sX = sX*gam + X */
+INLINE void av_gaddw(av_t *av, double x, double w, double ngam)
+{
+  double s, sx, del, gam = 1.0 - ngam;
+
+  av->s = (s = av->s)*gam + w;
+  av->sx = (sx = av->sx)*gam + w*x;
+  if (s <= 0.0) return;
+  del = x*s - sx;
+  av->sx2 = (av->sx2 + w*del*del/(s*av->s))*gam;
+}
+
+#define av_gadd(av, x, ngam) av_gaddw(av, x, 1, ngam)
+
 
 #endif

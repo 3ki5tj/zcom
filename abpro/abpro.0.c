@@ -138,7 +138,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   }
 #endif
   ab_initpos(ab, ab->x, randdev);
-  ab->emin = ab->epot = ab_force(ab, ab->f, ab->x, 0);
+  ab->emin = ab->epot = ab_force(ab, ab->x, ab->f, 0);
   return ab;
 }
 
@@ -690,7 +690,7 @@ real ab_energy(abpro_t *ab, const real *r, int soft)
     return ab_energy2dm1(ab, (crv2_t *)r, soft);
 }
 
-static real ab_force3dm1(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
+static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -768,7 +768,7 @@ static real ab_force3dm1(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
   return ua * 0.25f + U;
 }
 
-static real ab_force3dm2(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
+static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -857,14 +857,14 @@ static real ab_force3dm2(abpro_t *ab, rv3_t *f_g, crv3_t *r, int soft)
 }
 
 /* compute force f */
-real ab_force(abpro_t *ab, real *f, const real *r, int soft)
+real ab_force(abpro_t *ab, const real *r, real *f, int soft)
 {
   if (ab->d == 2)
-    return ab_force2dm1(ab, (rv2_t *)f, (crv2_t *)r, soft);
+    return ab_force2dm1(ab, (crv2_t *)r, (rv2_t *)f, soft);
   else if (ab->model == 1)
-    return ab_force3dm1(ab, (rv3_t *)f, (crv3_t *)r, soft);
+    return ab_force3dm1(ab, (crv3_t *)r, (rv3_t *)f, soft);
   else
-    return ab_force3dm2(ab, (rv3_t *)f, (crv3_t *)r, soft);
+    return ab_force3dm2(ab, (crv3_t *)r, (rv3_t *)f, soft);
 }
 
 /* minimizes the energy of a given configuration.
@@ -883,7 +883,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
   if (tol <= 0.) tol = 1e-12;
   /* to make a working copy */
   memcpy(x[id = 0], r, n*d*sizeof(real));
-  up = ab_force(ab, f[id], x[id], 0);
+  up = ab_force(ab, x[id], f[id], 0);
   memset(v, 0, n*d*sizeof(real));
 
   for (t = 1; t <= itmax; t++) {
@@ -899,7 +899,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
     } else {
       if (ab_shake(ab, x[id], x[!id], NULL, 0., sh_itmax, sh_tol, 0) != 0) goto SHRINK;
     }
-    u = ab_force(ab, f[!id], x[!id], 0);
+    u = ab_force(ab, x[!id], f[!id], 0);
     if (u > up) { mem = 0; goto SHRINK; }
 
     id = !id;
@@ -945,7 +945,7 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
   die_if (i != 0, "t=%g: shake failed\n", ab->t);
   rv3_ncopy(x, x1, n);
 
-  ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
+  ab->epot = ab_force(ab, ab->x, ab->f, soft); /* calculate force */
   
 #pragma omp parallel for schedule(static)
   for (i = 0; i < n; i++) { /* vv part 2 */
@@ -991,7 +991,7 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   die_if (i != 0, "t=%g: failed shake\n", ab->t);
   memcpy(ab->x, ab->x1, nd*sizeof(real));
 
-  ab->epot = ab_force(ab, ab->f, ab->x, soft); /* calculate force */
+  ab->epot = ab_force(ab, ab->x, ab->f, soft); /* calculate force */
   ab->t += dt;
   return 0;
 } 

@@ -27,14 +27,14 @@ int main(void)
         }
       }
       Ep = ab_energy(ab, ab->x, soft);
-      E = ab_force(ab, ab->f, ab->x, soft);
+      E = ab_force(ab, ab->x, ab->f, soft);
 
       /* slightly distub around the equilibrium position */
       for (i = 0; i < ab->n; i++) {
         for (j = 0; j < ab->d; j++) 
           ab->x[i*ab->d + j] += del*(2.f*rand()/RAND_MAX - 1);
       }
-      E0 = ab_force(ab, ab->f, ab->x, soft);
+      E0 = ab_force(ab, ab->x, ab->f, soft);
       
       /* update position according to the force by a unit */
       for (f2 = 0., i = 0; i < ab->n; i++) {
