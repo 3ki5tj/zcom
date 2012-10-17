@@ -70,6 +70,10 @@ INLINE int lj_mcvrescale(lj_t *lj, real tp, real thermdt)
 INLINE real lj_calcp(lj_t *lj, real tp)
   { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
 
+/* compute pressure, ideal gas part from the kinetic energy  */
+INLINE real lj_calcpk(lj_t *lj)
+  { return 2.f * lj->ekin / (3.f * lj->vol) + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
+
 INLINE void lj_initsw(lj_t *lj, real rs);
 
 /* initialize square well potential */

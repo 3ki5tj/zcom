@@ -154,7 +154,6 @@ INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin,
   int i;
   real ek1 = *ekin, ek2, s;
   double logek1, logek2, r;
-  double amp;
 
   logek1 = log(ek1);
   logek2 = logek1 + dt*(2.f*rnd0() - 1);
@@ -183,11 +182,11 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
    real *zeta, real Q, real *ekin, real *tkin)
 {
   int i;
-  real ekav = .5f*tp*dof, ek1 = *ekin, ek2, s, c = 0., r;
+  real ek1 = *ekin, ek2, s;
   
   *zeta += (2.f*ek1 - dof * tp)/Q*.5f*dt;
   
-  s = exp(-(*zeta)*dt);
+  s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
   *ekin = ek2;
@@ -204,7 +203,26 @@ INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
    real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *)v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
 
+/* Anderson thermostat */
+INLINE void md_anderson(real *v, int n, int d, real tp)
+{
+  int i, j;
 
+  tp = sqrt(tp);
+  i = (int)(rnd0() * n);
+  for (j = 0; j < d; j++) v[i*d + j] = grand0();
+}
+
+/* Langevin thermostat */
+INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
+{
+  int i;
+  real c = (real) exp(-dt), amp;
+
+  amp = sqrt((1 - c*c) * tp);
+  for (i = 0; i < n*d; i++)
+    v[i] = c*v[i] + amp*grand0();
+}
 
 #endif
 
