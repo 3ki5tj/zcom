@@ -210,7 +210,7 @@ INLINE void md_anderson(real *v, int n, int d, real tp)
 
   tp = sqrt(tp);
   i = (int)(rnd0() * n);
-  for (j = 0; j < d; j++) v[i*d + j] = grand0();
+  for (j = 0; j < d; j++) v[i*d + j] = tp * grand0();
 }
 
 /* Langevin thermostat */
