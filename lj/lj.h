@@ -42,8 +42,16 @@ typedef struct {
   int rdfnfr; /* number of frames in rdf */
 } lj_t;
 
+/* copy flags */
+#define LJ_CPX   0x0001
+#define LJ_CPV   0x0002
+#define LJ_CPF   0x0004
+#define LJ_CPXVF (LJ_CPX|LJ_CPV|LJ_CPF)
+
 lj_t *lj_open(int n, int d, real rho, real rcdef);
 void lj_close(lj_t *lj);
+INLINE lj_t *lj_copy(lj_t *dest, const lj_t *src, unsigned flags);
+INLINE lj_t *lj_clone(const lj_t *src, unsigned flags);
 INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
 #define LJ_LOADBOX 0x10
 INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);

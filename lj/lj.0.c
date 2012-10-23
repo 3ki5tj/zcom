@@ -733,8 +733,10 @@ INLINE real lj_vir2sw3d(lj_t *lj)
 /* compute volume change, use amp 0.01 ~ 0.02 for 256 system */
 INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 {
+  int acc = 0;
   real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
   double dex;
+  lj_t *lj1;
 
   lo = lj->l;
   vo = lj->vol;
@@ -743,18 +745,23 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
   ln = (real) exp(logln);
   if (ln < lj->rc * 2) return 0; /* box too small */
   epo = lj->epot;
+  lj1 = lj_clone(lj, LJ_CPF); /* save a copy */
   vn = (real) pow(ln, lj->d);
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
   //printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
   if (metroacc1(dex, 1.0)) {
-    return 1;
+    acc = 1;
   } else {
+    lj_copy(lj, lj1, LJ_CPF);
+/*    
     lj_setrho(lj, lj->n/vo);
-    lj_force(lj); /* inefficient */
-    return 0;
+    lj_force(lj);
+*/
   }
+  lj_close(lj);
+  return acc;
 }
 
 /* compute volume change, dt < 3e-4 for 256 system
@@ -810,13 +817,50 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   return lj;
 }
 
+/* copy from src to dest
+ * cannot copy vectors other than xvf */
+INLINE lj_t *lj_copy(lj_t *dest, const lj_t *src, unsigned flags)
+{
+  int nd = src->n * src->d;
+  real *x = dest->x, *v = dest->v, *f = dest->f;
+  memcpy(dest, src, sizeof(lj_t));
+
+  if (flags & LJ_CPX) memcpy(x, src->x, sizeof(real) * nd);
+  dest->x = x;
+  if (flags & LJ_CPV) memcpy(v, src->v, sizeof(real) * nd);
+  dest->v = v;
+  if (flags & LJ_CPF) memcpy(f, src->f, sizeof(real) * nd);
+  dest->f = f;
+  return dest;
+}
+
+/* make new copy */
+INLINE lj_t *lj_clone(const lj_t *src, unsigned flags)
+{
+  int nd = src->n * src->d;
+  lj_t *dest;
+
+  xnew(dest, 1);
+  memcpy(dest, src, sizeof(lj_t));
+  /* always create x, v, f, lj_close() will free them
+   * must be called after the global copy */
+  xnew(dest->x, nd);
+  xnew(dest->v, nd);
+  xnew(dest->f, nd);
+  if (flags & LJ_CPX) memcpy(dest->x, src->x, sizeof(real) * nd);
+  if (flags & LJ_CPV) memcpy(dest->v, src->v, sizeof(real) * nd);
+  if (flags & LJ_CPF) memcpy(dest->f, src->f, sizeof(real) * nd);
+  return dest;
+}
+
 void lj_close(lj_t *lj)
 {
-  if (lj->pr) free(lj->pr);
-  if (lj->gdg) free(lj->gdg);
   free(lj->x);
   free(lj->v);
   free(lj->f);
+  if (lj->pr) free(lj->pr);
+  if (lj->gdg) free(lj->gdg);
+  if (lj->xdg) free(lj->xdg);
   if (lj->rdf) hs_close(lj->rdf);
   free(lj);
 }
