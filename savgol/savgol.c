@@ -6,7 +6,7 @@
 
 /* compute 1d Savitzky-Golay coefficients 
  * der == 0 for function itself, 1 for first-order derivative */
-double *savgol(int w, int ord, int der, int h, int verbose)
+INLINE double *savgol(int w, int ord, int der, int h, int verbose)
 {
   int i, i0, i1, ox, oy, nop, orm, npt;
   double x, xk, y;
@@ -87,7 +87,7 @@ double *savgol(int w, int ord, int der, int h, int verbose)
 
 /* compute 2d Savitzky-Golay coefficients
  * h means if it is a histogram */
-double *savgol2d(int iw, int jw, int ord, int h, int verbose)
+INLINE double *savgol2d(int iw, int jw, int ord, int h, int verbose)
 {
   int i, j, i0, i1, j0, j1, id, nop, orm, npt;
   int io, iq, ox, oy, o1, o2, o3, o4;

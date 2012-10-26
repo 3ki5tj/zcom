@@ -12,7 +12,7 @@ tmhab: tmhab.c $(dep)
 	$(CX) -o $@ $< 
 
 tmhab_d: tmhab.c $(dep)
-	$(CC) -o $@ $< 
+	$(CC) -o $@ $< -lm 
 
 gtmhab: gtmhab.c $(dep) gtmh.h
 	$(CX) -o $@ $< -lglut

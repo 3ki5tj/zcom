@@ -15,7 +15,7 @@ all: $(bin)
 $(bin): $(deps)
 
 %_d: %.c
-	$(CC) -o $@ $< 
+	$(CC) -o $@ $< -lm 
 
 %: %.c
 	$(CX) -o $@ $< 

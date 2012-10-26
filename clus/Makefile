@@ -5,13 +5,13 @@ bin=test1 test2 testload
 all: $(bin)
 
 test1: test1.c $(deps)
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 test2: test2.c $(deps)
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 testload: testload.c $(deps)
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ *.o x.txt clus.txt 

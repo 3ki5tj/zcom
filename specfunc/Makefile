@@ -7,7 +7,7 @@ all: $(bin)
 $(bin): specfunc.c specfunc.h Makefile
 
 %: %.c
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ *.o 

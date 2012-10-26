@@ -750,16 +750,11 @@ INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
-  //printf("vol %g --> %g, ep %g --> %g, r %g\n", vo, vn, epo, lj->epot, r);
   if (metroacc1(dex, 1.0)) {
     acc = 1;
   } else {
     lj_copy(lj, lj1, LJ_CPF);
-/*    
-    lj_setrho(lj, lj->n/vo);
-    lj_force(lj);
-*/
-  }
+  } 
   lj_close(lj);
   return acc;
 }
@@ -780,12 +775,130 @@ INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
   ln = (real) exp(logvn/3);
   if (ln < lj->rc * 2) return 0; /* box too small */
   for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
-  //printf("pvir %g, bp %g, dlogv %g, rho %g -> %g, p %g\n", (lj->n + 1 + bet*lj->vir/3)/lj->vol, bet*p, dlogv, lj->n/lj->vol, lj->n/vn, lj_calcp(lj, tp));
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   /* safety check! */
   return 1;
 }
+
+/* Nose-Hoover thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void lj_hoovertp(lj_t *lj, real dt, real tp, real pext,
+    real *zeta, real *eta, real Q, real W, int ensx)
+{
+  md_hoovertp(lj->v, lj->n, lj->d, lj->dof, dt, tp, pext, zeta, eta,
+      Q, W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
+}
+
+/* velocity verlet with the scaling step in the Nose-Hoover barostat */
+INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta)
+{
+  int i, nd = lj->n*lj->d;
+  real dt2 = dt * .5f, xp;
+
+  for (i = 0; i < nd; i++) /* VV part 1 */
+    lj->v[i] += lj->f[i] * dt2;
+
+  /* position update with scaling */
+  md_hoovertpdr(lj->x, lj->v, nd, &xp, lj->l, eta, dt);
+  lj->l *= xp;
+  lj_setrho(lj, lj->rho/(xp*xp*xp)); 
+  lj_force(lj); /* calculate the new force */
+
+  for (i = 0; i < nd; i++) /* VV part 2 */
+    lj->v[i] += lj->f[i] * dt2;
+
+  lj->ekin = md_ekin(lj->v, nd, lj->dof, &lj->tkin);
+  lj->t += dt;
+}
+
+/* Berendsen barostat: as a backup for constant pressure simulation */
+INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
+{
+  int i;
+  real pint, vn, lo = lj->l, s, dlnv;
+
+  pint = (lj->vir + 2.f * lj->ekin)/ (lj->d * lj->vol) + lj->p_tail;
+  
+  /* proposed change of log V */
+  dlnv = (pint - pext)*lj->vol/tp*barodt;
+  if (dlnv < -0.1) dlnv = -0.1; else if (dlnv > 0.1) dlnv = 0.1;
+  vn = log(lj->vol) + dlnv;
+  vn = exp(vn);
+  lj_setrho(lj, lj->n/vn);
+  s = lo/lj->l;
+  for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
+  lj->ekin *= s*s;
+  lj->tkin *= s*s;
+}
+
+/* Langevin equation for pressure control
+ * ideal gas part computed as \sum p^2/m / V
+ * r = r*s, p = p/s; 
+ * set cutoff to half of the box */
+INLINE int lj_prescale(lj_t *lj, real barodt, real tp, real pext,
+    real vmin, real vmax, real dlnvmax, real ensexp)
+{
+  int i;
+  real pint, amp, vn, lo = lj->l, s, dlnv;
+
+  /* compute the internal pressure */
+  /* note only with half-box cutoff, the formula is accurate */
+  pint = (lj->vir + 2.f * lj->ekin)/ (lj->d * lj->vol) + lj->p_tail;
+
+  amp = sqrt(barodt);
+  dlnv = ((pint - pext)*lj->vol/tp + 1 - ensexp)*barodt + amp*grand0();
+  /* avoid changing dlnv over 10% */
+  if (dlnv < -dlnvmax) dlnv = -dlnvmax;
+  else if (dlnv > dlnvmax) dlnv = dlnvmax;
+  vn = log(lj->vol) + dlnv;
+  vn = exp(vn);
+  if (vn < vmin || vn >= vmax) return 0;
+
+  lj_setrho(lj, lj->n/vn);
+  s = lo/lj->l;
+  for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
+  return 1;
+}
+
+/* MC-like move for pressure control
+ * ideal gas part computed as \sum p^2/m / V
+ * r = r*s, p = p/s; 
+ * set cutoff to half of the box */
+INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
+    real vmin, real vmax, real ensexp)
+{
+  int i, acc = 0;
+  real vo, vn, lnvo, lnvn, lo = lj->l, s, epo, dex, bet = 1.f/tp;
+  lj_t *lj1;
+
+  vo = lj->vol;
+  epo = lj->epot;
+  lj1 = lj_clone(lj, LJ_CPF); /* make a copy */
+  lnvo = (real) log(vo);
+  /* compute the internal pressure */
+  lnvn = lnvo + baroamp * (2.f * rnd0() - 1.f);
+  vn = (real) exp(lnvn);
+  if (vn < vmin || vn >= vmax) return 0;
+  
+  lj_setrho(lj, lj->n/vn);
+  lj_force(lj); /* we change force here */
+  dex = bet*(lj->epot - epo + pext * (vn - vo))
+      + bet*(pow(vo/vn, 2.0/3) - 1)*lj->ekin
+      + (lnvo - lnvn) * (1 - ensexp);
+  if (metroacc1(dex, 1.f)) { /* scale the velocities */
+    s = lo/lj->l;
+    for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
+    lj->ekin *= s*s;
+    lj->tkin *= s*s;
+    acc = 1;
+  } else {
+    lj_copy(lj, lj1, LJ_CPF); /* restore force etc. */
+  }
+  lj_close(lj1);
+  return acc;
+}
+
 
 
 /* create an open structure */

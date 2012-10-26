@@ -722,9 +722,6 @@ INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
     rv3_smul(rv3_cross(g3, v1, v2), scnum);
     rv3_smul(rv3_cross(g1, v2, v3), scnum);
     rv3_smul(rv3_cross(g2, v3, v1), scnum);
-    //printf("g1 %g, %g, %g\n", g1[0], g1[1], g1[2]);
-    //printf("g2 %g, %g, %g\n", g2[0], g2[1], g2[2]);
-    //printf("g3 %g, %g, %g\n", g3[0], g3[1], g3[2]);
     
     /* compute the contributions to the denominator */
     rv3_lincomb2(vc, v2, v3, r3, r2);
@@ -738,10 +735,6 @@ INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
     rv3_lincomb2(vc, v1, v2, r2, r1);
     rv3_sinc(vc, v3, (rv3_dot(v1, v2) + r1*r2)/r3);
     rv3_sinc(g3, vc, scden);
-    
-    //printf("g1 %g, %g, %g\n", g1[0], g1[1], g1[2]);
-    //printf("g2 %g, %g, %g\n", g2[0], g2[1], g2[2]);
-    //printf("g3 %g, %g, %g\n", g3[0], g3[1], g3[2]);
   }
   
   /* calculate tan(omega/2) */

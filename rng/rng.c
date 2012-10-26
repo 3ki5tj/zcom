@@ -125,7 +125,7 @@ INLINE double randgam(int k)
   int i;
   double x, k1 = k - 1, r, y, v1, v2, s;
 
-  die_if(k < 0, "k %d must be positive\n", k);
+  if (k < 0) { printf("randgam: k %d must be positive\n", k); return 0.; }
   if (k == 0) return 0.; /* nothing */
   if (k <= 7) { /* adding numbers of exponential distribution */
     /* exp(- x1 - x2 - x3 - x4) dx1 dx2 dx3 dx4 */

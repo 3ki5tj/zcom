@@ -8,7 +8,7 @@ all: $(bin)
 $(bin): def.h rv3.h Makefile
 
 %: %.c
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ *.o a.out

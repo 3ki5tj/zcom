@@ -5,7 +5,7 @@ bin=testang
 all: $(bin)
 
 testang: testang.c $(deps)
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ *.o 

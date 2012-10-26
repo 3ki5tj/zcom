@@ -1,6 +1,6 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic
 # optimized compiling
-CX = icc -Wall -O3 -g -lm -vec_report0
+CX = icc -Wall -O3 -g -vec_report0
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
 src = zcom.h
 dep = $(src) Makefile
@@ -11,7 +11,7 @@ all: $(bin)
 $(bin): $(dep)
 
 %: %.c
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $< -lm
 
 %_d: %.c
 	$(CC) -o $@ $< 

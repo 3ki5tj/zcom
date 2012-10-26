@@ -5,7 +5,7 @@ bin=test1
 all: $(bin)
 
 test1: test1.c $(deps)
-	$(CC) -o $@ $<
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f $(bin) *~ *.o 

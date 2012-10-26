@@ -224,5 +224,58 @@ INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
     v[i] = c*v[i] + amp*grand0();
 }
 
+/* Nose-Hoover thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt, 
+    real tp, real pext, real *zeta, real *eta, real Q, real W,
+    real vol, real vir, real ptail, int ensx,
+    real *ekin, real *tkin)
+{
+  int i;
+  real xp, pint, s, dt2 = dt*.5f, dt4 = dt*.25f;
+
+  /* thermostat */
+  *zeta += (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) * dt2/Q;
+  xp = (real) exp(-(*zeta)*dt4); /* zeta won't change until the end */
+
+  /* barostat */
+  *eta *= xp;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta *= xp;
+
+  /* scaling velocity */
+  s = exp( -dt * (*zeta + *eta) );
+  for (i = 0; i < d * n; i++) v[i] *= s;
+  *ekin *= s*s;
+  *tkin *= s*s;
+
+  /* barostat */
+  *eta *= xp;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta *= xp;
+
+  /* thermostat */
+  *zeta += (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) * dt2/Q;
+}
+
+/* Nose-Hoover position update */
+INLINE void md_hoovertpdr(real *r, const real *v, int nd,
+    real *xp, real l, real eta, real dt)
+{
+  int i;
+  real dtxp;
+  
+  /* r' = r*exp(eta*dt) + v*(exp(eta*dt) - 1)/eta 
+   * now exp(eta*dt) is the volume scaling factor
+   * so for the reduced coordinates R = r*exp(-eta*dt)
+   * R' = R + v*(1 - exp(-eta*dt))/eta; */
+  *xp = (real) exp(eta * dt);
+  dtxp = (1 - 1/(*xp))/eta/l;
+  for (i = 0; i < nd; i++)
+    r[i] += v[i] * dtxp;
+}
+
 #endif
 

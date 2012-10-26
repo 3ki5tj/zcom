@@ -98,7 +98,6 @@ INLINE char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
         return NULL;
       }
       if (h != NULL) {
-        //printf("hn %p, h %p, h->size %u, size %u\n", (void *)hn, (void *)h, h->size, size);
         memcpy(hn, h, sizeof(*hn) + (size > h->size ? h->size : size));
         free(h);
       }
