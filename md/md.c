@@ -182,9 +182,9 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
    real *zeta, real Q, real *ekin, real *tkin)
 {
   int i;
-  real ek1 = *ekin, ek2, s;
+  real ek1 = *ekin, ek2, s, dt2 = .5f*dt;
   
-  *zeta += (2.f*ek1 - dof * tp)/Q*.5f*dt;
+  *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
   
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
@@ -192,7 +192,7 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
   *ekin = ek2;
   if (tkin) *tkin *= s*s;
   
-  *zeta += (2.f*ek2 - dof * tp)/Q*.5f*dt;
+  *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
 }
 
 INLINE void md_hoover2d(rv2_t *v, int n, int dof, real tp, real dt,

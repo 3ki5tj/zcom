@@ -730,57 +730,6 @@ INLINE real lj_vir2sw3d(lj_t *lj)
   return vir2;
 }
 
-/* compute volume change, use amp 0.01 ~ 0.02 for 256 system */
-INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
-{
-  int acc = 0;
-  real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
-  double dex;
-  lj_t *lj1;
-
-  lo = lj->l;
-  vo = lj->vol;
-  loglo = (real) log(lo);
-  logln = (real) (loglo + amp * (2.f * rnd0() - 1.));
-  ln = (real) exp(logln);
-  if (ln < lj->rc * 2) return 0; /* box too small */
-  epo = lj->epot;
-  lj1 = lj_clone(lj, LJ_CPF); /* save a copy */
-  vn = (real) pow(ln, lj->d);
-  lj_setrho(lj, lj->n/vn); /* commit to the new box */
-  lj_force(lj);
-  dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
-  if (metroacc1(dex, 1.0)) {
-    acc = 1;
-  } else {
-    lj_copy(lj, lj1, LJ_CPF);
-  } 
-  lj_close(lj);
-  return acc;
-}
-
-/* compute volume change, dt < 3e-4 for 256 system
- * cautious, testing version */
-INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
-{
-  int d;
-  real r, logvo, logvn, dlogv, ln, vn, bet = 1.f/tp;
-
-  logvo = (real) log(lj->vol);
-  dlogv = dt * (lj->n + 1 + bet*lj->vir/3.f - bet*p*lj->vol);
-  r = (real) grand0();
-  dlogv += (real) (r * sqrt(2 * dt));
-  dlogv = (real) dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
-  logvn = logvo + dlogv;
-  ln = (real) exp(logvn/3);
-  if (ln < lj->rc * 2) return 0; /* box too small */
-  for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
-  lj_setrho(lj, lj->n/vn); /* commit to the new box */
-  lj_force(lj);
-  /* safety check! */
-  return 1;
-}
-
 /* Nose-Hoover thermostat/barostat
  * set cutoff to half of the box */
 INLINE void lj_hoovertp(lj_t *lj, real dt, real tp, real pext,
@@ -846,7 +795,7 @@ INLINE int lj_prescale(lj_t *lj, real barodt, real tp, real pext,
   /* note only with half-box cutoff, the formula is accurate */
   pint = (lj->vir + 2.f * lj->ekin)/ (lj->d * lj->vol) + lj->p_tail;
 
-  amp = sqrt(barodt);
+  amp = (real) sqrt(2.f*barodt);
   dlnv = ((pint - pext)*lj->vol/tp + 1 - ensexp)*barodt + amp*grand0();
   /* avoid changing dlnv over 10% */
   if (dlnv < -dlnvmax) dlnv = -dlnvmax;
@@ -856,8 +805,34 @@ INLINE int lj_prescale(lj_t *lj, real barodt, real tp, real pext,
   if (vn < vmin || vn >= vmax) return 0;
 
   lj_setrho(lj, lj->n/vn);
+  lj_force(lj);
   s = lo/lj->l;
   for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
+  lj->ekin *= s*s;
+  lj->tkin *= s*s;
+  return 1;
+}
+
+/* compute volume change, dt < 3e-4 for 256 system
+ * also for fixed rc
+ * caution, testing version
+ * differs from lj_pscale in that the velocities are not scaled */
+INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
+{
+  int d;
+  real logvo, logvn, dlogv, ln, vn, bet = 1.f/tp;
+
+  logvo = (real) log(lj->vol);
+  dlogv = dt * (lj->n + 1 + bet*lj->vir/lj->d - bet*p*lj->vol);
+  dlogv += (real) (grand0() * sqrt(2 * dt));
+  dlogv = (real) dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
+  logvn = logvo + dlogv;
+  ln = (real) exp(logvn/3);
+  if (ln < lj->rc * 2) return 0; /* box too small */
+  for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
+  lj_setrho(lj, lj->n/vn); /* commit to the new box */
+  lj_force(lj);
+  /* safety check! */
   return 1;
 }
 
@@ -869,7 +844,8 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
     real vmin, real vmax, real ensexp)
 {
   int i, acc = 0;
-  real vo, vn, lnvo, lnvn, lo = lj->l, s, epo, dex, bet = 1.f/tp;
+  real vo, vn, lnvo, lnvn, lo = lj->l, s, epo, bet = 1.f/tp;
+  double dex;
   lj_t *lj1;
 
   vo = lj->vol;
@@ -884,7 +860,7 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
   lj_setrho(lj, lj->n/vn);
   lj_force(lj); /* we change force here */
   dex = bet*(lj->epot - epo + pext * (vn - vo))
-      + bet*(pow(vo/vn, 2.0/3) - 1)*lj->ekin
+      + bet*(pow(vo/vn, 2.0/lj->d) - 1)*lj->ekin
       + (lnvo - lnvn) * (1 - ensexp);
   if (metroacc1(dex, 1.f)) { /* scale the velocities */
     s = lo/lj->l;
@@ -899,7 +875,35 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
   return acc;
 }
 
+/* compute volume change, use amp 0.01 ~ 0.02 for 256 system
+ * differs from lj_mcpscale in that the velocities are not scaled */
+INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
+{
+  int acc = 0;
+  real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
+  double dex;
+  lj_t *lj1;
 
+  lo = lj->l;
+  vo = lj->vol;
+  loglo = (real) log(lo);
+  logln = (real) (loglo + amp * (2.f * rnd0() - 1.));
+  ln = (real) exp(logln);
+  if (ln < lj->rc * 2) return 0; /* box too small */
+  epo = lj->epot;
+  lj1 = lj_clone(lj, LJ_CPF); /* save a copy */
+  vn = (real) pow(ln, lj->d);
+  lj_setrho(lj, lj->n/vn); /* commit to the new box */
+  lj_force(lj);
+  dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
+  if (metroacc1(dex, 1.0)) {
+    acc = 1;
+  } else {
+    lj_copy(lj, lj1, LJ_CPF);
+  } 
+  lj_close(lj);
+  return acc;
+}
 
 /* create an open structure */
 lj_t *lj_open(int n, int d, real rho, real rcdef)
@@ -925,6 +929,7 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
 
   lj_shiftcom(lj, lj->v);
   lj_shiftang(lj, lj->x, lj->v);
+  lj->ekin = md_ekin(lj->v, lj->n * lj->d, lj->dof, &lj->tkin);
 
   lj_force(lj);
   return lj;
