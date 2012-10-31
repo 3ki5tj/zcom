@@ -171,6 +171,30 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   return 0;
 }
 
+/* fetch histogram size */
+INLINE int histgetinfo(const char *fn, int *row, double *xmin, double *xmax, double *xdel,
+    int *version, unsigned *fflags)
+{
+  FILE *fp;
+  char s[1024];
+  int n;
+  
+  xfopen(fp, fn, "r", return -1);
+  if (fgets(s, sizeof s, fp) == NULL) {
+    fprintf(stderr, "%s: missing the first line\n", fn);
+    fclose(fp);    
+    return -1;
+  }
+  if (6 != sscanf(s, "# %d 0x %X | %d %d %lf %lf ", 
+        version, fflags, row, &n, xmin, xdel)) {
+    fprintf(stderr, "%s: bad first line\n%s", fn, s);
+    fclose(fp);
+    return -1;
+  }
+  *xmax = *xmin + *xdel * n;
+  return 0;
+}
+
 /* skip a | */
 INLINE char *skipabar_(char *p)
 {
