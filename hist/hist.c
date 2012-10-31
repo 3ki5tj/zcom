@@ -192,6 +192,7 @@ INLINE int histgetinfo(const char *fn, int *row, double *xmin, double *xmax, dou
     return -1;
   }
   *xmax = *xmin + *xdel * n;
+  fclose(fp);
   return 0;
 }
 
@@ -321,6 +322,7 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     fprintf(stderr, "histogram loaded successfully from %s\n", fn);
   
   if (sums) free(sums);
+  fclose(fp);
   return 0;
 EXIT:
   fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);

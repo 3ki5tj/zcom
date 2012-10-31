@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     y = lnincgam1(a, x);
     printf("lnincgam1(%g, %g) = %g\n", a, x, y);
   }
-
+  printf("%g\n", lnincgam(159, 200));
   return 0;
 }
 

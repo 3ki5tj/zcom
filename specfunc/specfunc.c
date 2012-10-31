@@ -59,7 +59,7 @@ INLINE double lnincgam1(double a, double x)
   h = d;
   /* modified Lentz's method for the continued fraction */
   for (i = 1; i <= 1000; i++) {
-    an = -i*(i - a); /* numerator */
+    an = -1.*i*(i - a); /* numerator */
     b += 2;
     d = d*an + b;
     if (fabs(d) < fpmin) d = fpmin;
@@ -73,11 +73,18 @@ INLINE double lnincgam1(double a, double x)
   return -x + a * log(x) + log(h);
 }
 
-/* returns incomplete gamma function log(Gamma(a, x)),
- * where Gamma(a, x) = \int_x^\infty e^(-t) t^(a-1) dt */
+/* returns incomplete gamma function log(gamma(a, x)),
+ * where gamma(a, x) = \int_0^x e^(-t) t^(a-1) dt */
 INLINE double lnincgam(double a, double x)
 {
-  return (x < a + 1) ? lnincgam0(a, x) : lnincgam1(a, x);
+  return (x < a + 1) ? lnincgam0(a, x) : lndif(lngam(a), lnincgam1(a, x));
+}
+
+/* returns incomplete gamma function log(Gamma(a, x)),
+ * where Gamma(a, x) = \int_x^\infty e^(-t) t^(a-1) dt */
+INLINE double lnincgamup(double a, double x)
+{
+  return (x < a + 1) ? lndif(lngam(a), lnincgam0(a, x)) : lnincgam1(a, x);
 }
 
 /* return the p-value, or 1 - cdf(x), for KS distribution */
