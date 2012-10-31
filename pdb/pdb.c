@@ -182,7 +182,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
 }
 
 /* write data to file fn */
-int pdbm_write(pdbmodel_t *m, const char *fn)
+INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
 {
   int i, aid, ATMFMT = 1;
   char atnm[8] = "";

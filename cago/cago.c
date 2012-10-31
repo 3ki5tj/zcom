@@ -9,7 +9,7 @@
 #include "cago.h"
 
 /* initialize data for the potential energy function */
-static int cago_initpot(cago_t *go)
+INLINE int cago_initpot(cago_t *go)
 {
   int i, j, n = go->n;
   real dr2;
@@ -120,7 +120,7 @@ void cago_close(cago_t *go)
 }
 
 /* remove center of mass motion, linear and angular */
-void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
+INLINE void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
 {
   md_shiftcom3d(x, go->n);
   md_shiftcom3d(v, go->n);
@@ -132,7 +132,7 @@ void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
  *   with a random disturbance of rndamp
  * if rndamp < 0, start from a nearly-straight chain, 
  *   with a disturbance of rndamp in the x, y directions */ 
-int cago_initmd(cago_t *go, double rndamp, double T0)
+INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
 {
   int i, j, n = go->n;
   real s, dx[3];
@@ -179,7 +179,7 @@ int cago_initmd(cago_t *go, double rndamp, double T0)
   return 0;
 }
 
-real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
+INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
 {
   int i, j, n = go->n;
   real ene = 0, dr, del, ang, amp, invr2, dr2, dr4, dr6, dr10;
@@ -258,7 +258,7 @@ real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
 }
 
 /* velocity verlet */
-int cago_vv(cago_t *go, real fscal, real dt)
+INLINE int cago_vv(cago_t *go, real fscal, real dt)
 {
   int i, n = go->n;
   real dth = .5f*dt;
@@ -280,7 +280,7 @@ int cago_vv(cago_t *go, real fscal, real dt)
 }
 
 /* write position/velocity file */
-int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
+INLINE int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
 {
   FILE *fp;
   int i, n = go->n;
@@ -300,7 +300,7 @@ int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
 }
 
 /* read position/velocity file */
-int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
+INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
 {
   char s[1024], *p;
   FILE *fp;
@@ -351,7 +351,7 @@ ERR:
 }
 
 /* output pdb format */
-int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
+INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
 {
   FILE *fp;
   int i, n = go->n;
@@ -368,7 +368,7 @@ int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
 /* run a regular md
  * teql steps for equilibration, tmax steps for production
  * tp: the real temperature, tps: thermostat temperature */
-int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
+INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
     real tps, real tp, av_t *avep, av_t *avrmsd,
     int teql, int tmax, int trep)
 {
@@ -406,7 +406,7 @@ int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
  * a pass is defined every time the potential energy crosses 'epot'
  * in every stage, npass passes are required to determine convergence
  * */
-int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real epot, int npass, 
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep)
@@ -480,7 +480,7 @@ int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
  * a pass is defined every time the rmsd crosses 'rmsd'
  * in every stage, npass passes are required to determine convergence
  * */
-int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
+INLINE int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     real rmsd, int npass, 
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep)

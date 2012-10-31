@@ -3,10 +3,19 @@
         
 int main(int argc, char **argv)
 {
-  double x = .5;
+  double a = .5, x, y;
 
-  if (argc > 1) x = atof(argv[1]);
-  printf("lngamma(%g) = %.14f\n", x, lngam(x));
+  if (argc > 1) a = atof(argv[1]);
+  printf("lngamma(%g) = %.14f\n", a, lngam(a));
+  for (x = 0; x < a; x += .1) {
+    y = lnincgam0(a, x);
+    printf("lnincgam0(%g, %g) = %g\n", a, x, y);
+  }
+  for (x = a; x < a + 10; x += 1.) {
+    y = lnincgam1(a, x);
+    printf("lnincgam1(%g, %g) = %g\n", a, x, y);
+  }
+
   return 0;
 }
 

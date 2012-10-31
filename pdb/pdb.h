@@ -46,7 +46,7 @@ typedef struct {
 
 /* generic pdb model */
 pdbmodel_t *pdbm_read(const char *fname, int verbose);
-int pdbm_write(pdbmodel_t *m, const char *fn);
+INLINE int pdbm_write(pdbmodel_t *m, const char *fn);
 #define pdbm_free(m) { free(m->atm); free(m->x); free(m); }
 
 enum { PDB_CONTACT_CA, PDB_CONTACT_HEAVY, PDB_CONTACT_ALL }; /* ways of searching contacts */
