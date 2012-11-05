@@ -204,7 +204,7 @@ INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
   { md_hoover((real *)v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
 
 /* Anderson thermostat */
-INLINE void md_anderson(real *v, int n, int d, real tp)
+INLINE void md_andersen(real *v, int n, int d, real tp)
 {
   int i, j;
 
