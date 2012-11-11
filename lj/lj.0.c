@@ -739,6 +739,16 @@ INLINE void lj_hoovertp(lj_t *lj, real dt, real tp, real pext,
       Q, W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
 }
 
+/* Langevin thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void lj_langtp(lj_t *lj, real dt, real tp, real pext,
+    real zeta, real *eta, real W, int ensx)
+{
+  md_langtp(lj->v, lj->n, lj->d, dt, tp, pext, zeta, eta,
+      W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
+}
+
+
 /* velocity verlet with the scaling step in the Nose-Hoover barostat */
 INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta)
 {

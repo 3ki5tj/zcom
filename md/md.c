@@ -260,6 +260,41 @@ INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
   *zeta += (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) * dt2/Q;
 }
 
+/* Langevin thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void md_langtp(real *v, int n, int d, real dt, 
+    real tp, real pext, real zeta, real *eta, real W,
+    real vol, real vir, real ptail, int ensx,
+    real *ekin, real *tkin)
+{
+  int i;
+  real xp, pint, s, dt2 = dt*.5f, dt4 = dt*.25f, amp;
+
+  xp = (real) exp(-zeta*dt4);
+  amp = (real) sqrt(2.f*zeta*tp/W*dt2);
+
+  /* barostat */
+  *eta *= xp;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta += amp*grand0(); /* random noise */
+  *eta *= xp;
+
+  /* scaling velocity */
+  s = exp( -dt * (*eta) );
+  for (i = 0; i < d * n; i++) v[i] *= s;
+  *ekin *= s*s;
+  *tkin *= s*s;
+
+  /* barostat */
+  *eta *= xp;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta += amp*grand0(); /* random noise */
+  *eta *= xp;
+}
+
+
 /* Nose-Hoover position update */
 INLINE void md_hoovertpdr(real *r, const real *v, int nd,
     real *xp, real l, real eta, real dt)
