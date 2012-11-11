@@ -203,6 +203,73 @@ INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
    real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *)v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
 
+/* Nose-Hoover chain thermostat */
+INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
+   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+{
+  int i, j;
+  real ek1 = *ekin, ek2, s, dt2 = .5f*dt, dt4 = .25f*dt, G, xp = 1.f;
+ 
+  /* propagate the chain */
+  for (j = M-1; j > 0; j--) {
+    if (j < M-1) {
+      xp = (real) exp(-dt4*zeta[j+1]);
+      zeta[j] *= xp;
+    }
+    G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
+    zeta[j] += dt2*G;
+    if (j < M-1)
+      zeta[j] *= xp;
+  }
+
+  /* the first thermostat variable */
+  if (M >= 2) {
+    xp = exp(-dt4*zeta[1]);
+    zeta[0] *= xp;
+  }
+  G = (scl * 2.f * ek1 - dof * tp)/Q[0];
+  zeta[0] += G*dt2;
+  if (M >= 2)
+    zeta[0] *= xp;
+ 
+  /* scale the velocities */ 
+  s = (real) exp(-(*zeta)*dt);
+  for (i = 0; i < nd; i++) v[i] *= s;
+  ek2 = ek1 * (s*s);
+  *ekin = ek2;
+  if (tkin) *tkin *= s*s;
+ 
+  /* the first thermotat variable */ 
+  if (M >= 2) {
+    xp = exp(-dt4*zeta[1]);
+    zeta[0] *= xp;
+  }
+  G = (scl * 2.f * ek1 - dof * tp)/Q[0];
+  zeta[0] += G*dt2;
+  if (M >= 2)
+    zeta[0] *= xp;
+  
+  /* propagate the chain */
+  for (j = M-1; j > 0; j--) {
+    if (j < M-1) {
+      xp = (real) exp(-dt4*zeta[j+1]);
+      zeta[j] *= xp;
+    }
+    G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
+    zeta[j] += dt2*G;
+    if (j < M-1)
+      zeta[j] *= xp;
+  }
+}
+
+INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
+   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+  { md_nhchain((real *)v, n*2, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+
+INLINE void md_nhchain3d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
+   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+  { md_nhchain((real *)v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+
 /* Anderson thermostat */
 INLINE void md_andersen(real *v, int n, int d, real tp)
 {
