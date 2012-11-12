@@ -217,7 +217,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
       zeta[j] *= xp;
     }
     G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
-    zeta[j] += dt2*G;
+    zeta[j] += G * dt2;
     if (j < M-1)
       zeta[j] *= xp;
   }
@@ -228,7 +228,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
     zeta[0] *= xp;
   }
   G = (scl * 2.f * ek1 - dof * tp)/Q[0];
-  zeta[0] += G*dt2;
+  zeta[0] += G * dt2;
   if (M >= 2)
     zeta[0] *= xp;
  
@@ -245,7 +245,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
     zeta[0] *= xp;
   }
   G = (scl * 2.f * ek1 - dof * tp)/Q[0];
-  zeta[0] += G*dt2;
+  zeta[0] += G * dt2;
   if (M >= 2)
     zeta[0] *= xp;
   
@@ -256,7 +256,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
       zeta[j] *= xp;
     }
     G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
-    zeta[j] += dt2*G;
+    zeta[j] += G * dt2;
     if (j < M-1)
       zeta[j] *= xp;
   }
@@ -327,6 +327,83 @@ INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
   *zeta += (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) * dt2/Q;
 }
 
+/* Nose-Hoover chain thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt, 
+    real tp, real pext, real *zeta, real *eta, const real *Q, int M, real W,
+    real vol, real vir, real ptail, int ensx,
+    real *ekin, real *tkin)
+{
+  int i, j;
+  real xpz, pint, s, dt2 = dt*.5f, dt4 = dt*.25f, G, xp;
+
+  /* 1. thermostat */
+  /* 1.A propagate the chain */
+  for (j = M-1; j > 0; j--) {
+    if (j < M-1) {
+      xp = (real) exp(-dt4*zeta[j+1]);
+      zeta[j] *= xp;
+    }
+    G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
+    zeta[j] += G * dt2;
+    if (j < M-1)
+      zeta[j] *= xp;
+  }
+
+  /* 1.B the first thermostat variable */
+  if (M >= 2) {
+    xp = exp(-dt4*zeta[1]);
+    zeta[0] *= xp;
+  }
+  G = (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) / Q[0];
+  zeta[0] += G * dt2;
+  if (M >= 2)
+    zeta[0] *= xp;
+  xpz = (real) exp(-zeta[0]*dt4); /* zeta won't change until the end */
+
+  /* 2. barostat */
+  *eta *= xpz;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta *= xpz;
+
+  /* 3. scaling velocity */
+  s = exp( -dt * (zeta[0] + *eta) );
+  for (i = 0; i < d * n; i++) v[i] *= s;
+  *ekin *= s*s;
+  *tkin *= s*s;
+
+  /* 4. barostat */
+  *eta *= xpz;
+  pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
+  *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
+  *eta *= xpz;
+
+  /* 5. thermostat */
+  /* 5.A the first thermotat variable */
+  if (M >= 2) {
+    xp = exp(-dt4*zeta[1]);
+    zeta[0] *= xp;
+  }
+  G = (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) / Q[0];
+  zeta[0] += G * dt2;
+  if (M >= 2)
+    zeta[0] *= xp;
+
+  /* 5.B propagate the chain */
+  for (j = M-1; j > 0; j--) {
+    if (j < M-1) {
+      xp = (real) exp(-dt4*zeta[j+1]);
+      zeta[j] *= xp;
+    }
+    G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
+    zeta[j] += G * dt2;
+    if (j < M-1)
+      zeta[j] *= xp;
+  }
+}
+
+
 /* Langevin thermostat/barostat
  * set cutoff to half of the box */
 INLINE void md_langtp(real *v, int n, int d, real dt, 
@@ -361,20 +438,35 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
 }
 
+/* sinc(x) = (e^x - e^(-x))/(2 x) */
+INLINE double md_mysinc(double x)
+{
+  double x2 = x*x;
+
+  if (fabs(x) < 1e-2) /* series expansion */
+    return 1 + (1 + (1 + x2/42.0)*x2/20.0)*x2/6.0;
+  else
+    return .5 * (exp(x) - exp(-x))/x;
+}
 
 /* Nose-Hoover position update */
 INLINE void md_hoovertpdr(real *r, const real *v, int nd,
     real *xp, real l, real eta, real dt)
 {
   int i;
-  real dtxp;
+  real dtxp, xph, etadt2;
   
   /* r' = r*exp(eta*dt) + v*(exp(eta*dt) - 1)/eta 
    * now exp(eta*dt) is the volume scaling factor
    * so for the reduced coordinates R = r*exp(-eta*dt)
    * R' = R + v*(1 - exp(-eta*dt))/eta; */
-  *xp = (real) exp(eta * dt);
+  etadt2 = eta * dt * .5f;
+  xph = (real) exp(etadt2);
+  *xp = xph * xph;
+  dtxp = 1.f/xph * dt * md_mysinc(etadt2) / l;
+/*  
   dtxp = (1 - 1/(*xp))/eta/l;
+*/  
   for (i = 0; i < nd; i++)
     r[i] += v[i] * dtxp;
 }

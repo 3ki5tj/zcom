@@ -739,6 +739,15 @@ INLINE void lj_hoovertp(lj_t *lj, real dt, real tp, real pext,
       Q, W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
 }
 
+/* Nose-Hoover chain thermostat/barostat
+ * set cutoff to half of the box */
+INLINE void lj_nhchaintp(lj_t *lj, real dt, real tp, real pext,
+    real *zeta, real *eta, const real *Q, int M, real W, int ensx)
+{
+  md_nhchaintp(lj->v, lj->n, lj->d, lj->dof, dt, tp, pext, zeta, eta,
+      Q, M, W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
+}
+
 /* Langevin thermostat/barostat
  * set cutoff to half of the box */
 INLINE void lj_langtp(lj_t *lj, real dt, real tp, real pext,
