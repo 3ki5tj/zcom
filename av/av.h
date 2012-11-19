@@ -177,10 +177,12 @@ INLINE double *avn_getaven(const avn_t *a, double *val)
 {
   int k;
 
-  if (a->s <= 0.)
+  if (a->s <= 0.) {
     for (k = 0; k < a->n; k++) val[k] = 0;
-  else
-    val[k] = a->sx[k] / a->s;
+  } else {
+    for (k = 0; k < a->n; k++)
+      val[k] = a->sx[k] / a->s;
+  }
   return val;
 }
 
@@ -196,10 +198,12 @@ INLINE double *avn_getvarn(const avn_t *a, double *val)
 {
   int k;
 
-  if (a->s <= 0.)
+  if (a->s <= 0.) {
     for (k = 0; k < a->n; k++) val[k] = 0;
-  else
-    val[k] = a->sx2[k] / a->s;
+  } else {
+    for (k = 0; k < a->n; k++)
+      val[k] = a->sx2[k] / a->s;
+  }
   return val;
 }
 
@@ -215,10 +219,12 @@ INLINE double *avn_getdevn(const avn_t *a, double *val)
 {
   int k;
 
-  if (a->s <= 0.)
+  if (a->s <= 0.) {
     for (k = 0; k < a->n; k++) val[k] = 0;
-  else
-    val[k] = sqrt(a->sx2[k] / a->s);
+  } else {
+    for (k = 0; k < a->n; k++)
+      val[k] = sqrt(a->sx2[k] / a->s);
+  }
   return val;
 }
 
