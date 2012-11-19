@@ -199,11 +199,14 @@ INLINE void argopt_dump(const argopt_t *ao)
 
   /* get the widest the option */
   for (i = 0; i < ao->nopt; i++)
-    len = intmax(len, strlen(ol[i].sflag));
+    if (ol[i].sflag)
+      len = intmax(len, strlen(ol[i].sflag));
 
   /* print values of all options */
   for (i = 0; i < ao->nopt; i++) {
-    printf("%*s: ", len+1, ol[i].sflag);
+    const char *sflag = ol[i].sflag;
+    if (sflag == NULL) sflag = "arg";
+    printf("%*s: ", len+1, sflag);
     opt_printptr(ol + i);
     printf(",  %s\n", ol[i].desc);
   }

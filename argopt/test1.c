@@ -11,7 +11,7 @@ int main(int argc, char **argv)
   ao = argopt_open(0);
 
 
-  argopt_add(ao, NULL, "!", &fn, "inputfile");
+  argopt_add(ao, NULL, "!", &fn, "input file");
 /*
   the ``NULL'' means argument, equivalent to
 
