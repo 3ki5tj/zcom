@@ -9,14 +9,25 @@ int main(int argc, char **argv)
   real y = 0;
 
   ao = argopt_open(0);
-  argopt_regarg(ao, "!", &fn, "inputfile");
-  argopt_regopt(ao, "--verbose", "%b", &verbose, "verbose");
-  argopt_regopt(ao, "--freq", "%d", &freq, "frequency of saving files");
-  argopt_regopt(ao, "-n", "!%d", &n, "an integer n");
-  argopt_regopt(ao, "-x", "%lf", &x, "a double x");
-  argopt_regopt(ao, "-y", "%r", &y, "a real y");
-  argopt_regversion(ao, "--version");
-  argopt_reghelp(ao, "-h");
+
+
+  argopt_add(ao, NULL, "!", &fn, "inputfile");
+/*
+  the ``NULL'' means argument, equivalent to
+
+    argopt_regarg(ao, "!", &fn, "inputfile");
+
+  "!" means a must
+*/
+
+  /* argopt_add() == argopt_regopt() */
+  argopt_add(ao, "--verbose", "%b", &verbose, "verbose");
+  argopt_add(ao, "--freq", "%d", &freq, "frequency of saving files");
+  argopt_add(ao, "-n", "!%d", &n, "an integer n");
+  argopt_add(ao, "-x", "%lf", &x, "a double x");
+  argopt_add(ao, "-y", "%r", &y, "a real y");
+  argopt_addversion(ao, "--version");
+  argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
   printf("fn %s, verbose %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d\n",
       fn, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y, 
