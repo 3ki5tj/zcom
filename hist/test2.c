@@ -15,7 +15,7 @@ int main(void)
          lam[LCNT] = {3.8, 3.9, 3.999999};
   hist2_t *hs;
 
-  hs = hs2_open(LCNT, XMIN, XMAX, XDEL);
+  hs = hs2_open(LCNT, XMIN, XMAX, XDEL, XMIN, XMAX, XDEL);
   /* generate histogram */
   for (i = 0; i < n; i++) {
     for (j = 0; j < LCNT; j++) {

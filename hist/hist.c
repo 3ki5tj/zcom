@@ -1,6 +1,7 @@
 #ifndef HIST_C__
 #define HIST_C__
 #include "hist.h"
+
 /* compute sum, average and standard deviation*/
 INLINE double *gethistsums_(const double *h, int rows, int n, 
     double xmin, double dx)
@@ -28,8 +29,8 @@ INLINE double *gethistsums_(const double *h, int rows, int n,
   return sums;
 }
 
-INLINE double *gethist2sums_(const double *h, int rows, int n, 
-    double xmin, double dx)
+INLINE double *gethist2sums_(const double *h, int rows, int n,
+    double xmin, double dx, int m, double ymin, double dy)
 {
   double *sums, *xav, *yav, *xdv, *ydv, x, y, w;
   int i, j, r;
@@ -43,9 +44,9 @@ INLINE double *gethist2sums_(const double *h, int rows, int n,
     sums[r] = xav[r] = xdv[r] = yav[r] = ydv[r] = 0.;
     for (i = 0; i < n; i++) {
       x = xmin + (i+.5)*dx;
-      for (j = 0; j < n; j++) {
-        y = xmin + (j+.5)*dx;
-        w = h[r*n*n + i*n + j];
+      for (j = 0; j < m; j++) {
+        y = ymin + (j+.5)*dy;
+        w = h[r*n*m + i*m + j];
         sums[r] += w;
         xav[r]  += w*x;
         xdv[r]  += w*x*x;
@@ -361,22 +362,22 @@ INLINE int histadd(const double *xarr, double w, double *h, int rows,
 
 /* write 'rows' 2d n^2 histograms to file */
 INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
-    unsigned flags, const char *fn)
+    int m, double ymin, double dy, unsigned flags, const char *fn)
 {
-  const int version = 0;
+  const int version = 1; /* v1 allows different dimension in x and y */
   FILE *fp;
-  int i, j, r, imax, imin, jmax, jmin, n2;
+  int i, j, r, imax, imin, jmax, jmin, nm;
   const double *p;
   double *sums, fac, delta;
 
   if (fn == NULL) fn = "HIST2";
   xfopen(fp, fn, "w", return 1);
   
-  n2 = n*n;
-  sums = gethist2sums_(h, rows, n, xmin, dx);
+  nm = n*m;
+  sums = gethist2sums_(h, rows, n, xmin, dx, m, ymin, dy);
   /* print basic information */
-  fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
-      version, flags, rows, n, xmin, dx);
+  fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ", 
+      version, flags, rows, n, xmin, dx, m, ymin, dy);
   for (r = 0; r < rows; r++) /* number of visits */
     fprintf(fp, "%g ", sums[r]);
   fprintf(fp, " | ");
@@ -387,16 +388,16 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 
   delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;
 
-  for (r = 0; r < rows; r++) {
-    p = h+r*n2;
+  for (r = 0; r < rows; r++) { /* the rth data set */
+    p = h + r*nm;
 
     if (flags & HIST_KEEPRIGHT) {
       imax = n;
     } else { /* trim the right edge of i */
       for (i = n-1; i >= 0; i--) {
-        for (j = 0; j < n; j++)
-          if (p[i*n + j] > 0) break;
-        if (j < n) break;
+        for (j = 0; j < m; j++)
+          if (p[i*m + j] > 0) break;
+        if (j < m) break; /* found a nonzero entry */
       }
       imax = i+1;
       if (imax == 0)
@@ -407,19 +408,19 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
       imin = 0;
     } else { /* trim the left edge of i */
       for (i = 0; i < imax; i++) {
-        for (j = 0; j < n; j++)
-          if (p[i*n + j] > 0) break;
-        if (j < n) break;
+        for (j = 0; j < m; j++)
+          if (p[i*m + j] > 0) break;
+        if (j < m) break; /* found a nonzero entry */
       }
       imin = i;
     }
 
     if (flags & HIST_KEEPRIGHT2) {
-      jmax = n;
+      jmax = m;
     } else { /* trim the right edge of j */
-      for (j = n-1; j >= 0; j--) {
+      for (j = m-1; j >= 0; j--) {
         for (i = imin; i < imax; i++)
-          if (p[i*n + j] > 0) break;
+          if (p[i*m + j] > 0) break;
         if (i < imax) break;
       }
       jmax = j+1;
@@ -430,14 +431,14 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     } else { /* trim the left edge of j */
       for (j = 0; j < jmax; j++) {
         for (i = imin; i < imax; i++)
-          if (p[i*n + j] > 0) break;
+          if (p[i*m + j] > 0) break;
         if (i < imax) break;
       }
       jmin = j;
     }
 
     if (fabs(sums[r]) < 1e-6) fac = 1.;
-    else fac = 1.0/(sums[r]*dx*dx);
+    else fac = 1.0/(sums[r]*dx*dy);
 
     for (i = imin; i < imax; i++) { 
       for (j = jmin; j < jmax; j++) {
@@ -445,11 +446,11 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
         if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
           continue;
         x = xmin + (i+delta)*dx;
-        y = xmin + (j+delta)*dx;
+        y = ymin + (j+delta)*dy;
         fprintf(fp,"%g %g ", x, y);
         if (flags & HIST_KEEPHIST) 
-          fprintf(fp, "%20.14E ", p[i*n+j]);
-        fprintf(fp,"%20.14E %d\n", p[i*n+j]*fac, r);
+          fprintf(fp, "%20.14E ", p[i*m+j]);
+        fprintf(fp,"%20.14E %d\n", p[i*m+j]*fac, r);
       }
       fprintf(fp,"\n");
     }
@@ -467,20 +468,21 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 }
 
 INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
-    unsigned flags, const char *fn)
+    int m, double ymin, double dy, unsigned flags, const char *fn)
 {
   FILE *fp;
   static char s[40960] = "", *p;
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;
-  int i, j, r, r1, n2, nlin = 0;
+  int i, j, r, r1, nm, nlin = 0;
   unsigned fflags;
   double x, y, g, g2, fac, delta, *arr, *sums = NULL;
+  double xmin1, dx1, ymin1, dy1;
     
   xfopen(fp, fn, "r", return -1);
   
-  n2 = n*n;
+  nm = n*m;
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
     fprintf(stderr, "%s: missing the first line\n", fn);
@@ -488,10 +490,12 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     return -1;
   }
   nlin++;
-  if (6 != sscanf(s, " # %d 0x %X | %d%d%lf%lf | %n", &ver, &fflags, &r, &i, &y, &x, &next)
-      || i < n || r != rows || fabs(x - dx) > 1e-5) {
-    fprintf(stderr, "Error: bins = %d, %d, ng = %d, %d; dx = %g, %g\n", 
-        i, n, r, rows, x, dx);
+  if (9 != sscanf(s, " # %d 0x %X | %d%d%lf%lf%d%lf%lf | %n", &ver, &fflags, &r, 
+        &i, &xmin1, &dx1, &j, &ymin1, &dy1, &next)
+      || i < n || j < m || r != rows
+      || fabs(dx1 - dx) > 1e-5 || fabs(dy1 - dy) > 1e-5 ) {
+    fprintf(stderr, "Error: bins %d, %d; %d, %d; ng %d, %d; dx %g, %g; dy %g, %g\n", 
+        i, n, j, m, r, rows, dx1, dx, dy1, dy);
     fclose(fp);
     return -1;
   }
@@ -517,12 +521,12 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
   if ((p = skipabar_(p)) == NULL) goto EXIT;
 
   if (!add) { /* clear histogram */
-    for (i = 0; i < rows*n2; i++) hist[i] = 0.;
+    for (i = 0; i < rows*nm; i++) hist[i] = 0.;
   }
   
   /* loop over r = 0..rows-1 */
   for (r = 0; r < rows; r++) {
-    arr = hist + r*n2;
+    arr = hist + r*nm;
     fac = sums[r]*(dx*dx);
     while (fgets(s, sizeof s, fp)) {
       nlin++;
@@ -552,16 +556,16 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
         fprintf(stderr, "cannot find index for x = %g\n", x);
         goto EXIT;
       }
-      j = (int)((y - xmin)/dx - delta + .5);
-      if (j < 0 || j >= n) {
+      j = (int)((y - ymin)/dy - delta + .5);
+      if (j < 0 || j >= m) {
         fprintf(stderr, "cannot find index for y = %g\n", y);
         return -1;
       }
       if (!hashist) {
         g = g2*fac;
       }
-      if (add) arr[i*n+j] += g;
-      else arr[i*n+j] = g;
+      if (add) arr[i*m+j] += g;
+      else arr[i*m+j] = g;
     }
   }
   if (verbose) fprintf(stderr, "%s loaded successfully\n", fn);
@@ -569,7 +573,7 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
 EXIT:
   fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);  
   if (sums) free(sums);
-  for (i = 0; i < rows*n2; i++) hist[i] = 0.;
+  for (i = 0; i < rows*nm; i++) hist[i] = 0.;
   return -1;
 }
 
@@ -577,7 +581,8 @@ EXIT:
  * return number of success */
 INLINE int hist2add(const double *xarr, const double *yarr, int skip,
     double w, double *h, int rows, 
-    int n, double xmin, double dx, unsigned flags)
+    int n, double xmin, double dx,
+    int m, double ymin, double dy, unsigned flags)
 {
   int r, ix, iy, good = 0, verbose = flags & HIST_VERBOSE;
   double x, y;
@@ -585,19 +590,21 @@ INLINE int hist2add(const double *xarr, const double *yarr, int skip,
   for (r = 0; r < rows; r++) {
     x = xarr[skip*r];
     y = yarr[skip*r];
-    if (x < xmin || y < xmin) {
+    if (x < xmin || y < ymin) {
       if (verbose)
-       fprintf(stderr, "histadd underflows %d: %g or %g < %g\n", r, x, y, xmin);
+       fprintf(stderr, "histadd underflows %d: %g < %g or %g < %g\n",
+          r, x, xmin, y, ymin);
       continue;
     }
     ix = (int)((x - xmin)/dx);
-    iy = (int)((y - xmin)/dx);
-    if (ix >= n || iy >= n) {
+    iy = (int)((y - ymin)/dy);
+    if (ix >= n || iy >= m) {
       if (verbose)
-        fprintf(stderr, "histadd overflows %d: %g or %g > %g\n", r, x, y, xmin+dx*n);
+        fprintf(stderr, "histadd overflows %d: %g > %g or %g > %g\n",
+            r, x, xmin + dx*n, y, ymin + dy*m);
       continue;
     }
-    h[r*n*n + ix*n+iy] += w;
+    h[r*n*m + ix*m + iy] += w;
     good++;
   }
   return good;
