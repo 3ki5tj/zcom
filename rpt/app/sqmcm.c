@@ -106,11 +106,11 @@ static void domc(lj_t *lj)
   Uljref = lj_eos3d(rho, tp, &pljref, 0, 0);
   eps = av_getdev(aveps);
   bp1 = rpti_bet1(rpt, &bp0)/scaleU; bp0 /= scaleU;
-  bpi = rpti_bet(rpt)/scaleU;
+  bpi = rpti_bet(rpt, 0)/scaleU;
   epslj = av_getdev(avepslj);
   bplj0 = rpt_bet0(rptlj);
   bplj1 = rpt_bet1(rptlj);
-  bplji = rpt_bet(rptlj);
+  bplji = rpt_bet(rptlj, 0);
 
   printf("epot %g, acc %g, epsdev %g, bp0 %.6f, bp1 %.6f, bpi %.6f, "
          "Ulj %.6f, Uljref %.6f, plj %.6f, pljref %.6f, "

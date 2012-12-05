@@ -182,7 +182,7 @@ static int savedata(int *hist, rpti_t **ta, double *refbet, const char *fn)
   xnew(beth0, L*L+1);
   xnew(beth1, L*L+1);  
   for (i = 0; i <= n; i++) {
-    beti[i] = rpti_bet(ta[i]);
+    beti[i] = rpti_bet(ta[i], 0);
     bets0[i] = rpti_bets(ta[i], 0);
     bets1[i] = rpti_bets(ta[i], 1);
     beth0[i] = rpti_beth(ta[i], 0);

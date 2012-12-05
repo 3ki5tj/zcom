@@ -98,7 +98,7 @@ static int savedata(rpti_t **rpt, const char *fn)
       if (i0 < 0) i0 = i;
       if (i > i1) i1 = i;
       bp1[i] = rpti_bet1(rpt[i], &bp0[i]);
-      bpi[i] = rpti_bet(rpt[i]);
+      bpi[i] = rpti_bet(rpt[i], 0);
       if (fabs(bp0[i]) > .99*RPT_INF) bp0[i] = 0.f;
       if (fabs(bp1[i]) > .99*RPT_INF) bp1[i] = 0.f;
       if (fabs(bpi[i]) > .99*RPT_INF) bpi[i] = 0.f;

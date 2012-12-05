@@ -107,10 +107,10 @@ INLINE double rpt_refinebet(const rpt_t *t, double bet0,
   return bet;
 }
 
-/* evaluate f = < exp(-bet*e) > - 1 and -df/dbet */
+/* evaluate f = < (-e)^ord exp(-bet*e) - e^ord > and -df/dbet */
 INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *df)
 {
-  int i;
+  int i, k;
   double f, cnt, e, xp, *h = hs->arr;
 
   (void) ord;
@@ -118,22 +118,25 @@ INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *df)
     if (h[i] <= 0.) continue;
     e = hs->xmin + (i + .5) * hs->dx;
     xp = exp(-bet*e);
+    if (ord % 2) xp = -xp;
+    xp -= 1;
+    for (k = 0; k < ord; k++) xp *= e;
     cnt += h[i];
     f   += h[i] * xp;
     *df += h[i] * xp * e;
   }
   f /= cnt;
   *df /= cnt;
-  return f - 1;
+  return f;
 }
 
-/* obtain the nontrivial solution of < exp(-bet * e) > = 1 */
-INLINE double rpt_bet(const rpt_t *t)
+/* obtain the nontrivial solution of < (-e)^ord exp(-bet * e) - e^ord > = 0 */
+INLINE double rpt_bet(const rpt_t *t, int ord)
 {
   double bet;
 
   if (rpt_prepbet(t, &bet)) return bet;
-  return rpt_refinebet(t, bet, rpt_getf, 0);
+  return rpt_refinebet(t, bet, rpt_getf, ord);
 }
 
 /* evaluate f = (-bet) < min{1, exp(-bet * e)} sgn(e) |e|^ord > and -df/dbet */
@@ -337,10 +340,10 @@ INLINE double rpti_refinebet(const rpti_t *t, double bet0,
   return bet;
 }
 
-/* evaluate f = < exp(-bet*e) - 1> and -df/dbet */
+/* evaluate f = < (-e)^ord exp(-bet*e) - e^ord> and -df/dbet */
 INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
 {
-  int i, e;
+  int i, k, e;
   double f, cnt, xp;
 
   (void) ord; /* used */
@@ -348,6 +351,9 @@ INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
     e = t->emin + i * t->edel;
     if (t->h[i] <= 0) continue;
     xp = exp(-bet*e);
+    if (ord % 2) xp = -xp;
+    xp -= 1;
+    for (k = 0; k < ord; k++) xp *= e;
     cnt += t->h[i];
     f += t->h[i] * xp;
     *df += t->h[i] * xp * e;
@@ -359,12 +365,12 @@ INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
 }
 
 /* estimated the temperature using the identity approach */
-INLINE double rpti_bet(rpti_t *t)
+INLINE double rpti_bet(rpti_t *t, int ord)
 {
   double bet;
 
   if (rpti_prepbet(t, &bet)) return bet;
-  return rpti_refinebet(t, bet, rpti_getf, 0);
+  return rpti_refinebet(t, bet, rpti_getf, ord);
 }
 
 /* evaluate f = (-bet) < min{1, exp(-bet*e)} sgn(e) * |e|^ord > and -d f/d bet */

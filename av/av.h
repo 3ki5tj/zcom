@@ -194,6 +194,7 @@ INLINE double avn_getvar(const avn_t *a, int k, int l)
 {
   die_if (k < 0 || k >= a->n || l < 0 || l >= a->n,
       "avn index %d, %d out of range %d\n", k, l, a->n);
+  if (k > l) intswap(k, l);
   return (a->s > 0) ? a->sx2[k * a->n + l]/a->s : 0; 
 }
 
@@ -242,6 +243,7 @@ INLINE double avn_getcor(const avn_t *a, int k, int l)
   int n = a->n;
   die_if (k < 0 || k >= n || l < 0 || l >= n, 
       "avn index %d, %d out of range %d\n", k, l, n);
+  if (k > l) intswap(k, l);
   return (a->s > 0) ? a->sx2[k*n+l] / sqrt(a->sx2[k*n+k] * a->sx2[l*n+l]) : 0;
 }
 

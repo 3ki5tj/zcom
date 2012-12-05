@@ -114,14 +114,14 @@ static void domc(lj_t *lj, rpt_t *rpt, rpt_t *rptd)
   bcr = av_getave(avlap)/av_getave(avf2);
   bp0 = rpt_bet0(rpt);
   bp1 = rpt_bet1(rpt);
-  bpi = rpt_bet(rpt);
+  bpi = rpt_bet(rpt, 0);
   bps0 = rpt_bets(rpt, 0);
   bps1 = rpt_bets(rpt, 1);
   bph0 = rpt_beth(rpt, 0);
   bph1 = rpt_beth(rpt, 1);
   bpd0 = 1.0f/tp + rpt_bet0(rptd);
   bpd1 = 1.0f/tp + rpt_bet1(rptd);
-  bpdi = 1.0f/tp + rpt_bet(rptd);
+  bpdi = 1.0f/tp + rpt_bet(rptd, 0);
   printf("ekin %g, epot %g, p %g, dudev %g, bc %.6f, bc0 %.6f, bcr %.6f, "
     "bp0 %.6f, bp1 %.6f, bpi %.6f, bps0 %.6f, bps1 %.6f, bph0 %.6f, bph1 %.6f,"
     "bpd0 %.6f, bpd1 %.6f, bpdi %.6f",

@@ -86,13 +86,13 @@ static void domc(lj_t *lj, rpti_t *rpt, rpti_t *rptd)
   u = av_getave(avU)/lj->n;
   du = av_getdev(avu);
   bp1 = rpti_bet1(rpt, &bp0);
-  bpi = rpti_bet(rpt);
+  bpi = rpti_bet(rpt, 0);
   bps0 = rpti_bets(rpt, 0);
   bps1 = rpti_bets(rpt, 1);
   bph0 = rpti_beth(rpt, 0);
   bph1 = rpti_beth(rpt, 1);
   bpd1 = rpti_bet1(rptd, &bpd0);
-  bpdi = rpti_bet(rptd);
+  bpdi = rpti_bet(rptd, 0);
   printf("epot %g, acc %g, dudev %g, bp0 %.6f, bp1 %.6f, bpi %.6f, bps0 %.6f, bps1 %.6f, "
     "bph0 %.6f, bph1 %.6f, bpd0 %.6f, bpd1 %.6f, bpdi %.6f\n",
      u, 1.*acc/nsteps, du, bp0, bp1, bpi, bps0, bps1, 
