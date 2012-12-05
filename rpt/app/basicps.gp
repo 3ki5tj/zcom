@@ -19,9 +19,10 @@ set style line 80 lt rgb "#555555" lw 2.0
 set border 15 back linestyle 80  # Remove border on top and right.
 
 # Line style for grid
-set style line 81 lt 0 lw 1.5 # dotted
-set style line 81 lt rgb "#a0a0a0" # light gray
-set grid mxtics xtics mytics ytics back linestyle 81
+set style line 81 lt 0 lw 1 # dotted
+set style line 81 lt rgb "#cccccc" # light gray
+#set grid mxtics xtics mytics ytics back linestyle 81
+unset grid
 
 set tics font ", 12"
 set key font ", 12" spacing 1.5
@@ -34,11 +35,11 @@ set origin 0.0, 0.0
 
 set style line 9 lt 1
 set style line 9 lt rgb "#000000" lw 3 pt 1   ps 2.0  # black for reference
-set style line 1 lt rgb "#c04020" lw 2 pt 10  ps 1.5  # dark red
-set style line 2 lt rgb "#e0c040" lw 2 pt 12  ps 1.5  # yellow
-set style line 3 lt rgb "#e030a0" lw 2 pt 6   ps 1.5  # bright magenta
-set style line 4 lt rgb "#80d060" lw 2 pt 8   ps 1.8  # dark green
-set style line 5 lt rgb "#305080" lw 2 pt 4   ps 1.5  # navy blue
+set style line 1 lt rgb "#c04020" lw 3 pt 10  ps 1.5  # dark red
+set style line 2 lt rgb "#e0c040" lw 3 pt 12  ps 1.5  # yellow
+set style line 3 lt rgb "#e030a0" lw 3 pt 6   ps 1.5  # bright magenta
+set style line 4 lt rgb "#80d060" lw 3 pt 8   ps 1.8  # dark green
+set style line 5 lt rgb "#305080" lw 3 pt 4   ps 1.5  # navy blue
 
 set logscale x
 set xtics offset 0, 0.1
@@ -53,12 +54,12 @@ set key left bottom Left reverse width -9
 # {/Symbol \361}, right angle, >
 
 plot [0.005:0.1][0:] \
-  "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (4)", \
-            ""  u 1:2  w lp ls 1 t "Eq. (5), {/Symbol-Oblique b} = 2{/Symbol \341}{/Symbol-Oblique e}{/Symbol \361}/{/Symbol \341}{/Symbol-Oblique e}^2{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (6'), {/Symbol-Oblique b} = 2{/Symbol \341}{/Symbol-Oblique e}{/Symbol \361}/{/Symbol \341}{/Symbol-Oblique De^2}{/Symbol \361}", \
-            ""  u 1:4  w lp ls 3 t "Eq. (6), {/Symbol \341}exp( {/Symbol-Oblique - b e}){/Symbol \361}= 1", \
-            ""  u 1:6  w lp ls 4 t "Eq. (11), {/Arial-Italic k} = 1", \
-            ""  u 1:8  w lp ls 5 t "Eq. (12), {/Arial-Italic k} = 1"
+  "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (1)", \
+            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (3'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
+            ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361}= 1", \
+            ""  u 1:6  w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
+            ""  u 1:8  w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1"
 
 unset logscale x
 
@@ -82,21 +83,21 @@ set ylabel "{/Symbol-Oblique b}" offset 2., 0
 set key right top Left reverse 
 
 plot [1.2:2.5][0.9:1.2] \
-  "rcmcl.txt" u 1:14 w lp ls 9  t "Eq. (4)", \
-          ""  u 1:4  w lp ls 3  t "Eq. (6), {/Symbol \341}exp( {/Symbol-Oblique - b e} ){/Symbol \361}= 1", \
-          ""  u 1:6  w lp ls 4  t "Eq. (11), k = 1", \
-          ""  u 1:8  w lp ls 5  t "Eq. (12), k = 1"
+  "rcmcl.txt" u 1:14 w lp ls 9  t "Eq. (1)", \
+          ""  u 1:4  w lp ls 3  t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361} = 1", \
+          ""  u 1:6  w lp ls 4  t "Eq. (8), k = 1", \
+          ""  u 1:8  w lp ls 5  t "Eq. (9), k = 1"
 
 
 set origin 0., 0.5
 
 set xtics 2 offset 0, 0.0
 set mxtics 2
-set xlabel "{/Symbol-Oblique e}" offset 1.0, 0.5
+set xlabel "{/Symbol-Oblique e} = {/Symbol-Oblique D} U" offset 1.0, 0.5
 
 set ytics 0.2
 set mytics 2
-set ylabel "{/Arial-Italic p} ( {/Symbol-Oblique e} )" offset 1.0, 0.0
+set ylabel "{/Arial-Italic p}{/=6 &.}({/Symbol-Oblique e}{/=6 &.})" offset 1.0, 0.0
 
 set key right top Left reverse width -6 
 
@@ -123,9 +124,9 @@ set xtics .2
 set mxtics 2
 set xlabel "{/Symbol-Oblique b}" offset 0, 0.5
 
-set ytics .2
-set mytics 2
-set ylabel "{/Symbol \341}exp( {/Symbol-Oblique - b e} ){/Symbol \361}" offset 2., 0
+set ytics .5
+set mytics 5
+set ylabel "{/Symbol \341}{/=6 &.}exp{/=6 &.}({/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361}" offset 2., 0
 # try {/Symbol-Oblique b} in postscript
 
 set arrow 1 from 1, 0.94 to 1, 0.05 ls 9

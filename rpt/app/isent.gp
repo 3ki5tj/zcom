@@ -20,7 +20,7 @@ set border 15 back linestyle 80  # Remove border on top and right.
 # Line style for grid
 set style line 81 lt 0 lw 2 # dotted
 set style line 81 lt rgb "#a0a0a0" # light gray
-set grid mxtics xtics mytics ytics back linestyle 81
+#set grid mxtics xtics mytics ytics back linestyle 81
 
 set tics
 

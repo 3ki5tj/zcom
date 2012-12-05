@@ -1,7 +1,7 @@
 #!/usr/bin/env gnuplot
 unset multiplot
 reset
-set terminal postscript enhanced font 'Arial, 18'
+set terminal postscript enhanced font 'Arial, 20'
 set output "isent.ps"
 set multiplot
 
@@ -19,11 +19,11 @@ set style line 80 lt rgb "#555555" lw 2
 set border 15 back linestyle 80  # Remove border on top and right.
 
 # Line style for grid
-set style line 81 lt 0 lw 2 # dotted
-set style line 81 lt rgb "#a0a0a0" # light gray
-set grid mxtics xtics mytics ytics back linestyle 81
+set style line 81 lt 0 lw 1 # dotted
+set style line 81 lt rgb "#cccccc" # light gray
+#set grid mxtics xtics mytics ytics back linestyle 81
 
-set tics font ", 16"
+#set tics font "Arial, 18"
 
 set style line 1 lt rgb "#c04020" lw 3 pt 10  ps 2.5  # dark red
 set style line 2 lt rgb "#e0c040" lw 3 pt 12  ps 2.5  # yellow to orange
@@ -50,23 +50,23 @@ plot [-2:2][-1:1] 0 w l ls 8 not, \
   "profis32.dat" u ($1/N):10 w l ls 9 t "Reference", \
   ""             u ($1/N):3  w l ls 1 not, \
   ""             u ($1/N):3  every 32 w p ls 1 not, \
-  -10                        w lp ls 1 t "Eq. (5)", \
+  -10                        w lp ls 1 t "Eq. (2)", \
   ""             u ($1/N):4  w l ls 2 not, \
   ""             u ($1/N):4  every 32 w p ls 2 not, \
-  -10                        w lp ls 2 t "Eq. (6')", \
+  -10                        w lp ls 2 t "Eq. (3')", \
   ""             u ($1/N):5  w l ls 3 not, \
   ""             u ($1/N):5  every 32 w p ls 3 not, \
-  -10                        w lp ls 3 t "Eq. (6)", \
+  -10                        w lp ls 3 t "Eq. (3)", \
   ""             u ($1/N):7  w l ls 4 not, \
   ""             u ($1/N):7  every 32 w p ls 4 not, \
-  -10                        w lp ls 4 t "Eq. (11), {/Arial-Italic k} = 1", \
+  -10                        w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
   ""             u ($1/N):9  w l ls 5 not, \
   ""             u ($1/N):9  every 32 w p ls 5 not, \
-  -10                        w lp ls 5 t "Eq. (12), {/Arial-Italic k} = 1"
+  -10                        w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1"
 
 #  "profis16.dat" u ($1/N16):5  w l ls 6 not, \
 #  ""             u ($1/N16):5  every 32 w p ls 6 not, \
-#  -10                        w lp ls 6 t "Eq. (6), 16x16"
+#  -10                        w lp ls 6 t "Eq. (3), 16x16"
 
 insetx0 = 0.1
 insety0 = 0.085
@@ -91,7 +91,7 @@ set ytics 0.5  offset 0.5, 0.0  font insetfont
 # {/Symbol \362} is the integral sign
 # make it a subscript but with larger font
 # &{i} is a thin space
-set ylabel "{/=11 {/Symbol-Oblique D}[ log {/Arial-Italic g}_{/Arial-Italic U} ({/Arial-Italic U }) ] = &{i}_{/*2.0 {/Symbol-Oblique \362}}@_{/*0.8 &{i}0}^{/*.8 &{n}{/Arial-Italic U}} {/Symbol-Oblique D}[ {/Symbol-Oblique b}_{/Arial-Italic U} ({/Arial-Italic U'} ) ] d{/Arial-Italic U'} }" offset 3.0, 0 font insetfont
+set ylabel "{/=11 {/Symbol-Oblique D}[ log {/Arial-Italic g} ({/Arial-Italic U }) ] = &{i}_{/*2.0 {/Symbol-Oblique \362}}@_{/*0.8 &{i}0}^{/*.8 &{n}{/Arial-Italic U}} {/Symbol-Oblique D}[ {/Symbol-Oblique b}_{/Arial-Italic U} ({/Arial-Italic U'} ) ] d{/Arial-Italic U'} }" offset 3.0, 0 font insetfont
 unset key
 
 plot [-2:2][-1:0.5] 0 w l ls 8 not, \
