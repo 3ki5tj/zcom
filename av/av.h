@@ -48,7 +48,8 @@ INLINE void av_gaddw(av_t *av, double x, double w, double ngam)
 typedef struct {
   int n;
   double s;
-  double *sx; /* sum */
+  double *x; /* buffer, current x value */
+  double *sx, *sxb; /* sum */
   double *sx2; /* variance */
 } avn_t;
 
@@ -61,16 +62,21 @@ INLINE avn_t *avn_open(int n)
   xnew(a, 1);
   die_if (n <= 0, "avn needs at least n %d >= 1\n", n);
   a->n = n;
+  xnew(a->x, n);
   xnew(a->sx, n);
-  xnew(a->sx2, n);
-  for (a->s = 0, i = 0; i < n; i++)
-    a->sx[i] = a->sx2[i] = 0;
+  xnew(a->sxb, n);
+  xnew(a->sx2, n*n);
+  a->s = 0;
+  for (i = 0; i < n; i++) a->x[i] = a->sx[i] = a->sxb[i] = 0;
+  for (i = 0; i < n * n; i++) a->sx2[i] = 0;
   return a;
 }
 
 INLINE void avn_close(avn_t *a)
 {
+  free(a->x);
   free(a->sx);
+  free(a->sxb);
   free(a->sx2);
   free(a);
 }
@@ -79,14 +85,17 @@ INLINE void avn_close(avn_t *a)
  * must add all values simultaneously, otherwise a->s is messed up */
 INLINE void avn_addwv(avn_t *a, const double *x, double w)
 {
-  int k, n = a->n;
-  double s, sx;
+  int k, l, n = a->n;
+  double s;
 
   a->s = (s = a->s) + w;
   for (k = 0; k < n; k++) {
-    a->sx[k] = (sx = a->sx[k]) + x[k] * w;
-    if (s > 0)
-      a->sx2[k] += (x[k] - sx/s) * (x[k] - a->sx[k]/a->s)*w;
+    a->sx[k] = (a->sxb[k] = a->sx[k]) + x[k] * w;
+  }
+  if (s > 0) { /* update variance */
+    for (k = 0; k < n; k++)
+      for (l = k; l < n; l++)
+        a->sx2[k*n + l] += (x[k] - a->sxb[k]/s) * (x[l] - a->sx[l]/a->s) * w;
   }
 }
 
@@ -96,35 +105,33 @@ INLINE void avn_addwv(avn_t *a, const double *x, double w)
  * use argument list */
 INLINE void avn_addw(avn_t *a, double w, ...)
 {
-  int k, n = a->n;
-  double s, sx, x;
+  int k;
   va_list va;
 
-  a->s = (s = a->s) + w;
   va_start(va, w);
-  for (k = 0; k < n; k++) {
-    x = va_arg(va, double);
-    a->sx[k] = (sx = a->sx[k]) + x * w;
-    if (s > 0)
-      a->sx2[k] += (x - sx/s) * (x - a->sx[k]/a->s)*w;
+  for (k = 0; k < a->n; k++) {
+    a->x[k] = va_arg(va, double);
   }
   va_end(va);
+  avn_addwv(a, a->x, w);
 }
 
 
 /* weighted update: sX = sX*gam + X */
 INLINE void avn_gaddwv(avn_t *a, const double *x, double w, double ngam)
 {
-  int k, n = a->n;
-  double s, sx, del, gam = 1.0 - ngam;
+  int k, l, n = a->n;
+  double s, gam = 1.0 - ngam;
 
   a->s = (s = a->s)*gam + w;
   for (k = 0; k < n; k++) {
-    a->sx[k] = (sx = a->sx[k]) * gam + w * x[k];
-    if (s > 0.0) {
-      del = x[k]*s - sx;
-      a->sx2[k] = (a->sx2[k] + w*del*del/(s*a->s))*gam;
-    }
+    a->sx[k] = (a->sxb[k] = a->sx[k]) * gam + w * x[k];
+  }
+  if (s > 0) { /* update variance */
+    for (k = 0; k < n; k++)
+      for (l = k; l < n; l++)
+        a->sx2[k*n + l] = gam * (a->sx2[k*n + l] + 
+            w*(x[k]*s - a->sxb[k]) * (x[l]*s - a->sxb[l])/(s*a->s));
   }
 }
 
@@ -134,21 +141,14 @@ INLINE void avn_gaddwv(avn_t *a, const double *x, double w, double ngam)
  * use argument list */
 INLINE void avn_gaddw(avn_t *a, double w, double ngam, ...)
 {
-  int k, n = a->n;
-  double s, sx, x, del, gam = 1 - ngam;
+  int k;
   va_list va;
 
-  a->s = (s = a->s)*gam + w;
   va_start(va, ngam);
-  for (k = 0; k < n; k++) {
-    x = va_arg(va, double);
-    a->sx[k] = (sx = a->sx[k]) * gam + w * x ;
-    if (s > 0.0) {
-      del = x*s - sx;
-      a->sx2[k] = (a->sx2[k] + w*del*del/(s*a->s))*gam;
-    }
-  }
+  for (k = 0; k < a->n; k++)
+    a->x[k] = va_arg(va, double);
   va_end(va);
+  avn_gaddwv(a, a->x, w, ngam);
 }
 
 /* these macros are only available if we have variable arguments macros */
@@ -161,8 +161,11 @@ INLINE void avn_clear(avn_t *a)
 {
   int i;
 
-  for (a->s = 0, i = 0; i < a->n; i++)
-    a->sx[i] = a->sx2[i] = 0;
+  a->s = 0;
+  for (i = 0; i < a->n; i++)
+    a->x[i] = a->sx[i] = a->sxb[i] = 0;
+  for (i = 0; i < a->n * a->n; i++)
+    a->sx2[i] = 0;
 }
 
 /* get average of quantity k */
@@ -186,23 +189,28 @@ INLINE double *avn_getaven(const avn_t *a, double *val)
   return val;
 }
 
-/* get variance of quantity k */
-INLINE double avn_getvar(const avn_t *a, int k)
+/* get cross variance of quantities k and l */
+INLINE double avn_getvar(const avn_t *a, int k, int l)
 {
-  die_if (k < 0 || k >= a->n, "avn index %d out of range %d\n", k, a->n);
-  return (a->s > 0) ? a->sx2[k]/a->s : 0; 
+  die_if (k < 0 || k >= a->n || l < 0 || l >= a->n,
+      "avn index %d, %d out of range %d\n", k, l, a->n);
+  return (a->s > 0) ? a->sx2[k * a->n + l]/a->s : 0; 
 }
 
 /* get variances of all quantities */
 INLINE double *avn_getvarn(const avn_t *a, double *val)
 {
-  int k;
+  int k, l, n = a->n;
 
   if (a->s <= 0.) {
-    for (k = 0; k < a->n; k++) val[k] = 0;
+    for (k = 0; k < n * n; k++) val[k] = 0;
   } else {
-    for (k = 0; k < a->n; k++)
-      val[k] = a->sx2[k] / a->s;
+    for (k = 0; k < n; k++) {
+      for (l = k; l < n; l++) {
+        val[k*n + l] = a->sx2[k*n + l] / a->s;
+        if (l > k) val[l*n + k] = val[k*n + l];
+      }
+    }
   }
   return val;
 }
@@ -211,22 +219,48 @@ INLINE double *avn_getvarn(const avn_t *a, double *val)
 INLINE double avn_getdev(const avn_t *a, int k) 
 {
   die_if (k < 0 || k >= a->n, "avn index %d out of range %d\n", k, a->n);
-  return (a->s > 0) ? sqrt(a->sx2[k]/a->s) : 0; 
+  return (a->s > 0) ? sqrt(a->sx2[k * a->n + k]/a->s) : 0; 
 }
 
 /* get standard deviations of all quantities */
 INLINE double *avn_getdevn(const avn_t *a, double *val)
 {
-  int k;
+  int k, n = a->n;
 
   if (a->s <= 0.) {
-    for (k = 0; k < a->n; k++) val[k] = 0;
+    for (k = 0; k < n; k++) val[k] = 0;
   } else {
-    for (k = 0; k < a->n; k++)
-      val[k] = sqrt(a->sx2[k] / a->s);
+    for (k = 0; k < n; k++)
+      val[k] = sqrt(a->sx2[k*n + k] / a->s);
   }
   return val;
 }
 
+/* get correlation coefficient between quantities k and l */
+INLINE double avn_getcor(const avn_t *a, int k, int l)
+{
+  int n = a->n;
+  die_if (k < 0 || k >= n || l < 0 || l >= n, 
+      "avn index %d, %d out of range %d\n", k, l, n);
+  return (a->s > 0) ? a->sx2[k*n+l] / sqrt(a->sx2[k*n+k] * a->sx2[l*n+l]) : 0;
+}
+
+/* get correlation coefficents among all quantities */
+INLINE double *avn_getcorn(const avn_t *a, double *val)
+{
+  int k, l, n = a->n;
+
+  if (a->s <= 0.) {
+    for (k = 0; k < n * n; k++) val[k] = 0;
+  } else {
+    for (k = 0; k < n; k++) {
+      for (l = k; l < n; l++) {
+        val[k*n + l] = a->sx2[k*n + l] / sqrt(a->sx2[k*n + k] * a->sx2[l*n + l]);
+        if (l > k) val[l*n + k] = val[k*n + l];
+      }
+    }
+  }
+  return val;
+}
 
 #endif
