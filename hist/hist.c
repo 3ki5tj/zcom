@@ -443,7 +443,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     for (i = imin; i < imax; i++) { 
       for (j = jmin; j < jmax; j++) {
         double x, y;
-        if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
+        if ((flags & HIST_NOZEROES) && p[i*m + j] < 1e-16)
           continue;
         x = xmin + (i+delta)*dx;
         y = ymin + (j+delta)*dy;

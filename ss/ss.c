@@ -224,5 +224,53 @@ INLINE char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
     *pn = n;
   return (n > 0) ? s : NULL;
 }
+
+
+/* parse `s' into a string array
+ * delimiters are removed */
+INLINE char **ssparse(char *s, int *pn, const char *delim)
+{
+  const int capsz = 16;
+  int cap, n;
+  char **sarr, *p, *q;
+  char delim0[8] = "\n\r"; /* default deliminators: new lines */
+
+  if (pn) *pn = 0;
+  if (delim == NULL) delim = delim0;
+
+  cap = capsz;
+  if ((sarr = calloc(cap, sizeof(sarr[0]))) == NULL) {
+    fprintf(stderr, "no memory for sarr\n");
+    return NULL;
+  }
+  for (n = 0, p = s; ; ) { /* n is # of lines */
+    for (q = p; *q != '\0'; q++)
+      if (strchr(delim, *q))
+        break;
+    if (q != p) { /* skip an empty line */
+      sarr[n++] = p;
+      if (n >= cap) { /* expand the array */
+        cap += capsz;
+        if ((sarr = realloc(sarr, cap * sizeof(sarr[0]))) == NULL) {
+          fprintf(stderr, "no memory for sarr, %d\n", cap);
+          return NULL;
+        }
+      }
+    }
+    if (*q == '\0') break; /* we are done */
+    *q = '\0';
+    /* search for the next starting point */
+    for (p = q + 1; *p && strchr(delim, *p); p++)
+      ;
+    if (*p == '\0') break;
+  }
+
+  if (pn) *pn = n;
+  return sarr;
+}
+
+/* free the string array, sarr[0] created by ssnew() and sarr created by malloc() */
+#define ssarrfree(sarr) { ssdel(sarr[0]); free(sarr); }
+
 #endif
 

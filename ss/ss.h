@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+/* operation code */
 enum { SSCAT = 1, SSDELETE = 2, SSSHRINK = 3, SSSINGLE = 0x1000 };
 
 #define ssnew(n)       sscpycatx(NULL, NULL, (n),    0)
@@ -25,6 +26,8 @@ enum { SSCAT = 1, SSDELETE = 2, SSSHRINK = 3, SSSINGLE = 0x1000 };
 INLINE int   ssmanage(char *, unsigned);
 INLINE char *sscpycatx(char **, const char *, size_t, unsigned);
 INLINE char *ssfgetx(char **, size_t *, int, FILE *fp);
+
+INLINE char **ssparse(char *s, int *pn, const char *delim);
 
 #endif
 

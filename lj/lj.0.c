@@ -895,7 +895,7 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
 }
 
 /* compute volume change, use amp 0.01 ~ 0.02 for 256 system
- * differs from lj_mcpscale in that the velocities are not scaled */
+ * differs from lj_mcprescale in that the velocities are not scaled */
 INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
 {
   int acc = 0;
