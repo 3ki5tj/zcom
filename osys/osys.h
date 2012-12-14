@@ -12,12 +12,11 @@
 INLINE char *sysrun(const char *cmd, size_t *nc, unsigned flags)
 {
   FILE *fp;
-  char fntmp[FILENAME_MAX]; /* output file */
+  char fntmp[] = "h1Qi7G0c.TmP"; /* output file */
   char *ncmd, *output = NULL;
   int i;
 
   if (nc) *nc = 0;
-  if (tmpnam(fntmp) == NULL) strcpy(fntmp, "aPq13ad.TmP");
   
   /* construct the command */
   ncmd = ssdup(cmd);

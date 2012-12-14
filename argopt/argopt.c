@@ -47,16 +47,16 @@ static void argopt_help(argopt_t *ao)
       ao->desc ? ao->desc : ao->prog, ao->version);
   if (ao->author && ao->tm)
     printf(", Copyright (c) %s %d", ao->author, ao->tm->tm_year + 1900);
-  printf("\nUSAGE\n  %s [OPTIONS]", ao->prog);
+  printf("\nUSAGE\n  %s {OPTIONS}", ao->prog);
   for (i = 0; i < ao->nopt; i++) {
     const char *bra = "", *ket = "";
     o = ao->opts + i;
     if (o->isopt) continue;
     if (o->flags & OPT_MUST) {
       if (strchr(o->desc, ' ')) 
-        bra = "{", ket = "}";
+        bra = "[", ket = "]";
     } else
-      bra = "[", ket = "]";
+      bra = "{", ket = "}";
     printf(" %s%s%s", bra, o->desc, ket);
   }
   printf("\n");
@@ -75,7 +75,8 @@ static void argopt_help(argopt_t *ao)
       desc = sysopt[0];
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
-    printf("  %-*s : %s%s", maxlen, o->sflag,
+    printf("  %-*s : %s%s%s", maxlen, o->sflag,
+        (o->flags & OPT_MUST) ? "[MUST] " : "",
         (!(o->flags & OPT_SWITCH) ? "followed by " : ""), desc);
     if (o->ptr && o->ptr != ao->dum_) { /* print default values */
       printf(", default: ");
