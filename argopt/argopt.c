@@ -198,7 +198,7 @@ INLINE void argopt_dump(const argopt_t *ao)
   int i, len = 2;
   opt_t *ol = ao->opts;
 
-  /* get the widest the option */
+  /* get the width of the widest option */
   for (i = 0; i < ao->nopt; i++)
     if (ol[i].sflag)
       len = intmax(len, strlen(ol[i].sflag));

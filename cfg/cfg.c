@@ -141,5 +141,23 @@ int cfg_match(cfg_t *cfg, unsigned flags)
   return ret;
 }
 
+/* dump the current values */
+INLINE void cfg_dump(const cfg_t *cfg)
+{
+  int i, len = 2;
+  opt_t *ol = cfg->opts;
+
+  /* get the width of the widest entry */
+  for (i = 0; i < cfg->nopt; i++)
+    len = intmax(len, strlen(ol[i].key));
+
+  /* print values of all options */
+  for (i = 0; i < cfg->nopt; i++) {
+    printf("%*s: ", len+1, ol[i].key);
+    opt_printptr(ol + i);
+    printf(",  %s\n", ol[i].desc);
+  }
+}
+
 #endif
 

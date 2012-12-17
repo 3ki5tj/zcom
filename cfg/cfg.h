@@ -27,6 +27,7 @@ typedef cfg_t cfgdata_t;
 cfg_t *cfg_open(const char *fn);
 void cfg_close(cfg_t *cfg);
 int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc);
+#define cfg_parse(cfg, flags) cfg_match(cfg, flags)
 int cfg_match(cfg_t *cfg, unsigned flags);
 
 #define cfg_set(cfg, var) opt_isset(cfg->opts, cfg->nopt, &var, #var)
