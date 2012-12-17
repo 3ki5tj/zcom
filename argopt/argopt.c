@@ -28,10 +28,10 @@ void argopt_close(argopt_t *ao)
 /* print version and die */
 static void argopt_version(argopt_t *ao)
 {
-  printf("%s: %s, version %d\n", 
+  fprintf(stderr, "%s: %s, version %d\n", 
       ao->prog, ao->desc ? ao->desc : "", ao->version);
   if (ao->author && ao->tm)
-    printf("Copyright (c) %s %d\n", ao->author, ao->tm->tm_year + 1900);
+    fprintf(stderr, "Copyright (c) %s %d\n", ao->author, ao->tm->tm_year + 1900);
   argopt_close(ao);
   exit(1);
 }
@@ -43,11 +43,11 @@ static void argopt_help(argopt_t *ao)
   opt_t *o;
   const char *sysopt[2] = {"print help message", "print version"}, *desc;
 
-  printf("%s, version %d", 
+  fprintf(stderr, "%s, version %d", 
       ao->desc ? ao->desc : ao->prog, ao->version);
   if (ao->author && ao->tm)
-    printf(", Copyright (c) %s %d", ao->author, ao->tm->tm_year + 1900);
-  printf("\nUSAGE\n  %s {OPTIONS}", ao->prog);
+    fprintf(stderr, ", Copyright (c) %s %d", ao->author, ao->tm->tm_year + 1900);
+  fprintf(stderr, "\nUSAGE\n  %s {OPTIONS}", ao->prog);
   for (i = 0; i < ao->nopt; i++) {
     const char *bra = "", *ket = "";
     o = ao->opts + i;
@@ -57,11 +57,11 @@ static void argopt_help(argopt_t *ao)
         bra = "[", ket = "]";
     } else
       bra = "{", ket = "}";
-    printf(" %s%s%s", bra, o->desc, ket);
+    fprintf(stderr, " %s%s%s", bra, o->desc, ket);
   }
-  printf("\n");
+  fprintf(stderr, "\n");
  
-  printf("OPTIONS:\n") ;
+  fprintf(stderr, "OPTIONS:\n") ;
   for (maxlen = 0, i = 0; i < ao->nopt; i++) { /* compute the longest option */
     if (!ao->opts[i].isopt) continue;
     len = strlen(ao->opts[i].sflag);
@@ -75,14 +75,14 @@ static void argopt_help(argopt_t *ao)
       desc = sysopt[0];
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
-    printf("  %-*s : %s%s%s", maxlen, o->sflag,
-        (o->flags & OPT_MUST) ? "[MUST] " : "",
+    fprintf(stderr, "  %-*s : %s%s%s", maxlen, o->sflag,
+        ((o->flags & OPT_MUST) ? "[MUST] " : ""),
         (!(o->flags & OPT_SWITCH) ? "followed by " : ""), desc);
     if (o->ptr && o->ptr != ao->dum_) { /* print default values */
-      printf(", default: ");
-      opt_printptr(o);
+      fprintf(stderr, ", default: ");
+      opt_fprintptr(stderr, o);
     }
-    printf("\n");
+    fprintf(stderr, "\n");
   }
   argopt_close(ao);
   exit(1);
@@ -171,7 +171,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
         
         if (!hasv) { /* --version 11 or -n 8 */
           if (++i >= argc) {
-            printf("%s(%s) requires an argument!\n", ol[k].sflag, argv[i-1]);
+            fprintf(stderr, "%s(%s) requires an argument!\n", ol[k].sflag, argv[i-1]);
             argopt_help(ao);
           }
           ol[k].val = argv[i];
@@ -185,7 +185,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
   /* check if we have all mandatory arguments and options */
   for (i = 0; i < ao->nopt; i++) {
     if ((ol[i].flags & OPT_MUST) && !(ol[i].flags & OPT_SET)) {
-      printf("Error: missing %s %s: %s\n\n",
+      fprintf(stderr, "Error: missing %s %s: %s\n\n",
           ol[i].isopt ? "option" : "argument", ol[i].sflag, ol[i].desc);
       argopt_help(ao);
     }
@@ -207,9 +207,9 @@ INLINE void argopt_dump(const argopt_t *ao)
   for (i = 0; i < ao->nopt; i++) {
     const char *sflag = ol[i].sflag;
     if (sflag == NULL) sflag = "arg";
-    printf("%*s: ", len+1, sflag);
-    opt_printptr(ol + i);
-    printf(",  %s\n", ol[i].desc);
+    fprintf(stderr, "%*s: ", len+1, sflag);
+    opt_fprintptr(stderr, ol + i);
+    fprintf(stderr, ",  %s\n", ol[i].desc);
   }
 }
 

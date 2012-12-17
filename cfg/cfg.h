@@ -24,9 +24,13 @@ typedef cfg_t cfgdata_t;
 #define CFG_CHECKUSE 0x0100
 #define CFG_VERBOSE  0x1000
 
+
 cfg_t *cfg_open(const char *fn);
 void cfg_close(cfg_t *cfg);
 int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc);
+
+#define CFG_UNUSED   0x0001
+#define CFG_NOTSET   0x0002
 #define cfg_parse(cfg, flags) cfg_match(cfg, flags)
 int cfg_match(cfg_t *cfg, unsigned flags);
 

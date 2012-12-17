@@ -81,14 +81,18 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
 }
 
 /* print the value of o->ptr */
-INLINE void opt_printptr(opt_t *o)
+#define opt_printptr(o) opt_fprintptr(stderr, o)
+INLINE void opt_fprintptr(FILE *fp, opt_t *o)
 {
   const char *fmt;
 
   for (fmt = o->fmt; *fmt && *fmt != '%'; fmt++) ;
-#define ELIF_PF_(fm, fmp, type) else if (strcmp(fmt, fm) == 0) printf((o->pfmt ? o->pfmt : fmp), *(type *)o->ptr)
+#define ELIF_PF_(fm, fmp, type) \
+  else if (strcmp(fmt, fm) == 0) \
+    fprintf(fp, (o->pfmt ? o->pfmt : fmp), *(type *)o->ptr)
+
   if (fmt == NULL || *fmt == '\0' || strcmp(fmt, "%s") == 0)
-    printf("%s", (*(char **)o->ptr) ? (*(char **)o->ptr) : "NULL");
+    fprintf(fp, "%s", (*(char **)o->ptr) ? (*(char **)o->ptr) : "NULL");
   ELIF_PF_("%b", "%d", int); /* switch */
   ELIF_PF_("%d", "%d", int);
   ELIF_PF_("%u", "%u", unsigned);
@@ -104,7 +108,7 @@ INLINE void opt_printptr(opt_t *o)
   ELIF_PF_("%f", "%g", float);
   ELIF_PF_("%lf", "%g", double);
   ELIF_PF_("%r", "%g", real);
-  else printf("unknown %s-->%%d: %d", fmt, *(int *)o->ptr);
+  else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *)o->ptr);
 #undef ELIF_PF_  
 }
 

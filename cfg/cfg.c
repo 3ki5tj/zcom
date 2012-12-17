@@ -104,10 +104,12 @@ int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char 
 }
 
 /* match requested options with entries in cfg file
- * returns 0 if successful */
+ * returns 0 if successful
+ * if mandetory variables are not set  
+ * if `flags' has OPT_CHECKUSE, then unused setting cause an error code CFG_UNUSED */
 int cfg_match(cfg_t *cfg, unsigned flags)
 {
-  int i, j, ret = 0, verbose = flags & CFG_VERBOSE, must = flags & OPT_MUST;
+  int i, j, ret = 0, verbose = flags & CFG_VERBOSE, must;
   opt_t *o;
   cfgent_t *ent;
 
@@ -123,19 +125,22 @@ int cfg_match(cfg_t *cfg, unsigned flags)
         break;
       }
     }
+    must = (o->flags & OPT_MUST);
     if (!(o->flags & OPT_SET) && (must || verbose)) {
-      printf("cfg: %s not set, default: ", o->key);
-      opt_printptr(o);
-      printf("\n");
-      if (must) ret = 1;
+      fprintf(stderr, "cfg: %s not set, default: ", o->key);
+      opt_fprintptr(stderr, o);
+      fprintf(stderr, "\n");
+      if (must) ret |= CFG_NOTSET;
     }
   }
 
   if (flags & CFG_CHECKUSE) {
     for (j = 0; j < cfg->nent; j++) {
       ent = cfg->ents + j;
-      if (ent->key != NULL && !ent->used && verbose)
-        printf("cfg: unused entry: %s = %s\n", ent->key, ent->val);
+      if (ent->key != NULL && !ent->used && verbose) {
+        fprintf(stderr, "cfg: unused entry: %s = %s\n", ent->key, ent->val);
+        ret |= CFG_UNUSED;
+      }
     }
   }
   return ret;
@@ -153,9 +158,9 @@ INLINE void cfg_dump(const cfg_t *cfg)
 
   /* print values of all options */
   for (i = 0; i < cfg->nopt; i++) {
-    printf("%*s: ", len+1, ol[i].key);
-    opt_printptr(ol + i);
-    printf(",  %s\n", ol[i].desc);
+    fprintf(stderr, "%*s: ", len+1, ol[i].key);
+    opt_fprintptr(stderr, ol + i);
+    fprintf(stderr, ",  %s\n", ol[i].desc);
   }
 }
 
