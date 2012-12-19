@@ -403,9 +403,14 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
   }
 }
 
-
-/* Langevin thermostat/barostat
- * set cutoff to half of the box */
+/* Langevin barostat
+ *   d eta / dt = -zeta * eta
+ *      + [ (Pint - Pext) * V + (1 - ensx) T ] * d / W 
+ *      + sqrt( 2 * zeta * T / W ) xi
+ * the ideal-gas part of the pressure, Pint, is computed as \sum p^2/m / V
+ * the additional volume distribution weight is V^(-ensx)
+ * the scaling is r = r*s, p = p/s;
+ * set the cutoff rc to half of the box */
 INLINE void md_langtp(real *v, int n, int d, real dt, 
     real tp, real pext, real zeta, real *eta, real W,
     real vol, real vir, real ptail, int ensx,
@@ -417,7 +422,7 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   xp = (real) exp(-zeta*dt4);
   amp = (real) sqrt(2.f*zeta*tp/W*dt2);
 
-  /* barostat */
+  /* barostat: first half to update *eta */
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
@@ -430,13 +435,44 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *ekin *= s*s;
   *tkin *= s*s;
 
-  /* barostat */
+  /* barostat: second half to update *eta */
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
   *eta += amp*grand0(); /* random noise */
   *eta *= xp;
 }
+
+/* position Langevin barostat,
+ * limiting case, zeta -> inf., of the full Langevin barostat
+ * barodt = dt/(W*zeta), and d * d(eta) = d lnv
+ * the ideal-gas part of the pressure is computed as \sum p^2/m / V
+ * the scaling is r = r*s, p = p/s;
+ * set cutoff to half of the box */
+INLINE void md_langtp0(real *v, int n, int d, real barodt,
+   real tp, real pext, real *vol, real vir, real ptail, int ensx,
+   real *ekin, real *tkin)
+{
+  int i;
+  real pint, amp, vn, s, dlnv;
+
+  /* compute the internal pressure */
+  /* note only with half-box cutoff, the formula is accurate */
+  pint = (vir + 2.f * (*ekin))/ (d * (*vol)) + ptail;
+
+  amp = (real) sqrt(2.f * barodt);
+  dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt + amp*grand0();
+  vn = log(*vol) + dlnv;
+  vn = exp(vn);
+
+  s = (real) pow(*vol/vn, 1.0/3);
+  for (i = 0; i < d * n; i++) v[i] *= s;
+  *ekin *= s*s;
+  *tkin *= s*s;
+
+  *vol = vn;
+}
+
 
 /* sinc(x) = (e^x - e^(-x))/(2 x) */
 INLINE double md_mysinc(double x)
