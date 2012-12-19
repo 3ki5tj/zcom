@@ -4,16 +4,16 @@
 const char *fnpos = "lj.pos";
 int initload = 1;
 
-int N = 256;
+int N = 108;
 real rho = 0.7f;
-real rc = 3.0f;
-real tp = 1.2f;
+real rc = 1000.0f; /* use half box */
+real tp = 1.5f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
-real pressure = 0.1f;
-int nsteps = 10000;
+real pressure = 1.0f;
+int nsteps = 500000;
 
-int usesw = 1;
+int usesw = 0;
 real rs = 2.0f;
 
 /* see if force matches energy */
@@ -41,25 +41,35 @@ int main(void)
   real u, k, p;
   real bc = 0.f;
   static av_t avU, avK, avp, avbc;
+  hist_t *hsvol;
 
   lj = lj_open(N, 3, rho, rc);
   if (usesw) {
     lj_initsw(lj, rs);
     printf("rc %g, rs %g, box %g\n", rc, rs, lj->l*.5f);
   }
-  if (initload) lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX);
+  if (initload) {
+    die_if (0 != lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX),
+        "error loading previous coordinates from %s\n", fnpos);
+  }
   foo(lj);
+
+  hsvol = hs_open(1, 0, 5.*lj->n/lj->rho, 2.f);
 
   md_shiftcom(lj->v, lj->n, lj->d);
   md_shiftang(lj->x, lj->v, lj->n, lj->d);
 
-  for (t = 0; t < nsteps; t++) {
+  for (t = 1; t <= nsteps; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
-    if ((t + 1) % 10 == 0) {
-      //vacc += lj_volmove(lj, 1e-2, tp, pressure);
-      vacc += lj_lgvvolmove(lj, 3e-4, tp, pressure, 0.2);
+    if (t % 5 == 0) {
+      /* different barostats */
+      //vacc += lj_mctp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
+      //vacc += lj_mcp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
+      //lj_langtp0(lj, 1e-5, tp, pressure, 0);
+      lj_langp0(lj, 1e-5, tp, pressure, 0);
       vtot++;
+      hs_add1(hsvol, 0, lj->vol, 1, HIST_VERBOSE);
     }
     lj_vrescale(lj, tp, thermdt);
     if (t > nsteps/2) {
@@ -71,7 +81,6 @@ int main(void)
         av_add(&avbc, bc);
       }
     }
-    //printf("epot = %g\n", lj->epot); if (lj->epot > 100) exit(1);
   }
   u = av_getave(&avU)/N;
   k = av_getave(&avK)/N;
@@ -79,6 +88,8 @@ int main(void)
   bc = av_getave(&avbc);
   printf("U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
       u, k, p, bc, lj->n/lj->vol, 100.0*vacc/vtot);
+  hs_save(hsvol, "vol.his", HIST_NOZEROES);
+  hs_close(hsvol);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
   return 0;

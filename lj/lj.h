@@ -154,10 +154,7 @@ INLINE void lj_langtp(lj_t *lj, real dt, real tp, real pext,
       W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
 }
 
-/* position Langevin barostat,
- * the ideal-gas part of the pressure is computed as \sum p^2/m / V
- * the scaling is r = r*s, p = p/s;
- * set cutoff to half of the box */
+/* position Langevin barostat, with kinetic-energy scaling */
 INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
 {
   md_langtp0(lj->v, lj->n, lj->d, barodt, tp, pext, &lj->vol,
@@ -166,15 +163,34 @@ INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
   lj_force(lj);
 }
 
-/* Langevin barostat */
-INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax);
+/* old interface */
+#define lj_lgvvolmove(lj, barodt, tp, p) lj_langp0(lj, barodt, tp, p, 0)
+
+/* Langevin barostat, with coordinates only, barodt ~ 1e-5 for n = 108 */
+INLINE void lj_langp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
+{
+  md_langp0(lj->n, lj->d, barodt, tp, pext, &lj->vol, lj->vir, lj->p_tail, ensx);
+  lj_setrho(lj, lj->n/lj->vol);
+  lj_force(lj);
+}
+
+/* In Monte Carlo barostats, we compute the energy directly */
+#define LJ_FIXEDRC 0x4000
+
+#define lj_mcprescale(lj, lnvamp, tp, pext, vmin, vmax, ensx) \
+  lj_mctp(lj, lnvamp, tp, pext, vmin, vmax, ensx, 0)
 
 /* Monte Carlo barostat, with kinetic-energy scaling */
-INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
-    real vmin, real vmax, real ensexp);
+INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
+    real vmin, real vmax, real ensx, unsigned flags);
 
-/* Monte Carlo barostat */
-INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p);
+/* old interface */
+#define lj_volmove(lj, lnlamp, tp, p) \
+  lj_mcp(lj, lnlamp*lj->d, tp, p, 0, 1e300, 0, LJ_FIXEDRC)
+
+/* Monte Carlo barostat, coordinate only */
+INLINE int lj_mcp(lj_t *lj, real vamp, real tp, real pext,
+    real vmin, real vmax, real ensx, unsigned flags);
 
 #endif
 

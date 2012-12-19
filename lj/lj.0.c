@@ -207,6 +207,8 @@ INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags
     if (fabs(l0 - l) > 1e-5*l) { /* verify the box size */
       if (flags & LJ_LOADBOX) {
         lj->l = l = (real) l0;
+        for (lj->vol = 1, j = 0; j < lj->d; j++) lj->vol *= lj->l;
+        lj_setrho(lj, lj->n/lj->vol);
       } else {
         fprintf(stderr, "box mismatch l %g, should be %g\n", l0, l);
         goto ERR;
@@ -1125,35 +1127,12 @@ INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
   lj->tkin *= s*s;
 }
 
-/* Langevin barostat, dt < 3e-4 for 256 system
- * also for fixed rc
- * caution, testing version
- * differs from lj_pscale in that the velocities are not scaled */
-INLINE int lj_lgvvolmove(lj_t *lj, real dt, real tp, real p, real dlogvmax)
-{
-  int d;
-  real logvo, logvn, dlogv, ln, vn, bet = 1.f/tp;
-
-  logvo = (real) log(lj->vol);
-  dlogv = dt * (lj->n + 1 + bet*lj->vir/lj->d - bet*p*lj->vol);
-  dlogv += (real) (grand0() * sqrt(2 * dt));
-  dlogv = (real) dblconfine(dlogv, -dlogvmax, dlogvmax); /* change at most 50% */
-  logvn = logvo + dlogv;
-  ln = (real) exp(logvn/3);
-  if (ln < lj->rc * 2) return 0; /* box too small */
-  for (vn = 1., d = 0; d < lj->d; d++) vn *= ln;
-  lj_setrho(lj, lj->n/vn); /* commit to the new box */
-  lj_force(lj);
-  /* safety check! */
-  return 1;
-}
-
 /* Monte Carlo barostat
- * ideal gas part computed as \sum p^2/m / V
- * r = r*s, p = p/s; 
+ * the ideal gas part computed as \sum p^2/m / V
+ * the scaling is r = r*s, p = p/s; 
  * set cutoff to half of the box */
-INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
-    real vmin, real vmax, real ensexp)
+INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
+    real vmin, real vmax, real ensx, unsigned flags)
 {
   int i, acc = 0;
   real vo, vn, lnvo, lnvn, lo = lj->l, s, epo, bet = 1.f/tp;
@@ -1161,19 +1140,20 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
   lj_t *lj1;
 
   vo = lj->vol;
+  lnvo = (real) log(vo);
+  lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
+  vn = (real) exp(lnvn);
+  if (vn < vmin || vn >= vmax) return acc;
+  if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
+    return acc; /* box too small */
+  
   epo = lj->epot;
   lj1 = lj_clone(lj, LJ_CPF); /* make a copy */
-  lnvo = (real) log(vo);
-  /* compute the internal pressure */
-  lnvn = lnvo + baroamp * (2.f * rnd0() - 1.f);
-  vn = (real) exp(lnvn);
-  if (vn < vmin || vn >= vmax) return 0;
-  
   lj_setrho(lj, lj->n/vn);
   lj_force(lj); /* we change force here */
-  dex = bet*(lj->epot - epo + pext * (vn - vo))
-      + bet*(pow(vo/vn, 2.0/lj->d) - 1)*lj->ekin
-      + (lnvo - lnvn) * (1 - ensexp);
+  dex = bet * (lj->epot - epo + pext * (vn - vo))
+      + bet * (pow(vo/vn, 2.0/lj->d) - 1)*lj->ekin
+      + (lnvo - lnvn) * (1 - ensx);
   if (metroacc1(dex, 1.f)) { /* scale the velocities */
     s = lo/lj->l;
     for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
@@ -1187,33 +1167,36 @@ INLINE int lj_mcprescale(lj_t *lj, real baroamp, real tp, real pext,
   return acc;
 }
 
-/* Monte Carlo barostat, use amp 0.01 ~ 0.02 for 256 system
- * differs from lj_mcprescale in that the velocities are not scaled */
-INLINE int lj_volmove(lj_t *lj, real amp, real tp, real p)
+/* Monte Carlo barostat, coordiantes only
+ * use lnvamp 0.03 ~ 0.06 for 256 system */
+INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
+    real vmin, real vmax, real ensx, unsigned flags)
 {
   int acc = 0;
-  real lo, ln, loglo, logln, vo, vn, epo, bet = 1.f/tp;
+  real lnvo, lnvn, vo, vn, epo, bet = 1.f/tp;
   double dex;
   lj_t *lj1;
 
-  lo = lj->l;
   vo = lj->vol;
-  loglo = (real) log(lo);
-  logln = (real) (loglo + amp * (2.f * rnd0() - 1.));
-  ln = (real) exp(logln);
-  if (ln < lj->rc * 2) return 0; /* box too small */
+  lnvo = (real) log(vo);
+  lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
+  vn = (real) exp(lnvn);
+  if (vn < vmin || vn >= vmax) return acc;
+  if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
+    return acc; /* box too small */
+
   epo = lj->epot;
   lj1 = lj_clone(lj, LJ_CPF); /* save a copy */
-  vn = (real) pow(ln, lj->d);
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
-  dex = bet*(lj->epot - epo + p*(vn - vo)) - (lj->n + 1) * lj->d * (logln - loglo);
+  dex = bet * (lj->epot - epo + pext * (vn - vo))
+      - (lj->n + 1 - ensx) * (lnvn - lnvo);
   if (metroacc1(dex, 1.0)) {
     acc = 1;
   } else {
     lj_copy(lj, lj1, LJ_CPF);
   } 
-  lj_close(lj);
+  lj_close(lj1);
   return acc;
 }
 

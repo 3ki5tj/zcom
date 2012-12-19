@@ -443,7 +443,7 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
 }
 
-/* position Langevin barostat,
+/* position Langevin barostat
  * limiting case, zeta -> inf., of the full Langevin barostat
  * barodt = dt/(W*zeta), and d * d(eta) = d lnv
  * the ideal-gas part of the pressure is computed as \sum p^2/m / V
@@ -462,17 +462,29 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
 
   amp = (real) sqrt(2.f * barodt);
   dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt + amp*grand0();
-  vn = log(*vol) + dlnv;
-  vn = exp(vn);
-
-  s = (real) pow(*vol/vn, 1.0/3);
+  vn = *vol * exp( dlnv );
+  
+  s = (real) exp( dlnv/d );
   for (i = 0; i < d * n; i++) v[i] *= s;
   *ekin *= s*s;
   *tkin *= s*s;
-
+  
   *vol = vn;
 }
 
+/* position Langevin barostat, with coordinates only
+ * the scaling is r = r*s
+ * set cutoff to half of the box */
+INLINE void md_langp0(int n, int d, real barodt,
+   real tp, real pext, real *vol, real vir, real ptail, int ensx)
+{
+  real pintv, amp, dlnv;
+
+  pintv = vir/d + n * tp + ptail * (*vol);
+  amp = (real) sqrt(2.f * barodt);
+  dlnv = ((pintv - pext * (*vol))/tp + 1 - ensx)*barodt + amp*grand0();
+  *vol *= exp( dlnv );
+}
 
 /* sinc(x) = (e^x - e^(-x))/(2 x) */
 INLINE double md_mysinc(double x)
