@@ -49,8 +49,9 @@ int main(void)
     printf("rc %g, rs %g, box %g\n", rc, rs, lj->l*.5f);
   }
   if (initload) {
-    die_if (0 != lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX),
-        "error loading previous coordinates from %s\n", fnpos);
+    if (0 != lj_readpos(lj, lj->x, lj->v, fnpos, LJ_LOADBOX)) {
+      fprintf(stderr, "error loading previous coordinates from %s\n", fnpos);
+    }
   }
   foo(lj);
 
@@ -75,7 +76,7 @@ int main(void)
     if (t > nsteps/2) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
-      av_add(&avp, lj_calcp(lj, tp));
+      av_add(&avp, lj_calcp(lj, tp)); /* or lj_calcpk(lj) */
       if (usesw) {
         bc = lj_bconfsw3d(lj, NULL);
         av_add(&avbc, bc);

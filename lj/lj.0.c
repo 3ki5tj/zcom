@@ -1190,7 +1190,7 @@ INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   dex = bet * (lj->epot - epo + pext * (vn - vo))
-      - (lj->n + 1 - ensx) * (lnvn - lnvo);
+      - (1.f*lj->dof/lj->d + 1 - ensx) * (lnvn - lnvo);
   if (metroacc1(dex, 1.0)) {
     acc = 1;
   } else {

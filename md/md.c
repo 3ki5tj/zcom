@@ -473,14 +473,15 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
 }
 
 /* position Langevin barostat, with coordinates only
+ * NOTE: the first parameter is the degree of freedom
  * the scaling is r = r*s
  * set cutoff to half of the box */
-INLINE void md_langp0(int n, int d, real barodt,
+INLINE void md_langp0(int dof, int d, real barodt,
    real tp, real pext, real *vol, real vir, real ptail, int ensx)
 {
   real pintv, amp, dlnv;
 
-  pintv = vir/d + n * tp + ptail * (*vol);
+  pintv = (vir + dof * tp)/d + ptail * (*vol);
   amp = (real) sqrt(2.f * barodt);
   dlnv = ((pintv - pext * (*vol))/tp + 1 - ensx)*barodt + amp*grand0();
   *vol *= exp( dlnv );

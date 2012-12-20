@@ -96,7 +96,7 @@ INLINE real lj_bconfsw3d(lj_t *lj, real *udb);
 
 /* compute pressure */
 INLINE real lj_calcp(lj_t *lj, real tp)
-  { return lj->rho * tp + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
+  { return (lj->dof * tp + lj->vir) / (lj->d * lj->vol) + lj->p_tail; }
 
 /* compute pressure, ideal gas part from the kinetic energy  */
 INLINE real lj_calcpk(lj_t *lj)
@@ -169,7 +169,7 @@ INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
 /* Langevin barostat, with coordinates only, barodt ~ 1e-5 for n = 108 */
 INLINE void lj_langp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
 {
-  md_langp0(lj->n, lj->d, barodt, tp, pext, &lj->vol, lj->vir, lj->p_tail, ensx);
+  md_langp0(lj->dof, lj->d, barodt, tp, pext, &lj->vol, lj->vir, lj->p_tail, ensx);
   lj_setrho(lj, lj->n/lj->vol);
   lj_force(lj);
 }
