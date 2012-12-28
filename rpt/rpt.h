@@ -346,7 +346,6 @@ INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
   int i, k, e;
   double f, cnt, xp;
 
-  (void) ord; /* used */
   for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
     e = t->emin + i * t->edel;
     if (t->h[i] <= 0) continue;
@@ -361,7 +360,7 @@ INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
   /* we should not include the infinity here */
   f /= cnt;
   *df /= cnt;
-  return f - 1;
+  return f;
 }
 
 /* estimated the temperature using the identity approach */
