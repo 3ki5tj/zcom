@@ -98,6 +98,8 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   lj->rcdef = rcdef;
   lj_setrho(lj, rho);
 
+  lj->esqinf = 1000000;
+
   if (lj->d == 3) lj_initfcc3d(lj); else lj_initfcc2d(lj);
 
   /* init. random velocities */
@@ -521,7 +523,7 @@ static int lj_energysq3d(lj_t *lj, rv3_t *x)
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 < ra2)
-        iu += 1000000;
+        iu += lj->esqinf;
       else if (dr2 < rb2)
         iu--;
     }
@@ -734,11 +736,11 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
 }
 
 /* compute energy data for a 3D pair with a square well potential */
-INLINE int lj_pairsq3d(real *xi, real *xj, real l, real ra2, real rb2)
+INLINE int lj_pairsq3d(real *xi, real *xj, real l, real ra2, real rb2, int inf)
 {
   real dx[3], dr2;
   dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
-  if (dr2 < ra2) return -1000000;
+  if (dr2 < ra2) return -inf;
   else if (dr2 < rb2) return 1;
   else return 0;
 }
@@ -746,14 +748,14 @@ INLINE int lj_pairsq3d(real *xi, real *xj, real l, real ra2, real rb2)
 /* return the energy change (square well) from displacing x[i] to xi */
 INLINE int lj_depotsq3d(lj_t *lj, int i, real *xi)
 {
-  int j, n = lj->n, npr = 0;
+  int j, n = lj->n, npr = 0, inf = lj->esqinf;
   real l = lj->l, ra2 = lj->ra2, rb2 = lj->rb2;
   rv3_t *x = (rv3_t *) lj->x;
 
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2);
-    npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2);
+    npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2, inf);
+    npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2, inf);
   }
   return -npr; /* increased number of pairs == decreased energy */
 }
@@ -903,7 +905,7 @@ INLINE int lj_metrolj3d(lj_t *lj, real amp, real bet)
 /* return the pair energy between two particles at xi and xj */
 INLINE int lj_pair3d(lj_t *lj, real *xi, real *xj, real *u, real *vir)
 {
-  if (lj->usesq) return lj_pairsq3d(xi, xj, lj->l, lj->ra2, lj->rb2);
+  if (lj->usesq) return lj_pairsq3d(xi, xj, lj->l, lj->ra2, lj->rb2, lj->esqinf);
   if (lj->usesw) return lj_pairsw3d(lj, xi, xj, u, vir);
   return lj_pairlj3d(xi, xj, lj->l, lj->rc2, u, vir);
 }

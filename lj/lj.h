@@ -36,6 +36,7 @@ typedef struct {
   real lap, f2, *gdg, *xdg;
 
   int usesq; /* square well potential */
+  int esqinf;
   real ra, ra2, rb, rb2; /* -1 for (ra, rb) */
 
   hist_t *rdf; /* histogram for radial distribution function */

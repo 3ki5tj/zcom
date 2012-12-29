@@ -7,6 +7,7 @@ ljmd.c          code for molecular dynamics on a Lennard-Jones fluid
 sqmc.c          code for Metropolis algorithm on a square-well fluid
 is.c            code for Ising model
 isent.c         code for Ising model, entropic sampling
+barm.c          code for matching a square-well system to an LJ system
 zcom.h          common modules (abridged, the ZCOM_RPT portion is the code for the perturbation temperature)
 is2dos0.ma      Mathematica script to compute the exact density of states of 2D Ising model
 islogdos*.txt   pre-computed density of states for 2D Ising model
@@ -23,6 +24,7 @@ under Linux, or under windows (assuming visual C++)
     cl sqmc.c
     cl is.c
     cl isent.c
+    cl barm.c
 
 Run
 ====
@@ -31,15 +33,15 @@ To run a program (e.g., ljmc):
 or (under windows)
   ljmc
 
+For advanced options, type 
+  ljmc -h
+for usage.
+
 
 Reading data
 ============
-Output data are saved to ds.dat (reference sample) and dsb.dat (test sample), no matter what the program is.
+Output data are saved to .dat formulas
 Data are organized in columns, and can be plotted using gnuplot.
-For example, to plot the resulting distributions from the test and reference samples
-
-  gnuplot
-  gnuplot> plot "dsb.dat" u 1:6 w l, "ds.dat" u 1:6 w l
 
 
 Notes

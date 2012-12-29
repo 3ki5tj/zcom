@@ -114,6 +114,8 @@ INLINE int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
   return histadd(x, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
 }
 
+#define hs_add1ez(hs, x, flags) hs_add1(hs, 0, x, 1, flags)
+
 INLINE int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 {
   hs_check(hs);

@@ -53,10 +53,8 @@ static void doargs(int argc, char **argv)
 */
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-  if (rb <= ra) {
-    printf("rb %g is less than ra %g, simulating hard balls\n", rb, ra);
-    exit(1); /* do not allow it */
-  }
+  die_if (rb <= ra,
+    "rb %g is less than ra %g, simulating hard balls\n", rb, ra);
   argopt_dump(ao);
   argopt_close(ao);
 }
@@ -66,7 +64,7 @@ static void domc(lj_t *lj)
 {
   int t, acc = 0;
   int id, idu;
-  double eps, epslj, vir, bp0, bp1, bpi, bplj0, bplj1, bplji;
+  double epslj, vir, bp0, bp1, bpi, bplj0, bplj1, bplji;
   double Ulj, Uljref, plj, pljref, bet;
   double sc = 1e-30, sdU = 0, sdlnz = -1e10, Usq = 0, dU = 0, dS = 0;
   static av_t avUsq[1], aveps[1], avUlj[1], avplj[1], avepslj[1];
@@ -76,7 +74,7 @@ static void domc(lj_t *lj)
   rpt = rpti_open(-dumax, dumax, 1, RPTI_HASINF);
   rptlj = rpt_open(-1000.0, 1000.0, 0.001);
   
-  bet = (baselj ? 1.0/tp : 1.0/(sqescl * tp));
+  bet = (lj->usesq ? (sqescl/tp) : 1.0/tp);
   for (t = 0; t < nequil; t++) { /* warm up */
     lj_metro3d(lj, amp, bet);
   }
@@ -99,7 +97,7 @@ static void domc(lj_t *lj)
       rpt_add(rptlj, epslj);
       
       if (calcep) {
-        if (baselj) {
+        if (!lj->usesq) {
           Ulj = lj->epot;
           Usq = sqescl * lj_energysq3d(lj, (rv3_t *) lj->x);
           av_add(avUsq, Usq);
@@ -114,6 +112,7 @@ static void domc(lj_t *lj)
           av_add(avUlj, Ulj);
           av_add(avplj, lj_calcp(lj, tp));
           sdU += dU = (Ulj - Usq)/tp;
+          //printf("Ulj %g, Usq %g, dlnz %g\n", Ulj, Usq, sdlnz);
           sdlnz = lnadd(sdlnz, -dU); /* ln(Zlj/Zsq) */
         }
         sc += 1;
@@ -123,7 +122,7 @@ static void domc(lj_t *lj)
         av_add(avepslj, epslj);
       }
     }
-    if (baselj) {
+    if (!lj->usesq) {
       av_add(avUlj, lj->epot);
     } else {
       av_add(avUsq, lj->epot * sqescl);
