@@ -776,6 +776,8 @@ INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
 
   i = lj_randmv3d(lj, xi, amp);
   du = lj_depotsq3d(lj, i, xi);
+  /* patch for bet = 0 */
+  if (bet >= 0 && du > lj->esqinf/2) return 0;
   if (metroacc1(du, bet)) {
     lj_commitsq3d(lj, i, xi, du);
     return 1;
