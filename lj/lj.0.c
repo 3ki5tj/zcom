@@ -513,10 +513,10 @@ INLINE real lj_potsw(lj_t *lj, real r, real *fscal, real *psi, real *xi)
   }
 }
 
-/* 3D energy for square */
-static int lj_energysq3d(lj_t *lj, rv3_t *x)
+/* 3D energy for square, lj members are not altered */
+static int lj_energysq3d(lj_t *lj, rv3_t *x, real *rmin)
 {
-  real dx[3], dr2, ra2 = lj->ra2, rb2 = lj->rb2, l = lj->l;
+  real dx[3], dr2, ra2 = lj->ra2, rb2 = lj->rb2, l = lj->l, rm2 = 1e30;
   int i, j, iu = 0, n = lj->n;
 
   for (i = 0; i < n - 1; i++) {
@@ -526,8 +526,10 @@ static int lj_energysq3d(lj_t *lj, rv3_t *x)
         iu += lj->esqinf;
       else if (dr2 < rb2)
         iu--;
+      if (dr2 < rm2) rm2 = dr2;
     }
   }
+  if (rmin != NULL) *rmin = (real) sqrt(rm2);
   return iu;
 }
 
@@ -580,15 +582,18 @@ static real lj_energylj3d(lj_t *lj, rv3_t *x, real *virial, real *ep0, real *eps
 }
 
 /* energy evaluation, do not change members of `lj' */
-INLINE real lj_energyx3d(lj_t *lj, rv3_t *x, real *vir, int *iep, real *ep0, real *eps, real *lap)
+INLINE real lj_energyx3d(lj_t *lj, rv3_t *x, real *vir, int *iep, real *rmin,
+    real *ep0, real *eps, real *lap)
 {
   real u;
   if (lj->usesq) {
-    *iep = lj_energysq3d(lj, x);
+    *iep = lj_energysq3d(lj, x, rmin);
     u = (real) (*iep);
+  } else if (lj->usesw) {
+    u = lj_energysw3d(lj, x, vir, lap);
+  } else {
+    u = lj_energylj3d(lj, x, vir, ep0, eps);
   }
-  else if (lj->usesw) u = lj_energysw3d(lj, x, vir, lap);
-  else u = lj_energylj3d(lj, x, vir, ep0, eps);
   if (lj->usesq || lj->usesw) {
     if (ep0) *ep0 = u;
     if (eps) *eps = u;
@@ -597,17 +602,19 @@ INLINE real lj_energyx3d(lj_t *lj, rv3_t *x, real *vir, int *iep, real *ep0, rea
 }
 
 /* energy evaluation, do not change members of `lj' */
-INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *ep0, real *eps, real *lap)
+INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *rmin,
+    real *ep0, real *eps, real *lap)
 {
   return lj->d == 2 ?
-         lj_energyx2d(lj, (rv2_t *)x, vir, iep, ep0, eps, lap) :
-         lj_energyx3d(lj, (rv3_t *)x, vir, iep, ep0, eps, lap);
+         lj_energyx2d(lj, (rv2_t *)x, vir, iep, rmin, ep0, eps, lap) :
+         lj_energyx3d(lj, (rv3_t *)x, vir, iep, rmin, ep0, eps, lap);
 }
 
 /* compute the energy of the current configuration and set lj->epot */
 INLINE real lj_energy3d(lj_t *lj)
 {
-  return lj->epot = lj_energyx3d(lj, (rv3_t *) lj->x, &lj->vir, &lj->iepot, &lj->epot0, &lj->epots, &lj->lap);
+  return lj->epot = lj_energyx3d(lj, (rv3_t *) lj->x, &lj->vir, &lj->iepot, 
+      &lj->rmin, &lj->epot0, &lj->epots, &lj->lap);
 }
 
 real lj_energy(lj_t *lj)
@@ -709,7 +716,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
 INLINE real lj_force3d(lj_t *lj)
 {
   if (lj->usesq) return lj->epot = lj->epot0 = lj->epots = (real) lj_energysq3d(lj,
-    (rv3_t *) lj->x); /* no force for square well */
+    (rv3_t *) lj->x, &lj->rmin); /* no force for square well */
   if (lj->usesw) return lj->epot = lj->epot0 = lj->epots = lj_forcesw3d(lj,
     (rv3_t *) lj->x, (rv3_t *) lj->f,
     lj->pr, &lj->npr, &lj->vir, &lj->f2, &lj->lap);
@@ -971,14 +978,14 @@ INLINE real lj_dupertg3d(lj_t *lj, real amp)
 {
   int i, d, iep;
   rv3_t *nx;
-  real du, vir, ep0, eps, lap;
+  real du, vir, rmin, ep0, eps, lap;
 
   xnew(nx, lj->n);
   amp /= lj->l; /* convert to the reduced unit */
   for (i = 0; i < lj->n; i++)
     for (d = 0; d < 3; d++)
       nx[i][d] = (real) (lj->x[i*3 + d] + amp * (2*rnd0() - 1));
-  du = lj_energyx3d(lj, nx, &vir, &iep, &ep0, &eps, &lap) - lj->epot;
+  du = lj_energyx3d(lj, nx, &vir, &iep, &rmin, &ep0, &eps, &lap) - lj->epot;
   free(nx);
   return du;
 }
@@ -1147,9 +1154,10 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
   lnvo = (real) log(vo);
   lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
   vn = (real) exp(lnvn);
-  if (vn < vmin || vn >= vmax) return acc;
+  if (vn < vmin || vn >= vmax)
+    return 0;
   if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
-    return acc; /* box too small */
+    return 0; /* box too small */
   
   epo = lj->epot;
   lj1 = lj_clone(lj, LJ_CPF); /* make a copy */
@@ -1171,6 +1179,61 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
   return acc;
 }
 
+/* Monte Carlo barostat for the square-well potential, for coordiantes only
+ * suppose lj->rmin has been correctly set
+ * use lnvamp 0.03 ~ 0.06 for 256 system */
+INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
+    real vmin, real vmax, real ensx, unsigned flags)
+{
+  int acc = 0, i, d = lj->d, iep;
+  real lnlo, lnln, vo, vn, lo, ln, rmn = 0, epo, bet = 1.f/tp;
+  double dex;
+
+  (void) flags;
+  vo = lj->vol;
+  lo = lj->l;
+  lnlo = (real) log(lo);
+  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  ln = (real) exp(lnln);
+  for (vn = 1, i = 0; i < d; i++) vn *= ln;
+  if (vn < vmin || vn >= vmax) return 0;
+  
+  /* check if there is a clash */
+  if (ln < lo) {
+    if (ln < lj->rb * 2) return 0; /* box too small */
+    rmn = lj->rmin * ln / lo;
+    if (rmn < lj->ra) return 0;
+  }
+
+  /* for a hard-sphere potential, no energy, accept immediately */
+  if (fabs(lj->ra - lj->rb) <= 1e-6) {
+    lj->rmin *= ln/lo;
+    lj_setrho(lj, lj->n/vn);
+    return 1;
+  }
+
+  /* compute the change of the square-well energy */
+  epo = lj->epot;
+  lj_setrho(lj, lj->n/vn); /* commit to the new box */
+  if (d == 3) {
+    iep = lj_energysq3d(lj, (rv3_t *) lj->x, &rmn);
+  } else {
+    iep = lj_energysq2d(lj, (rv2_t *) lj->x, &rmn);
+  }
+  dex = bet * ((real) iep - epo + pext * (vn - vo))
+      - (1.f*lj->dof + (1 - ensx)*d) * (lnln - lnlo);
+  if (rmn > lj->ra && metroacc1(dex, 1.0)) {
+    lj->iepot = iep;
+    lj->epot = iep;
+    lj->rmin = rmn;
+    acc = 1;
+  } else {
+    lj_setrho(lj, lj->n/vo);
+  } 
+  return acc;
+}
+
+
 /* Monte Carlo barostat, coordiantes only
  * use lnvamp 0.03 ~ 0.06 for 256 system */
 INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
@@ -1185,9 +1248,10 @@ INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
   lnvo = (real) log(vo);
   lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
   vn = (real) exp(lnvn);
-  if (vn < vmin || vn >= vmax) return acc;
+  if (vn < vmin || vn >= vmax)
+    return 0;
   if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
-    return acc; /* box too small */
+    return 0; /* box too small */
 
   epo = lj->epot;
   lj1 = lj_clone(lj, LJ_CPF); /* save a copy */

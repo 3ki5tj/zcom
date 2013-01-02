@@ -65,9 +65,11 @@ int main(void)
     lj_shiftcom(lj, lj->v);
     if (t % 5 == 0) {
       /* different barostats */
-      //vacc += lj_mctp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
-      //vacc += lj_mcp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
-      //lj_langtp0(lj, 1e-5, tp, pressure, 0);
+/*
+      vacc += lj_mctp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
+      vacc += lj_mcp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
+      lj_langtp0(lj, 1e-5, tp, pressure, 0);
+*/
       lj_langp0(lj, 1e-5, tp, pressure, 0);
       vtot++;
       hs_add1(hsvol, 0, lj->vol, 1, HIST_VERBOSE);

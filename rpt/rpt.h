@@ -108,13 +108,13 @@ INLINE double rpt_refinebet(const rpt_t *t, double bet0,
 }
 
 /* evaluate f = < (-e)^ord exp(-bet*e) - e^ord > and -df/dbet */
-INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *df)
+INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *pdf)
 {
   int i, k;
-  double f, cnt, e, xp, *h = hs->arr;
+  double f, cnt, e, xp, df, *h = hs->arr;
 
   (void) ord;
-  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
+  for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;
     e = hs->xmin + (i + .5) * hs->dx;
     xp = exp(-bet*e);
@@ -123,10 +123,11 @@ INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *df)
     for (k = 0; k < ord; k++) xp *= e;
     cnt += h[i];
     f   += h[i] * xp;
-    *df += h[i] * xp * e;
+    df  += h[i] * xp * e;
   }
   f /= cnt;
-  *df /= cnt;
+  df /= cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 
@@ -140,12 +141,12 @@ INLINE double rpt_bet(const rpt_t *t, int ord)
 }
 
 /* evaluate f = (-bet) < min{1, exp(-bet * e)} sgn(e) |e|^ord > and -df/dbet */
-INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *df)
+INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *pdf)
 {
   int i, sgn;
-  double f, cnt, e, ep, xp, *h = hs->arr;
+  double f, cnt, e, ep, xp, df, *h = hs->arr;
 
-  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
+  for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;
     cnt += h[i];
     e = hs->xmin + (i + .5) * hs->dx;
@@ -158,11 +159,12 @@ INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *df)
     } else {
       xp   = exp(xp) * ep;
       f   += h[i] * xp;
-      *df += h[i] * xp * e;
+      df  += h[i] * xp * e;
     }
   }
   f *= -bet/cnt;
-  *df *= -bet/cnt;
+  df *= -bet/cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 
@@ -176,12 +178,12 @@ INLINE double rpt_bets(const rpt_t *t, int ord)
 }
 
 /* evaluate f = (-bet) < exp(-bet/2 * e) sgn(e) |e|^ord > */
-INLINE double rpt_getfh(const hist_t *hs, double bet, int ord, double *df)
+INLINE double rpt_getfh(const hist_t *hs, double bet, int ord, double *pdf)
 {
   int i, sgn;
-  double f, cnt, e, ep, xp, *h = hs->arr;
+  double f, cnt, e, ep, xp, df, *h = hs->arr;
 
-  for (f = *df = cnt = 0., i = 0; i < hs->n; i++) {
+  for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;
     cnt += h[i];
     e = hs->xmin + (i + .5) * hs->dx;
@@ -189,10 +191,11 @@ INLINE double rpt_getfh(const hist_t *hs, double bet, int ord, double *df)
     ep = pow(fabs(e), ord) * sgn;
     xp   = exp(-.5*bet*e) * ep;
     f   += h[i] * xp;
-    *df += .5* h[i] * xp * e;
+    df  += .5* h[i] * xp * e;
   }
   f *= -bet/cnt;
-  *df *= -bet/cnt;
+  df *= -bet/cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 
@@ -341,12 +344,12 @@ INLINE double rpti_refinebet(const rpti_t *t, double bet0,
 }
 
 /* evaluate f = < (-e)^ord exp(-bet*e) - e^ord> and -df/dbet */
-INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
+INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *pdf)
 {
   int i, k, e;
-  double f, cnt, xp;
+  double f, cnt, xp, df;
 
-  for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
+  for (f = df = cnt = 0., i = 0; i < t->m; i++) {
     e = t->emin + i * t->edel;
     if (t->h[i] <= 0) continue;
     xp = exp(-bet*e);
@@ -355,11 +358,12 @@ INLINE double rpti_getf(const rpti_t *t, double bet, int ord, double *df)
     for (k = 0; k < ord; k++) xp *= e;
     cnt += t->h[i];
     f += t->h[i] * xp;
-    *df += t->h[i] * xp * e;
+    df += t->h[i] * xp * e;
   }
   /* we should not include the infinity here */
   f /= cnt;
-  *df /= cnt;
+  df /= cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 
@@ -373,13 +377,13 @@ INLINE double rpti_bet(rpti_t *t, int ord)
 }
 
 /* evaluate f = (-bet) < min{1, exp(-bet*e)} sgn(e) * |e|^ord > and -d f/d bet */
-INLINE double rpti_getfs(const rpti_t *t, double bet, int ord, double *df)
+INLINE double rpti_getfs(const rpti_t *t, double bet, int ord, double *pdf)
 {
   int i, e, sgn, k, ep;
-  double f, cnt, xp;
+  double f, cnt, xp, df;
 
   die_if (bet < 0. && t->h[t->m] > 0, "bet %g must be positive with inf. (%d)\n", bet, t->h[t->m]);
-  for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
+  for (f = df = cnt = 0., i = 0; i < t->m; i++) {
     if (t->h[i] <= 0.) continue;
     cnt += t->h[i];
     e = t->emin + i * t->edel;
@@ -394,11 +398,12 @@ INLINE double rpti_getfs(const rpti_t *t, double bet, int ord, double *df)
     } else {
       xp     = exp(xp) * ep;
       f     += t->h[i] * xp;
-      *df   += t->h[i] * xp * e;
+      df    += t->h[i] * xp * e;
     }
   }
   f *= -bet/cnt;
-  *df *= -bet/cnt;
+  df *= -bet/cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 
@@ -413,13 +418,13 @@ INLINE double rpti_bets(rpti_t *t, int ord)
 
 
 /* evaluate f = (-bet) < exp(-bet/2*e) sgn(e) * |e|^ord > and -d f/d bet */
-INLINE double rpti_getfh(const rpti_t *t, double bet, int ord, double *df)
+INLINE double rpti_getfh(const rpti_t *t, double bet, int ord, double *pdf)
 {
   int i, e, sgn, k, ep;
-  double f, cnt, xp;
+  double f, cnt, xp, df;
 
   die_if (bet < 0. && t->h[t->m] > 0, "bet %g must be positive with inf. (%d)\n", bet, t->h[t->m]);
-  for (f = *df = cnt = 0., i = 0; i < t->m; i++) {
+  for (f = df = cnt = 0., i = 0; i < t->m; i++) {
     if (t->h[i] <= 0.) continue;
     cnt += t->h[i];
     e = t->emin + i * t->edel;
@@ -429,10 +434,11 @@ INLINE double rpti_getfh(const rpti_t *t, double bet, int ord, double *df)
     ep = abs(ep) * sgn;
     xp     = exp(-.5*bet*e) * ep;
     f     += t->h[i] * xp;
-    *df   += .5 * t->h[i] * xp * e;
+    df   += .5 * t->h[i] * xp * e;
   }
   f *= -bet/cnt;
-  *df *= -bet/cnt;
+  df *= -bet/cnt;
+  if (pdf) *pdf = df;
   return f;
 }
 

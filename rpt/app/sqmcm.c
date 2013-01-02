@@ -99,7 +99,7 @@ static void domc(lj_t *lj)
       if (calcep) {
         if (!lj->usesq) {
           Ulj = lj->epot;
-          Usq = sqescl * lj_energysq3d(lj, (rv3_t *) lj->x);
+          Usq = sqescl * lj_energysq3d(lj, (rv3_t *) lj->x, &lj->rmin);
           av_add(avUsq, Usq);
           if (Usq < 1e4) {
             sdU += dU = (Usq - Ulj)/tp;

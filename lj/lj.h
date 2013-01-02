@@ -38,6 +38,7 @@ typedef struct {
   int usesq; /* square well potential */
   int esqinf;
   real ra, ra2, rb, rb2; /* -1 for (ra, rb) */
+  real rmin; /* minimal pair distance */
 
   hist_t *rdf; /* histogram for radial distribution function */
   int rdfnfr; /* number of frames in rdf */
@@ -78,8 +79,8 @@ INLINE void lj_initsw(lj_t *lj, real rs);
 
 real lj_energy(lj_t *lj);
 
-INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *ep0,
-    real *eps, real *lap);
+INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *rmin,
+    real *ep0, real *eps, real *lap);
 
 real lj_force(lj_t *lj);
 

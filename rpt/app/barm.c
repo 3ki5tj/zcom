@@ -18,7 +18,7 @@ real amp = 2.0f; /* MC move size */
 int nequil = 10000;
 int nsteps = 100000;
 int nevery = 10;  /* compute temperatures every this number of steps */
-real ampp = 0.1f; /* smaller than MC size, to avoid large dU */
+real ampp = 0.02f; /* smaller than MC size, to avoid large dU */
 int dumax = 1000; /* histogram dimension */
 real sqescl = 1.0;
 char *fnehis = "ehsqmc.dat"; /* energy-increment distribution */
@@ -122,7 +122,7 @@ static double bardlnZ(hist_t *hs0, double c0, hist_t *hs1, double c1,
   fprintf(stderr, "initial guess, s0 %g(%g), s1 %g(%g), dlnZ %g(from LJ), %g(from sq) dSLJ %g%s, dSsq %g%s\n",
       s0, c0, s1, c1, C0, C1,
       (hasinf&1) ? *frac0 : *dS0 - C0, (hasinf&1) ? "inf" : "",
-      (hasinf&2) ? *frac1 : *dS1 - C1, (hasinf&2) ? "inf" : "");
+      (hasinf&2) ? *frac1 : *dS1 + C1, (hasinf&2) ? "inf" : "");
 
   if (s0 <= 0) { /* use hs1 only */
     *dS0 -= C1;
@@ -174,15 +174,16 @@ static void domc(lj_t *lj, lj_t *sq)
   int t, acclj = 0, accsq = 0;
   int id, idu;
   double epslj, vir, bpi, bplji;
-  double Ulj, Usq, UljB, UsqB, Uljref, pljB, plj, pljref;
+  double Ulj, Usq, UljB, UsqB, Uljref, plj, pljB;
   double dlnZ = 0, dSsq = 0, dSlj = 0, hscnt = 0, frlj = 0, frsq = 0;
-  static av_t avUsq[1], avUlj[1], avplj[1], avUsqB[1], avUljB[1], avpljB[1], avdesq[1], avdelj[1];
+  static av_t avUsq[1], avUlj[1], avUsqB[1], avUljB[1], avdesq[1], avdelj[1];
+  static av_t avplj[1], avpljB[1];
   rpti_t *rptsq;
   rpt_t *rptlj;
   hist_t *hlj, *hsq; /* energy histograms */
 
   rptsq = rpti_open(-dumax, dumax, 1, RPTI_HASINF);
-  rptlj = rpt_open(-10*dumax, 10*dumax, 0.001);
+  rptlj = rpt_open(-dumax, dumax, 0.0002);
   hlj = hs_open(1, -20*lj->n, 20*lj->n, 0.001*lj->n);
   hsq = hs_open(1, -20*lj->n, 20*lj->n, 0.001*lj->n);
   
@@ -194,6 +195,11 @@ static void domc(lj_t *lj, lj_t *sq)
   for (t = 1; t <= nsteps; t++) { /* real simulation */
     acclj += lj_metro3d(lj, amp, 1.0/tp);
     accsq += lj_metro3d(sq, amp, (sqescl/tp));
+    
+    av_add(avUlj, lj->epot);
+    plj = lj_calcp(lj, tp);
+    av_add(avplj, plj);
+    av_add(avUsq, sq->epot * sqescl);
     
     /* try local perturbations often, for they are cheap */
     {
@@ -219,7 +225,12 @@ static void domc(lj_t *lj, lj_t *sq)
 
       /* compute <Usq> in the LJ system */
       Ulj = lj->epot;
-      Usq = sqescl * lj_energysq3d(lj, (rv3_t *) lj->x);
+      Usq = lj_energysq3d(lj, (rv3_t *) lj->x, &lj->rmin);
+      if (sqescl > 0) {
+        Usq *= sqescl;
+      } else if (Usq <= 0) { /* escl == 0 */
+        Usq *= sqescl;
+      }
       if (Usq <= 0) { /* collect configurations with no clash */
         av_add(avUsqB, Usq);
         hs_add1ez(hlj, (Usq - Ulj)/tp, HIST_VERBOSE);
@@ -229,20 +240,18 @@ static void domc(lj_t *lj, lj_t *sq)
       Usq = sqescl * sq->epot;
       Ulj = lj_energylj3d(sq, (rv3_t *) sq->x, &sq->vir, NULL, NULL);
       av_add(avUljB, Ulj);
-      av_add(avpljB, lj_calcp(sq, tp));
       hs_add1ez(hsq, (Ulj - Usq)/tp, HIST_VERBOSE);
+      pljB = lj_calcp(sq, tp);
+      av_add(avpljB, pljB);
     }
-    av_add(avUlj, lj->epot);
-    av_add(avplj, lj_calcp(lj, tp));
-    av_add(avUsq, sq->epot * sqescl);
   }
   Usq = av_getave(avUsq)/lj->n;
   Ulj = av_getave(avUlj)/lj->n;
-  plj = av_getave(avplj);
   UsqB = av_getave(avUsqB)/lj->n;
   UljB = av_getave(avUljB)/lj->n;
+  plj  = av_getave(avplj);
   pljB = av_getave(avpljB);
-  Uljref = lj_eos3d(rho, tp, &pljref, 0, 0);
+  Uljref = lj_eos3d(rho, tp, NULL, NULL, NULL);
 
   bpi = (fabs(sqescl) > 1e-6 ? rpti_bet(rptsq, 0)/sqescl : 0); /* we got s * bet, so divide s */
   bplji = rpt_bet(rptlj, 0);
@@ -253,16 +262,18 @@ static void domc(lj_t *lj, lj_t *sq)
     hs_clear(hlj); /* force to use the hsq only */
   }
   dlnZ = bardlnZ(hlj, hscnt, hsq, hscnt, &dSlj, &dSsq, &frlj, &frsq);
-  printf("accsq %.3f, acclj %.3f, desq %5.3f(%5.3f), delj %5.3f(%5.3f), "
-         "Usqlj %.6f, Usq %.6f, bpi %.6f, "
-         "Uljsq %.6f, Ulj %.6f, Uljref %.6f, pljsq %.6f, plj %.6f, pljref %.6f, "
-         "bplj0 %.6f, %.6f, bplj1 %.6f, %.6f, "
+  fprintf(stderr, "T %g, r %g, a %g, b %g, es %g, amp %g, pamp %g, "
+         "accsq %.3f, acclj %.3f, desq %.4f(%.4f), delj %.4f(%.4f), "
+         "Usqlj %.4f, Usq %.4f, bpi %.4f, "
+         "Uljsq %.4f, Ulj %.4f, Uljref %.4f, pljB %.4f, plj %.4f, "
+         "bplj0 %.4f, %.4f, bplj1 %.4f, %.4f, "
          "dSlj %g%s, dSsq %g%s, dlnZ %g\n",
+         tp, rho, ra, rb, sqescl, amp, ampp,
          1.*accsq/nsteps, 1.*acclj/nsteps,
          av_getave(avdesq), av_getdev(avdesq),
          av_getave(avdelj), av_getdev(avdelj),
          UsqB, Usq,bpi,
-         UljB, Ulj, Uljref, pljB, plj, pljref,
+         UljB, Ulj, Uljref, pljB, plj,
          bplji, rpt_bets(rptlj, 0), rpt_bet(rptlj, 1), rpt_bets(rptlj, 1),
          (avUsqB->s < hscnt-.5) ? frlj : dSlj, (avUsqB->s < hscnt-.5) ? "inf" : "",
          (avUljB->s < hscnt-.5) ? frsq : dSsq, (avUljB->s < hscnt-.5) ? "inf" : "", dlnZ);
