@@ -6,11 +6,11 @@ int initload = 1;
 
 int N = 108;
 real rho = 0.7f;
-real rc = 1000.0f; /* use half box */
+real rc = 1000.0f; /* use half-box cut-off */
 real tp = 1.5f;
+real pressure = 1.0f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
-real pressure = 1.0f;
 int nsteps = 500000;
 
 int usesw = 0;
@@ -37,10 +37,9 @@ static void foo(lj_t *lj)
 int main(void)
 {
   lj_t *lj;
-  int t, vtot = 0, vacc = 0;
-  real u, k, p;
-  real bc = 0.f;
-  static av_t avU, avK, avp, avbc;
+  int t, vtot = 0, vacc = 0, isrun = 0;
+  real u, k, p, rho1, bc = 0.f;
+  static av_t avU, avK, avp, avbc, avrho;
   hist_t *hsvol;
 
   lj = lj_open(N, 3, rho, rc);
@@ -63,19 +62,26 @@ int main(void)
   for (t = 1; t <= nsteps; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
+    lj_vrescale(lj, tp, thermdt);
+
+    isrun = (t > nsteps / 2);
     if (t % 5 == 0) {
       /* different barostats */
 /*
       vacc += lj_mctp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
       vacc += lj_mcp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
       lj_langtp0(lj, 1e-5, tp, pressure, 0);
+      lj_langp0(lj, 1e-5, tp, pressure, 0);
 */
       lj_langp0(lj, 1e-5, tp, pressure, 0);
       vtot++;
-      hs_add1(hsvol, 0, lj->vol, 1, HIST_VERBOSE);
+      if (isrun) {
+        av_add(&avrho, lj->n / lj->vol);
+        hs_add1ez(hsvol, lj->vol, HIST_VERBOSE);
+      }
     }
-    lj_vrescale(lj, tp, thermdt);
-    if (t > nsteps/2) {
+    
+    if (isrun) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);
       av_add(&avp, lj_calcp(lj, tp)); /* or lj_calcpk(lj) */
@@ -89,9 +95,10 @@ int main(void)
   k = av_getave(&avK)/N;
   p = av_getave(&avp);
   bc = av_getave(&avbc);
+  rho1 = av_getave(&avrho);
   printf("U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
-      u, k, p, bc, lj->n/lj->vol, 100.0*vacc/vtot);
-  hs_save(hsvol, "vol.his", HIST_NOZEROES);
+      u, k, p, bc, rho1, 100.0*vacc/vtot);
+  hs_save(hsvol, "volmd.his", HIST_NOZEROES);
   hs_close(hsvol);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);

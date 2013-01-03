@@ -109,6 +109,8 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
   lj_shiftang(lj, lj->x, lj->v);
   lj->ekin = md_ekin(lj->v, lj->n * lj->d, lj->dof, &lj->tkin);
 
+  lj->isclone = 0;
+
   lj_force(lj);
   return lj;
 }
@@ -118,7 +120,9 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
 INLINE lj_t *lj_copy(lj_t *dest, const lj_t *src, unsigned flags)
 {
   int nd = src->n * src->d;
+  /* to preserve the pointers */
   real *x = dest->x, *v = dest->v, *f = dest->f;
+
   memcpy(dest, src, sizeof(lj_t));
 
   if (flags & LJ_CPX) memcpy(x, src->x, sizeof(real) * nd);
@@ -138,26 +142,43 @@ INLINE lj_t *lj_clone(const lj_t *src, unsigned flags)
 
   xnew(dest, 1);
   memcpy(dest, src, sizeof(lj_t));
-  /* always create x, v, f, lj_close() will free them
-   * must be called after the global copy */
-  xnew(dest->x, nd);
-  xnew(dest->v, nd);
-  xnew(dest->f, nd);
-  if (flags & LJ_CPX) memcpy(dest->x, src->x, sizeof(real) * nd);
-  if (flags & LJ_CPV) memcpy(dest->v, src->v, sizeof(real) * nd);
-  if (flags & LJ_CPF) memcpy(dest->f, src->f, sizeof(real) * nd);
+  /* unless specified in flags,
+   * arrays are copied literally as pointers */
+  dest->isclone = LJ_CPRDF | LJ_CPPR | LJ_CPGDG | LJ_CPXDG;
+  if (flags & LJ_CPX) {
+    xnew(dest->x, nd);
+    memcpy(dest->x, src->x, sizeof(real) * nd);
+  } else {
+    dest->isclone |= LJ_CPX;
+  }
+  if (flags & LJ_CPV) {
+    xnew(dest->v, nd);
+    memcpy(dest->v, src->v, sizeof(real) * nd);
+  } else {
+    dest->isclone |= LJ_CPV;
+  }
+  if (flags & LJ_CPF) {
+    xnew(dest->f, nd);
+    memcpy(dest->f, src->f, sizeof(real) * nd);
+  } else {
+    dest->isclone |= LJ_CPF;
+  }
   return dest;
 }
 
 void lj_close(lj_t *lj)
 {
-  free(lj->x);
-  free(lj->v);
-  free(lj->f);
-  if (lj->pr) free(lj->pr);
-  if (lj->gdg) free(lj->gdg);
-  if (lj->xdg) free(lj->xdg);
-  if (lj->rdf) hs_close(lj->rdf);
+  if ( !(lj->isclone & LJ_CPX) ) free(lj->x);
+  if ( !(lj->isclone & LJ_CPV) ) free(lj->v);
+  if ( !(lj->isclone & LJ_CPF) ) free(lj->f);
+  if ( !(lj->isclone & LJ_CPPR)  && lj->pr)
+    free(lj->pr);
+  if ( !(lj->isclone & LJ_CPGDG) && lj->gdg)
+    free(lj->gdg);
+  if ( !(lj->isclone & LJ_CPXDG) && lj->xdg)
+    free(lj->xdg);
+  if ( !(lj->isclone & LJ_CPRDF) && lj->rdf)
+    hs_close(lj->rdf);
   free(lj);
 }
 
@@ -287,10 +308,11 @@ INLINE double lj_rdfnorm(int row, int i, double xmin, double dx, void *pdata)
   return lj->vol / (vsph * npr * lj->rdfnfr);
 }
 
-INLINE hist_t *lj_rdfopen(lj_t *lj, double dr)
+INLINE hist_t *lj_rdfopen(lj_t *lj, double dr, double rmax)
 {
   lj->rdfnfr = 0;
-  return lj->rdf = hs_openx(1, 0, lj->l*.5, dr,
+  if (rmax <= 0) rmax = lj->l * .5;
+  return lj->rdf = hs_openx(1, 0, rmax, dr,
       lj_rdffwheader, lj_rdffrheader, lj_rdfnorm);
 }
 
@@ -1145,18 +1167,20 @@ INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
 INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, real ensx, unsigned flags)
 {
-  int i, acc = 0;
-  real vo, vn, lnvo, lnvn, lo = lj->l, s, epo, bet = 1.f/tp;
+  int acc = 0, i, d = lj->d;
+  real lnlo, lnln, lo, ln, vo, vn, s, epo, bet = 1.f/tp;
   double dex;
   lj_t *lj1;
 
   vo = lj->vol;
-  lnvo = (real) log(vo);
-  lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
-  vn = (real) exp(lnvn);
+  lo = lj->l;
+  lnlo = (real) log(lo);
+  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  ln = (real) exp(lnln);
+  for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax)
     return 0;
-  if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
+  if ((flags & LJ_FIXEDRC) && ln < lj->rc * 2)
     return 0; /* box too small */
   
   epo = lj->epot;
@@ -1164,11 +1188,11 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
   lj_setrho(lj, lj->n/vn);
   lj_force(lj); /* we change force here */
   dex = bet * (lj->epot - epo + pext * (vn - vo))
-      + bet * (pow(vo/vn, 2.0/lj->d) - 1)*lj->ekin
-      + (lnvo - lnvn) * (1 - ensx);
+      + bet * (pow(vo/vn, 2.0/d) - 1)*lj->ekin
+      + d * (lnlo - lnln) * (1 - ensx);
   if (metroacc1(dex, 1.f)) { /* scale the velocities */
     s = lo/lj->l;
-    for (i = 0; i < lj->d * lj->n; i++) lj->v[i] *= s;
+    for (i = 0; i < d * lj->n; i++) lj->v[i] *= s;
     lj->ekin *= s*s;
     lj->tkin *= s*s;
     acc = 1;
@@ -1205,8 +1229,8 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
     if (rmn < lj->ra) return 0;
   }
 
-  /* for a hard-sphere potential, no energy, accept immediately */
-  if (fabs(lj->ra - lj->rb) <= 1e-6) {
+  /* for a hard-sphere potential, no energy, accept it immediately */
+  if (fabs(lj->ra - lj->rb) < 1e-6) {
     lj->rmin *= ln/lo;
     lj_setrho(lj, lj->n/vn);
     return 1;
@@ -1221,7 +1245,7 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
     iep = lj_energysq2d(lj, (rv2_t *) lj->x, &rmn);
   }
   dex = bet * ((real) iep - epo + pext * (vn - vo))
-      - (1.f*lj->dof + (1 - ensx)*d) * (lnln - lnlo);
+      - (lj->dof + (1 - ensx) * d) * (lnln - lnlo);
   if (rmn > lj->ra && metroacc1(dex, 1.0)) {
     lj->iepot = iep;
     lj->epot = iep;
@@ -1239,18 +1263,20 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
 INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, real ensx, unsigned flags)
 {
-  int acc = 0;
-  real lnvo, lnvn, vo, vn, epo, bet = 1.f/tp;
+  int acc = 0, i, d = lj->d;
+  real lnlo, lnln, lo, ln, vo, vn, epo, bet = 1.f/tp;
   double dex;
   lj_t *lj1;
 
   vo = lj->vol;
-  lnvo = (real) log(vo);
-  lnvn = (real) (lnvo + lnvamp * (2.f * rnd0() - 1.f));
-  vn = (real) exp(lnvn);
+  lo = lj->l;
+  lnlo = (real) log(lo);
+  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  ln = (real) exp(lnln);
+  for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax)
     return 0;
-  if ((flags & LJ_FIXEDRC) && pow(vn, 1.0/lj->d) < lj->rc * 2)
+  if ((flags & LJ_FIXEDRC) && ln < lj->rc * 2)
     return 0; /* box too small */
 
   epo = lj->epot;
@@ -1258,7 +1284,7 @@ INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
   lj_force(lj);
   dex = bet * (lj->epot - epo + pext * (vn - vo))
-      - (1.f*lj->dof/lj->d + 1 - ensx) * (lnvn - lnvo);
+      - (lj->dof + (1 - ensx) * d) * (lnln - lnlo);
   if (metroacc1(dex, 1.0)) {
     acc = 1;
   } else {

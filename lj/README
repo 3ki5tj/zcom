@@ -1,8 +1,14 @@
 2D/3D Lennard Jones system
 
 also support
-Square-well potential
+Square-well potential with the special of a hard-sphere potential
 Switched potential
+
+test programs
+===============
+testmc    Monte Carlo simulation
+testmd    molecular dynamics with thermostat and barostat
+
 
 
 Speed test

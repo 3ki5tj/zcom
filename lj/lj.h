@@ -42,12 +42,18 @@ typedef struct {
 
   hist_t *rdf; /* histogram for radial distribution function */
   int rdfnfr; /* number of frames in rdf */
+
+  unsigned isclone; /* is a clone copy, don't free pointers */
 } lj_t;
 
 /* copy flags */
 #define LJ_CPX   0x0001
 #define LJ_CPV   0x0002
 #define LJ_CPF   0x0004
+#define LJ_CPRDF 0x0010
+#define LJ_CPPR  0x0020
+#define LJ_CPGDG 0x0040
+#define LJ_CPXDG 0x0080
 #define LJ_CPXVF (LJ_CPX|LJ_CPV|LJ_CPF)
 
 lj_t *lj_open(int n, int d, real rho, real rcdef);
@@ -60,7 +66,7 @@ INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
 INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);
 
 /* open rdf */
-INLINE hist_t *lj_rdfopen(lj_t *lj, double dr);
+INLINE hist_t *lj_rdfopen(lj_t *lj, double dr, double rmax);
 /* add pairs to the RDF data */
 INLINE int lj_rdfadd(lj_t *lj);
 /* save rdf, flags can have HIST_NOZEROES */
@@ -102,7 +108,7 @@ INLINE real lj_calcp(lj_t *lj, real tp)
 
 /* compute pressure, ideal gas part from the kinetic energy  */
 INLINE real lj_calcpk(lj_t *lj)
-  { return 2.f * lj->ekin / (3.f * lj->vol) + lj->vir / (lj->d * lj->vol) + lj->p_tail; }
+  { return (2.f * lj->ekin + lj->vir) / (lj->d * lj->vol) + lj->p_tail; }
 
 /* set density, compute tail corrections, etc */
 INLINE void lj_setrho(lj_t *lj, real rho);
