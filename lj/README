@@ -6,10 +6,13 @@ Switched potential
 
 test programs
 ===============
-testmc    Monte Carlo simulation
-testmd    molecular dynamics with thermostat and barostat
+testmc.c    Monte Carlo simulation
+testmd.c    molecular dynamics with thermostat and barostat
+testctr.c   prototype of the perturbation temperature
+testref.c   reference equation of states
+testsw.c    print out the switch potential
 
-
+ljmatch/ljmatch.c stillborn
 
 Speed test
 ==========

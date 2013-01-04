@@ -26,7 +26,7 @@ specfunc:       special functions
 cfg:            configuration file
 log:            log file
 av:             simple mean/deviation
-hist:           collect and write simple histograms (1d/2d)
+hist:           simple histograms (1d/2d)
 mds:            multidimensional scaling
 pdb:            read/write pdb
 clus:           a Monte Carlo based clustering
@@ -35,7 +35,7 @@ wl:             Wang-Laudau related
 tmh:            tempering with modified Hamiltonian
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model
-lj:             Lennard Jones liquid
+lj:             Lennard Jones system
 abpro:          AB beads protein model
 cago:           C-alpha Go model
 --

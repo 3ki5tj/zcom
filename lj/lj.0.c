@@ -1165,7 +1165,7 @@ INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
  * the scaling is r = r*s, p = p/s; 
  * set cutoff to half of the box */
 INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
-    real vmin, real vmax, real ensx, unsigned flags)
+    real vmin, real vmax, int ensx, unsigned flags)
 {
   int acc = 0, i, d = lj->d;
   real lnlo, lnln, lo, ln, vo, vn, s, epo, bet = 1.f/tp;
@@ -1207,7 +1207,7 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
  * suppose lj->rmin has been correctly set
  * use lnvamp 0.03 ~ 0.06 for 256 system */
 INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
-    real vmin, real vmax, real ensx, unsigned flags)
+    real vmin, real vmax, int ensx, unsigned flags)
 {
   int acc = 0, i, d = lj->d, iep;
   real lnlo, lnln, vo, vn, lo, ln, rmn = 0, epo, bet = 1.f/tp;
@@ -1261,12 +1261,16 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
 /* Monte Carlo barostat, coordiantes only
  * use lnvamp 0.03 ~ 0.06 for 256 system */
 INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
-    real vmin, real vmax, real ensx, unsigned flags)
+    real vmin, real vmax, int ensx, unsigned flags)
 {
   int acc = 0, i, d = lj->d;
   real lnlo, lnln, lo, ln, vo, vn, epo, bet = 1.f/tp;
   double dex;
   lj_t *lj1;
+
+  if (lj->usesq) { /* use the specialized square-well version */
+    return lj_mcpsq(lj, lnvamp, tp, pext, vmin, vmax, ensx, flags);
+  }
 
   vo = lj->vol;
   lo = lj->l;

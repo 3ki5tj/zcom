@@ -8,8 +8,9 @@ real rcdef = 1000.0f; /* since we change volume, use half-box cutoff */
 real tp = 1.5f;
 real pressure = 1.0f;
 real amp = 0.3f;
-int nsteps = 10000000, nstrdf = 1000;
-int usesq = 0;
+int nsteps = 20000000, nstrdf = 1000;
+int usesq = 1;
+int nstvmove = 10; /* number of steps volume move */
 real ra = 1.0f, rb = 1.5f;
 av_t avU, avp, avrho;
 
@@ -22,9 +23,12 @@ int main(void)
 
   lj = lj_open(n, d, rho, rcdef);
   /* since this is MC, the dof should be n*d
-   * but may we pretend it has the same dof as MD? */
+   * maybe we can that it were the same dof as MD? */
   lj->dof = n * d;
-  if (usesq) lj_initsq(lj, ra, rb);
+  if (usesq) {
+    lj_initsq(lj, ra, rb);
+    lj->vir = 0;
+  }
   lj_rdfopen(lj, 0.01, lj->l * 2.f);
 
   hsvol = hs_open(1, 0, 5.*lj->n/rho, 1.f);
@@ -34,9 +38,9 @@ int main(void)
    
     isrun = (t > nsteps / 2);
     
-    if (t % 10 == 0) {
+    if (nstvmove && t % nstvmove == 0) {
       vtot += 1;
-      vacc += lj_mcp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
+      vacc += lj_mcp(lj, 0.01, tp, pressure, 0, 1e300, 0, 0);
       if (isrun) {
         av_add(&avrho, lj->n / lj->vol);
         hs_add1ez(hsvol, lj->vol, HIST_VERBOSE);
@@ -44,7 +48,11 @@ int main(void)
     }
 
     if (t % 10000 == 0) { /* refresh energy regularly, just in case */
+      real epo = lj->epot;
       lj_energy(lj);
+      if (fabs(lj->epot - epo) > 1e-2) {
+        fprintf(stderr, "energy mismatch %g vs %g\n", epo, lj->epot);
+      }
     }
 
     if (isrun) {

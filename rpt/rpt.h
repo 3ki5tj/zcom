@@ -12,6 +12,7 @@
 typedef struct  {
   av_t av; /* simple average data */
   hist_t *hs; /* histogram data */
+  double cnt; /* total number of data points */
 } rpt_t;
 
 INLINE rpt_t *rpt_open(double emin, double emax, double edel)
@@ -21,6 +22,7 @@ INLINE rpt_t *rpt_open(double emin, double emax, double edel)
   xnew(t, 1);
   av_clear(&t->av);
   t->hs = hs_open(1, emin, emax, edel);
+  t->cnt = 0;
   die_if (t->hs == NULL, "failed to initialize rpt, (%g: %g: %g)\n", emin, edel, emax);
   return t;
 }
@@ -31,44 +33,56 @@ INLINE void rpt_close(rpt_t *t)
   free(t);
 }
 
-INLINE void rpt_add(rpt_t *t, double e)
+/* add the change */
+INLINE void rpt_addw(rpt_t *t, double e, double w)
 {
-  av_add(&(t->av), e);
-  hs_add1(t->hs, 0, e, 1.f, HIST_VERBOSE);
+  av_addw(&(t->av), e, w);
+  hs_add1(t->hs, 0, e, w, HIST_VERBOSE);
+  t->cnt += 1;
 }
+#define rpt_add(t, e) rpt_addw(t, e, 1.0)
 
-/* return the temperature */
-INLINE double rpt_bet0(const rpt_t *t)
-{
-  double ave = av_getave(&(t->av)), var = av_getvar(&(t->av));
-  var += ave*ave;
-  return (var > 0.) ? (2.0*ave/var) : 0.;
-}
+#define rpt_bet0(t) rpt_bet0x(t, 0)
+#define rpt_bet1(t) rpt_bet0x(t, 0)
 
-INLINE double rpt_bet1(const rpt_t *t)
+/* return beta = 2 < e > / < e^2 > or 2 < e > / < de^2 > */
+INLINE double rpt_bet0x(const rpt_t *t, int order)
 {
-  double ave = av_getave(&(t->av)), var = av_getvar(&(t->av));
-  return (var > 0.) ? (2.0*ave/var) : 0.;
+  double ave, var, w, we;
+
+  if (t->cnt <= 0) return 0.0; /* no data */
+  w = t->av.s / t->cnt;
+  if (fabs(w - 1) < 1e-6) { /* unweighted case */
+    ave = av_getave(&(t->av));
+    var = av_getvar(&(t->av));
+    if (order == 0)
+      var += ave * ave;
+    return (var > 0.) ? (2.0 * ave / var) : 0.0;
+  } else { /* weighted case, e.g., for pressure */
+    we = t->av.sx / t->cnt;
+    if (we < 1e-30) return 0.0; 
+    return (w - 1) / we;
+  }
 }
 
 /* obtain a rough estimate of bet, return 1 if it's a special case */
 INLINE int rpt_prepbet(const rpt_t *t, double *bet)
 {
   int i, l = 0, r = 0, verbose = 0;
-  double cnt, sm1, sm2, e, eps = 1e-10, *h = t->hs->arr;
-  hist_t *hs = t->hs;
+  const hist_t *hs = t->hs;
+  double cc, cnt, sm1, sm2, e, eps = 1e-10, *h = t->hs->arr;
 
   *bet = 0.;
   /* count the total number and get a rough estimate */
   if (verbose >= 2) printf("  e   #\n");
   for (cnt = sm1 = sm2 = 0, i = 0; i < hs->n; i++) {
     e = hs->xmin + (i + .5) * hs->dx;
-    if (h[i] <= 0.) continue;
+    if ((cc = h[i]) <= 0.) continue;
     if (e < -eps) l = 1; else if (e > eps) r = 1;
-    cnt += h[i];
-    sm1 += h[i] * e;
-    sm2 += h[i] * e * e;
-    if (verbose >= 2) printf("%4g %g\n", e, h[i]);
+    cnt += cc;
+    sm1 += cc * e;
+    sm2 += cc * e * e;
+    if (verbose >= 2) printf("%4g %g\n", e, cc);
   }
   if (verbose >= 2) printf("\n");
   if (cnt <= 0.) return 1; /* no data */
@@ -78,26 +92,27 @@ INLINE int rpt_prepbet(const rpt_t *t, double *bet)
   if (fabs(sm1) < eps * cnt) return 1; /* even distribution, beta = 0 */
   *bet = 2.0*sm1/sm2; /* should be an underestimate */
   if (verbose)
-    printf("Compare: %g, %g;  %g, %g;  %g, %g\n", t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
+    printf("Compare: %g, %g;  %g, %g;  %g, %g\n",
+        t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
   return 0;
 }
 
 INLINE double rpt_refinebet(const rpt_t *t, double bet0,
-  double (*func)(const hist_t*, double, int, double*), int ord)
+  double (*func)(const rpt_t*, double, int, double*), int ord)
 {
   int it, verbose = 0;
   double bet, dbet, dbmax, f, df;
 
   /* increase bet, such that <exp(-bet*de)>  > 1 */
   for (bet = bet0; ; bet *= 1.4)
-    if ((f = (*func)(t->hs, bet, ord, &df)) > 0) break;
+    if ((f = (*func)(t, bet, ord, &df)) > 0) break;
   if (verbose) printf("expanded bet from %g to %g, f %g, df %g\n", bet0, bet, f, df);
 
   dbmax = fabs(bet*0.1); /* limit the maximal amount of updating */
 
   /* iteratively refine the temperature */
   for (it = 0; it <= 1000; it++) {
-    f = (*func)(t->hs, bet, ord, &df);
+    f = (*func)(t, bet, ord, &df);
     if (fabs(f) < 1e-14) break;
     dbet = dblconfine(f/df, -dbmax, dbmax);
     if (verbose) printf("f %g, df %g, bet %g, dbet %g\n", f, df, bet, dbet);
@@ -108,12 +123,12 @@ INLINE double rpt_refinebet(const rpt_t *t, double bet0,
 }
 
 /* evaluate f = < (-e)^ord exp(-bet*e) - e^ord > and -df/dbet */
-INLINE double rpt_getf(const hist_t *hs, double bet, int ord, double *pdf)
+INLINE double rpt_getf(const rpt_t *t, double bet, int ord, double *pdf)
 {
   int i, k;
-  double f, cnt, e, xp, df, *h = hs->arr;
+  const hist_t *hs = t->hs;
+  double f, cnt, e, xp, df, *h = t->hs->arr;
 
-  (void) ord;
   for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;
     e = hs->xmin + (i + .5) * hs->dx;
@@ -140,11 +155,42 @@ INLINE double rpt_bet(const rpt_t *t, int ord)
   return rpt_refinebet(t, bet, rpt_getf, ord);
 }
 
+/* evaluate f = < w exp(-bet*e) > - 1 and -df/dbet */
+INLINE double rpt_getfw(const rpt_t *t, double bet, int ord, double *pdf)
+{
+  int i;
+  const hist_t *hs = t->hs;
+  double f, e, xp, df, *h = t->hs->arr;
+
+  (void) ord;
+  for (f = df = 0., i = 0; i < hs->n; i++) {
+    if (h[i] <= 0.) continue;
+    e = hs->xmin + (i + .5) * hs->dx;
+    xp = exp(-bet*e);
+    f   += h[i] * xp;
+    df  += h[i] * xp * e;
+  }
+  f /= t->cnt;
+  df /= t->cnt;
+  if (pdf) *pdf = df;
+  return f - 1;
+}
+
+/* obtain the nontrivial solution of < w exp(-bet * e) > = 1 */
+INLINE double rpt_betw(const rpt_t *t)
+{
+  double bet;
+
+  if (rpt_prepbet(t, &bet)) return bet;
+  return rpt_refinebet(t, bet, rpt_getfw, 0);
+}
+
 /* evaluate f = (-bet) < min{1, exp(-bet * e)} sgn(e) |e|^ord > and -df/dbet */
-INLINE double rpt_getfs(const hist_t *hs, double bet, int ord, double *pdf)
+INLINE double rpt_getfs(const rpt_t *t, double bet, int ord, double *pdf)
 {
   int i, sgn;
-  double f, cnt, e, ep, xp, df, *h = hs->arr;
+  const hist_t *hs = t->hs;
+  double f, cnt, e, ep, xp, df, *h = t->hs->arr;
 
   for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;
@@ -178,10 +224,11 @@ INLINE double rpt_bets(const rpt_t *t, int ord)
 }
 
 /* evaluate f = (-bet) < exp(-bet/2 * e) sgn(e) |e|^ord > */
-INLINE double rpt_getfh(const hist_t *hs, double bet, int ord, double *pdf)
+INLINE double rpt_getfh(const rpt_t *t, double bet, int ord, double *pdf)
 {
   int i, sgn;
-  double f, cnt, e, ep, xp, df, *h = hs->arr;
+  const hist_t *hs = t->hs;
+  double f, cnt, e, ep, xp, df, *h = t->hs->arr;
 
   for (f = df = cnt = 0., i = 0; i < hs->n; i++) {
     if (h[i] <= 0.) continue;

@@ -163,7 +163,7 @@ INLINE void lj_langtp(lj_t *lj, real dt, real tp, real pext,
 }
 
 /* position Langevin barostat, with kinetic-energy scaling */
-INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
+INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, int ensx)
 {
   md_langtp0(lj->v, lj->n, lj->d, barodt, tp, pext, &lj->vol,
      lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
@@ -175,7 +175,7 @@ INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
 #define lj_lgvvolmove(lj, barodt, tp, p) lj_langp0(lj, barodt, tp, p, 0)
 
 /* Langevin barostat, with coordinates only, barodt ~ 1e-5 for n = 108 */
-INLINE void lj_langp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
+INLINE void lj_langp0(lj_t *lj, real barodt, real tp, real pext, int ensx)
 {
   md_langp0(lj->dof, lj->d, barodt, tp, pext, &lj->vol, lj->vir, lj->p_tail, ensx);
   lj_setrho(lj, lj->n/lj->vol);
@@ -190,7 +190,7 @@ INLINE void lj_langp0(lj_t *lj, real barodt, real tp, real pext, real ensx)
 
 /* Monte Carlo barostat, with kinetic-energy scaling */
 INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
-    real vmin, real vmax, real ensx, unsigned flags);
+    real vmin, real vmax, int ensx, unsigned flags);
 
 /* old interface */
 #define lj_volmove(lj, lnlamp, tp, p) \
@@ -198,7 +198,7 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
 
 /* Monte Carlo barostat, coordinate only */
 INLINE int lj_mcp(lj_t *lj, real vamp, real tp, real pext,
-    real vmin, real vmax, real ensx, unsigned flags);
+    real vmin, real vmax, int ensx, unsigned flags);
 
 #endif
 
