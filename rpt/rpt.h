@@ -60,7 +60,7 @@ INLINE double rpt_bet0x(const rpt_t *t, int order)
     return (var > 0.) ? (2.0 * ave / var) : 0.0;
   } else { /* weighted case, e.g., for pressure */
     we = t->av.sx / t->cnt;
-    if (we < 1e-30) return 0.0; 
+    if (fabs(we) < 1e-30) return 0.0;
     return (w - 1) / we;
   }
 }
@@ -71,6 +71,7 @@ INLINE int rpt_prepbet(const rpt_t *t, double *bet)
   int i, l = 0, r = 0, verbose = 0;
   const hist_t *hs = t->hs;
   double cc, cnt, sm1, sm2, e, eps = 1e-10, *h = t->hs->arr;
+  double w, we;
 
   *bet = 0.;
   /* count the total number and get a rough estimate */
@@ -90,7 +91,16 @@ INLINE int rpt_prepbet(const rpt_t *t, double *bet)
   if (!l) { *bet =  RPT_INF; return 1; }
   if (!r) { *bet = -RPT_INF; return 1; }
   if (fabs(sm1) < eps * cnt) return 1; /* even distribution, beta = 0 */
-  *bet = 2.0*sm1/sm2; /* should be an underestimate */
+
+  w = cnt / t->cnt;
+  if (fabs(w - 1) < 1e-6) {
+    *bet = 2.0 * sm1 / sm2; /* should be an underestimate */
+  } else {
+    we = sm1 / t->cnt;
+    if (fabs(we) > 1e-30) 
+      *bet = (w - 1) / we;
+  }
+
   if (verbose)
     printf("Compare: %g, %g;  %g, %g;  %g, %g\n",
         t->av.s, cnt, t->av.sx, sm1, t->av.sx2, sm2);
@@ -170,10 +180,10 @@ INLINE double rpt_getfw(const rpt_t *t, double bet, int ord, double *pdf)
     f   += h[i] * xp;
     df  += h[i] * xp * e;
   }
-  f /= t->cnt;
+  f = f / t->cnt - 1;
   df /= t->cnt;
   if (pdf) *pdf = df;
-  return f - 1;
+  return f;
 }
 
 /* obtain the nontrivial solution of < w exp(-bet * e) > = 1 */
