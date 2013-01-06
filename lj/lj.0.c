@@ -539,19 +539,25 @@ INLINE real lj_potsw(lj_t *lj, real r, real *fscal, real *psi, real *xi)
 static int lj_energysq3d(lj_t *lj, rv3_t *x, real *rmin)
 {
   real dx[3], dr2, ra2 = lj->ra2, rb2 = lj->rb2, l = lj->l, rm2 = 1e30;
-  int i, j, iu = 0, n = lj->n;
+  int i, j, iu = 0, n = lj->n, col = 0;
 
   for (i = 0; i < n - 1; i++) {
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
-      if (dr2 < ra2)
+      if (dr2 < ra2) {
         iu += lj->esqinf;
-      else if (dr2 < rb2)
+        col++;
+      } else if (dr2 < rb2) {
         iu--;
+      }
       if (dr2 < rm2) rm2 = dr2;
     }
   }
   if (rmin != NULL) *rmin = (real) sqrt(rm2);
+  /* force the energy to zero in the hard sphere case */
+  if (fabs(ra2 - rb2) < 1e-6 && col == 0) {
+    iu = 0;
+  }
   return iu;
 }
 
@@ -765,26 +771,55 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
 }
 
 /* compute energy data for a 3D pair with a square well potential */
-INLINE int lj_pairsq3d(real *xi, real *xj, real l, real ra2, real rb2, int inf)
+INLINE int lj_pairsq3d(const real *xi, const real *xj, real l,
+   real ra2, real rb2, real *pdr2, int inf)
 {
   real dx[3], dr2;
   dr2 = lj_pbcdist2_3d(dx, xi, xj, l);
+  if (pdr2) *pdr2 = dr2;
   if (dr2 < ra2) return -inf;
   else if (dr2 < rb2) return 1;
   else return 0;
 }
 
 /* return the energy change (square well) from displacing x[i] to xi */
-INLINE int lj_depotsq3d(lj_t *lj, int i, real *xi)
+INLINE int lj_depotsq3d(lj_t *lj, int i, const real *xi, real *rm)
 {
-  int j, n = lj->n, npr = 0, inf = lj->esqinf;
+  int j, n = lj->n, npr = 0, inf = lj->esqinf, recalc = 0;
   real l = lj->l, ra2 = lj->ra2, rb2 = lj->rb2;
+  real r2o, r2n, rm2o = 0, rm2 = 0;
   rv3_t *x = (rv3_t *) lj->x;
+  const real tol = 1e-5;
 
+  if (rm) rm2o = rm2 = (*rm) * (*rm);
   for (j = 0; j < n; j++) { /* pair */
     if (j == i) continue;
-    npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2, inf);
-    npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2, inf);
+    npr -= lj_pairsq3d(x[i], x[j], l, ra2, rb2, &r2o, inf);
+    npr += lj_pairsq3d(xi,   x[j], l, ra2, rb2, &r2n, inf);
+    if (fabs(r2o - rm2o) < tol) { /* need to re-compute rmin */
+      recalc |= 1;
+    }
+    if (r2n < rm2) { /* new rmin is found */
+      recalc |= 2; /* no need to recalc */
+      rm2 = r2n;
+    }
+  }
+
+  /* in order to compute the minimal distance,
+   * we need to occasionally recompute the entire system */
+  if (recalc == 1) { /* 0, 2, 3 are safe */
+    rv3_t xio;
+    rv3_copy(xio, x[i]);
+    rv3_copy(x[i], xi); /* apply xi */
+    lj_energysq3d(lj, x, rm);
+    rv3_copy(x[i], xio); /* recover */
+  } else {
+    if (rm) *rm = (real) sqrt(rm2);
+  }
+
+  /* hard sphere, no collision */
+  if (fabs(ra2 - rb2) < 2e-6 && npr > -inf/10 && npr < inf/10) {
+    npr = 0; /* number of neighbors */ 
   }
   return -npr; /* increased number of pairs == decreased energy */
 }
@@ -801,14 +836,16 @@ INLINE void lj_commitsq3d(lj_t *lj, int i, const real *xi, int du)
 INLINE int lj_metrosq3d(lj_t *lj, real amp, real bet)
 {
   int i, du;
-  real xi[3];
+  real xi[3], rm;
 
   i = lj_randmv3d(lj, xi, amp);
-  du = lj_depotsq3d(lj, i, xi);
+  rm = lj->rmin;
+  du = lj_depotsq3d(lj, i, xi, &rm);
   /* patch for bet = 0 */
   if (bet >= 0 && du > lj->esqinf/2) return 0;
   if (metroacc1(du, bet)) {
     lj_commitsq3d(lj, i, xi, du);
+    lj->rmin = rm;
     return 1;
   }
   return 0;
@@ -936,7 +973,7 @@ INLINE int lj_metrolj3d(lj_t *lj, real amp, real bet)
 /* return the pair energy between two particles at xi and xj */
 INLINE int lj_pair3d(lj_t *lj, real *xi, real *xj, real *u, real *vir)
 {
-  if (lj->usesq) return lj_pairsq3d(xi, xj, lj->l, lj->ra2, lj->rb2, lj->esqinf);
+  if (lj->usesq) return lj_pairsq3d(xi, xj, lj->l, lj->ra2, lj->rb2, NULL, lj->esqinf);
   if (lj->usesw) return lj_pairsw3d(lj, xi, xj, u, vir);
   return lj_pairlj3d(xi, xj, lj->l, lj->rc2, u, vir);
 }
@@ -948,17 +985,18 @@ INLINE int lj_pair(lj_t *lj, real *xi, real *xj, real *u, real *vir)
 }
 
 /* return the energy change from displacing x[i] to xi */
-INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir)
+INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir, real *rmin)
 {
-  if (lj->usesq) return (real) lj_depotsq3d(lj, i, xi);
+  if (lj->usesq) return (real) lj_depotsq3d(lj, i, xi, rmin);
   if (lj->usesw) return lj_depotsw3d(lj, i, xi, vir);
   return lj_depotlj3d(lj, i, xi, vir);
 }
 
 /* return the energy change from displacing x[i] to xi */
-INLINE real lj_depot(lj_t *lj, int i, real *xi, real *vir)
+INLINE real lj_depot(lj_t *lj, int i, real *xi, real *vir, real *rmin)
 {
-  return lj->d == 2 ? lj_depot2d(lj, i, xi, vir) : lj_depot3d(lj, i, xi, vir);
+  return lj->d == 2 ?  lj_depot2d(lj, i, xi, vir, rmin) 
+    : lj_depot3d(lj, i, xi, vir, rmin);
 }
 
 /* this is defined as a macro for du is `int' in sq case, but real in other cases */
@@ -985,11 +1023,11 @@ INLINE int lj_metro(lj_t *lj, real amp, real bet)
 /* return the energy change of locally displacing a single atom */
 INLINE real lj_dupertl3d(lj_t *lj, real amp)
 {
-  real dvir, xi[3];
+  real dvir, xi[3], rmin;
   int i;
 
   i = lj_randmv3d(lj, xi, amp);
-  return lj_depot3d(lj, i, xi, &dvir);
+  return lj_depot3d(lj, i, xi, &dvir, &rmin);
 }
 
 INLINE real lj_dupertl(lj_t *lj, real amp)
@@ -1223,26 +1261,23 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
   if (vn < vmin || vn >= vmax) return 0;
   
   /* check if there is a clash */
+  rmn = lj->rmin * ln / lo;
   if (ln < lo) {
     if (ln < lj->rb * 2) return 0; /* box too small */
-    rmn = lj->rmin * ln / lo;
     if (rmn < lj->ra) return 0;
-  }
-
-  /* for a hard-sphere potential, no energy, accept it immediately */
-  if (fabs(lj->ra - lj->rb) < 1e-6) {
-    lj->rmin *= ln/lo;
-    lj_setrho(lj, lj->n/vn);
-    return 1;
   }
 
   /* compute the change of the square-well energy */
   epo = lj->epot;
   lj_setrho(lj, lj->n/vn); /* commit to the new box */
-  if (d == 3) {
-    iep = lj_energysq3d(lj, (rv3_t *) lj->x, &rmn);
+  if (fabs(lj->ra - lj->rb) < 1e-6) { /* skip the energy calculation */
+    iep = 0;
   } else {
-    iep = lj_energysq2d(lj, (rv2_t *) lj->x, &rmn);
+    if (d == 3) {
+      iep = lj_energysq3d(lj, (rv3_t *) lj->x, &rmn);
+    } else {
+      iep = lj_energysq2d(lj, (rv2_t *) lj->x, &rmn);
+    }
   }
   dex = bet * ((real) iep - epo + pext * (vn - vo))
       - (lj->dof + (1 - ensx) * d) * (lnln - lnlo);
@@ -1257,20 +1292,15 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
   return acc;
 }
 
-
 /* Monte Carlo barostat, coordiantes only
  * use lnvamp 0.03 ~ 0.06 for 256 system */
-INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
+INLINE int lj_mcplj(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, int ensx, unsigned flags)
 {
   int acc = 0, i, d = lj->d;
   real lnlo, lnln, lo, ln, vo, vn, epo, bet = 1.f/tp;
   double dex;
   lj_t *lj1;
-
-  if (lj->usesq) { /* use the specialized square-well version */
-    return lj_mcpsq(lj, lnvamp, tp, pext, vmin, vmax, ensx, flags);
-  }
 
   vo = lj->vol;
   lo = lj->l;
@@ -1293,9 +1323,20 @@ INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
     acc = 1;
   } else {
     lj_copy(lj, lj1, LJ_CPF);
-  } 
+  }
   lj_close(lj1);
   return acc;
+}
+
+/* Monte Carlo barostat, coordiantes only */
+INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
+    real vmin, real vmax, int ensx, unsigned flags)
+{
+  if (lj->usesq) { /* use the specialized square-well version */
+    return lj_mcpsq(lj, lnvamp, tp, pext, vmin, vmax, ensx, flags);
+  } else { /* use the generic version */
+    return lj_mcplj(lj, lnvamp, tp, pext, vmin, vmax, ensx, flags);
+  }
 }
 
 #endif

@@ -71,7 +71,7 @@ INLINE int rpt_prepbet(const rpt_t *t, double *bet)
   int i, l = 0, r = 0, verbose = 0;
   const hist_t *hs = t->hs;
   double cc, cnt, sm1, sm2, e, eps = 1e-10, *h = t->hs->arr;
-  double w, we;
+  double w;
 
   *bet = 0.;
   /* count the total number and get a rough estimate */
@@ -87,18 +87,21 @@ INLINE int rpt_prepbet(const rpt_t *t, double *bet)
   }
   if (verbose >= 2) printf("\n");
   if (cnt <= 0.) return 1; /* no data */
-  /* one-sided, beta = +/- inf. */
-  if (!l) { *bet =  RPT_INF; return 1; }
-  if (!r) { *bet = -RPT_INF; return 1; }
-  if (fabs(sm1) < eps * cnt) return 1; /* even distribution, beta = 0 */
-
+  
   w = cnt / t->cnt;
   if (fabs(w - 1) < 1e-6) {
+    /* one-sided, beta = +/- inf. */
+    if (!l) { *bet =  RPT_INF; return 1; }
+    if (!r) { *bet = -RPT_INF; return 1; }
+    if (fabs(sm1) < eps * cnt) return 1; /* even distribution, beta = 0 */
+
     *bet = 2.0 * sm1 / sm2; /* should be an underestimate */
   } else {
-    we = sm1 / t->cnt;
-    if (fabs(we) > 1e-30) 
-      *bet = (w - 1) / we;
+    if (fabs(sm1) > 1e-30) 
+      *bet = log(w) * cnt / sm1;
+    if (verbose) {
+      printf("w %g, sm1/cnt %g, bet %g\n", w, sm1/cnt, *bet);
+    }
   }
 
   if (verbose)

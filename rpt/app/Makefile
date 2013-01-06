@@ -7,6 +7,8 @@ dep = $(src) Makefile
 bin = $(patsubst %.c,%, $(wildcard *.c)) \
       $(patsubst %.c,%_d, $(wildcard *.c))
 
+mcvol.c: vmove.h
+
 all: $(bin)
 
 $(bin): $(dep)
@@ -24,6 +26,7 @@ run: $(bin)
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1
+
 
 clean:
 	rm -f *~ *.out MTSEED $(bin) lj.pos

@@ -5,16 +5,17 @@
 #define ZCOM_RPT
 #define ZCOM_ARGOPT
 #include "zcom.h"
-
-#define D 3
+#include "vmove.h"
 
 int N = 108;
+int D = 3;
 real rho = 0.05f;
 real ra = 1.0f; /* barrier distance of the square-well potential */
 real rb = 1.5f; /* cutoff distance of the square-well potential */
+int esqinf = 100000; /* infinity energy in square well potential */
 real rc = 2.5f; /* cutoff distance for the Lennard-Jones potential */
 real tp = 1.0f;
-real amp = 2.0f; /* MC move size */
+real amp = 0.3f; /* MC move size */
 int nequil = 10000;
 int nsteps = 100000;
 int nevery = 10;  /* compute temperatures every this number of steps */
@@ -25,8 +26,10 @@ char *fnehis = "ehsqmc.dat"; /* energy-increment distribution */
 char *fnehislj = "ehljmc.dat"; /* from the Lennard-Jones potential */
 int verbose = 0;
 
-
-int esqinf = 100000; /* infinity energy in square well potential */
+/* pressure code */
+int isobaric; /* to be set by the program */
+real pressure = 0.0f;
+real lnvamplj = 0.07, lnvampsq = 0.02;
 
 /* handle input arguments */
 static void doargs(int argc, char **argv)
@@ -45,16 +48,20 @@ static void doargs(int argc, char **argv)
   argopt_add(ao, "-m", "%r", &amp,    "amplitude of a MC move");
   argopt_add(ao, "-M", "%r", &ampp,   "amplitude of a perturbation");
   argopt_add(ao, "-U", "%d", &dumax,  "maximal energy change for histogram");
+  argopt_add(ao, "-p", "%r", &pressure, "pressure");
   argopt_add(ao, "-o", NULL, &fnehis, "output file for the energy-increment histogram");
   argopt_add(ao, "-O", NULL, &fnehislj,"output file for that using the Lennard-Jones potential");
   argopt_add(ao, "-v", "%d", &verbose, "verbose mode");
-/*
-  argopt_add(ao, "-g", NULL, &fnlog, "log file");
-*/
   argopt_addhelp(ao, "-h");
   argopt_parse(ao, argc, argv);
-  die_if (rb <= ra,
-    "rb %g is less than ra %g, simulating hard balls\n", rb, ra);
+
+  if (rb <= ra) {
+    fprintf(stderr, "rb %g is less than ra %g, simulating hard balls\n", rb, ra);
+    rb = ra;
+  }
+  if (pressure > 1e-6) isobaric = 1;
+  if (isobaric) rc = 1000;
+
   if (verbose >= 0) argopt_dump(ao);
   argopt_close(ao);
 }
@@ -177,13 +184,15 @@ static void domc(lj_t *lj, lj_t *sq)
   double Ulj, Usq, UljB, UsqB, Uljref, plj, pljB;
   double dlnZ = 0, dSsq = 0, dSlj = 0, hscnt = 0, frlj = 0, frsq = 0;
   static av_t avUsq[1], avUlj[1], avUsqB[1], avUljB[1], avdesq[1], avdelj[1];
-  static av_t avplj[1], avpljB[1];
+  static av_t avplj[1], avpljB[1], avrholj[1], avrhosq[1];
   rpti_t *rptsq;
-  rpt_t *rptlj;
+  rpt_t *rptlj, *rptv;
   hist_t *hlj, *hsq; /* energy histograms */
+  double vtot = 1e-30, vaccsq = 0, vacclj = 0;
 
   rptsq = rpti_open(-dumax, dumax, 1, RPTI_HASINF);
   rptlj = rpt_open(-dumax, dumax, 0.0002);
+  rptv = rpt_open(-lj->n, lj->n, 0.001f);
   hlj = hs_open(1, -20*lj->n, 20*lj->n, 0.001*lj->n);
   hsq = hs_open(1, -20*lj->n, 20*lj->n, 0.001*lj->n);
   
@@ -200,14 +209,14 @@ static void domc(lj_t *lj, lj_t *sq)
     plj = lj_calcp(lj, tp);
     av_add(avplj, plj);
     av_add(avUsq, sq->epot * sqescl);
-    
+
     /* try local perturbations often, for they are cheap */
     {
       real xi[3];
 
       /* in the LJ system, compute the increment of the square-well energy */
       id = lj_randmv3d(lj, xi, ampp);
-      idu = lj_depotsq3d(lj, id, xi);
+      idu = lj_depotsq3d(lj, id, xi, NULL);
       if (idu > -esqinf/2 && idu < esqinf/2) { /* idu may be negative infinity for the inverse mode */
         av_add(avdesq, idu * sqescl);
         rpti_add(rptsq, idu);
@@ -219,9 +228,23 @@ static void domc(lj_t *lj, lj_t *sq)
       rpt_add(rptlj, epslj);
       av_add(avdelj, epslj);
     }
-    
+
     if (t % nevery == 0) {
       hscnt++;
+
+      /* use fixed virtual move */
+      sq_vmove(sq, -0.01, tp/sqescl, rptv, 1);
+
+      /* try to change the volume */
+      if (isobaric) {
+        vtot++;
+        vacclj += lj_mcplj(lj, lnvamplj, tp, pressure, 0, 1e30, 0, 0);
+        av_add(avrholj, lj->n / lj->vol);
+        /* the coupling for the volume is pressure/tp,
+         * which is unaffected by sqescl */
+        vaccsq += lj_mcpsq(sq, lnvampsq, tp/sqescl, pressure/sqescl, 0, 1e30, 0, 0);
+        av_add(avrhosq, sq->n / sq->vol);
+      }
 
       /* compute <Usq> in the LJ system */
       Ulj = lj->epot;
@@ -251,9 +274,11 @@ static void domc(lj_t *lj, lj_t *sq)
   UljB = av_getave(avUljB)/lj->n;
   plj  = av_getave(avplj);
   pljB = av_getave(avpljB);
+  if (isobaric)
+    rho = av_getave(avrholj);
   Uljref = lj_eos3d(rho, tp, NULL, NULL, NULL);
 
-  bpi = (fabs(sqescl) > 1e-6 ? rpti_bet(rptsq, 0)/sqescl : 0); /* we got s * bet, so divide s */
+  bpi = (fabs(ra - rb) > 1e-6 ? rpti_bet(rptsq, 0)/sqescl : 0); /* we got s * bet, so divide s */
   bplji = rpt_bet(rptlj, 0);
 
   /* compute the relative entropy */
@@ -264,17 +289,19 @@ static void domc(lj_t *lj, lj_t *sq)
   dlnZ = bardlnZ(hlj, hscnt, hsq, hscnt, &dSlj, &dSsq, &frlj, &frsq);
   fprintf(stderr, "T %g, r %g, a %g, b %g, es %g, amp %g, pamp %g, "
          "accsq %.3f, acclj %.3f, desq %.4f(%.4f), delj %.4f(%.4f), "
-         "Usqlj %.4f, Usq %.4f, bpi %.4f, "
+         "Usqlj %.4f, Usq %.4f, bpi %.4f, psq %.4f, "
          "Uljsq %.4f, Ulj %.4f, Uljref %.4f, pljB %.4f, plj %.4f, "
-         "bplj0 %.4f, %.4f, bplj1 %.4f, %.4f, "
+         "bplj0 %.4f, %.4f (%g), "
+         "vacc %.2f(lj), %.2f(sq), rho %.4f(lj), %.4f(sq), "
          "dSlj %g%s, dSsq %g%s, dlnZ %g\n",
          tp, rho, ra, rb, sqescl, amp, ampp,
          1.*accsq/nsteps, 1.*acclj/nsteps,
          av_getave(avdesq), av_getdev(avdesq),
          av_getave(avdelj), av_getdev(avdelj),
-         UsqB, Usq,bpi,
+         UsqB, Usq, bpi, rpt_betw(rptv) * tp, 
          UljB, Ulj, Uljref, pljB, plj,
-         bplji, rpt_bets(rptlj, 0), rpt_bet(rptlj, 1), rpt_bets(rptlj, 1),
+         bplji, rpt_bets(rptlj, 1), 1.0/tp,
+         vacclj/vtot, vaccsq/vtot, av_getave(avrholj), av_getave(avrhosq),
          (avUsqB->s < hscnt-.5) ? frlj : dSlj, (avUsqB->s < hscnt-.5) ? "inf" : "",
          (avUljB->s < hscnt-.5) ? frsq : dSsq, (avUljB->s < hscnt-.5) ? "inf" : "", dlnZ);
      
@@ -282,6 +309,7 @@ static void domc(lj_t *lj, lj_t *sq)
   rpti_wdist(rptsq, fnehis);
   rpt_close(rptlj);
   rpti_close(rptsq);
+  rpt_close(rptv);
   hs_close(hlj);
   hs_close(hsq); 
 }
@@ -291,6 +319,7 @@ int main(int argc, char **argv)
   lj_t *lj, *sq;
 
   doargs(argc, argv);
+
   lj = lj_open(N, D, rho, rc);
   sq = lj_open(N, D, rho, rc);
 
@@ -307,3 +336,4 @@ int main(int argc, char **argv)
   lj_close(sq);
   return 0;
 }
+

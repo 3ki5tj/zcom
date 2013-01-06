@@ -87,7 +87,7 @@ static void domc(lj_t *lj)
 
       id = lj_randmv3d(lj, xi, ampp);
       /* compute the increment of the square-well energy */
-      idu = lj_depotsq3d(lj, id, xi);
+      idu = lj_depotsq3d(lj, id, xi, NULL);
       if (idu > -1000) { /* idu may be negative infinity for the inverse mode */
         rpti_add(rpt, idu);
       }

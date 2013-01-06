@@ -72,7 +72,7 @@ static void domc(lj_t *lj, rpti_t *rpt, rpti_t *rptd)
     if (t % nevery == 0) {
       real xi[3];
       id = lj_randmv3d(lj, xi, ampp);
-      idu = lj_depotsq3d(lj, id, xi);
+      idu = lj_depotsq3d(lj, id, xi, NULL);
       rpti_add(rpt, idu);
       
       if (!metroacc1(idu, 1.0f/tp)) idu = 0;

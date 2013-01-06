@@ -15,7 +15,7 @@ real rs = 1.5f; /* for switched potential */
 static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
 {
   int i, t;
-  real du, du2, betp, vir, xi[3];
+  real du, du2, betp, vir, rmin, xi[3];
   hist_t *hs = hs_open(1, -umax, umax, udel);
   av_t avdu[1];
 
@@ -23,7 +23,7 @@ static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
   av_clear(avdu);
   for (t = 0; t < tmax; t++) {
     i = lj_randmv3d(lj, xi, amp*sqrt(lj->n));
-    du = lj_depot3d(lj, i, xi, &vir);
+    du = lj_depot3d(lj, i, xi, &vir, &rmin);
     hs_add(hs, &du, 1.0, 0);
     av_add(avdu, du); 
   }
