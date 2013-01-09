@@ -50,7 +50,11 @@ int main(void)
 
     if (t % 10 == 0) {
       if (usesq) {
+        /* fixed move size */
+/*
         sq_vmove(lj, -0.01, tp/escl, rpt, 1);
+*/
+        sq_vmove(lj, .01, tp/escl, rpt, 0);
         //sq_vmove0(lj, -0.01, tp/escl, rpt, 1);
       } else {
         lj_vmove(lj, 0.01, tp, rpt, 1);
@@ -80,8 +84,8 @@ int main(void)
   rho1 = av_getave(&avrho);
   bp = rpt_betw(rpt);
   pr = bp * tp;
- // bp = rpt_bets(rpt, 1);
- // pr1 = bp * tp;
+  bp = rpt_bets(rpt, 1);
+  pr1 = bp * tp;
   printf("a %g, b %g, escl %g, erg %g, p %g (bp %g, pp %g, %g), rho %g, "
       "acc %.2f%%, vacc %.2f%%, dof/d %g\n",
       ra, rb, escl,

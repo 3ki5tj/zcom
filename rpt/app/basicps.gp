@@ -56,7 +56,7 @@ set key left bottom Left reverse width -9
 plot [0.005:0.1][0:] \
   "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (1)", \
             ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (3'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (2'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
             ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361}= 1", \
             ""  u 1:6  w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
             ""  u 1:8  w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1"
@@ -101,13 +101,14 @@ set ylabel "{/Arial-Italic p}{/=6 &.}({/Symbol-Oblique e}{/=6 &.})" offset 1.0, 
 
 set key right top Left reverse width -6 
 
+# note that the offsets in `every' are set according to the data files 
 plot [-2:8][0:1.3] \
-  "ehmdlM0.05.dat"   u 1:2 every 40::108  with p  ls 1 ps 1.0   not, \
+  "ehmdlM0.05.dat"   u 1:2 every 40::108  with p  ls 1 ps 1.5   not, \
   ""                 u 1:2                with l  ls 1          not, \
-  -1                                      with lp ls 1 ps 1.0   t "u_{max} = 0.05, single, MD", \
-  "ehmclM0.05.dat"   u 1:2 every 40::156  with p  ls 4 ps 1.0   not, \
+  -1                                      with lp ls 1 ps 1.5   t "u_{max} = 0.05, single, MD", \
+  "ehmclM0.05.dat"   u 1:2 every 40::156  with p  ls 4 ps 1.5   not, \
   ""                 u 1:2                with l  ls 4          not, \
-  -1                                      with lp ls 4 ps 1.0   t "u_{max} = 0.05, single, MC", \
+  -1                                      with lp ls 4 ps 1.5   t "u_{max} = 0.05, single, MC", \
   "ehmdlM0.1.dat"    u 1:2 every 20::8    with p  ls 3 ps 1.0   not, \
   ""                 u 1:2                with l  ls 3          not, \
   -1                                      with lp ls 3 ps 1.0   t "u_{max} = 0.1, single, MC", \

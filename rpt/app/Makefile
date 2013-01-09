@@ -7,8 +7,6 @@ dep = $(src) Makefile
 bin = $(patsubst %.c,%, $(wildcard *.c)) \
       $(patsubst %.c,%_d, $(wildcard *.c))
 
-mcvol.c: vmove.h
-
 all: $(bin)
 
 $(bin): $(dep)
@@ -29,7 +27,7 @@ zcom.h::
 
 
 clean:
-	rm -f *~ *.out MTSEED $(bin) lj.pos
+	rm -f *~ *.out MTSEED $(bin) lj.pos *.his
 	rm -rf bin obj *.depend *.layout *.dat 
 
 .PHONY: clean all
