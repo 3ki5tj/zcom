@@ -98,6 +98,21 @@ INLINE real md_ekin(const real *v, int nd, int dof, real *tkin)
   return ekin *= .5f;
 }
 
+/* compute the kinetic energy for the thermostats, if ekin != NULL */
+INLINE real md_getekin(real *ekin, const real *v, int nd)
+{
+  int i;
+  real ek;
+
+  if (ekin) {
+    ek = *ekin;
+  } else {
+    for (ek = 0, i = 0; i < nd; i++) ek += v[i] * v[i];
+    ek *= 0.5f;
+  }
+  return ek;
+}
+
 /* velocity scaling: for regular MD
  * ekt is the time-averaged ek, may not be *ekin  */
 INLINE void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tkin)
@@ -116,16 +131,17 @@ INLINE void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, r
 INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
-  real ekav = .5f*tp*dof, ek1 = *ekin, ek2, s;
+  real ekav = .5f*tp*dof, ek1, ek2, s;
   double amp;
 
+  ek1 = md_getekin(ekin, v, nd);
   amp = 2*sqrt(ek1*ekav*dt/dof);
   ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
   if (ek2 < 0) ek2 = 0;
   s = (real) sqrt(ek2/ek1);
   for (i = 0; i < nd; i++)
     v[i] *= s;
-  *ekin = ek2;
+  if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
 }
 
@@ -134,17 +150,18 @@ INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, 
 INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
-  real ekav = .5f*tp*dof, ek1 = *ekin, ek2, s, c = 0., r;
+  real ekav = .5f*tp*dof, ek1, ek2, s, c = 0., r;
   
   if (dt < 10.0) c = exp(-dt);
   r = (real) grand0();
+  ek1 = md_getekin(ekin, v, nd);
   ek2 = (real)( ek1 + (1.f-c)*(ekav*(randgausssum(dof-1) + r*r)/dof - ek1)
     + 2.0f*r*sqrt(c*(1.f-c)*ekav/dof*ek1) );
   if (ek2 < 0) ek2 = 0;
   s = (real) sqrt(ek2/ek1);
   for (i = 0; i < nd; i++)
     v[i] *= s;
-  *ekin = ek2;
+  if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
 }
 
@@ -152,9 +169,10 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
 INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
-  real ek1 = *ekin, ek2, s;
+  real ek1, ek2, s;
   double logek1, logek2, r;
 
+  ek1 = md_getekin(ekin, v, nd);
   logek1 = log(ek1);
   logek2 = logek1 + dt*(2.f*rnd0() - 1);
   ek2 = exp(logek2);
@@ -163,7 +181,7 @@ INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin,
     s = (real) sqrt(ek2/ek1);
     for (i = 0; i < nd; i++)
       v[i] *= s;
-    *ekin = ek2;
+    if (ekin) *ekin = ek2;
     if (tkin) *tkin *= s*s;
     return 1;
   } else { /* do nothing otherwise */
@@ -176,20 +194,20 @@ INLINE int md_mcvrescale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt,
 INLINE int md_mcvrescale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
     { return md_mcvrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
 
-
 /* Nose-Hoover thermostat */
 INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
    real *zeta, real Q, real *ekin, real *tkin)
 {
   int i;
-  real ek1 = *ekin, ek2, s, dt2 = .5f*dt;
-  
+  real ek1, ek2, s, dt2 = .5f*dt;
+ 
+  ek1 = md_getekin(ekin, v, nd); 
   *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
   
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
-  *ekin = ek2;
+  if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
   
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
@@ -208,8 +226,10 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
    real *zeta, const real *Q, int M, real *ekin, real *tkin)
 {
   int i, j;
-  real ek1 = *ekin, ek2, s, dt2 = .5f*dt, dt4 = .25f*dt, G, xp = 1.f;
+  real ek1, ek2, s, dt2 = .5f*dt, dt4 = .25f*dt, G, xp = 1.f;
  
+  ek1 = md_getekin(ekin, v, nd);
+  
   /* propagate the chain */
   for (j = M-1; j > 0; j--) {
     if (j < M-1) {
@@ -236,7 +256,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
-  *ekin = ek2;
+  if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
  
   /* the first thermotat variable */ 
@@ -269,6 +289,42 @@ INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
 INLINE void md_nhchain3d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
    real *zeta, const real *Q, int M, real *ekin, real *tkin)
   { md_nhchain((real *)v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+
+/* velocity-scaling Langevin thermostat */
+INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
+   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+{
+  int i;
+  real ek1, ek2, s, dt2 = .5f*dt, xp, amp;
+  
+  ek1 = md_getekin(ekin, v, nd);
+  xp = (real) exp(-zeta2*.25*dt);
+  amp = (real) sqrt(2*zeta2/Q*dt2);
+  *zeta *= xp;
+  *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
+  *zeta += amp * grand0(); /* white noise */
+  *zeta *= xp;
+  
+  s = (real) exp(-(*zeta)*dt);
+  for (i = 0; i < nd; i++) v[i] *= s;
+  ek2 = ek1 * (s*s);
+  if (ekin) *ekin = ek2;
+  if (tkin) *tkin *= s*s;
+  
+  *zeta *= xp;
+  *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
+  *zeta += amp * grand0(); /* white noise */
+  *zeta *= xp;
+}
+
+INLINE void md_vslang2d(rv2_t *v, int n, int dof, real tp, real dt,
+   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+  { md_vslang((real *)v, n*2, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
+
+INLINE void md_vslang3d(rv3_t *v, int n, int dof, real tp, real dt,
+   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+  { md_vslang((real *)v, n*3, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
+
 
 /* Anderson thermostat */
 INLINE void md_andersen(real *v, int n, int d, real tp)

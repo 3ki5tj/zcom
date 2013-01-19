@@ -1071,18 +1071,18 @@ INLINE real lj_duinsert(lj_t *lj, real *xt)
 { return lj->d == 2 ? lj_duinsert2d(lj, xt) : lj_duinsert3d(lj, xt); }
 
 /* velocity verlet */
-INLINE void lj_vv(lj_t *lj, real dt)
+INLINE void lj_vvx(lj_t *lj, real dt, real fscal)
 {
   int i, nd = lj->n*lj->d;
-  real dtl = dt/lj->l;
+  real dtl = dt/lj->l, dthf = dt * .5f * fscal;
 
   for (i = 0; i < nd; i++) { /* VV part 1 */
-    lj->v[i] += lj->f[i] * dt *.5f;
+    lj->v[i] += lj->f[i] * dthf;
     lj->x[i] += lj->v[i] * dtl;
   }
   lj_force(lj); /* calculate the new force */
   for (i = 0; i < nd; i++) /* VV part 2 */
-    lj->v[i] += lj->f[i] * dt * .5f;
+    lj->v[i] += lj->f[i] * dthf;
 
   lj->ekin = md_ekin(lj->v, nd, lj->dof, &lj->tkin);
   lj->t += dt;
