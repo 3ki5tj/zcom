@@ -1,6 +1,8 @@
 #!/usr/bin/env gnuplot
 reset
 unset multiplot
+
+set encoding cp1250 # make minus sign longer
 set terminal postscript enhanced font 'Arial, 14' linewidth 1
 set output "basic.ps"
 
@@ -55,9 +57,9 @@ set key left bottom Left reverse width -9
 
 plot [0.005:0.1][0:] \
   "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (1)", \
-            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (2'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
-            ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361}= 1", \
+            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=8 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (2'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=8 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
+            ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361} = 1", \
             ""  u 1:6  w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
             ""  u 1:8  w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1"
 

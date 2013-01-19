@@ -1,6 +1,8 @@
 #!/usr/bin/env gnuplot
 unset multiplot
 reset
+
+set encoding cp1250 # make minus sign longer
 set terminal postscript enhanced font 'Arial, 11' size 10, 3.5
 set output "isent.ps"
 set multiplot
@@ -110,25 +112,25 @@ set key right bottom width -10
 
 delx = 0.01
 
-plot [-2.0:-delx][-1.5:0.5] \
+plot [-2.0:0][-1.5:0.5] \
   "profis32.dat" u ($1/N):11  w l ls 3 not, \
   ""             u ($1/N):11  every 32 w p ls 3 ps 1.2 not, \
   -10                         w lp ls 3 t "Eq. (4), {/Arial-Italic k} = 0", \
-  "is32x.dat"    u ($1/N):($7+$9+$10+7.38) w l ls 13 not, \
-  ""             u ($1/N):($7+$9+$10+7.38) every 32 w p ls 13 ps 1.2 not, \
+  "is32x.dat"    u ($1/N):((abs($1/N) > delx) ? ($7+$9+$10+7.38) : 0.) w l ls 13 not, \
+  ""             u ($1/N):((abs($1/N) > delx) ? ($7+$9+$10+7.38) : 0.) every 32 w p ls 13 ps 1.2 not, \
   -10                         w lp ls 13 t "Eq. (10), {/Arial-Italic k} = 0, [Eq. (4) corrected]", \
   "profis32.dat" u ($1/N):13  w l ls 4 not, \
   ""             u ($1/N):13  every 32 w p ls 4 ps 1.5 not, \
   -10                         w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
-  "is32x.dat"    u ($1/N):($15+$17+$18-2.04)  w l ls 14 not, \
-  ""             u ($1/N):($15+$17+$18-2.04) every 32 w p ls 14 not, \
-  -10                         w lp ls 14 t "Eq. (E3), {/Arial-Italic k} = 1 [Eq. (8) corrected]", \
+  "is32x.dat"    u ($1/N):((abs($1/N) > delx) ? ($15+$17+$18-2.04) : 0.)  w l ls 14 not, \
+  ""             u ($1/N):((abs($1/N) > delx) ? ($15+$17+$18-2.04) : 0.) every 32 w p ls 14 not, \
+  -10                         w lp ls 14 t "Eq. (D4), {/Arial-Italic k} = 1 [Eq. (8) corrected]", \
   "profis32.dat" u ($1/N):15  w l ls 5 not, \
   ""             u ($1/N):15  every 32 w p ls 5 ps 1.2 not, \
   -10                         w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1", \
-  "is32x.dat"    u ($1/N):($22+$23) w l ls 15 not, \
-  ""             u ($1/N):($22+$23) every 32 w p ls 15 not, \
-  -10                         w lp ls 15 t "Eq. (E4), {/Arial-Italic k} = 1 [Eq. (9) corrected]"
+  "is32x.dat"    u ($1/N):((abs($1/N) > delx) ? ($22+$23) : 1/0) w l ls 15 not, \
+  ""             u ($1/N):((abs($1/N) > delx) ? ($22+$23) : 1/0) every 32 w p ls 15 not, \
+  -10                         w lp ls 15 t "Eq. (D5), {/Arial-Italic k} = 1 [Eq. (9) corrected]"
   
   
 #  "profis16.dat" u ($1/N16):11  w l ls 6 not, \
