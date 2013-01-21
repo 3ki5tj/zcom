@@ -1,1 +1,1 @@
-../app/is.c
+../prog/is.c

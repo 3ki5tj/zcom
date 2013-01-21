@@ -1,1 +1,1 @@
-../app/sqmc.c
+../prog/sqmc.c

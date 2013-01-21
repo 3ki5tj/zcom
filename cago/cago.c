@@ -308,7 +308,7 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   const char *fmt;
   real vtmp[3], *vi;
 
-  if (fn == NULL) fn = "ab.pos";
+  if (fn == NULL) fn = "ca.pos";
   xfopen(fp, fn, "r", return -1);
 
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {

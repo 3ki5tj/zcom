@@ -1,1 +1,1 @@
-../app/islogdos32x32.txt
+../prog/islogdos32x32.txt

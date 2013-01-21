@@ -1,1 +1,1 @@
-../app/ljmc.c
+../prog/ljmc.c

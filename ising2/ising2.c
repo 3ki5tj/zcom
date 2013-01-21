@@ -173,14 +173,14 @@ INLINE double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     lnc = lnadd(x, -x);
     lnd = lnaddn(lnc, 6.);
     lnz = lnd + log2;
-    *eav = -8.*exp(lndif(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
-    *cv = bsqr * 384. * exp(lnaddn(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
+    if (eav) *eav = -8.*exp(lndif(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
+    if (cv) *cv = bsqr * 384. * exp(lnaddn(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
     return lnz;
   } else if (fabs(beta) < 1e-6) { /* high T approx. normal branch unstable if beta < 1e-6 */
     lnz = n * (2.*lnadd(beta, -beta) - log2);
     x = 1. + xn2b;
-    *eav = -2. * n * (1. - xn2b)/x;
-    *cv = bsqr * 8.*n*xn2b/(x*x);
+    if (eav) *eav = -2. * n * (1. - xn2b)/x;
+    if (cv) *cv = bsqr * 8.*n*xn2b/(x*x);
     return lnz; /* +n*tanh(beta)^4 */
   }
 
@@ -260,13 +260,13 @@ INLINE double is2_exact(ising_t *is, double beta, double *eav, double *cv)
   lnz = lnz1 + log(za1);
   lnz += .5*n*log(2.*sh2b) - log2;
   dz = (dr1 + z21*dr2 + z31*dr3 + z41*dr4)/za1;
-  *eav = - n*coth2b - dz;
+  if (eav) *eav = - n*coth2b - dz;
   ddr1 += dr1*dr1;
   ddr2 += dr2*dr2;
   ddr3 += dr3*dr3;
   ddr4 += dr4*dr4;
   ddz = (ddr1 + z21*ddr2 + z31*ddr3 + z41*ddr4)/za1;
-  *cv = bsqr * (-2.*n/(sh2b*sh2b) + ddz - dz*dz);
+  if (cv) *cv = bsqr * (-2.*n/(sh2b*sh2b) + ddz - dz*dz);
   return lnz;
 }
 

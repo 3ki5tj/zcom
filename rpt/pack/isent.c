@@ -1,1 +1,1 @@
-../app/isent.c
+../prog/isent.c

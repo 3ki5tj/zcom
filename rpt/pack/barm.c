@@ -1,1 +1,1 @@
-../app/barm.c
+../prog/barm.c

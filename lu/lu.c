@@ -4,7 +4,9 @@
 /* LU decomposition part  */
 #include "lu.h"
 
-/* solve A x = b by L U decomposition */
+/* solve A x = b by L U decomposition
+ * the matrix `a' will be destroyed 
+ * the vector `b' will be `x' on return */
 int lusolve(real *a, real *b, int n)
 {
   int i, j, k, imax = 0;

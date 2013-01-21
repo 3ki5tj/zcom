@@ -56,9 +56,10 @@ typedef struct {
   double (*fnorm)(int, int, double, double, void *);
 } hist_t;
 
-#define hs_open(m,x0,x1,dx) hs_openx(m,x0,x1,dx,NULL,NULL,NULL)
-#define hs_save(hs,fn,flags) hs_savex(hs,fn,NULL,flags)
-#define hs_load(hs,fn,flags) hs_loadx(hs,fn,NULL,flags)
+#define hs_open(m, x0, x1, dx) hs_openx(m, x0, x1, dx, NULL, NULL, NULL)
+#define hs_open1(x0, x1, dx) hs_open(1, x0, x1, dx)
+#define hs_save(hs,fn,flags) hs_savex(hs, fn, NULL, flags)
+#define hs_load(hs,fn,flags) hs_loadx(hs, fn, NULL, flags)
 #define hs_clear(hs) dblcleararr(hs->arr, hs->rows * hs->n)
 
 INLINE hist_t *hs_openx(int rows, double xmin, double xmax, double dx,
@@ -143,6 +144,13 @@ typedef struct {
 
 #define hs2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->m)
 
+#define hs2_open1(xmin, xmax, dx, ymin, ymax, dy) \
+  hs2_open(1, xmin, xmax, dx, ymin, ymax, dy)
+#define hs2_opensqr(rows, xmin, xmax, dx) \
+  hs2_open(rows, xmin, xmax, dx, xmin, xmax, dx)
+#define hs2_opensqr1(xmin, xmax, dx) \
+  hs2_opensqr(1, xmin, xmax, dx)
+
 INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx,
     double ymin, double ymax, double dy)
 {
@@ -198,6 +206,8 @@ INLINE int hs2_add(hist2_t *hs, const double *x, const double *y, int skip,
   return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
       hs->m, hs->ymin, hs->dy, flags);
 }
+
+#define hs2_add1ez(hs, x, y, flags) hs2_add1(hs, 0, x, y, 1.0, flags)
 
 INLINE int hs2_add1(hist2_t *hs, int r, double x, double y,
     double w, unsigned flags)

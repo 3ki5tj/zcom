@@ -113,8 +113,8 @@ INLINE real lj_calcpk(lj_t *lj)
 /* set density, compute tail corrections, etc */
 INLINE void lj_setrho(lj_t *lj, real rho);
 
-#define lj_vv(lj, dt) lj_vvx(lj, dt, 1.f)
-INLINE void lj_vvx(lj_t *lj, real dt, real fscal);
+#define lj_vv(lj, dt) lj_vvx(lj, 1.f, dt)
+INLINE void lj_vvx(lj_t *lj, real fscal, real dt);
 
 #define lj_shiftcom(lj, v)    md_shiftcom(v, lj->n, lj->d)
 #define lj_shiftang(lj, x, v) md_shiftang(x, v, lj->n, lj->d)

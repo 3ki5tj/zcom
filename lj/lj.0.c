@@ -589,23 +589,24 @@ INLINE real lj_energysw3d(lj_t *lj, rv3_t *x, real *virial, real *laplace)
 /* 3D compute force and virial, return energy */
 static real lj_energylj3d(lj_t *lj, rv3_t *x, real *virial, real *ep0, real *eps)
 {
-  real dx[3], dr2, dr6, ep, l = lj->l, rc2 = lj->rc2;
+  real dx[3], dr2, dr6, ep, vir, l = lj->l, rc2 = lj->rc2;
   int i, j, prcnt = 0, n = lj->n;
 
   if (virial) *virial = 0.f;
-  for (ep = 0, i = 0; i < n - 1; i++) {
+  for (ep = vir = 0, i = 0; i < n - 1; i++) {
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 > rc2) continue;
       dr2 = 1.f / dr2;
       dr6 = dr2 * dr2 * dr2;
-      if (virial) *virial += dr6 * (48.f * dr6 - 24.f); /* f.r */
+      vir += dr6 * (48.f * dr6 - 24.f); /* f.r */
       ep += 4 * dr6 * (dr6 - 1);
       prcnt++;
     }
   }
   if (ep0) *ep0 = ep;
   if (eps) *eps = ep - prcnt * lj->epot_shift; /* shifted energy */
+  if (virial) *virial = vir;
   return ep + lj->epot_tail; /* unshifted energy */
 }
 
@@ -720,14 +721,16 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
       dr6 = dr2 * dr2 * dr2;
       fs = dr6 * (48.f * dr6 - 24.f); /* f.r */
       vir += fs; /* f.r */
-      if (laplace)
-        lap += 2.f*((672 - 48*3) * dr6 - (192 - 24*3)) * dr6 * dr2;      
+      if (laplace) /* 2.f for it applies to both particles */
+        lap += 2.f * ((168 - 12*3) * dr6 - (48 - 6*3)) * dr6 * dr2;
+ 
       fs *= dr2; /* f.r / r^2 */
       for (d = 0; d < 3; d++) {
         tmp = dx[d] * fs;
         fi[d] += tmp;
         f[j][d] -= tmp;
       }
+
       ep += 4 * dr6 * (dr6 - 1);
       prcnt++;
     }
@@ -736,8 +739,8 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
   if (ep0) *ep0 = ep;  
   if (eps) *eps = ep - prcnt * lj->epot_shift; /* shifted energy */
   if (virial) *virial = vir;
-  if (laplace) *laplace = lap;
-  if (f2) for (*f2 = 0.0, i = 0; i < n; i++) *f2 += rv3_sqr(f[i]);  
+  if (laplace) *laplace = 4*lap;
+  if (f2) for (*f2 = 0.f, i = 0; i < n; i++) *f2 += rv3_sqr(f[i]);
   return ep + lj->epot_tail; /* unshifted energy */
 }
 
@@ -1071,7 +1074,7 @@ INLINE real lj_duinsert(lj_t *lj, real *xt)
 { return lj->d == 2 ? lj_duinsert2d(lj, xt) : lj_duinsert3d(lj, xt); }
 
 /* velocity verlet */
-INLINE void lj_vvx(lj_t *lj, real dt, real fscal)
+INLINE void lj_vvx(lj_t *lj, real fscal, real dt)
 {
   int i, nd = lj->n*lj->d;
   real dtl = dt/lj->l, dthf = dt * .5f * fscal;
