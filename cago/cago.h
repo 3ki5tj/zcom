@@ -47,21 +47,13 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 
 /* convenient macro for computing rmsd from the reference structure */
-INLINE real cago_rotfit(cago_t *go, rv3_t *x, rv3_t *xf)
-  { return go->rmsd = rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL); }
+#define cago_rmsd(go, x, xf) rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL)
+#define cago_rotfit(go, x, xf) { go->rmsd = cago_rmsd(go, x, xf); }
+
+#define cago_copyvec(go, t, s) rv3_ncopy(t, s, go->n)
 
 INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
     real tps, real tp, av_t *avep, av_t *avrmsd,
     int teql, int tmax, int trep);
-
-INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real epot, int npass, 
-    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
-    real tp, real tpmin, real tpmax, int tmax, int trep);
-
-INLINE int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real rmsd, int npass, 
-    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
-    real tp, real tpmin, real tpmax, int tmax, int trep);
 
 #endif

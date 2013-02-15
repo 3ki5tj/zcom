@@ -1,4 +1,11 @@
+#ifndef INLINE
+#define INLINE __inline static
+#endif
+#ifndef RESTRICT
+#define RESTRICT __restrict 
+#endif
 #include "def.h"
+#include "rng.c"
 #ifndef RV2_H__
 #define RV2_H__
 
@@ -218,6 +225,37 @@ INLINE void rm2_fprint(FILE *fp, real r[2][2], const char *nm,
     }
     fprintf(fp, "%s", (nl ? "\n" : "; "));
   }
+}
+
+/* uniformly distributed random vector [a, a + b) */
+#define rv2_rnd0() rv2_rnd(v, 0, 1)
+INLINE real *rv2_rnd(rv2_t v, real a, real b)
+{
+  v[0] = (real) (a + b * rnd0());
+  v[1] = (real) (a + b * rnd0());
+  return v;
+}
+
+
+/* normally distributed random vector */
+#define rv2_grand0(v) rv2_grand(v, 0, 1)
+INLINE real *rv2_grand(rv2_t v, real c, real r)
+{
+  v[0] = (real) (c + r * grand0());
+  v[1] = (real) (c + r * grand0());
+  return v;
+}
+
+/* generate a random orthonormal (unitary) 2x2 matrix */
+INLINE rv2_t *rm2_rnduni(real a[2][2])
+{
+  rv2_rnd(a[0], -.5f, 1.f);
+  rv2_normalize(a[0]);
+  
+  a[1][0] = a[0][1];
+  a[1][1] = -a[0][0];
+  if (rnd0() > 0.5) rv2_neg(a[1]);
+  return a;
 }
 
 #endif /* RV2_H__ */

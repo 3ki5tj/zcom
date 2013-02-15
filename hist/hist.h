@@ -56,6 +56,8 @@ typedef struct {
   double (*fnorm)(int, int, double, double, void *);
 } hist_t;
 
+typedef hist_t hs_t;
+
 #define hs_open(m, x0, x1, dx) hs_openx(m, x0, x1, dx, NULL, NULL, NULL)
 #define hs_open1(x0, x1, dx) hs_open(1, x0, x1, dx)
 #define hs_save(hs,fn,flags) hs_savex(hs, fn, NULL, flags)
@@ -141,6 +143,8 @@ typedef struct {
   double dx, dy;
   double *arr, *dumptr;
 } hist2_t;
+
+typedef hist2_t hs2_t;
 
 #define hs2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->m)
 

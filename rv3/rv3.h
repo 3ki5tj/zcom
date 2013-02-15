@@ -1,8 +1,11 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
+#ifndef RESTRICT
 #define RESTRICT __restrict 
+#endif
 #include "def.h"
+#include "rng.c"
 #ifndef RV3_H__
 #define RV3_H__
 
@@ -1478,6 +1481,44 @@ INLINE real *rv3_rot(real *v1, const real *v0, const real *u, real ang)
   rm3_mkrot(m, u, ang);
   rm3_mulvec(v1, m, v0);
   return v1;
+}
+
+/* uniformly distributed random vector [a, a + b) */
+#define rv3_rnd0() rv3_rnd(v, 0, 1)
+INLINE real *rv3_rnd(rv3_t v, real a, real b)
+{
+  v[0] = (real) (a + b * rnd0());
+  v[1] = (real) (a + b * rnd0());
+  v[2] = (real) (a + b * rnd0());
+  return v;
+}
+
+/* normally distributed random vector */
+#define rv3_grand0(v) rv3_grand(v, 0, 1)
+INLINE real *rv3_grand(rv3_t v, real c, real r)
+{
+  v[0] = (real) (c + r * grand0());
+  v[1] = (real) (c + r * grand0());
+  v[2] = (real) (c + r * grand0());
+  return v;
+}
+
+/* generate a random orthonormal (unitary) 3x3 matrix */
+INLINE rv3_t *rm3_rnduni(real a[3][3])
+{
+  real dot;
+
+  rv3_rnd(a[0], -.5f, 1.f);
+  rv3_normalize(a[0]);
+
+  rv3_rnd(a[1], -.5f, 1.f);
+  /* normalize a[1] against a[0] */
+  dot = rv3_dot(a[0], a[1]);
+  rv3_sinc(a[1], a[0], -dot);
+  rv3_normalize(a[1]);
+
+  rv3_cross(a[2], a[0], a[1]);
+  return a;
 }
 
 #endif /* RV3_H__ */

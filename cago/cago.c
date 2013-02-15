@@ -174,7 +174,7 @@ INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
     rv3_smul(go->v[i], s);
   }
   go->ekin = cago_ekin(go, go->v);
-  go->rmsd = cago_rotfit(go, go->x, NULL);
+  go->rmsd = cago_rmsd(go, go->x, NULL);
   go->t = 0;
   return 0;
 }
@@ -188,8 +188,11 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
   rv3_t dx, g[3];
   dihcalc_t dc[1];
 
-  for (i = 0; i < n; i++)
-    rv3_zero(f[i]);
+  if (f != NULL) {
+    for (i = 0; i < n; i++)
+      rv3_zero(f[i]);
+  }
+
   /* bonds */
   for (i = 0; i < n-1; i++) {
     rv3_diff(dx, x[i], x[i+1]);
@@ -197,8 +200,10 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
     del = dr - go->bref[i];
     ene += .5f*kb*del*del;
     amp = kb*del/dr;
-    rv3_sinc(f[i],   dx, -amp);
-    rv3_sinc(f[i+1], dx,  amp);
+    if (f != NULL) {
+      rv3_sinc(f[i],   dx, -amp);
+      rv3_sinc(f[i+1], dx,  amp);
+    }
   }
 
   /* angles */
@@ -207,9 +212,11 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
     del = ang - go->aref[i-1];
     ene += .5f*ka*del*del;
     amp = -ka*del;
-    rv3_sinc(f[i-1], g[0], amp);
-    rv3_sinc(f[i],   g[1], amp);
-    rv3_sinc(f[i+1], g[2], amp);
+    if (f != NULL) {
+      rv3_sinc(f[i-1], g[0], amp);
+      rv3_sinc(f[i],   g[1], amp);
+      rv3_sinc(f[i+1], g[2], amp);
+    }
   }
 
   /* dihedrals */
@@ -224,10 +231,12 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
     amp  = (real)( -kd1 * sin(del) );
     ene += (real)(  kd3 * (1. - cos(3.*del)) );
     amp += (real)( -kd3 * 3 * sin(3*del) );
-    rv3_sinc(f[i],   dc->g[0], amp);
-    rv3_sinc(f[i+1], dc->g[1], amp);
-    rv3_sinc(f[i+2], dc->g[2], amp);
-    rv3_sinc(f[i+3], dc->g[3], amp);
+    if (f != NULL) {
+      rv3_sinc(f[i],   dc->g[0], amp);
+      rv3_sinc(f[i+1], dc->g[1], amp);
+      rv3_sinc(f[i+2], dc->g[2], amp);
+      rv3_sinc(f[i+3], dc->g[3], amp);
+    }
   }
 
   /* nonbonded */
@@ -250,8 +259,10 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
         amp = nbe*12*dr6*invr2;
         ene += nbe*dr6;
       }
-      rv3_sinc(f[i], dx,  amp);
-      rv3_sinc(f[j], dx, -amp);
+      if (f != NULL) {
+        rv3_sinc(f[i], dx,  amp);
+        rv3_sinc(f[j], dx, -amp);
+      }
     }
   }
   return ene;
@@ -277,6 +288,117 @@ INLINE int cago_vv(cago_t *go, real fscal, real dt)
   go->ekin = cago_ekin(go, go->v);
   go->t += dt;
   return 0;
+}
+
+/* the change of the potential energy */
+INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
+{
+  int j, n = go->n;
+  rv3_t dxo, dxn, *xn = go->x1; /* we use x1 freely here */
+  real dro, delo, drn, deln;
+  real ango, angn;
+  real ene = 0, dr2, invr2, dr4, dr6, dr10;
+  real ka = go->ka, kb = go->kb, kd1 = go->kd1, kd3 = go->kd3;
+  real nbe = go->nbe, nbc2 = go->nbc * go->nbc;
+ 
+  /* copy coordinates */ 
+  for (j = 0; j < n; j++) {
+    if (j == i) rv3_copy(xn[i], xi);
+    else rv3_copy(xn[j], x[j]);
+  }
+
+  /* bonds */
+  for (j = i - 1; j <= i; j++) {
+    if (j < 0 || j >= n - 1) continue;
+    rv3_diff(dxo, x[j], x[j+1]);
+    dro = rv3_norm(dxo);
+    delo = dro - go->bref[j];
+    ene -= .5f * kb * delo * delo;
+    rv3_diff(dxn, xn[j], xn[j+1]);
+    drn = rv3_norm(dxn);
+    deln = drn - go->bref[j];
+    ene += .5f * kb * deln * deln;
+  }
+
+  /* angles */
+  for (j = i - 1; j <= i + 1; j++) {
+    if (j < 1 || j >= n - 1) continue;
+    ango = rv3_ang(x[j - 1], x[j], x[j+1], NULL, NULL, NULL);
+    delo = ango - go->aref[j - 1];
+    ene -= .5f * ka * delo * delo;
+    angn = rv3_ang(xn[j - 1], xn[j], xn[j+1], NULL, NULL, NULL);
+    deln = angn - go->aref[j - 1];
+    ene += .5f * ka * deln * deln;
+  }
+
+  /* dihedrals */
+  for (j = i - 3; j <= i; j++) {
+    if (j < 0 || j >= n - 3) continue;
+    ango = rv3_dih(x[j], x[j + 1], x[j + 2], x[j + 3], NULL, NULL, NULL, NULL);
+    delo = ango - go->dref[j];
+    if (delo > M_PI) delo -= 2*M_PI; else if (delo < -M_PI) delo += 2*M_PI;
+    ene -= (real)( kd1 * (1 - cos(delo)) + kd3 * (1 - cos(3 * delo)) );
+    angn = rv3_dih(xn[j], xn[j + 1], xn[j + 2], xn[j + 3], NULL, NULL, NULL, NULL);
+    deln = angn - go->dref[j];
+    if (deln > M_PI) deln -= 2*M_PI; else if (deln < -M_PI) deln += 2*M_PI;
+    ene += (real)( kd1 * (1 - cos(deln)) + kd3 * (1 - cos(3 * deln)) );
+  }
+  
+  /* nonbonded interaction */
+  for (j = 0; j < n; j++) {
+    if (abs(i - j) < 4) continue;
+    rv3_diff(dxo, x[i], x[j]);
+    dr2 = rv3_sqr(dxo);
+    invr2 = 1/dr2;
+    if (go->iscont[i*n + j]) { /* is a contact pair */
+      dr2 = go->r2ref[i*n + j] * invr2;
+      dr4 = dr2 * dr2;
+      dr6 = dr4 * dr2;
+      dr10 = dr4 * dr6;
+      ene -= nbe * (5 * dr2 - 6) * dr10;
+    } else {
+      dr2 = nbc2/dr2;
+      dr6 = dr2 * dr2 * dr2;
+      dr6 *= dr6;
+      ene -= nbe * dr6;
+    }
+    
+    rv3_diff(dxn, xi, x[j]);
+    dr2 = rv3_sqr(dxn);
+    invr2 = 1/dr2;
+    if (go->iscont[i*n + j]) { /* is a contact pair */
+      dr2 = go->r2ref[i*n + j] * invr2;
+      dr4 = dr2 * dr2;
+      dr6 = dr4 * dr2;
+      dr10 = dr4 * dr6;
+      ene += nbe * (5 * dr2 - 6) * dr10;
+    } else {
+      dr2 = nbc2/dr2;
+      dr6 = dr2 * dr2 * dr2;
+      dr6 *= dr6;
+      ene += nbe * dr6;
+    }
+  }
+  return ene;
+}
+
+/* metropolis algorithm */
+INLINE int cago_metro(cago_t *go, real amp, real bet)
+{
+  int i;
+  rv3_t xi;
+  real du;
+
+  i = (int) (go->n * rnd0());
+  rv3_inc(rv3_rnd(xi, -amp, 2.f*amp), go->x[i]);
+  du = cago_depot(go, go->x, i, xi);
+  if (du < 0 || rnd0() < exp(-bet * du)) {
+    rv3_copy(go->x[i], xi);
+    go->epot += du;
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 /* write position/velocity file */
@@ -308,7 +430,7 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   const char *fmt;
   real vtmp[3], *vi;
 
-  if (fn == NULL) fn = "ca.pos";
+  if (fn == NULL) fn = "cago.pos";
   xfopen(fp, fn, "r", return -1);
 
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
@@ -382,7 +504,7 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     cago_vv(go, fs, mddt);
     if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, (real) tps, thermdt);
-    go->rmsd = cago_rotfit(go, go->x, NULL);
+    go->rmsd = cago_rmsd(go, go->x, NULL);
     if (t > teql) {
       av_add(avep, go->epot);
       av_add(avrmsd, go->rmsd);
@@ -394,154 +516,6 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
   }
   return 0;
 }
-
-/* guess a proper temperature for a target potential energy
- * return 0 if successful
- *
- * temperature is updated according to epot 
- * several stages of updating are used, each with a fixed tpdt
- * after a stage, the updating magnitude amp is multiplied by ampf
- * iterations finish when the temperature difference is less than 
- * a given tolerance 'tptol'
- * a pass is defined every time the potential energy crosses 'epot'
- * in every stage, npass passes are required to determine convergence
- * */
-INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real epot, int npass, 
-    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
-    real tp, real tpmin, real tpmax, int tmax, int trep)
-{
-  int i, t, stg, sgp, sgn, ipass;
-  real tpp = 0, tp1, tpav, epav, rdav, tmp;
-
-  go->rmsd = cago_rotfit(go, go->x, NULL);
-  sgp = (go->epot > epot) ? 1 : -1;
-  for (stg = 0; ; stg++, amp *= ampf) { /* stages with different dpdt */
-    if (avtp) av_clear(avtp);
-    if (avep) av_clear(avep);
-    if (avrmsd) av_clear(avrmsd);
-    for (ipass = 0, t = 1; (tmax < 0 || t <= tmax) && ipass < npass; t++) {
-      cago_vv(go, 1, mddt);
-      if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
-      cago_vrescale(go, (real) tp, thermdt);
-      go->rmsd = cago_rotfit(go, go->x, NULL);
-      sgn = (go->epot > epot) ? 1 : -1;
-      if (sgn * sgp < 0) {
-        ipass++;
-        sgp = sgn;
-      }
-      /* update the temperature */
-      tp1 = tp - sgn*mddt*amp;
-      if (tp1 < tpmin) tp1 = tpmin;
-      else if (tp1 > tpmax) tp1 = tpmax;
-      for (tmp = tp1/tp, i = 0; i < go->n; i++) /* scale v */
-        rv3_smul(go->v[i], tmp);
-      tp = tp1;
-      if (avtp) av_add(avtp, tp);
-      if (avep) av_add(avep, go->epot);
-      if (avrmsd) av_add(avrmsd, go->rmsd);
-      if (trep >= 0 && t % trep == 0) {
-        printf("%d|%9d: %.2f - %.2f, tp %.4f, K %.2f, rmsd %.4f pass: %d/%d\n",
-            stg, t, go->epot, epot, tp,
-            go->ekin, go->rmsd, ipass, npass);
-      }
-    }
-    /* end of a stage */
-    if (ipass < npass) { /* not enough passes over rmsd */
-      const char fnfail[] = "fail.pos";
-      cago_rotfit(go, go->x, go->x1);
-      cago_writepos(go, go->x1, NULL, fnfail);
-      fprintf(stderr, "%d: failed to converge, epot: %g - %g, %d passes, %s\n", 
-          stg, epot, go->epot, ipass, fnfail);
-      return 1;
-    }
-    tpav = av_getave(avtp);
-    epav = av_getave(avep);
-    rdav = av_getave(avrmsd);
-    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n", 
-        stg, amp, tp, tpav, tpp, epav, rdav, ipass, npass);
-    tmp = .5*(tpav + tpp);
-    if (stg > 0 && fabs(tpav - tpp) < tptol*tmp) break;
-    tpp = tpav;
-  }
-  return 0;
-}
-
-/* guess a proper temperature for a target rmsd, return 0 if successful
- * should work for a small rmsd
- * for a rmsd in the transition region, it can be stuck in a local minimal,
- * in which rmsd is greater than the target value, but tp reaches tpmin
- *
- * temperature is updated according to rmsd 
- * several stages of updating are used, each with a fixed tpdt
- * after a stage, the updating magnitude amp is multiplied by ampf
- * iterations finish when the temperature difference is less than 
- * a given tolerance 'tptol'
- * a pass is defined every time the rmsd crosses 'rmsd'
- * in every stage, npass passes are required to determine convergence
- * */
-INLINE int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real rmsd, int npass, 
-    real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
-    real tp, real tpmin, real tpmax, int tmax, int trep)
-{
-  int i, t, stg, sgp, sgn, ipass;
-  real tpp = 0, tp1, tpav, epav, rdav, tmp;
-
-  go->rmsd = cago_rotfit(go, go->x, NULL);
-  sgp = (go->rmsd > rmsd) ? 1 : -1;
-  for (stg = 0; ; stg++, amp *= ampf) { /* stages with different dpdt */
-    if (avtp) av_clear(avtp);
-    if (avep) av_clear(avep);
-    if (avrmsd) av_clear(avrmsd);
-    for (ipass = 0, t = 1; (tmax < 0 || t <= tmax) && ipass < npass; t++) {
-      cago_vv(go, 1, mddt);
-      if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
-      cago_vrescale(go, (real) tp, thermdt);
-      go->rmsd = cago_rotfit(go, go->x, NULL);
-      sgn = (go->rmsd > rmsd) ? 1 : -1;
-      if (sgn * sgp < 0) {
-        ipass++;
-        sgp = sgn;
-      }
-      /* update the temperature */
-      tp1 = tp - sgn*mddt*amp;
-      if (tp1 < tpmin) tp1 = tpmin;
-      else if (tp1 > tpmax) tp1 = tpmax;
-      for (tmp = tp1/tp, i = 0; i < go->n; i++) /* scale v */
-        rv3_smul(go->v[i], tmp);
-      tp = tp1;
-      if (avtp) av_add(avtp, tp);
-      if (avep) av_add(avep, go->epot);
-      if (avrmsd) av_add(avrmsd, go->rmsd);
-      if (trep >= 0 && t % trep == 0) {
-        printf("%d|%9d: %.2f - %.2f, tp %.4f, K %.2f, U %.2f, pass: %d/%d\n",
-            stg, t, go->rmsd, rmsd, tp,
-            go->ekin, go->epot, ipass, npass);
-      }
-    }
-    /* end of a stage */
-    if (ipass < npass) { /* not enough passes over rmsd */
-      const char fnfail[] = "fail.pos";
-      cago_rotfit(go, go->x, go->x1);
-      cago_writepos(go, go->x1, NULL, fnfail);
-      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes, %s\n", 
-          stg, rmsd, go->rmsd, ipass, fnfail);
-      return 1;
-    }
-    tpav = av_getave(avtp);
-    epav = av_getave(avep);
-    rdav = av_getave(avrmsd);
-    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n", 
-        stg, amp, tp, tpav, tpp, epav, rdav, ipass, npass);
-    tmp = .5*(tpav + tpp);
-    if (stg > 0 && fabs(tpav - tpp) < tptol*tmp) break;
-    tpp = tpav;
-  }
-  return 0;
-}
-
-
 
 #endif
 

@@ -17,7 +17,7 @@ $(bin): $(deps)
 	$(CX) -o $@ $< 
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin)
+	rm -f *~ *.out MTSEED *.dat $(bin) HIST HIST2
 
 .PHONY: all clean
 

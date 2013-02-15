@@ -144,7 +144,7 @@ static int tmhrun(tmh_t *tmh, cago_t *go, double nsteps, double step0)
       cago_vrescale(go, (real)(boltz * tmh_tps), thermdt);
     }
     cago_rmcom(go, go->x, go->v);
-    go->rmsd = cago_rotfit(go, go->x, NULL);
+    go->rmsd = cago_rmsd(go, go->x, NULL);
 
     /* tweak amplitude ~ 1/tp */
     tmh_ezmove(tmh, go->epot, tmh_tps/tmh->tp, tmh_lgvdt);
