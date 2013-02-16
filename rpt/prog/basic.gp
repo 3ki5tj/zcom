@@ -52,12 +52,12 @@ set key left bottom Left reverse spacing 1.2
 # {/Symbol \361}, right angle, >
 
 plot [0.005:0.1][0:] \
-  "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (4)", \
-            ""  u 1:2  w lp ls 1 t "Eq. (5), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol e}^2{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (6'), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol De^2}{/Symbol \361}", \
-            ""  u 1:4  w lp ls 3 t "Eq. (6), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
-            ""  u 1:6  w lp ls 4 t "Eq. (11), k = 1", \
-            ""  u 1:8  w lp ls 5 t "Eq. (12), k = 1"
+  "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (1)", \
+            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol e}^2{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (3'), {/Symbol b} = 2{/Symbol \341}{/Symbol e}{/Symbol \361}/{/Symbol \341}{/Symbol De^2}{/Symbol \361}", \
+            ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
+            ""  u 1:6  w lp ls 4 t "Eq. (8), k = 1", \
+            ""  u 1:8  w lp ls 5 t "Eq. (9), k = 1"
 
 unset logscale x
 
@@ -82,10 +82,10 @@ set ylabel "{/Symbol b}" offset 1.0, 0
 set key right top Left reverse spacing 1.2
 
 plot [1.2:2.5][0.9:1.2] \
-  "rcmcl.txt" u 1:14 w lp ls 9  t "Eq. (4)", \
-          ""  u 1:4  w lp ls 3  t "Eq. (6), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
-          ""  u 1:6  w lp ls 4  t "Eq. (11), k = 1", \
-          ""  u 1:8  w lp ls 5  t "Eq. (12), k = 1"
+  "rcmcl.txt" u 1:14 w lp ls 9  t "Eq. (1)", \
+          ""  u 1:4  w lp ls 3  t "Eq. (3), {/Symbol \341}exp( {/Symbol - b e}){/Symbol \361}= 1", \
+          ""  u 1:6  w lp ls 4  t "Eq. (8), k = 1", \
+          ""  u 1:8  w lp ls 5  t "Eq. (9), k = 1"
 
 
 

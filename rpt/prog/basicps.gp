@@ -36,16 +36,16 @@ set size 0.5, 0.5
 set origin 0.0, 0.0
 
 set style line 9 lt 1
-set style line 9 lt rgb "#000000" lw 3 pt 1   ps 2.0  # black for reference
-set style line 1 lt rgb "#c04020" lw 3 pt 10  ps 1.5  # dark red
-set style line 2 lt rgb "#e0c040" lw 3 pt 12  ps 1.5  # yellow
-set style line 3 lt rgb "#e030a0" lw 3 pt 6   ps 1.5  # bright magenta
-set style line 4 lt rgb "#80d060" lw 3 pt 8   ps 1.8  # dark green
-set style line 5 lt rgb "#305080" lw 3 pt 4   ps 1.5  # navy blue
+set style line 9 lt rgb "#000000" lw 1.5 pt 3   ps 1.5  # black for reference
+set style line 1 lt rgb "#b04020" lw 2.0 pt 10  ps 1.5  # dark red
+set style line 2 lt rgb "#808020" lw 2.0 pt 12  ps 1.5  # yellow
+set style line 3 lt rgb "#c02070" lw 2.0 pt 6   ps 1.5  # bright magenta
+set style line 4 lt rgb "#40a040" lw 1.5 pt 8   ps 1.5  # dark green
+set style line 5 lt rgb "#305080" lw 2.0 pt 4   ps 1.5  # navy blue
 
 set logscale x
 set xtics offset 0, 0.1
-set xlabel "{/Arial-Italic u}_{max}" offset 0, 1.0
+set xlabel "{/Arial-Italic u}_{{/=6 &.}max}" offset 0, 1.0
 
 set mytics 2
 set ylabel "{/Symbol-Oblique b}" offset 2.0, 0
@@ -57,8 +57,8 @@ set key left bottom Left reverse width -9
 
 plot [0.005:0.1][0:] \
   "sizemcl.txt" u 1:14 w lp ls 9 t "Eq. (1)", \
-            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=8 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
-            ""  u 1:3  w lp ls 2 t "Eq. (2'), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=8 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique De^2}{/=6 &.}{/Symbol \361}", \
+            ""  u 1:2  w lp ls 1 t "Eq. (2), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}^2{/=6 &.}{/Symbol \361}", \
+            ""  u 1:3  w lp ls 2 t "Eq. (3{/Symbol-Oblique \242}&.), {/Symbol-Oblique b} = 2{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique e}{/=6 &.}{/Symbol \361}{/=6 &.}/{/=6 &.}{/Symbol \341}{/=6 &.}{/Symbol-Oblique D&.e}^2{/=6 &.}{/Symbol \361}", \
             ""  u 1:4  w lp ls 3 t "Eq. (3), {/Symbol \341}{/=6 &.}exp({/=6 &.}{/Symbol-Oblique -{/=6 &.}b{/=6 &.}e}{/=6 &.}){/=6 &.}{/Symbol \361} = 1", \
             ""  u 1:6  w lp ls 4 t "Eq. (8), {/Arial-Italic k} = 1", \
             ""  u 1:8  w lp ls 5 t "Eq. (9), {/Arial-Italic k} = 1"
@@ -95,7 +95,7 @@ set origin 0., 0.5
 
 set xtics 2 offset 0, 0.0
 set mxtics 2
-set xlabel "{/Symbol-Oblique e} = {/Symbol-Oblique D} U" offset 1.0, 0.5
+set xlabel "{/Symbol-Oblique e} = {/Symbol-Oblique D}&.{/Arial-Italic U}" offset 1.0, 0.5
 
 set ytics 0.2
 set mytics 2
@@ -105,18 +105,18 @@ set key right top Left reverse width -6
 
 # note that the offsets in `every' are set according to the data files 
 plot [-2:8][0:1.3] \
-  "ehmdlM0.05.dat"   u 1:2 every 40::108  with p  ls 1 ps 1.5   not, \
-  ""                 u 1:2                with l  ls 1          not, \
-  -1                                      with lp ls 1 ps 1.5   t "u_{max} = 0.05, single, MD", \
-  "ehmclM0.05.dat"   u 1:2 every 40::156  with p  ls 4 ps 1.5   not, \
-  ""                 u 1:2                with l  ls 4          not, \
-  -1                                      with lp ls 4 ps 1.5   t "u_{max} = 0.05, single, MC", \
-  "ehmdlM0.1.dat"    u 1:2 every 20::8    with p  ls 3 ps 1.0   not, \
-  ""                 u 1:2                with l  ls 3          not, \
-  -1                                      with lp ls 3 ps 1.0   t "u_{max} = 0.1, single, MC", \
-  "ehmcgM0.01.dat"   u 1:2 every 20::75   with p  ls 5 ps 1.0   not, \
-  ""                 u 1:2                with l  ls 5          not, \
-  -1                                      with lp ls 5 ps 1.0   t "u_{max} = 0.01, all, MC", \
+  "ehmdlM0.05.dat"   u 1:2 every 40::108  with p  ls 1 lw 1.0 ps 1.2   not, \
+  ""                 u 1:2                with l  ls 1 lw 1.0          not, \
+  -1                                      with lp ls 1 lw 1.0 ps 1.2   t "{/Arial-Italic u}_{{/=6 &.}max} = 0.05, single, MD", \
+  "ehmclM0.05.dat"   u 1:2 every 40::156  with p  ls 4 lw 1.0 ps 1.2   not, \
+  ""                 u 1:2                with l  ls 4 lw 1.0          not, \
+  -1                                      with lp ls 4 lw 1.0 ps 1.2   t "{/Arial-Italic u}_{{/=6 &.}max} = 0.05, single, MC", \
+  "ehmdlM0.1.dat"    u 1:2 every 20::8    with p  ls 3 lw 1.0 ps 0.8   not, \
+  ""                 u 1:2                with l  ls 3 lw 1.0         not, \
+  -1                                      with lp ls 3 lw 1.0 ps 0.8   t "{/Arial-Italic u}_{{/=6 &.}max} = 0.1, single, MC", \
+  "ehmcgM0.01.dat"   u 1:2 every 20::75   with p  ls 5 lw 1.0 ps 0.8   not, \
+  ""                 u 1:2                with l  ls 5 lw 1.0          not, \
+  -1                                      with lp ls 5 lw 1.0 ps 0.8   t "{/Arial-Italic u}_{{/=6 &.}max} = 0.01, all, MC", \
   -1  not
 
 

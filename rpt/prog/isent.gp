@@ -49,19 +49,19 @@ plot [-2:2][-1:1] 0 w l ls 8 not, \
   "profis32.dat" u ($1/N):10 w l ls 9 t "Reference", \
   ""             u ($1/N):3  w l ls 1 not, \
   ""             u ($1/N):3  every 32 w p ls 1 not, \
-  -10                        w lp ls 1 t "Eq. (5)", \
+  -10                        w lp ls 1 t "Eq. (2)", \
   ""             u ($1/N):4  w l ls 2 not, \
   ""             u ($1/N):4  every 32 w p ls 2 not, \
-  -10                        w lp ls 2 t "Eq. (6')", \
+  -10                        w lp ls 2 t "Eq. (3')", \
   ""             u ($1/N):5  w l ls 3 not, \
   ""             u ($1/N):5  every 32 w p ls 3 not, \
-  -10                        w lp ls 3 t "Eq. (6)", \
+  -10                        w lp ls 3 t "Eq. (3)", \
   ""             u ($1/N):7  w l ls 4 not, \
   ""             u ($1/N):7  every 32 w p ls 4 not, \
-  -10                        w lp ls 4 t "Eq. (11), k = 1", \
+  -10                        w lp ls 4 t "Eq. (8), k = 1", \
   ""             u ($1/N):9  w l ls 5 not, \
   ""             u ($1/N):9  every 32 w p ls 5 not, \
-  -10                        w lp ls 5 t "Eq. (12), k = 1"
+  -10                        w lp ls 5 t "Eq. (9), k = 1"
 
 #  "profis16.dat" u ($1/N16):5  w l ls 6 not, \
 #  ""             u ($1/N16):5  every 32 w p ls 6 not, \

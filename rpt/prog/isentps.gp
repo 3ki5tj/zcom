@@ -34,19 +34,19 @@ set style line 81 lt rgb "#cccccc" # light gray
 
 #set tics font "Arial, 18"
 
-set style line 1 lt rgb "#c04020" lw 2 pt 10  ps 1.5  # dark red
-set style line 2 lt rgb "#e0c040" lw 2 pt 12  ps 1.5  # yellow to orange
-set style line 3 lt rgb "#e030a0" lw 2 pt 6   ps 1.5  # bright magenta
-set style line 4 lt rgb "#80d060" lw 2 pt 8   ps 1.5  # dark green
-set style line 5 lt rgb "#4060cc" lw 2 pt 4   ps 1.  # navy blue
-set style line 6 lt rgb "#30e0e0" lw 2 pt 14  ps 1.  # cyan
+set style line 1 lt rgb "#b04020" lw 1.5 pt 10  ps 1.2  # dark red
+set style line 2 lt rgb "#808020" lw 1.5 pt 12  ps 1.2  # yellow to orange
+set style line 3 lt rgb "#e030a0" lw 1.5 pt 6   ps 1.2  # bright magenta
+set style line 4 lt rgb "#40a040" lw 1.5 pt 8   ps 1.2  # dark green
+set style line 5 lt rgb "#4060cc" lw 1.5 pt 4   ps 1.  # navy blue
+set style line 6 lt rgb "#30e0e0" lw 1.5 pt 14  ps 1.  # cyan
 
-set style line 9 lt rgb "#000000" lw 1 pt 1   ps 1  # black line
-set style line 8 lt rgb "#808080" lw 2 pt 1   ps 1  # gray line
+set style line 9 lt rgb "#000000" lw 0.7 pt 1   ps 1  # black line
+set style line 8 lt rgb "#808080" lw 1.5 pt 1   ps 1  # gray line
 
-set style line 13 lt rgb "#a01060" lw 3 pt 7   ps 1.5  # bright magenta
-set style line 14 lt rgb "#20a020" lw 3 pt 9   ps 1.5  # dark green
-set style line 15 lt rgb "#305080" lw 3 pt 5   ps 1.  # navy blue
+set style line 13 lt rgb "#a01060" lw 2.0 pt 7   ps 1.2  # bright magenta
+set style line 14 lt rgb "#00a000" lw 2.0 pt 9   ps 1.2  # dark green
+set style line 15 lt rgb "#305080" lw 2.0 pt 5   ps 1.  # navy blue
 
 #set style line 13 lt 1
 #set style line 14 lt 1
@@ -69,7 +69,7 @@ plot [-2:2][-1:1] -100 w l ls 8 not, \
   -10                        w lp ls 1 t "Eq. (2)", \
   ""             u ($1/N):4  w l ls 2 not, \
   ""             u ($1/N):4  every 32 w p ls 2 not, \
-  -10                        w lp ls 2 t "Eq. (3')", \
+  -10                        w lp ls 2 t "Eq. (3{/Symbol-Oblique \242}&.)", \
   ""             u ($1/N):5  w l ls 3 not, \
   ""             u ($1/N):5  every 32 w p ls 3 not, \
   -10                        w lp ls 3 t "Eq. (4), {/Arial-Italic k} = 0", \
@@ -103,10 +103,11 @@ set xtics 1.0 offset 0, 0.0 font insetfont
 
 set mytics 5
 set ytics 0.5  offset 0.0, 0.0  font insetfont
-# {/Symbol \362} is the integral sign
+# {/Symbol-Oblique \362} is the integral sign
+# {/Symbol-Oblique \242} is the prime ' sign
 # make it a subscript but with larger font
 # &{i} is a thin space
-set ylabel "{/=11 {/Symbol-Oblique D}&{i}[&{i}log&{i}{/Arial-Italic g}&{i}({/Arial-Italic U}&{i})] = &{i}_{/*2.0 {/Symbol-Oblique \362}}@_{/*0.8 &{i}0}^{/*.8 &{n}{/Arial-Italic U}} {/Symbol-Oblique D}&{i}[&{i}{/Symbol-Oblique b}_{/Arial-Italic U}&{i}({/Arial-Italic U'}&{i})] d{/Arial-Italic U'} }" offset 1.0, 0 font insetfont
+set ylabel "{/=11 {/Symbol-Oblique D}&{i}[&{i}log&{i}{/Arial-Italic g}&{i}({/Arial-Italic U}&{i})] = &{i}_{/*2.0 {/Symbol-Oblique \362}}@_{/*0.8 &{i}0}^{/*.8 &{n}{/Arial-Italic U}} {/Symbol-Oblique D}&{i}[&{i}{/Symbol-Oblique b}_{/Arial-Italic U}&{i}({/Arial-Italic U{/Symbol-Oblique \242}}&{i})] d{/Arial-Italic U{/Symbol-Oblique \242}} }" offset 1.0, 0 font insetfont
 
 set key right bottom width -10
 
