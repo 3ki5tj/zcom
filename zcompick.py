@@ -11,14 +11,14 @@ keys = ['def', 'util', 'ss', 'rng', 'opt', 'cfg', 'log', 'endn']
 prefix = "ZCOM_"
 
 def mksmall(input, output, goodkeys):
-  ''' created a specialized version 'output' (zcom1.h) from 'input' (zcom.h) 
+  ''' created a specialized version 'output' (zcom1.h) from 'input' (zcom.h)
       with a few modules, given by 'goodkeys' '''
 
   oldsrc = open(input, 'r').readlines()
   goodkeys = transkeys(goodkeys, prefix)
   badkeys = getbadkeys(oldsrc, goodkeys)
   newsrc = []
-  
+
   lnum = 1
   level = 0    # the #if/#ifdef/#ifndef block level
   ignlev = -1  # if >= 0, the current line is ignored
@@ -67,7 +67,7 @@ def mksmall(input, output, goodkeys):
       if ignlev < 0:
         if level == 1 and lin.startswith("#ifdef"):
           if hasbadkey(lin, badkeys) or not looksgood(lin, goodkeys):
-            ignlev = level 
+            ignlev = level
         elif lin.find("_LEGACY") >= 0 or lin.strip().endswith("DEBUG"):
           ignlev = level
 
@@ -89,12 +89,12 @@ def mksmall(input, output, goodkeys):
         raise Exception
 
     lnum += 1 # increase the line number
-  
-  newsrc = rmblank(newsrc, 2) # remove more than 2 successive blank lines 
+
+  newsrc = rmblank(newsrc, 2) # remove more than 2 successive blank lines
   writefile(output, newsrc, goodkeys, badkeys)
 
 def getbadkeys(lines, excls):
-  ''' search all keys in the toc section, and exclude good keys `excl' 
+  ''' search all keys in the toc section, and exclude good keys `excl'
       return a list of bad keys '''
   toclev = -1
   level = 0

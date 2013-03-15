@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-import os, sys, re 
-from copy    import * 
+import os, sys, re
+from copy    import *
 from objdcl  import CDeclaratorList
 from objcmt  import CComment
 from objpre  import CPreprocessor
 from objcow  import CCodeWriter
 from objext  import *
 
-simple_types = ("int", "unsigned int", "unsigned", 
-  "long", "unsigned long", "real", "double", "float", 
+simple_types = ("int", "unsigned int", "unsigned",
+  "long", "unsigned long", "real", "double", "float",
   "char *")
 
 class Item:
@@ -31,8 +31,8 @@ class Item:
     self.parse(src, p)
 
   def duckcopy(s, dcl = 1):
-    ''' 
-    cheaper version of deepcopy 
+    '''
+    cheaper version of deepcopy
     if dcl = 0, .decl and .dl are not copied
     '''
     c = Item(None, None)
@@ -64,7 +64,7 @@ class Item:
     s = p.skipspace(src)
     if s[0] == "}": return -1
     dodcl = docmt = 1
- 
+
     # try to see it's a preprocessor
     pre = CPreprocessor(src, p)
     if not pre.isempty():
@@ -83,12 +83,12 @@ class Item:
       self.decl = None
       dl = CDeclaratorList(src, p)
       self.dl = None if dl.isempty() else dl
-      
+
     if docmt:
       # try to get a comment
       cmt = CComment(src, p, 2)
       self.cmt = cmt if not cmt.isempty() else None
-    
+
     if self.pre or self.cmt or self.dl:
       #print "successfully got one item, at %s" % p
       self.end = copy(p)
@@ -96,7 +96,7 @@ class Item:
     else:
       print "bad line: at %s, s = [%s]" % (p, s.strip())
       raise Exception
-   
+
     self.expand_multiple_declarators()
 
   def getraw(self):
@@ -107,12 +107,12 @@ class Item:
 
   def __str__(self):
     return "pre: %5s, dl: %5s, decl: %5s, cmt: %5s, raw = [%s]" % (
-        self.pre != None, self.dl != None, 
-        self.decl != None, self.cmt != None, 
+        self.pre != None, self.dl != None,
+        self.decl != None, self.cmt != None,
         self.getraw() )
 
   def name(self):
-    if self.decl: 
+    if self.decl:
       return "item: %s" % self.decl.name
     elif self.pre:
       return "prep: %s" % self.pre.raw
@@ -142,8 +142,8 @@ class Item:
         if tp.startswith("array"):
           dim += [ tp[5:] ]
         else: break
-      dim.reverse()  # reverse the order 
-      if offset == 0: # 
+      dim.reverse()  # reverse the order
+      if offset == 0: #
         self.cmds["dim"] = dim
         self.cmds["cnt"] = arrcnt = '*'.join(dim) # override cnt
         #print "static array cnt has been set to %s (%s) for %s" % (arrcnt, dim, self)
@@ -161,18 +161,18 @@ class Item:
       elif "cnt" in cmds:
         ret = "dynamic array"
       else:
-        if (offset == 0 and "cnt" not in cmds 
-          and nlevels == 2 
+        if (offset == 0 and "cnt" not in cmds
+          and nlevels == 2
           and types[offset+1] in simple_types):
           print "Warning: `%s' is considered as a pointer" % self.decl.name,
           print "  set $cnt if it is actually an array"
         ret = "pointer"
 
     # debug code
-    if self.decl.name == "XXXmbYYY":  
-      print "gtype [%s] with %s, %s" % (ret, offset, types); 
+    if self.decl.name == "XXXmbYYY":
+      print "gtype [%s] with %s, %s" % (ret, offset, types);
       print "commands: %s" % self.cmds
-      raw_input()        
+      raw_input()
     return ret
 
   def get_elegtype(self):
@@ -190,7 +190,7 @@ class Item:
     #print "set default %s for gtype %s, var %s" % (defval, gtype, self.decl.name)
     #raw_input()
 
-  def add_item_to_list(self, dcl): 
+  def add_item_to_list(self, dcl):
     ''' add an item with decl being dcl '''
     it = self.duckcopy(dcl = 0) # make a copy cheaper than deepcopy
     it.decl = dcl
@@ -217,12 +217,12 @@ class Item:
       decl = dclist[i]
       decl.types += [self.dl.datatype]
       self.add_item_to_list(decl)
-    
+
   def isempty(self):
     return self.empty
 
   def fill_key(it):
-    ''' 
+    '''
     add default key for configuration file reading
     unless "key" is specified, it is calculated as
     1. it.decl.name is the first guess
@@ -237,7 +237,7 @@ class Item:
 
     key0 = it.cmds["key"]
     cfgkey = key0 if key0 else it.decl.name
-    
+
     if not key0 or it.cmds["flag"]:
       pm = it.cmds["kdepfx"]
       if pm and cfgkey.startswith(pm):
@@ -250,8 +250,8 @@ class Item:
     it.cmds["key"] = cfgkey
 
   def fill_dim(it):
-    ''' 
-    test if cnt is empty 
+    '''
+    test if cnt is empty
     for two dimensional array parse `cnt', which looks like "n1, n2"
     into dim[2] = ["n1", "n2"]
     '''
@@ -266,7 +266,7 @@ class Item:
     if it.gtype == "static array": # static type
       return
     dim = [s.strip() for s in cnt.split(",")] # split into dimensions
-    
+
     if len(dim) > 2: #
       print "item %s: do not support > 2 dimensional array!"
       raise Exception
@@ -290,7 +290,7 @@ class Item:
     elif it.gtype in ("dynamic array", "object array", "object pointer"):
       iodef = "bt"
     elif it.gtype in simple_types:
-      iodef = "c" 
+      iodef = "c"
     else:
       iodef = ""
 
@@ -314,8 +314,8 @@ class Item:
     it.cmds["io_txt"] = ("t" in io)
 
   def fill_test(it):
-    ''' 
-    fill test conditions 
+    '''
+    fill test conditions
     note: we assign commands even if there's no declaration
     becomes a stand-alone comment can contain assignment
     or other commands
@@ -325,8 +325,8 @@ class Item:
       it.cmds["tfirst"] = 1
 
   def prepare_flag(it):
-    ''' 
-    parse the original field into FLAG and flagval 
+    '''
+    parse the original field into FLAG and flagval
     attach prefix
     '''
     flag = it.cmds["flag"]
@@ -343,7 +343,7 @@ class Item:
       it.cmds["flagvar"] = "@flags"
     #print "%s %s" % (it.cmds["flag"], it.cmds["flagval"])
     #raw_input()
-    
+
   def getflag(it):
     if "flag" not in it.cmds: return None
     return it.cmds["flag"]
@@ -382,10 +382,10 @@ class Item:
       block = [] # empty the block
       cow.addln("#" + it.pre.raw)
       return block
-    
+
     # 2. handle declaration
     usr = it.cmds["usr"]
-    # we need to declare $usr:cfg (and possibly $usr:xxxdup) 
+    # we need to declare $usr:cfg (and possibly $usr:xxxdup)
     if usr != None and usr != 1 and usr != "cfg":
       return block
     if it.decl:
@@ -402,7 +402,7 @@ class Item:
     desc = it.cmds["desc"]
     if len(desc) > 0:
       scmt = "/* " + desc + " */"
-    
+
     #print "decl: %s, cmds: %s" % (it.decl, it.cmds)
     #raw_input()
 
@@ -413,19 +413,19 @@ class Item:
       cow.dump_block(block, tab, offset)
       block = [] # empty the block
       # also print this line
-      if len(scmt) > 0: 
+      if len(scmt) > 0:
         cow.addln(scmt)
     return block
 
   def cfgget_var(it, cow, ptrname):
     ''' read a variable from config. '''
     if it.pre and not it.cmds["key"]: return
-  
+
     usr = it.cmds["usr"]
-    if usr == "parent" or (usr not in (None, 0, 1) and 
+    if usr == "parent" or (usr not in (None, 0, 1) and
         usr.endswith("tmp") and usr != "cfgtmp"):
       return
-    
+
     key     = it.cmds["key"]
     defl    = it.cmds["def"]
     prereq  = it.cmds["cfgprereq"]
@@ -454,10 +454,10 @@ class Item:
       passme = 1
     if flag and (not key or key == "flags"):
       passme = 1
-    if usrval and usrval not in ("cfg", "cfgdup", 1): # usr variables 
+    if usrval and usrval not in ("cfg", "cfgdup", 1): # usr variables
       passme = 1
 
-    if not passme: 
+    if not passme:
       varnm = it.decl.name
       varname = ptrname + "->" + varnm
       # add a remark before we start
@@ -471,14 +471,14 @@ class Item:
       fmt = type2fmt_s(it.gtype)
       cow.cfgget_flag(varname, key, flag, it.gtype, fmt,
           defl, prereq, desc)
-  
+
     elif it.gtype == "object pointer":
       if notalways(prereq): cow.addln(varname+" = NULL;")
       cow.begin_if(prereq)
       fpfx = it.get_obj_fprefix()
-      s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname, 
+      s = "(%s = %scfgopen(cfg%s)) == NULL" % (varname,
         fpfx, it.getargs("cfg"))
-      cow.die_if(s, r"failed to initialize %s\n" % varname, 
+      cow.die_if(s, r"failed to initialize %s\n" % varname,
           onerr = "goto ERR;")
       cow.validate(valid, varname)
       cow.end_if(prereq)
@@ -493,7 +493,7 @@ class Item:
       cow.addln("for (i = 0; i < %s; i++) {" % cnt)
       s = "0 != %scfgopen_low(%s+i, cfg%s)" % (
         fpfx, varname, it.getargs("cfg"))
-      cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i", 
+      cow.die_if(s, r"failed to initialize %s[%%d]\n" % varname, "i",
           onerr = "goto ERR;")
       cow.addln("}\n")
       cow.validate(valid, varname)
@@ -505,31 +505,31 @@ class Item:
       cow.init_darr(varname, it.get_gtype(offset = 1),
           defl, cnt, valid, desc, pp)
       cow.end_if(prereq)
-    
+
     elif it.gtype == "static array":
       etp = it.get_gtype(offset = 1)
       #print "%s: static array of element = [%s] io = %s, defl = [%s]" % (varnm, etp, it.cmds["io_cfg"], defl); raw_input()
-      if not it.cmds["io_cfg"]: 
+      if not it.cmds["io_cfg"]:
         cow.init_sarr(varname, defl, cnt, pp)
       else:
         fmt  = type2fmt_s(etp)
         cmpl = it.cmds["complete"]
-        cow.cfgget_sarr(varname, key, etp, fmt, defl, cnt, 
+        cow.cfgget_sarr(varname, key, etp, fmt, defl, cnt,
             must, valid, cmpl, desc)
 
     else: # regular variable
       if usrval:
         cow.assign(varname, varnm, it.gtype)
       elif not it.cmds["io_cfg"]: # assign default value
-        if defl and len(defl): 
+        if defl and len(defl):
           cow.assign(varname, defl, it.gtype);
       else:
         fmt = type2fmt_s(it.gtype)
-        cow.cfgget_var(varname, key, it.gtype, fmt, 
+        cow.cfgget_var(varname, key, it.gtype, fmt,
           defl, must, prereq, tfirst, valid, desc)
 
     if pp: cow.addln("#endif")
-    
+
 
   def rwb_var(it, cow, rw, varname):
     desc = it.mkdesc(1)
@@ -584,8 +584,8 @@ class Item:
       if desc: cow.add_comment(desc);
       if prep: cow.addln(prep + ";")
 
-    if usrinit and defl: 
-      # we always assign default values before reading / writing 
+    if usrinit and defl:
+      # we always assign default values before reading / writing
       if it.gtype == "static array":
         cow.init_sarr(varname, defl, cnt)
       else:
@@ -598,7 +598,7 @@ class Item:
       # support nasty flag $bincnt
       if len(dim) == 1 and bincnt:
         dim[0] = bincnt
-      cow.rwb_arr(rw, varname, dim, it.decl.datatype, trim = 1, 
+      cow.rwb_arr(rw, varname, dim, it.decl.datatype, trim = 1,
           match = verify, valid = valid)
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
@@ -613,10 +613,10 @@ class Item:
       else:
         cow.rwb_obj(rw, varname, funcall)
     elif it.decl.datatype == "char" and it.gtype in ("char *", "static array"):
-      if bincnt: 
+      if bincnt:
         cnt = bincnt
       cow.die_if ("(size_t) (%s) != f%s(%s, 1, %s, fp)" % (cnt, readwrite, varname, cnt),
-        "cannot "+readwrite+" string of %d for "+varname, cnt, 
+        "cannot "+readwrite+" string of %d for "+varname, cnt,
         onerr = "goto ERR;");
       cow.validate(valid);
     else:
@@ -625,7 +625,7 @@ class Item:
     if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
 
-   
+
   def clear_var(it, cow, ptr):
     if not it.decl or it.isdummy: return
 
@@ -646,8 +646,8 @@ class Item:
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       cond = "%s != NULL" % varname
-      cow.begin_if(cond)      
-      funcall = "%sclear(%%s)" % fpfx      
+      cow.begin_if(cond)
+      funcall = "%sclear(%%s)" % fpfx
       if it.gtype == "object array":
         cow.declare_var("int i", pp = pp) # declare index i
         cow.addln("for (i = 0; i < %s; i++)", cnt)
@@ -679,22 +679,22 @@ class Item:
     pp = it.cmds["#if"]
     prereq = it.cmds["prereq"]
     if pp: cow.addln("#if %s", pp)
-    if notalways(prereq): cow.begin_if(prereq)    
- 
+    if notalways(prereq): cow.begin_if(prereq)
+
     if call: cow.addln(call+";")
 
     handled = 0
     #if varnm == "cache":
-    #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype)); 
+    #  print ("destroying %s, gtype: %s" % (it.decl.name, it.gtype));
     #  raw_input()
-    if it.gtype == "char *": 
+    if it.gtype == "char *":
       funcfree = "ssdelete"
     elif it.gtype == "dynamic array":
       funcfree = "free"
     elif it.gtype == "object pointer":
       fpfx = it.get_obj_fprefix()
       funcfree = "%sclose" % fpfx
-    elif it.gtype == "object array": 
+    elif it.gtype == "object array":
       fpfx = it.get_obj_fprefix()
       funcfree = "%sclose_low" % fpfx
       cnt = it.cmds["cnt"]
@@ -703,7 +703,7 @@ class Item:
       cond = "%s != NULL" % varname
       cow.begin_if(cond)
       cow.addln("for (i = 0; i < %s; i++) {" % cnt)
-      cow.addln("%s(%s + i);", funcfree, varname) 
+      cow.addln("%s(%s + i);", funcfree, varname)
       cow.addln("}");
       cow.addln("free(%s);", varname);
       cow.end_if(cond)
@@ -712,10 +712,10 @@ class Item:
     if not handled:
       cow.addln("if (%-*s != NULL) %s(%s);",
           maxwid, varname, funcfree, varname)
-    
+
     if notalways(prereq): cow.end_if(prereq)
     if pp: cow.addln("#endif")
-    
+
 
   def manifest_var(it, cow, ptr):
     arrnum = 5 # elements for printing arrays
@@ -743,7 +743,7 @@ class Item:
       etype = it.get_elegtype()
       try:
         fmt = type2fmt_p(etype, varname)
-        cow.addln(r'fprintf(fp, "%s: %s of %s: ");', 
+        cow.addln(r'fprintf(fp, "%s: %s of %s: ");',
           varname, it.gtype, cnt)
       except TypeError:
         cow.addln(r'fprintf(fp, "%s: %s of %s %%p (user type: %s)", %s);',
@@ -752,13 +752,13 @@ class Item:
       if cnt == "0": isarr = 0
       if isarr:
         emptest = cow.test_arrempty(varname, cnt, etype)
-        if emptest: 
+        if emptest:
           cow.begin_if(emptest)
           cow.addln('if ((arrmax < 0 || arrmax > 3) && %s > 6)\n\tfprintf(fp, "\\n");',
               cnt)
         cow.declare_var("int i", pp = pp) # declare index i
         cow.declare_var("int pacnt", pp = pp)
-        
+
         cow.addln("for (pacnt = 0, i = 0; i < %s; i++) {", cnt)
         cond = 'i == arrmax && i < %s-arrmax' % cnt
         cow.begin_if(cond)
@@ -781,10 +781,10 @@ class Item:
     elif it.gtype in ("object array", "object pointer"):
       fpfx = it.get_obj_fprefix();
       cond = "%s != NULL" % varname
-      cow.begin_if(cond)      
+      cow.begin_if(cond)
       funcall = "%smanifest(%%s, fp, arrmax)" % fpfx
       if it.gtype == "object array":
-        cow.addln(r'fprintf(fp, "%s: %s array of %s:");', 
+        cow.addln(r'fprintf(fp, "%s: %s array of %s:");',
           varname, it.decl.datatype, cnt)
         #raw_input("%s: %s x %s" % (varname, it.decl.datatype, cnt))
         emptest = cow.test_arrempty(varname, cnt, it.decl.datatype, isobj = 1)
@@ -820,7 +820,7 @@ class Item:
 
     elif it.gtype in ("pointer",):
       print "skip var. [%s] of type [%s]" % (varname, it.gtype); # raw_input()
-    
+
     else:
       try:
         fmt = type2fmt_p(it.gtype, varname)
@@ -872,7 +872,7 @@ class Item:
       cow.add_comment(desc)
       cow.alloc_darr(varname, etype, cnt)
       cow.end_if(notmaster)
-    
+
     # an array to be bcasted, allocate space on nonmasters
     # receive from master
     elif mpi in (1, "1", "bcast"):
@@ -892,7 +892,7 @@ class Item:
         cow.add_comment(desc)
         cow.alloc_darr(varname, it.decl.datatype, cnt)
         cow.end_if(notmaster)
-        if isarr: 
+        if isarr:
           cow.declare_var("int i", pp=pp)
           cow.addln('for (i = 0; i < %s; i++) {' % cnt)
         fpfx = it.get_obj_fprefix()
@@ -923,7 +923,7 @@ class Item:
         cow.addln('for (i = 0; i < %s; i++) {\n%s[i] = NULL;\n}', cnt, varname)
         cow.end_if(notmaster)
       # do nothing otherwise
-    
+
     else:
       print "unknown mpi tag %s" % mpi
       raise Exception
@@ -940,7 +940,7 @@ class Item:
       return
     if call:
       cow.begin_if(cond)
-      cow.addln(call+";"); 
+      cow.addln(call+";");
       cow.end_if(cond)
       return
     if not it.decl or it.isdummy: return
@@ -969,17 +969,17 @@ class Item:
       isarr = (it.gtype == "object array")
       if not isarr: cnt = "1"
       cow.add_comment(desc)
-      if isarr: 
+      if isarr:
         cow.declare_var("int i", pp=pp)
         cow.addln('for (i = 0; i < %s; i++) {' % cnt)
       fpfx = it.get_obj_fprefix()
       varnm1 = varname+("+i" if isarr else "")
       cond = "%s%s(%s) != 0" % (fpfx, tag, varnm1)
-      cow.die_if(cond, "cannot %s %s" % (tag, varname + (" %d" if isarr else "")), 
+      cow.die_if(cond, "cannot %s %s" % (tag, varname + (" %d" if isarr else "")),
          args = "i" if isarr else None,
          onerr = "goto ERR;")
-      if isarr: cow.addln('}\n') 
-    
+      if isarr: cow.addln('}\n')
+
     elif it.gtype == "dynamic array":
       cow.add_comment(desc)
       if tag == "reduce":
@@ -995,7 +995,7 @@ class Item:
         cow.end_if(cond)
       elif tag == "bcast":
         cow.mpibcast(rank, size, varname, cnt, etype, MASTERID, comm)
-      
+
       cow.addln()
     else:
       print "cannot %s %s of type %s" % (tag, it.decl.name, it.gtype)

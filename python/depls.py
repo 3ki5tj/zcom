@@ -20,7 +20,7 @@ def sort(deps):
   INPUT:  deps[i]:    a list items that i depends on
   OUTPUT: d[0..n-1]:  a permutation of n = len(deps)
           such that d[i] only depends on d[0], ..., d[i-1]
-          return None if such an arrangement is impossible 
+          return None if such an arrangement is impossible
   NOTE: the algorithm works best if the input array already sorted '''
   n = len(deps)
   d = range(n)
@@ -76,7 +76,7 @@ def findcycl(deps):
 
 def main():
   ''' test depsort() '''
-  deps = [ 
+  deps = [
       [],     # 0
       [2, 4], # 1
       [3, 4], # 2

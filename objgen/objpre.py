@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, re 
+import os, sys, re
 from copy import copy
 
 class CPreprocessor:

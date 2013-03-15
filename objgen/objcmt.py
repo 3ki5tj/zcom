@@ -6,7 +6,7 @@ TODO:
   * comment fusion
 '''
 
-import os, sys, re 
+import os, sys, re
 from copy import copy
 
 cmt0 = "/*"
@@ -33,7 +33,7 @@ class CComment:
 
   def __deepcopy__(self, memo):
     return copy(self)
-    
+
   def span(self, src, p, maxnl = 0):
     '''
     find the beginning and end of a comment,

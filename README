@@ -49,7 +49,7 @@ add2host.py     add modules to zcom.h using the template zcom.0.h
 modules with a leading underscore are experimental, and not added to zcom.h
 
 Notes:
-Try to apply cspacer.py under ~/app/bin to check the source here from time to time
+Try to apply cspacer.py under cspacer to check the source here from time to time
 
 zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,

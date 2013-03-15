@@ -33,7 +33,7 @@ class CDecl:
     # type qualifier: const, volatile
     # we do not support structure yet
     alltypes = ("auto", "register", "static", "extern", "typedef",
-      "const", "volatile", 
+      "const", "volatile",
       "void", "char", "short", "int", "long", "float", "double", "signed", "unsigned")
     type = ""
     while 1:
@@ -44,7 +44,7 @@ class CDecl:
           break
         print "expected data type, %s" % (self.dbg())
         raise Exception
-      if self.token not in alltypes: 
+      if self.token not in alltypes:
         self.ungettok()
         break
       type += self.token + " "
@@ -57,7 +57,7 @@ class CDecl:
     '''
     ns = 0
     while self.pos < self.nraw:
-      if self.gettoken() != "*": 
+      if self.gettoken() != "*":
         self.ungettok()
         break
       ns += 1
@@ -70,7 +70,7 @@ class CDecl:
     '''
     self.gettoken()
     if self.ttype == '(': # ( dcl )
-      self.dcl() 
+      self.dcl()
       if self.gettoken() != ')':
         print "missing ) %s" % (self.dbg())
         raise Exception
@@ -93,7 +93,7 @@ class CDecl:
         self.types += "array " + self.token + " of "
       else:
         self.ungettok()
-        break 
+        break
 
   def ptlist(self):
     ''' parameter type list '''

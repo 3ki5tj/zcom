@@ -67,6 +67,8 @@ def strip_def(src):
 
   return src[start : finish]
 
+
+
 def add_storage_class(hdr, prefix):
   '''
   add storage class, 'prefix', to global function and variables in the header
@@ -90,6 +92,8 @@ def add_storage_class(hdr, prefix):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 
+
+
 def remove_cpp_comments(src):
   ''' remove C++ style comments 
   only a line that starts with // is included '''
@@ -103,6 +107,8 @@ def remove_cpp_comments(src):
     else:
       i += 1
   return src
+
+
 
 def insert_module(src, name, module):
   '''
@@ -154,6 +160,8 @@ def insert_module(src, name, module):
     print "cannot find the desired module", name
     return src
 
+
+
 def strpbrk(s, char_set):
   '''
   return a position of s where the first occurance 
@@ -164,6 +172,7 @@ def strpbrk(s, char_set):
     return pos
   except:
     return -1
+
 
 
 def builddeps(srclist):
@@ -241,6 +250,8 @@ def builddeps(srclist):
       sdep += ["#endif\n", "\n"]
   return newsrclist, sdep
 
+
+
 def mkanchors(shost, srclist):
   ''' add anchor macros to host
   srclist is an array of (mod, MACRO) '''
@@ -289,6 +300,7 @@ def mkanchors(shost, srclist):
         "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro, "\n"]
 
   return shost[:a0] + ls1 + shost[a0:a1] + lsdeps + shost[a1:] + ls2, srclist
+
 
 
 def integrate(srclist, host, output):
@@ -383,6 +395,7 @@ def integrate(srclist, host, output):
   os.remove(fn_outtmp)
 
 
+
 def getmodname(name):
   ''' smodule name to macro name, e.g., util --> ZCOM_UTIL '''
   shortnm = os.path.basename(name).upper()
@@ -391,7 +404,9 @@ def getmodname(name):
     shortnm = shortnm[:pos]
   return host_prefix + shortnm
 
-def dirs2mods(root):
+
+
+def dirs2modules(root):
   ''' get a list of modules from subdirectories of `root' '''
   # list all sub directories under defroot
   # skip modules starting with an underscore or a dot
@@ -404,7 +419,7 @@ def dirs2mods(root):
     if d[0] in ('.', '_'): continue
     # skip test folder
     if d == "test": continue
-    # see if a default C module exists
+    # see if the default .h and .c files exist
     file_h = os.path.join(d, d+'.h')
     if not os.path.exists(file_h): 
       #print "skip %s no %s" % (d, file_h)
@@ -415,6 +430,7 @@ def dirs2mods(root):
       continue
     defmods += [d]
   return defmods
+
 
 
 def usage():
@@ -450,7 +466,7 @@ def doargs():
     print str(err) # will print something like "option -a not recognized"
     usage()
  
-  defmods = dirs2mods(".") # util, cfg, ...
+  defmods = dirs2modules(".") # util, cfg, ...
   
   # for each directory, guess a module name 'modnm'
   # add the pair to deflist

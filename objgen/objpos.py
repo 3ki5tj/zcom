@@ -3,7 +3,7 @@ import os, sys, re
 from copy import copy
 
 '''
-simple objects 
+simple objects
 '''
 
 class P:
@@ -15,16 +15,26 @@ class P:
     self.row = row
     self.col = col
     self.check() # see if input are integers
+
+
   def __copy__(s):
     return P(s.row, s.col)
+
+
   def __deepcopy__(s, memo):
     return copy(s)
+
+
   def __str__(self):
     self.check()
     return "line: %d, col %d" % (self.row + 1, self.col + 1)
+
+
   def __repr__(self):
     self.check();
     return "%d, %d" % (self.row, self.col)
+
+
   def __cmp__(a, b):
     a.check()
     if type(a) != type(b):
@@ -32,6 +42,8 @@ class P:
       raise Exception
     b.check()
     return (a.row - b.row) * 10000 + a.col - b.col
+
+
   def check(self):
     if type(self.row) != int:
       print "row %s is not a number" % (self.row)
@@ -39,15 +51,21 @@ class P:
     if type(self.col) != int:
       print "col %s is not a number" % (self.col)
       raise Exception
+
+
   def getline(p, src):
     ''' get a line starting from the current position '''
     p.check()
     return src[p.row][p.col:] if p.row < len(src) else None
+
+
   def endofline(p, src):
     ''' move to the end of this line '''
     p.check()
     s = p.getline(src)
     if s: p.col += len(s)
+
+
   def nextline(self, src = None):
     '''
     go to the next line
@@ -61,8 +79,8 @@ class P:
     skip spaces (including multiple blank lines)
     return the line
     `maxnl' specifies the maximal number of newlines to skip
-      0: no limit, 
-      1: to the end of this line, 
+      0: no limit,
+      1: to the end of this line,
       2: this line and the next line
       ...
     '''
@@ -94,7 +112,7 @@ class P:
     return the token only
     '''
     s = p.skipspace(src, maxnl)
-    
+
     # try to get a word
     if s != None:
       m = re.match(r"([a-zA-Z_]\w*).*", s)
@@ -121,18 +139,16 @@ class P:
       raise Exception
     p.token = p.ttype  = None
 
+
   def peektok(p, src):
-    '''
-    peek at the next token
-    '''
+    ''' peek at the next token '''
     p.check()
     q = copy(p) # create a backup
     return q.gettoken(src)
 
+
   def gettext(self, src, q):
-    '''
-    get entire string from p to q
-    '''
+    ''' get entire string from p to q '''
     p = copy(self) # so self is intact
     if q <= P(0,0):
       q = P(len(src), 0) # end of string
@@ -143,6 +159,5 @@ class P:
     if p.row == q.row and p.col < q.col:
       s += src[p.row][p.col: q.col]
     return s
-
 
 

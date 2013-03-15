@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, re 
+import os, sys, re
 from copy import copy, deepcopy
 
 class Commands:
@@ -60,18 +60,18 @@ class Commands:
     the process
     '''
     s = self.raw
-    if len(s) == 0: 
+    if len(s) == 0:
       self.cmds["desc"] = "" # add an empty description
       return
     pos = 0
-   
-    ''' 
+
+    '''
     for multiple-line comments
     remove the leading`* ' for subsequent lines
     '''
     sa = [a.strip() for a in s.splitlines()]
     if len(sa) > 1: # sa[:1] is the first line
-      sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ] 
+      sa = sa[:1] + [(a[2:].rstrip() if a.startswith("* ") else a) for a in sa[1:] ]
     s = '\n'.join(sa)
     while 1:
       '''
@@ -79,7 +79,7 @@ class Commands:
         $cmd op args;
       op can be one of ":", "=", ":=", "::" or "" (nothing)
         : or = means set the current variable only
-        := or :: means a persistent command that apply to 
+        := or :: means a persistent command that apply to
                  all following items
                  if args is empty, the command is removed
       '''
@@ -100,7 +100,7 @@ class Commands:
             #print "turning off an persistent command, raw=[%s]" % s; raw_input()
             self.persist[cmd] = -1
             goodcmd = 0
-          else: 
+          else:
             #print "set an persistent command, raw=[%s] args=[%s]" % (s, args); raw_input()
             self.persist[cmd] = 1
         #print "multiple %s]\ns=%s\nm0=%s\nself.raw=%s" % (args, s, m.group(0),repr(self.raw))
@@ -110,7 +110,7 @@ class Commands:
         # print "look for a lazy command, $cmd with no ; s = [%s]" % s
         pattern = r"[^\$\\]*(\$)(\w+)\;?"
         m = re.search(pattern, s)
-        if m: 
+        if m:
           # print "found a lazy command, $cmd with no ; s = %s" % s
           cmd = self.subdash(m.group(2))
           args = 1  # means turn on the switch
@@ -118,7 +118,7 @@ class Commands:
           # search for comment command
           pattern = r"[^\$\\]*(\$#)(.*?)([^\\]\;|$)"
           m = re.search(pattern, s)
-          if m == None: 
+          if m == None:
             print "possibly an unknown command [%s]" % s
             break
           goodcmd = 0
@@ -134,14 +134,14 @@ class Commands:
     # if desc is not explicitly specified
     # we join all the remaining non-command contents
     # left in the comment
-    if not "desc" in self.cmds: 
+    if not "desc" in self.cmds:
       sa = [a.strip() for a in s.splitlines()] # split to lines
       s = ' '.join(sa).strip().rstrip(",;.")
-      self.cmds["desc"] = s 
+      self.cmds["desc"] = s
 
   def subst_symbols(self, s):
-    ''' 
-    $$ or \$  =>  $ 
+    '''
+    $$ or \$  =>  $
     \;        =>  ;
     '''
     if s in (None, 1): return s
@@ -155,11 +155,11 @@ class Commands:
   def addpre(self, pif, pelse, pendif):
     ''' preprocessor commands '''
     cmd = "#if"
-    
+
     if pif:
       self.cmds[cmd] = pif
       self.persist[cmd] = 1
-    
+
     if pelse:
       self.persist[cmd] = -2
 

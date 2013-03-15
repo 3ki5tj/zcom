@@ -24,5 +24,5 @@ def cntsize(list):
 if __name__ == "__main__":
   list = glob.glob("obj*.py") + ["og.py"]
   cntsize(list)
-  
+
 

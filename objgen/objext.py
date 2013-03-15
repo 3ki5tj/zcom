@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-additional components 
+additional components
 '''
 import re
 
@@ -21,7 +21,7 @@ def notalways(cond):
   return cond not in (None, 1, "1", "TRUE")
 
 def disabled(cond):
-  ''' 
+  '''
   test if a default command is explicitly disabled
   cond is assumed to be enabled if it is None
   '''
@@ -45,15 +45,15 @@ def escape(s, printf=1):
 def type2fmt_s(tp):
   ''' format for scanf '''
   fmt = ""
-  if   tp == "int":      
+  if   tp == "int":
     fmt = "%d"
   elif tp in ("long", "long int"):
     fmt = "%ld"
   elif tp in ("long long", "long long int"):
     fmt = "%lld"
-  elif tp in ("unsigned", "unsigned int"): 
+  elif tp in ("unsigned", "unsigned int"):
     fmt = "%u"
-  elif tp == "unsigned long": 
+  elif tp == "unsigned long":
     fmt = "%ul"
   elif tp == "float":
     fmt = "%f"
@@ -69,15 +69,15 @@ def type2fmt_s(tp):
 def type2fmt_p(tp, var):
   ''' format for printf '''
   fmt = ""
-  if   tp in ("int", "char"):      
+  if   tp in ("int", "char"):
     fmt = "%4d"
   elif tp in ("long", "long int"):
     fmt = "%4ld"
   elif tp in ("long long", "long long int"):
     fmt = "%8lld"
-  elif tp in ("unsigned", "unsigned int"): 
+  elif tp in ("unsigned", "unsigned int"):
     fmt = "0x%X"
-  elif tp == "unsigned long": 
+  elif tp == "unsigned long":
     fmt = "0x%lX"
   elif tp in ("float", "double", "real"):
     fmt = "%g"
@@ -93,14 +93,14 @@ def type2fmt_p(tp, var):
 
 def type2zero(tp):
   zval = None
-  if tp in ("int", "unsigned", "unsigned int", 
+  if tp in ("int", "unsigned", "unsigned int",
       "long", "unsigned long"):
     zval = "0"
   elif tp in ("float", "real"):
     zval = "0.0f"
   elif tp in ("double", "long double"):
     zval = "0.0"
-  elif tp in ("pointer", "function pointer", "char *", 
+  elif tp in ("pointer", "function pointer", "char *",
       "pointer to object"):
     zval = "NULL"
   elif tp == "MPI_Comm":
@@ -117,7 +117,7 @@ def mpitype(tp):
   else: raise Exception
 
 def remove_idle_pp(lines):
-  ''' remove empty preprocessor blocks 
+  ''' remove empty preprocessor blocks
     #if
     #else
     #endif
@@ -128,7 +128,7 @@ def remove_idle_pp(lines):
   while i < len(lines):
     if lines[i].startswith("#endif") and i > 0:
       lnprev = lines[i-1]
-      if (lnprev.startswith("#else") or 
+      if (lnprev.startswith("#else") or
           lnprev.startswith("#elif")):
         # remove an empty #else/#elif branch
         lines = lines[:i-1] + lines[i:]
@@ -215,7 +215,7 @@ def merge_blocks(lines, pattern, sbegin, selse, send):
       continue
 
     # finish an if block
-    if line.strip() == send and (cond and 
+    if line.strip() == send and (cond and
         cond.find(sbegin) >= line.find(send) ):
       if cond != None and cond.find(sbegin) == line.find(send):
         ip = next_block(lines, i, cond)

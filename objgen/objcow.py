@@ -19,14 +19,14 @@ class CCodeWriter:
     self.s = ""
     self.funcname = None
 
-  def inc(self): 
+  def inc(self):
     self.nindents += 1
-  def dec(self): 
+  def dec(self):
     self.nindents = self.nindents-1 if self.nindents > 0 else 0
 
   def addraw(self, t):
-    r''' 
-    write a plain string `t' without format conversion 
+    r'''
+    write a plain string `t' without format conversion
     indents are added if the current text ends with `\n'
     no newline is appended after `t'
     '''
@@ -56,9 +56,9 @@ class CCodeWriter:
         self.addraw(line + '\n')
 
   def addln(self, t = None, *args):
-    r''' 
+    r'''
     add text with an appending '\n'
-    now support multiple line 
+    now support multiple line
     '''
     if not t: return self.addraw('\n')
     self.addlnraw(t % args)
@@ -67,8 +67,8 @@ class CCodeWriter:
     return trimcode(self.s)
 
   def dump_block(self, block, tab = 4, offset = 2):
-    ''' 
-    dump a block of lines that are broken to fields 
+    '''
+    dump a block of lines that are broken to fields
     '''
     if len(block) == 0: return
     nfields = len(block[0])
@@ -86,7 +86,7 @@ class CCodeWriter:
       s = ""
       for j in range(nfields-1):
         s += "%-*s" % (wid[j], item[j])
-      s += item[nfields - 1] 
+      s += item[nfields - 1]
       self.addln(s.rstrip())
 
   def add_comment(self, text):
@@ -122,14 +122,14 @@ class CCodeWriter:
     self.addln(r'fprintf(stderr, "FILE: %%s, LINE: %%d\n", __FILE__, __LINE__);')
 
   def errmsg(self, msg, args = "", addfl = 0, pfx = None):
-    ''' 
-    print an error message with FILE/LINE 
-    NOTE: args are arguments for fprintf, not formatting args for msg 
-    arguments are separated by `,' 
+    '''
+    print an error message with FILE/LINE
+    NOTE: args are arguments for fprintf, not formatting args for msg
+    arguments are separated by `,'
     '''
     if msg in (None, ""): return
-    lead = self.sindent * 2 
-    
+    lead = self.sindent * 2
+
     # break msg into multiple line messages
     msgs = msg.splitlines()
     n = len(msgs)
@@ -158,8 +158,8 @@ class CCodeWriter:
     if addfl: self.print_file_line()
 
   def foo_if(self, cond, msg, args, addfl, onerr = None, pfx = None):
-    ''' 
-    `args' are parameters to be passed to 
+    '''
+    `args' are parameters to be passed to
     printf-like functions: msg_if and die_if
     '''
     self.begin_if(cond)
@@ -207,7 +207,7 @@ class CCodeWriter:
     ''' write code for initializing a dynamic array '''
     # since we allocate array space by default (as long as $cnt exists
     # assign cnt to 0 is the trick to avoid dynamic allocation
-    if cnt.strip() != "0":  
+    if cnt.strip() != "0":
       self.alloc_darr(var, type, cnt)
       self.init_sarr(var, default, cnt, pp)
       self.validate(valid, var, onerr = onerr)
@@ -221,7 +221,7 @@ class CCodeWriter:
       self.addln(val[len(callcmd):].lstrip() + ";")
     else:
       if strspec and type == "char *" and re.match(r'".*"$', val):
-        val = "ssdup(%s)" % val # apply ssdup for a bare string 
+        val = "ssdup(%s)" % val # apply ssdup for a bare string
       self.addln("%s = %s;", var, val)
 
   def checktp(self, var, type):
@@ -230,7 +230,7 @@ class CCodeWriter:
       sz1 = "sizeof(%s)" % var
       sz2 = "sizeof(%s)" % type
       msgz = r"wrong size: %s=%%d, %s=%%d" % (sz1, sz2)
-      self.insist("%s == %s" % (sz1, sz2), msgz, 
+      self.insist("%s == %s" % (sz1, sz2), msgz,
           "(int) %s, (int) %s" % (sz1, sz2))
 
   def getkeystr(self, key):
@@ -254,7 +254,7 @@ class CCodeWriter:
       args = ""
     return keystr, fmt, args
 
-  def validate(self, valid, var = None, 
+  def validate(self, valid, var = None,
       fmt = "", args = None, onerr = "exit(1);"):
     if notalways(valid):
       msg = (var + ": ") if var else ""
@@ -262,10 +262,10 @@ class CCodeWriter:
       if fmt: msg += ", " + fmt
       self.insist(valid, msg, args, onerr)
 
-  def cfgget_var_low(self, var, key, type, fmt, default, 
+  def cfgget_var_low(self, var, key, type, fmt, default,
       must, valid, desc, var_ = None, onerr = "exit(1);"):
-    ''' 
-    get a variable and make a validation 
+    '''
+    get a variable and make a validation
     var_ is the actual variable, used for printing
     '''
 
@@ -275,22 +275,22 @@ class CCodeWriter:
     cond = '0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
     if must in (1, "1"):
       # do not die if cfg is NULL, because this is the 'lazy' mode
-      cond = 'cfg != NULL && ' + cond 
-      self.die_if(cond, 
+      cond = 'cfg != NULL && ' + cond
+      self.die_if(cond,
         "missing var: %s, key: %s, fmt: %%%s" % (var_, dm(key), fmt),
         onerr = onerr)
     else:
       # for optional variables, we print the message immediately
       cond = "cfg == NULL || " + cond
-      self.msg_if(cond, 
-        'assuming default: %s = %s, key: %s' 
+      self.msg_if(cond,
+        'assuming default: %s = %s, key: %s'
         % (var_, escape(default), dm(key)))
-  
+
     self.validate(valid, var_, onerr = onerr)
 
   def cfgget_var(self, var, key, type, fmt, default,
       must, prereq, tfirst, valid, desc, onerr = "goto ERR;"):
-    
+
     # char * is to be allocated dynamically, so be careful
     if (not tfirst and notalways(prereq)
         and type == "char *" and default != "NULL"):
@@ -300,14 +300,14 @@ class CCodeWriter:
     if not tfirst: self.assign(var, default, type, 1)
     self.begin_if(prereq) # not effective if prereq == None
     if tfirst: self.assign(var, default, type, 1)
-    
+
     self.cfgget_var_low(var, key, type, fmt, default,
         must, valid, desc, onerr = onerr)
-   
+
     self.end_if(prereq)
     self.addln()
 
-  def str_to_arr(self, sbuf, var, type, fmt, cnt, 
+  def str_to_arr(self, sbuf, var, type, fmt, cnt,
       valid, cmpl, desc, onerr = "exit(1);"):
     ''' parse a string to array item '''
     ps = "ps"
@@ -316,10 +316,10 @@ class CCodeWriter:
     self.begin_if(sbufgood)
     # declare local variables
     self.addln("char *%s = %s;", ps, sbuf)
-    self.addln("int nps = 0;\n") 
+    self.addln("int nps = 0;\n")
     # self.declare_var("char *%s" % ps, ps)
     # self.declare_var("int nps")
-    
+
     self.addln("for (i = 0; i < %s; i++) {" % cnt)
     s = r'1 != sscanf(ps, "%s%%n", %s+i, &nps)' % (fmt, var)
     if cmpl:  # allow incomplete
@@ -333,9 +333,9 @@ class CCodeWriter:
     self.addln("}")
     self.end_if(sbufgood)
 
-  def cfgget_sarr(self, var, key, type, fmt, default, cnt, 
+  def cfgget_sarr(self, var, key, type, fmt, default, cnt,
       must, valid, cmpl, desc, onerr = "goto ERR;"):
-    # make initial assignment first 
+    # make initial assignment first
     self.init_sarr(var, default, cnt)
 
     # read a string from configuration file
@@ -347,25 +347,25 @@ class CCodeWriter:
         must, 1, desc, onerr = onerr)
 
     # parse the string to get individual items
-    self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl, 
+    self.str_to_arr(sbuf, var, type, fmt, cnt, valid, cmpl,
         desc, onerr = onerr)
     self.addln("ssdelete(%s);", sbuf)
 
-  def cfgget_flag(self, var, key, flag, type, fmt, default, 
+  def cfgget_flag(self, var, key, flag, type, fmt, default,
       prereq, desc, onerr = "goto ERR;"):
-    ''' 
+    '''
     assign a flag to var if prereq is true
     '''
     # get flag to a temporary variable i
-    if (default not in ("1", "0") or 
+    if (default not in ("1", "0") or
         type not in ("unsigned", "unsigned int", "unsigned long")):
       print "flag %s (key %s) with bad default [%s] or type [%s]" % (var, dm(key), default, type)
       raise Exception
-    
+
     self.begin_if(prereq)
     ivar = "i"
     self.assign(ivar, default, type)
-    self.cfgget_var_low(ivar, key, "int", fmt, default, 
+    self.cfgget_var_low(ivar, key, "int", fmt, default,
         "FALSE", # flag is usually optional
         "%s == 0 || %s == 1" % (ivar, ivar), desc, var_ = flag, onerr = onerr)
     self.begin_if(ivar)
@@ -377,9 +377,9 @@ class CCodeWriter:
     self.addln()
 
   def begin_function(self, name, fdecl, desc, macro = None, pp = None):
-    ''' 
+    '''
     start a function
-    construct four code-writers:  decl, vars, hdr, body 
+    construct four code-writers:  decl, vars, hdr, body
     set `funcname' to the function name, indicating
       we are in a function
     start an empty variable declaration list, `vls'
@@ -388,7 +388,7 @@ class CCodeWriter:
       print "need a function name"
       raise Exception
 
-    # save the preprocessing condition, like #if XXX 
+    # save the preprocessing condition, like #if XXX
     self.pp = pp
 
     # declare the function
@@ -397,7 +397,7 @@ class CCodeWriter:
     decl.add_comment("%s: %s" % (name, desc))
     decl.addln(fdecl)
     decl.addln("{")
-    
+
     # create a variable list `vls'
     self.vls = {}
 
@@ -411,7 +411,7 @@ class CCodeWriter:
 
     # body writer
     self.body = CCodeWriter(self.nindents + 1)  # body writer
-    
+
     self.funcname = name
     self.function = ""  # the content of the function
 
@@ -430,7 +430,7 @@ class CCodeWriter:
         #print dcl
 
   def end_function(self, sret = "", silence = None):
-    ''' 
+    '''
     end a function, return header and prototype
     `silence' is a list variables to be silenced if unused, e.g.,
       ["cfg", "err!"]
@@ -443,7 +443,7 @@ class CCodeWriter:
       self.print_vars(1)
       self.decl.addln()
       #raw_input()
-    
+
     s  = self.decl.gets()
     sb = self.body.gets()
 
@@ -455,17 +455,17 @@ class CCodeWriter:
         force = var.endswith("!")
         var.rstrip("!")
         #print "var %s, in decl: %s; in body: %s;" % (var, findvar(var, s), findvar(var, sb)); raw_input()
-        if force or (not findvar(var, sb) # not found in the body 
+        if force or (not findvar(var, sb) # not found in the body
             and findvar(var, s)): # but can be found in the declaration
           tail.addln("(void) %s;", var);
-    
+
     s += sb
-    
+
     if len(sret): tail.addln(sret);
     tail.addln("}")
     if self.pp: tail.addln("#endif")
     tail.addln()
-    
+
     s += self.tail.gets()
     self.function = s
     self.funcname = None  # no longer inside the function
@@ -474,11 +474,11 @@ class CCodeWriter:
     self.decl = self.body = self.hdr = self.tail = None
 
   def declare_var(self, dcl, var = None, pp = None):
-    ''' 
+    '''
     declare a variable within a function
     `dcl': declarator
     `var': variable name
-    e.g. in 
+    e.g. in
       double *arr;
     `var' is arr; `double *arr' is the declarator
     '''
@@ -511,7 +511,7 @@ class CCodeWriter:
         else: pass # same old condition
     else: # new variable
       self.vls[var] = dcl, pp
-  
+
   def wb_arr1d(self, arr, cnt, type):
     if type not in ("int", "double"):
       print "don't know how to write type %s for %s" % (type, arr)
@@ -532,7 +532,7 @@ class CCodeWriter:
     minor = "j"
     if trim:
       self.declare_var("int size")
-    
+
     pb = "p%s" % tp[:1]
     self.declare_var("%s *%s" % (tp, pb))
     if trim:
@@ -557,10 +557,10 @@ class CCodeWriter:
     else:
       self.wb_arr1d(pb, dim[1], tp)
     self.addln("}")
-  
+
   def rwb_obj(self, tag, var, funcall):
     cond = "0 != " + funcall % var
-    self.die_if(cond, "error %s object %s" % ("reading" if tag == "r" else "writing", var), 
+    self.die_if(cond, "error %s object %s" % ("reading" if tag == "r" else "writing", var),
         onerr = "goto ERR;")
 
   def rwb_objarr1d(self, tag, arr, dim, funcall, pp, widx, imin, imax, idx="i"):
@@ -581,7 +581,7 @@ class CCodeWriter:
     minor = "j"
     self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
     if widx[0]: # write major index
-      self.rwb_var(tag, major, "int", match = 1) 
+      self.rwb_var(tag, major, "int", match = 1)
     arr1d = "%s+%s*%s" % (arr, major, dim[1])
     if j0 or j1:
       jmin = minor+"min"
@@ -597,8 +597,8 @@ class CCodeWriter:
     else:
       jmin = 0
       jmax = dim[1]
-      size = dim[1] 
-    self.rwb_objarr1d(tag, arr1d, [size], funcall, pp, 
+      size = dim[1]
+    self.rwb_objarr1d(tag, arr1d, [size], funcall, pp,
         widx[1:], jmin, jmax, idx = minor)
     self.addln("}")
 
@@ -615,7 +615,7 @@ class CCodeWriter:
   def rwb_atom(self, tag, var, cnt = None, onerr = None):
     ''' read a variable or array '''
     default_endian = 1 # big endian
-    
+
     if type(cnt) == int and cnt <= 0: raise Exception
 
     # endian checked reading
@@ -634,8 +634,8 @@ class CCodeWriter:
       val = var
       cond1 = None
     cond2 = "endn_f%s(%s, sizeof(%s), %s, fp, %s) != %s" % (
-        ("read" if tag == "r" else "write"), ptr, val, cnt, 
-        ("endn" if tag == "r" else default_endian), 
+        ("read" if tag == "r" else "write"), ptr, val, cnt,
+        ("endn" if tag == "r" else default_endian),
         cnt if (type(cnt) != str or cnt.isdigit()) else "(size_t) (%s)" % cnt)
     if cond1:
       cond = "(%s)\n  && (%s)" % (cond1, cond2)
@@ -656,9 +656,9 @@ class CCodeWriter:
     cdbl = "fabs(%s - %s) > %s" % (x, var, prec)
     cond = cdbl if prec else cint
     fmt = "%g" if prec else "%d"
-    self.die_if (cond, 
+    self.die_if (cond,
        var+" mismatch, expect: "+fmt+", read: "+fmt+", pos: %#lx",
-       args = var+", "+x+", (unsigned long) ftell(fp)", 
+       args = var+", "+x+", (unsigned long) ftell(fp)",
        onerr = "goto ERR;")
 
 
@@ -680,7 +680,7 @@ class CCodeWriter:
       isdbl = tp in tpdbl
       tmp = "dtmp" if isdbl else "itmp"
       rvar = tmp if match else var # read to tmp var. if we need to match
-      if match: 
+      if match:
         self.declare_var("%s %s" % (tp, tmp)) # declare tmp var
         if type(match) == str: # nasty, start an branch
           #print "start if for %s" % match
@@ -689,7 +689,7 @@ class CCodeWriter:
 
     # read the variable
     self.rwb_atom(tag, rvar, onerr = onerr)
-    
+
     if tag == "r":
       if match:
         self.match_var(tmp, var, prec if isdbl else None)
@@ -698,7 +698,7 @@ class CCodeWriter:
           self.rwb_atom(tag, var, onerr = 0)
           self.end_if(match)
       self.validate(valid, var, onerr = "goto ERR;")
-  
+
   def rb_arr1d(self, arr, cnt, tp, match = None, valid = None, onerr = "goto ERR;"):
     if tp not in ("int", "double"):
       print "don't know how to write type %s for %s" % (tp, arr)
@@ -723,7 +723,7 @@ class CCodeWriter:
 
   def rb_arr2d(self, arr, dim, tp, trim):
     '''
-    read two dimensional array 
+    read two dimensional array
     allow a compact format for array of many zeroes, `trim':
     but need an offset and size for each 1D array
     '''
@@ -731,7 +731,7 @@ class CCodeWriter:
     self.declare_var("int "+major)
     if trim:
       self.declare_var("int size")
-    
+
     pb = "p%s" % tp[0]
     self.declare_var("%s *%s" % (tp, pb))
     if trim:
@@ -769,7 +769,7 @@ class CCodeWriter:
 
     self.addln("}") # end of the loop
 
-  def rwb_arr(self, rw, arr, dim, tp, trim = 1, 
+  def rwb_arr(self, rw, arr, dim, tp, trim = 1,
       match = None, valid = None, onerr = "goto ERR;"):
     ndim = len(dim)
     if ndim == 2:
@@ -795,7 +795,7 @@ class CCodeWriter:
     cond = "(endn = endn_rmatchi(&%s, %s, fp)) < 0" % (tmp, ref)
     self.die_if(cond,
         "%s 0x%%X cannot match %s 0x%%X" % (tmp, ref),
-        "(unsigned) %s, (unsigned) %s" % (tmp, ref), 
+        "(unsigned) %s, (unsigned) %s" % (tmp, ref),
         onerr = "goto ERR;")
     self.rb_var(tmp, "int")
     self.match_var(tmp, "(int) sizeof(double)")
@@ -824,8 +824,8 @@ class CCodeWriter:
       bytecnt = "(%s)*sizeof(%s)" % (cnt, tp)
     self.begin_if(cond)
     self.die_if("MPI_SUCCESS != MPI_Bcast(%s, %s, MPI_BYTE, %s, %s)"
-        % (var, bytecnt, master, comm), 
-        "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX" 
+        % (var, bytecnt, master, comm),
+        "%%3d/%%3d: failed to bcast %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX"
         % (var, tp, cnt),  # msg
         "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)
@@ -836,9 +836,9 @@ class CCodeWriter:
     self.declare_var("int i")
     cond = "%s > 1" % mpisize
     self.begin_if(cond)
-    self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)" 
-        % (var, tmp, cnt, mpitype(tp), master, comm), # cond 
-        "%%3d/%%3d: failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX" 
+    self.die_if("MPI_SUCCESS != MPI_Reduce(%s, %s, %s, %s, MPI_SUM, %s, %s)"
+        % (var, tmp, cnt, mpitype(tp), master, comm), # cond
+        "%%3d/%%3d: failed to reduce %s to %s (%%p), type = %s, size = %s (%%d), comm = 0x%%lX"
         % (var, tmp, tp, cnt),  # msg
         "%s, %s, %s, %s, (unsigned long) %s" % (mpirank, mpisize, var, cnt, comm), # args
         onerr = onerr)

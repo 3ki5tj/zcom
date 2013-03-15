@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, re 
+import os, sys, re
 from copy import copy, deepcopy
 
 '''
@@ -14,7 +14,7 @@ class CDeclarator:
     self.empty = 1
     if src != None:
       self.parse(src, p)
- 
+
   def __copy__(s):
     c = CDeclarator(None, None)
     c.empty = s.empty
@@ -36,12 +36,12 @@ class CDeclarator:
 
     self.param_level = 0 # not inside a function parameter list
     self.types = []
-    
+
     # find the declarator, e.g. *a, (*a)(), ...
-    if 0 != self.dcl(src, p): 
+    if 0 != self.dcl(src, p):
       return -1
     self.empty = 0
-    
+
     self.end = copy(p)
     self.raw = self.begin.gettext(src, self.end)
     #print "complete a decl {%s} from %s to %s\n{%s}" % (self, self.begin, self.end, self.raw)
@@ -66,13 +66,13 @@ class CDeclarator:
     # storage classifiers: auto, register, static, extern, typedef
     # type qualifier: const, volatile
     p0 = copy(p)
-    
+
     # specifiers they can appear multiple times
     # `long' belongs to here, since we have long long
     specs = ("auto", "register", "static", "extern",
-          "const", "volatile", 
+          "const", "volatile",
           "long", "signed", "unsigned", "short")
-    # type specifiers that can appear at most once 
+    # type specifiers that can appear at most once
     # they are usually the last in the declaration
     types = ("void", "char", "int",
           "float", "double",
@@ -81,7 +81,7 @@ class CDeclarator:
           "va_list", "jmp_buf", "__jmp_buf_tag",
           "lconv", "fenv_t", "fexcept_t"
           "wchar_t", "wint_t", "wctrans_t", "wctype_t",
-          "errno_t", "sig_atomic_t", 
+          "errno_t", "sig_atomic_t",
           "int8_t", "uint8_t", "int16_t", "uint16_t",
           "int32_t", "uint32_t", "int64_t", "uint64_t",
           "bool", "_Bool", "complex",
@@ -90,7 +90,7 @@ class CDeclarator:
     types += ("MPI_Comm", "MPI_Datatype", "MPI_Group", "MPI_Win",
           "MPI_File", "MPI_Op", "MPI_Topo_type",
           "MPI_Errhandler", "MPI_Request", "MPI_Info",
-          "MPI_Aint", "MPI_Fint", "MPI_Offset", 
+          "MPI_Aint", "MPI_Fint", "MPI_Offset",
           "MPI_Status")
     alltypes = specs + types
 
@@ -104,7 +104,7 @@ class CDeclarator:
         print "expected data type from %s, type=%s, %s" % (p0, type, self.dbg(src, p))
         raise Exception
         return None
-      
+
       ''' guess if the token is a type specifier
       since we do not parse the whole file, typedef's and #define's
       cannot be treated exactly, the method below is approximate '''
@@ -113,7 +113,7 @@ class CDeclarator:
         p.ungettok(src)
         break
       elif (not allow_novar and # next token is punctuation!
-          p.peektok(src)[0] in (None, ";", ",") ):  
+          p.peektok(src)[0] in (None, ";", ",") ):
         p.ungettok(src)
         break
       type += token + " "
@@ -145,7 +145,7 @@ class CDeclarator:
     '''
     token, ttype = p.gettoken(src)
     if ttype == '(': # ( dcl )
-      self.dcl(src, p) 
+      self.dcl(src, p)
       if p.gettoken(src) != (')', ')'):
         print "missing ) %s" % (self.dbg(src, p))
         raise Exception
@@ -165,7 +165,7 @@ class CDeclarator:
           print "missing ) after parameter list, token: [%s], %s" % (token, self.dbg(src, p))
           raise Exception
         if self.param_level == 0: self.types += ["function"]
-      elif ttype == "[": 
+      elif ttype == "[":
         # array dimension can only span a one line
         pattern = r"(.*)\]"
         s = p.getline(src)
@@ -208,7 +208,7 @@ class CDeclarator:
   def isempty(self): return self.empty
 
 
-class CDeclaratorList(CDeclarator): 
+class CDeclaratorList(CDeclarator):
   '''
   C declarations of multiple variables
   we inherit `dclspec()' from CDeclarator
@@ -217,7 +217,7 @@ class CDeclaratorList(CDeclarator):
     self.dclist = []
     if src != None:
       self.parse(src, p)
-  
+
   def __deepcopy__(s, memo):
     c = CDeclaratorList(None, None)
     memo[id(s)] = c
@@ -246,17 +246,17 @@ class CDeclaratorList(CDeclarator):
       if d.isempty(): return -1
       d.datatype = self.datatype # add datatype for individual CDeclarator
       self.dclist += [d]
-      
+
       # handle the last semicolon
       token, ttype = p.gettoken(src)
-      if token == ";": 
+      if token == ";":
         self.end = copy(p)
         break
       if token != ",":
         print "missing ; or , token [%s] %s" % (token, self.dbg(src, p))
         raise Exception
         return -1
-    
+
     self.raw = self.begin.gettext(src, self.end)
 
   def isempty(self): return 0 if len(self.dclist) > 0 else 1
