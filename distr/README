@@ -1,0 +1,74 @@
+Usage
+======
+
+d = distr_open(xmin, xmax, dx);
+
+/* during simulation deposit data
+ * usually only x and dlnrhodx are required */
+distr_add(d, x, dlnrhodx, d2lnrhodx2, weight);
+
+/* call integral identities */
+distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
+  iitype: 0 jarzynski, 1: fractional, 2: mean-force integration
+  halfwin: number of bins in a half window
+           0: determined from the inverse of mean force std.
+  mfhalfwin: 0 for single-bin average
+  gam: if halfwin == 0, this is a factor to determin the window size
+       from the mean force fluctuation (1.5)
+  mlimit (-1) and sampmin (100) are for nonuniform distributions 
+
+/* save data, also distr_load(d, fnds); */
+distr_save(d, fnds);
+
+distr_close(d);
+
+
+Code
+======
+
+Objects
+~~~~~~~~
+
+/* distribution */
+typedef struct {
+  int n;  /* number of bins */
+  double xmin, xmax, dx;
+  distrsum_t *arr; /* [0..n] bin data */
+  double *rho; /* output distribution */
+  double *lnrho; /* from mean force integration */
+  double *his; /* histogram average */
+  ...
+} distr_t;
+
+
+/* bin data */
+typedef struct {
+  double s, sf, sf2, sdv;
+} distrsum_t;
+
+/* 1D window boundaries */
+typedef struct {
+  int il, ir;
+} distrwin_t;
+
+
+
+Main functions
+~~~~~~~~~~~~~~
+
+Distribution
+------------
+  distr_aj(d, m) 
+
+
+Mean force
+----------
+  distr_mf0(),  single-bin mean force, unbiased for lnrho
+  distr_mfwin(), multiple-bin mean force 
+
+
+Help functions
+~~~~~~~~~~~~~~
+ksdif1d():    Kolmogorov-Smirnov test of the cumulant distributions
+entdif1d():   Kullback-Leibler divergence of two distribution densities.
+

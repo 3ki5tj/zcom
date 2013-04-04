@@ -2,7 +2,9 @@
 #define ZCOM_PICK
 #define ZCOM_DISTR
 #define ZCOM_CFG
+#define ZCOM_RC /* used by distr2d */
 #include "zcom.h"
+#include "../distr2d.h"
 
 const char *fncfg = "bb.cfg";
 const char *fnraw = "bbcompat.txt";

@@ -173,7 +173,7 @@ INLINE void iimhc(distr_t *d, distr_t **darr, double *dbeta, double *wt,
 INLINE void decorate(distr_t *d, distr_t **darr, double *dbeta, double *wtk,
     double *dlnz, int narr)
 {
-  int i, m = 0, k, n = d->n;
+  int i, k, n = d->n;
   double s, sf, sf2, sdv, wt;
 
   for (i = 0; i < n; i++) {
@@ -202,8 +202,6 @@ INLINE void decorate(distr_t *d, distr_t **darr, double *dbeta, double *wtk,
 static void merge(distr_t *d, distr_t **darr, double *dbeta, double *wt,
     double *dlnz, int narr, int m)
 {
-  int i, s, n = d->n;
-
   mfmhc(d, darr, dbeta, wt, narr); /* computing the mean force */
   if (m < 0) m = 0;
   distr_winfixed(d, d->win, gam, m);

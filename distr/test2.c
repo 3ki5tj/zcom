@@ -1,6 +1,7 @@
+/* test the construction of a two-dimensional distribution */
 #include <stdio.h>
 #include <math.h>
-#include "distr.c"
+#include "distr2d.c"
 
 #define N 360
 #define M 360

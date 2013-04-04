@@ -73,8 +73,8 @@ static void loadcfg(const char *fncfg)
 static void simul(distr_t *d, distr_t *db)
 {
   lj_t *lj;
-  int i, t, ntot = nsteps + nequil;
-  real u, k, p, s;
+  int t, ntot = nsteps + nequil;
+  real u, k, p;
   real bet = 1.0/tp, fb = 0.f, udb;
   static av_t avU, avK0, avK, avp, avfb;
 
