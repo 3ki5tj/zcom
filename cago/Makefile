@@ -8,8 +8,8 @@ LMX =
 
 deps = cago.c cago.h def.h rv3.h md.c md.h pdb.h pdb.c util.h rotfit.c rotfit.h \
        include/argopt.c include/argopt.h Makefile
-bin := $(patsubst %.c,%, $(wildcard test*.c)) \
-       $(patsubst %.c,%_d, $(wildcard test*.c))
+bin := $(patsubst %.c,%_d, $(wildcard test*.c)) \
+       $(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
@@ -21,7 +21,7 @@ $(bin): $(deps)
 %_d :: %.c
 	$(CC) -o $@ $< $(LM)
 
-subdirs=tmhcago gl examples
+subdirs=tmhcago gl example
 
 clean:
 	rm -f *~ *.out MTSEED *.dat *.pos $(bin) final.pdb ref.pdb

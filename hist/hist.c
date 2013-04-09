@@ -2,66 +2,42 @@
 #define HIST_C__
 #include "hist.h"
 
-/* compute sum, average and standard deviation*/
-INLINE double *gethistsums_(const double *h, int rows, int n, 
-    double xmin, double dx)
+/* compute sum, average and variance */
+INLINE double *histgetsums_(const double *h, int rows, int n, 
+    double xmin, double dx, double *sums)
 {
-  double *sums, *xav, *xdv, x, w;
+  double *xav, *xxc, x, w;
   int i, r;
   
-  xnew(sums, 3*rows);
   xav = sums + rows;
-  xdv = xav  + rows;
+  xxc = xav  + rows;
   for (r = 0; r < rows; r++) {
-    sums[r] = xav[r] = xdv[r] = 0.; 
+    sums[r] = xav[r] = xxc[r] = 0.; 
     for (i = 0; i < n; i++) {
       x = xmin + (i+.5)*dx;
       w = h[r*n + i];
       sums[r] += w;
       xav[r]  += w*x;
-      xdv[r]  += w*x*x;
+      xxc[r]  += w*x*x;
     }
     if (sums[r] > 1e-5) {
       xav[r] /= sums[r];
-      xdv[r] = sqrt(xdv[r]/sums[r] - xav[r]*xav[r]);
+      xxc[r] = xxc[r]/sums[r] - xav[r]*xav[r];
     }
   }
   return sums;
 }
 
-INLINE double *gethist2sums_(const double *h, int rows, int n,
-    double xmin, double dx, int m, double ymin, double dy)
+
+/* get average of a certain `row' */
+INLINE double hs_getave(const hist_t *hs, int row, double *sum, double *var)
 {
-  double *sums, *xav, *yav, *xdv, *ydv, x, y, w;
-  int i, j, r;
-  
-  xnew(sums, 5*rows);
-  xav = sums + rows;
-  xdv = sums + rows*2;
-  yav = sums + rows*3;
-  ydv = sums + rows*4;
-  for (r = 0; r < rows; r++) {
-    sums[r] = xav[r] = xdv[r] = yav[r] = ydv[r] = 0.;
-    for (i = 0; i < n; i++) {
-      x = xmin + (i+.5)*dx;
-      for (j = 0; j < m; j++) {
-        y = ymin + (j+.5)*dy;
-        w = h[r*n*m + i*m + j];
-        sums[r] += w;
-        xav[r]  += w*x;
-        xdv[r]  += w*x*x;
-        yav[r]  += w*y;
-        ydv[r]  += w*y*y;
-      }
-    }
-    if (sums[r] > 1e-5) {
-      xav[r] /= sums[r];
-      xdv[r] = sqrt(xdv[r]/sums[r] - xav[r]*xav[r]);
-      yav[r] /= sums[r];
-      ydv[r] = sqrt(ydv[r]/sums[r] - yav[r]*yav[r]);
-    }
-  }
-  return sums;
+  double arr[3];
+
+  histgetsums_(hs->arr + row * hs->n, 1, hs->n, hs->xmin, hs->dx, arr);
+  if (sum) *sum = arr[0];
+  if (var) *var = arr[2];
+  return arr[1];
 }
 
 
@@ -82,22 +58,24 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   int i, r, rp, rowp, imax, imin;
   const double *p;
   double sm, *sums, fac, delta;
-  double *smtot = NULL, *htot = NULL;
+  double smtot[3], *htot = NULL;
 
   if (fn == NULL) fn = "HIST";
   xfopen(fp, fn, "w", return -1);
-  
-  sums = gethistsums_(h, rows, n, xmin, dx);
+ 
+  /* get statistics */ 
+  xnew(sums, rows * 3);
+  histgetsums_(h, rows, n, xmin, dx, sums);
  
   /* compute the overall histogram */
   if (flags & HIST_OVERALL) {
-    xnew(htot, n);
+    xnew(htot, n); /* the overall histogram */
     for (i = 0; i < n; i++) htot[i] = 0.;
     
     for (r = 0; r < rows; r++) 
       for (i = 0; i < n; i++)
         htot[i] += h[r*n + i];
-    smtot = gethistsums_(htot, 1, n, xmin, dx);
+    histgetsums_(htot, 1, n, xmin, dx, smtot);
     rowp = rows + 1;
   } else {
     rowp = rows;
@@ -110,7 +88,7 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
     fprintf(fp, "%g ", sums[r]);
   fprintf(fp, "| ");
   for (r = 0; r < rows; r++) /* average, standard deviation */
-    fprintf(fp, "%g %g ", sums[r+rows], sums[r+rows*2]);
+    fprintf(fp, "%g %g ", sums[r+rows], sqrt(sums[r+rows*2]));
   fprintf(fp, "| ");
   if (fwheader != NULL) (*fwheader)(fp, pdata);
   fprintf(fp, "\n");
@@ -167,7 +145,6 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   free(sums);
   if (flags & HIST_OVERALL) {
     free(htot);
-    free(smtot);
   }
   return 0;
 }
@@ -360,6 +337,45 @@ INLINE int histadd(const double *xarr, double w, double *h, int rows,
   return good;
 }
 
+
+INLINE double *hist2getsums_(const double *h, int rows, int n,
+    double xmin, double dx, int m, double ymin, double dy, double *sums)
+{
+  double *xav, *yav, *xxc, *yyc, *xyc, x, y, w;
+  int i, j, r;
+  
+  xav = sums + rows;
+  xxc = sums + rows*2;
+  yav = sums + rows*3;
+  yyc = sums + rows*4;
+  xyc = sums + rows*5;
+  for (r = 0; r < rows; r++) {
+    sums[r] = xav[r] = xxc[r] = yav[r] = yyc[r] = 0.;
+    for (i = 0; i < n; i++) {
+      x = xmin + (i+.5)*dx;
+      for (j = 0; j < m; j++) {
+        y = ymin + (j+.5)*dy;
+        w = h[r*n*m + i*m + j];
+        sums[r] += w;
+        xav[r]  += w*x;
+        xxc[r]  += w*x*x;
+        yav[r]  += w*y;
+        yyc[r]  += w*y*y;
+        xyc[r]  += w*x*y;
+      }
+    }
+    if (sums[r] > 1e-5) {
+      xav[r] /= sums[r];
+      xxc[r] = sqrt(xxc[r]/sums[r] - xav[r]*xav[r]);
+      yav[r] /= sums[r];
+      yyc[r] = sqrt(yyc[r]/sums[r] - yav[r]*yav[r]);
+      xyc[r] = xyc[r]/sums[r] - xav[r]*yav[r];
+    }
+  }
+  return sums;
+}
+
+
 /* write 'rows' 2d n^2 histograms to file */
 INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     int m, double ymin, double dy, unsigned flags, const char *fn)
@@ -374,7 +390,8 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
   xfopen(fp, fn, "w", return 1);
   
   nm = n*m;
-  sums = gethist2sums_(h, rows, n, xmin, dx, m, ymin, dy);
+  xnew(sums, rows * 6);
+  hist2getsums_(h, rows, n, xmin, dx, m, ymin, dy, sums);
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ", 
       version, flags, rows, n, xmin, dx, m, ymin, dy);
@@ -382,8 +399,8 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     fprintf(fp, "%g ", sums[r]);
   fprintf(fp, " | ");
   for (r = 0; r < rows; r++) /* averages and standard deviations */
-    fprintf(fp, "%g %g %g %g ", sums[r+rows], sums[r+rows*2],
-        sums[r+rows*3], sums[r+rows*4]);
+    fprintf(fp, "%g %g %g %g %g ", sums[r+rows], sums[r+rows*2],
+        sums[r+rows*3], sums[r+rows*4], sums[r+rows*5]);
   fprintf(fp, "| \n");
 
   delta = (flags & HIST_ADDAHALF) ? 0.5 : 0;

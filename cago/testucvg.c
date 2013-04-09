@@ -80,7 +80,7 @@ INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
     /* end of a stage */
     if (ipass < npass) { /* not enough passes over rmsd */
       const char fnfail[] = "fail.pos";
-      cago_rotfit(go, go->x, go->x1);
+      go->rmsd = cago_rmsd(go, go->x, go->x1);
       cago_writepos(go, go->x1, NULL, fnfail);
       fprintf(stderr, "%d: failed to converge, epot: %g - %g, %d passes, %s\n", 
           stg, epot, go->epot, ipass, fnfail);
@@ -133,9 +133,6 @@ int main(int argc, char **argv)
   rddv = av_getdev(avrmsd);
   printf("ucvgmd %s, epot %7.4f, tp = %.4f(%.4f), epot = %.4f(%.4f), rmsd = %.2f(%.2f)\n",
       (ret ? "   failed" : "succeeded"), epot_target, tpav, tpdv, epav, epdv, rdav, rddv);
-  cago_rotfit(go, go->x, go->f);
-  cago_writepos(go, go->f, NULL, "c.pos");
-  cago_writepos(go, go->xref, NULL, "ref.pos");  
   cago_close(go);
   return 0;
 }

@@ -14,8 +14,8 @@ real tp = 1.0f;
 real mddt = 2e-3f;
 real thermdt = 2e-2f;
 
-int tfreq =  2000;
-int tmax = 200000;
+int tfreq = 2000;
+int tmax = 20000;
 
 static void doargs(int argc, char **argv)
 {
@@ -25,6 +25,23 @@ static void doargs(int argc, char **argv)
   argopt_regopt(ao, "-n", "%d", &tmax, "number of simulation steps");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
+}
+
+/* test if energy and force matches with each other */
+static void eftest(cago_t *go, real del)
+{
+  real ep0, ep1, dep, f2;
+  int i;
+
+  ep0 = cago_force(go, go->x, go->f);
+  for (f2 = 0, i = 0; i < go->n; i++) f2 += rv3_sqr(go->f[i]);
+  /* displace the molecule */
+  for (i = 0; i < go->n; i++) {
+    rv3_sinc(go->x[i], go->f[i], del/f2);
+  }
+  ep1 = cago_force(go, go->x, go->f);
+  dep = ep0 - ep1;
+  printf("ep %g, %g, %g, rat %g\n", ep0, ep1, dep, dep/del);
 }
 
 int main(int argc, char **argv)
@@ -46,13 +63,14 @@ int main(int argc, char **argv)
     cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, tp, thermdt);
     if (t % tfreq == 0) {
-      cago_rotfit(go, go->x, NULL);
+      eftest(go, 0.1);
+      go->rmsd = cago_rmsd(go, go->x, NULL);
       printf("t %d, tp = %g, ene = %g+%g = %g, %g\n", 
     	  t, tp, go->epot, go->ekin, go->epot + go->ekin, go->rmsd);
     }
   }
 
-  cago_rotfit(go, go->x, go->f);
+  go->rmsd = cago_rmsd(go, go->x, go->f);
   cago_writepos(go, go->x, NULL, "b.pos");
   cago_writepos(go, go->f, NULL, "c.pos");
   cago_writepos(go, go->xref, NULL, "0.pos");

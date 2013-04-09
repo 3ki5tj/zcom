@@ -1,16 +1,16 @@
 #include "cago.c"
 #include "argopt.c"
 
-const char *fnpdb = "pdb/1VII.pdb";
+const char *fnpdb = "pdb/1KIK.pdb";
 real kb = 200.f;
 real ka = 40.f;
 real kd1 = 1.f;
 real kd3 = .5f;
 real nbe = 1.f;
 real nbc = 4.f; /* repulsion distance */
-real rcc = 6.f;
+real rcc = 4.5f;
 
-real tps = 0.3f, tp = 0.3f;
+real tps = 1.12f, tp = 1.12f;
 
 static void doargs(int argc, char **argv)
 {
@@ -27,7 +27,7 @@ static void doargs(int argc, char **argv)
 /* run a regular md
  * teql steps for equilibration, tmax steps for production
  * tp: the real temperature, tps: thermostat temperature */
-INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
+INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt,
     real tps, real tp, av_t *avep, av_t *avrmsd,
     int teql, int tmax, int trep)
 {
@@ -39,7 +39,7 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
   av_clear(avrmsd);
   for (t = 1; tmax < 0 || t <= tmax; t++) {
     cago_vv(go, fs, mddt);
-    if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
+    cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, (real) tps, thermdt);
     go->rmsd = cago_rmsd(go, go->x, NULL);
     if (t > teql) {
@@ -57,7 +57,7 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom,
 int main(int argc, char **argv)
 {
   cago_t *go;
-  int nstcom = 10, teql = 100000, tmax = 500000, trep = 10000;
+  int teql = 100000, tmax = 500000, trep = 10000, ncont;
   real mddt = 0.002f, thermdt = 0.02f;
   real epav, epdv, rdav, rddv;
   av_t avep[1], avrmsd[1];
@@ -67,11 +67,13 @@ int main(int argc, char **argv)
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
-  cago_initmd(go, 0.1, 0.0);
-  printf("%s n %d, tp %.3f, tps %.3f, epot = %g, %g (ref), rmsd = %g\n", 
-      fnpdb, go->n, tp, tps, go->epot, go->epotref, go->rmsd);
+  cago_initmd(go, -0.1, 0.0);
+  ncont = cago_ncontacts(go, go->x, 1.2, NULL, NULL);
+  printf("%s n %d, tp %.3f, tps %.3f, epot %g, %g (ref), rmsd %g, cont %d/%d\n", 
+      fnpdb, go->n, tp, tps, go->epot, go->epotref,
+      go->rmsd, ncont, go->ncont);
   
-  cago_mdrun(go, mddt, thermdt, nstcom, tps, tp, avep, avrmsd,
+  cago_mdrun(go, mddt, thermdt, tps, tp, avep, avrmsd,
      teql, tmax, trep);
   epav = av_getave(avep);
   epdv = av_getdev(avep);
@@ -79,11 +81,6 @@ int main(int argc, char **argv)
   rddv = av_getdev(avrmsd);
   printf("tp %.3f, tps %.3f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n", 
       tp, tps, epav, epdv, rdav, rddv);
-  cago_rotfit(go, go->x, go->f);
-  cago_writepos(go, go->f, NULL, "c.pos");
-  cago_writepos(go, go->xref, NULL, "ref.pos");
-
   cago_close(go);
-
   return 0;
 }

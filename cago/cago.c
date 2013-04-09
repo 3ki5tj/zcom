@@ -50,7 +50,7 @@ cago_t *cago_openx(const char *fnpdb, real kb, real ka, real kd1, real kd3,
     real nbe, real nbc, real rcc, unsigned flags)
 {
   cago_t *go;
-  int i, j, id;
+  int i, j;
   pdbmodel_t *pm;
   pdbaac_t *c;
 
@@ -91,7 +91,7 @@ cago_t *cago_openx(const char *fnpdb, real kb, real ka, real kd1, real kd3,
 
   for (go->ncont = 0, i = 0; i < go->n - 1; i++)
     for (j = i+1; j < go->n; j++)
-      go->ncont += go->iscont[ (id = i*go->n + j) ];
+      go->ncont += go->iscont[ i*go->n + j ];
   return go;
 }
 
@@ -121,11 +121,15 @@ INLINE void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
   md_shiftang3d(x, v, go->n);
 }
 
-/* initialize a md system
- * if rndamp >= 0, start from the reference structure,
- *   with a random disturbance of rndamp
- * if rndamp < 0, start from a nearly-straight chain, 
- *   with a disturbance of rndamp in the x, y directions */ 
+/* initialize molecular dynamics
+ *  o create an initial structure
+ *    if rndamp >= 0, start from the reference structure,
+ *      with a random disturbance of rndamp
+ *    if rndamp < 0, start from a nearly-straight chain, 
+ *      with a disturbance of rndamp in the x, y directions
+ *  o initialize the velocity with the center of mass motion removed
+ *  o compute the initial force and energy
+ * */
 INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
 {
   int i, j, n = go->n;
@@ -173,92 +177,148 @@ INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
   return 0;
 }
 
+/* bond energy 1/2 k (r - r0)^2 */
+INLINE real potbond(rv3_t a, rv3_t b, real r0, real k, 
+    rv3_t fa, rv3_t fb)
+{
+  real dx[3], r, dr, amp;
+  
+  r = rv3_norm( rv3_diff(dx, a, b) );
+  dr = r - r0;
+  if (fa != NULL) {
+    amp = k * dr / r;
+    rv3_sinc(fa, dx, -amp);
+    rv3_sinc(fb, dx,  amp);
+  }
+  return .5f * k * dr * dr;
+}
+
+/* harmonic angle 1/2 k (ang - ang0)^2 */
+INLINE real potang(rv3_t a, rv3_t b, rv3_t c, real ang0, real k,
+    rv3_t fa, rv3_t fb, rv3_t fc)
+{
+  real dang, amp, ga[3], gb[3], gc[3];
+
+  if (fa) { /* compute gradient */ 
+    dang = rv3_ang(a, b, c, ga, gb, gc) - ang0;
+    amp = -k * dang;
+    rv3_sinc(fa, ga, amp);
+    rv3_sinc(fb, gb, amp);
+    rv3_sinc(fc, gc, amp);
+  } else {
+    dang = rv3_ang(a, b, c, NULL, NULL, NULL) - ang0;
+  }
+  return .5f * k * dang * dang;
+}
+
+/* 1-3 dihedral: k1 * (1 - cos(dang)) + k3 * (1 - cos(3*dang)) */
+INLINE real potdih13(rv3_t a, rv3_t b, rv3_t c, rv3_t d, real ang0,
+    real k1, real k3, rv3_t fa, rv3_t fb, rv3_t fc, rv3_t fd) 
+{
+  real dang, amp, ga[3], gb[3], gc[3], gd[3];
+  
+  if (fa) {
+    dang = rv3_dih(a, b, c, d, ga, gb, gc, gd) - ang0;
+    amp  = (real)( -k1 * sin(dang) - 3 * k3 * sin(3*dang));
+    rv3_sinc(fa, ga, amp);
+    rv3_sinc(fb, gb, amp);
+    rv3_sinc(fc, gc, amp);
+    rv3_sinc(fd, gd, amp);
+  } else {
+    dang = rv3_dih(a, b, c, d, NULL, NULL, NULL, NULL) - ang0;
+  }
+  return (real)( k1 * (1 - cos(dang)) + k3 * (1 - cos(3 * dang)) );
+}
+
+/* 12-10 potential: u = 5(rc/r)^12 - 6(rc/r)^10,
+ * the minimum is at r = rc, and u = -1 */
+INLINE real pot1210(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
+{
+  real dx[3], dr2, invr2, invr4, invr6, invr10, amp;
+
+  dr2 = rv3_sqr( rv3_diff(dx, a, b) );
+  invr2 = rc2 / dr2;
+  invr4 = invr2 * invr2;
+  invr6 = invr4 * invr2;
+  invr10 = invr4 * invr6;
+  if (fa) {
+    amp = 60 * eps * (invr2 - 1) * invr10 * (1/dr2);
+    rv3_sinc(fa, dx,  amp);
+    rv3_sinc(fb, dx, -amp);
+  }
+  return eps * (5 * invr2 - 6) * invr10;
+}
+
+/* WCA potential: u = (rc/r)^12 - 2 (rc/r)^6 + 1 if r < rc, or 0 otherwise
+ * without the truncation, the minimum is at r = rc, and u = 0 */
+INLINE real potwca(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
+{
+  real dx[3], dr2, invr2, invr6, amp;
+
+  dr2 = rv3_sqr( rv3_diff(dx, a, b) );
+  if (dr2 > rc2) return 0;
+  invr2 = rc2 / dr2;
+  invr6 = invr2 * invr2 * invr2;
+  if (fa) {
+    amp = 12 * eps * (invr6 - 1) * invr6 * (1/dr2);
+    rv3_sinc(fa, dx,  amp);
+    rv3_sinc(fb, dx, -amp);
+  }
+  return eps * (invr6 * (invr6 - 2) + 1);
+}
+
+/* repulsive potential: (rc/r)^12 */
+INLINE real potr12(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
+{
+  real dx[3], dr2, invr2, invr6, u, amp;
+
+  dr2 = rv3_sqr( rv3_diff(dx, a, b) );
+  invr2 = rc2 / dr2;
+  invr6 = invr2 * invr2 * invr2;
+  u = eps * invr6 * invr6;
+  if (fa) {
+    amp = 12 * u / dr2;
+    rv3_sinc(fa, dx,  amp);
+    rv3_sinc(fb, dx, -amp);
+  }
+  return u;
+}
+
+
 INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
 {
-  int i, j, n = go->n;
-  real ene = 0, dr, del, ang, amp, invr2, dr2, dr4, dr6, dr10;
-  real kb = go->kb, ka = go->ka, kd1 = go->kd1, kd3 = go->kd3,
+  int i, j, id, n = go->n, ncwca = go->flags & CAGO_NCWCA;
+  real ene = 0, kb = go->kb, ka = go->ka, kd1 = go->kd1, kd3 = go->kd3,
        nbe = go->nbe, nbc2 = go->nbc*go->nbc;
-  rv3_t dx, g[3];
-  dihcalc_t dc[1];
 
   if (f != NULL) {
-    for (i = 0; i < n; i++)
-      rv3_zero(f[i]);
+    for (i = 0; i < n; i++) rv3_zero(f[i]);
   }
 
   /* bonds */
-  for (i = 0; i < n-1; i++) {
-    rv3_diff(dx, x[i], x[i+1]);
-    dr = rv3_norm(dx);
-    del = dr - go->bref[i];
-    ene += .5f*kb*del*del;
-    amp = kb*del/dr;
-    if (f != NULL) {
-      rv3_sinc(f[i],   dx, -amp);
-      rv3_sinc(f[i+1], dx,  amp);
-    }
-  }
+  for (i = 0; i < n-1; i++)
+    ene += potbond(x[i], x[i+1], go->bref[i], kb, f[i], f[i+1]);
 
   /* angles */
-  for (i = 1; i < n-1; i++) {
-    ang = rv3_ang(x[i-1], x[i], x[i+1], g[0], g[1], g[2]);
-    del = ang - go->aref[i-1];
-    ene += .5f*ka*del*del;
-    amp = -ka*del;
-    if (f != NULL) {
-      rv3_sinc(f[i-1], g[0], amp);
-      rv3_sinc(f[i],   g[1], amp);
-      rv3_sinc(f[i+1], g[2], amp);
-    }
-  }
+  for (i = 1; i < n-1; i++)
+    ene += potang(x[i-1], x[i], x[i+1], go->aref[i-1], ka, f[i-1], f[i], f[i+1]);
 
   /* dihedrals */
-  memset(dc, 0, sizeof(*dc));
-  dc->szreal = sizeof(real);
-  for (i = 0; i < n - 3; i++) {
-    ang = rv3_calcdih(dc, x[i], x[i+1], x[i+2], x[i+3],
-                      DIH_FOUR|DIH_GRAD);
-    del = ang - go->dref[i];
-    if (del > M_PI) del -= 2*M_PI; else if (del < -M_PI) del += 2*M_PI;
-    ene += (real)(  kd1 * (1. - cos(del)) );
-    amp  = (real)( -kd1 * sin(del) );
-    ene += (real)(  kd3 * (1. - cos(3.*del)) );
-    amp += (real)( -kd3 * 3 * sin(3*del) );
-    if (f != NULL) {
-      rv3_sinc(f[i],   dc->g[0], amp);
-      rv3_sinc(f[i+1], dc->g[1], amp);
-      rv3_sinc(f[i+2], dc->g[2], amp);
-      rv3_sinc(f[i+3], dc->g[3], amp);
-    }
-  }
+  for (i = 0; i < n - 3; i++)
+    ene += potdih13(x[i], x[i+1], x[i+2], x[i+3], go->dref[i],
+        kd1, kd3, f[i], f[i+1], f[i+2], f[i+3]);
 
   /* nonbonded */
-  for (i = 0; i < n - 4; i++) {
+  for (i = 0; i < n - 4; i++)
     for (j = i + 4; j < n; j++) {
-      rv3_diff(dx, x[i], x[j]);
-      dr2 = rv3_sqr(dx);
-      invr2 = 1/dr2;
-      if (go->iscont[i*n + j]) { /* a contact pair */
-        dr2 = go->r2ref[i*n+j]*invr2;
-        dr4 = dr2*dr2;
-        dr6 = dr4*dr2;
-        dr10 = dr4*dr6;
-        amp = nbe*60*(dr2 - 1)*dr10*invr2;
-        ene += nbe*(5*dr2 - 6)*dr10;
-      } else { /* none contact pair */
-        dr2 = nbc2/dr2;
-        dr6 = dr2*dr2*dr2;
-	dr6 *= dr6;
-        amp = nbe*12*dr6*invr2;
-        ene += nbe*dr6;
-      }
-      if (f != NULL) {
-        rv3_sinc(f[i], dx,  amp);
-        rv3_sinc(f[j], dx, -amp);
+      id = i*n + j;
+      if ( go->iscont[id] ) { /* contact pair */
+        ene += pot1210(x[i], x[j], go->r2ref[id], nbe, f[i], f[j]);
+      } else { /* noncontact pair */
+        ene += ncwca ? potwca(x[i], x[j], nbc2, nbe, f[i], f[j])
+          : potr12(x[i], x[j], nbc2, nbe, f[i], f[j]);
       }
     }
-  }
   return ene;
 }
 
@@ -287,11 +347,9 @@ INLINE int cago_vv(cago_t *go, real fscal, real dt)
 /* the change of the potential energy */
 INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
 {
-  int j, n = go->n;
-  rv3_t dxo, dxn, *xn = go->x1; /* we use x1 freely here */
-  real dro, delo, drn, deln;
-  real ango, angn;
-  real ene = 0, dr2, invr2, dr4, dr6, dr10;
+  int j, id, n = go->n, ncwca = go->flags & CAGO_NCWCA;
+  rv3_t *xn = go->x1; /* we use x1 freely here */
+  real ene = 0;
   real ka = go->ka, kb = go->kb, kd1 = go->kd1, kd3 = go->kd3;
   real nbe = go->nbe, nbc2 = go->nbc * go->nbc;
  
@@ -304,73 +362,47 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
   /* bonds */
   for (j = i - 1; j <= i; j++) {
     if (j < 0 || j >= n - 1) continue;
-    rv3_diff(dxo, x[j], x[j+1]);
-    dro = rv3_norm(dxo);
-    delo = dro - go->bref[j];
-    ene -= .5f * kb * delo * delo;
-    rv3_diff(dxn, xn[j], xn[j+1]);
-    drn = rv3_norm(dxn);
-    deln = drn - go->bref[j];
-    ene += .5f * kb * deln * deln;
+    ene -= potbond(x[j], x[j+1], go->bref[j], kb, NULL, NULL);
+    ene += potbond(xn[j], xn[j+1], go->bref[j], kb, NULL, NULL);
   }
 
   /* angles */
   for (j = i - 1; j <= i + 1; j++) {
     if (j < 1 || j >= n - 1) continue;
-    ango = rv3_ang(x[j - 1], x[j], x[j+1], NULL, NULL, NULL);
-    delo = ango - go->aref[j - 1];
-    ene -= .5f * ka * delo * delo;
-    angn = rv3_ang(xn[j - 1], xn[j], xn[j+1], NULL, NULL, NULL);
-    deln = angn - go->aref[j - 1];
-    ene += .5f * ka * deln * deln;
+    ene -= potang(x[j-1], x[j], x[j+1], go->aref[j-1], ka,
+       NULL, NULL, NULL);
+    ene += potang(xn[j-1], xn[j], xn[j+1], go->aref[j-1], ka,
+       NULL, NULL, NULL);
   }
 
   /* dihedrals */
   for (j = i - 3; j <= i; j++) {
     if (j < 0 || j >= n - 3) continue;
-    ango = rv3_dih(x[j], x[j + 1], x[j + 2], x[j + 3], NULL, NULL, NULL, NULL);
-    delo = ango - go->dref[j];
-    if (delo > M_PI) delo -= 2*M_PI; else if (delo < -M_PI) delo += 2*M_PI;
-    ene -= (real)( kd1 * (1 - cos(delo)) + kd3 * (1 - cos(3 * delo)) );
-    angn = rv3_dih(xn[j], xn[j + 1], xn[j + 2], xn[j + 3], NULL, NULL, NULL, NULL);
-    deln = angn - go->dref[j];
-    if (deln > M_PI) deln -= 2*M_PI; else if (deln < -M_PI) deln += 2*M_PI;
-    ene += (real)( kd1 * (1 - cos(deln)) + kd3 * (1 - cos(3 * deln)) );
+    ene -= potdih13(x[j], x[j+1], x[j+2], x[j+3], go->dref[j],
+        kd1, kd3, NULL, NULL, NULL, NULL);
+    ene += potdih13(xn[j], xn[j+1], xn[j+2], xn[j+3], go->dref[j],
+        kd1, kd3, NULL, NULL, NULL, NULL);
   }
   
   /* nonbonded interaction */
   for (j = 0; j < n; j++) {
     if (abs(i - j) < 4) continue;
-    rv3_diff(dxo, x[i], x[j]);
-    dr2 = rv3_sqr(dxo);
-    invr2 = 1/dr2;
-    if (go->iscont[i*n + j]) { /* is a contact pair */
-      dr2 = go->r2ref[i*n + j] * invr2;
-      dr4 = dr2 * dr2;
-      dr6 = dr4 * dr2;
-      dr10 = dr4 * dr6;
-      ene -= nbe * (5 * dr2 - 6) * dr10;
-    } else {
-      dr2 = nbc2/dr2;
-      dr6 = dr2 * dr2 * dr2;
-      dr6 *= dr6;
-      ene -= nbe * dr6;
+
+    /* subtract the old energies */
+    id = i*n + j;
+    if ( go->iscont[id] ) { /* contact pair */
+      ene -= pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
+    } else { /* noncontact pair */
+      ene -= ncwca ? potwca(x[i], x[j], nbc2, nbe, NULL, NULL)
+        : potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
     }
     
-    rv3_diff(dxn, xi, x[j]);
-    dr2 = rv3_sqr(dxn);
-    invr2 = 1/dr2;
-    if (go->iscont[i*n + j]) { /* is a contact pair */
-      dr2 = go->r2ref[i*n + j] * invr2;
-      dr4 = dr2 * dr2;
-      dr6 = dr4 * dr2;
-      dr10 = dr4 * dr6;
-      ene += nbe * (5 * dr2 - 6) * dr10;
-    } else {
-      dr2 = nbc2/dr2;
-      dr6 = dr2 * dr2 * dr2;
-      dr6 *= dr6;
-      ene += nbe * dr6;
+    /* add the new energies */
+    if ( go->iscont[id] ) { /* contact pair */
+      ene += pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
+    } else { /* noncontact pair */
+      ene += ncwca ? potwca(x[i], x[j], nbc2, nbe, NULL, NULL)
+        : potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
     }
   }
   return ene;
@@ -423,10 +455,11 @@ INLINE int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
  * a contact is formed if the pair distance is <= gam * native-distance
  * return the number of contacts
  * `*Q' is the ratio of formed contacts / the total number of contacts  */
-INLINE int cago_countcontact(cago_t *go, rv3_t *x, real gam, real *Q, int *mat)
+INLINE int cago_ncontacts(cago_t *go, rv3_t *x, real gam, real *Q, int *mat)
 {
   int i, j, id, nct = 0, n = go->n;
 
+  if (gam < 0) gam = 1.2; /* default value */
   if (mat) for (id = 0; id < n * n; id++) mat[id] = 0;
 
   for (i = 0; i < n - 1; i++)

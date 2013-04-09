@@ -63,7 +63,7 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 #define cago_rotfit(go, x, xf) { go->rmsd = cago_rmsd(go, x, xf); }
 
 /* compute the number of contacts from the current configuration */
-INLINE int cago_countcontact(cago_t *go, rv3_t *x, real gam, real *Q, int *mat);
+INLINE int cago_ncontacts(cago_t *go, rv3_t *x, real gam, real *Q, int *mat);
 
 /* copy position or velocities */
 #define cago_copyvec(go, t, s) rv3_ncopy(t, s, go->n)

@@ -92,7 +92,7 @@ static void timer(int ival)
     cago_vv(go, 1.f, mddt);
     cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, tp, thermdt);
-    cago_rotfit(go, go->x, NULL);
+    go->rmsd = cago_rmsd(go, go->x, NULL);
     step++;
     av_add(avep, go->epot);
     av_add(avtk, go->tkin);

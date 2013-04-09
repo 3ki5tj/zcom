@@ -45,9 +45,9 @@ Functions:
       The contact matrix is saved in `go->iscont'
       The default cutoff rcc 4.5~5A in cago_open() gives 
         consistent contacts to the CSU data.
-      Double-peak distributions are observed in 1KIK with rcc = 4.5A
-      For 1VII (36-aa villin headpiece), the critical rcc
-        should be larger 6.5A, may be because the structure not as tight.
+      Double-peak distributions are observed in 1KIK with rcc = 4.5A (T ~ 1)
+      For 1VII (36-aa villin headpiece), however, the critical rcc
+        should be larger then 6.5A, may be because the structure not as tight.
 
 
   cago_close()
@@ -76,6 +76,22 @@ Functions:
 
   ncontact = cago_countcontact(go, x);
 
+
+
+Reference data
+==================
+
+Below we list the transition temperature (where the folded and unfolded 
+  peaks are of equal heights) of a few proteins
+
+Generally with `rcc' increases, Tc also increases,
+  for it's harder to melt down the structure
+
+              rcc   ncont     Tc                   Comment
+              3.5     64      0.65~0.7           still double peak 
+1KIK (57aa)   4.5    132     ~1.07 (1.05~1.1)    clear double peak
+         
+1VII (36aa)   6.5     50     ~1.25               verge of a double-peak feature
 
 
 
