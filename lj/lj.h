@@ -119,6 +119,9 @@ INLINE void lj_vvx(lj_t *lj, real fscal, real dt);
 #define lj_shiftcom(lj, v)    md_shiftcom(v, lj->n, lj->d)
 #define lj_shiftang(lj, x, v) md_shiftang(x, v, lj->n, lj->d)
 
+/* velocity scaling for regular (no thermostat) MD during equilibration
+ * `tp' is the target temperature
+ * `ekt' is the observed average kinetic energy over several steps */
 INLINE void lj_vscale(lj_t *lj, real tp, real ekt) 
  { md_vscale(lj->v, lj->n * lj->d, lj->dof, tp, ekt, &lj->ekin, &lj->tkin); }
 

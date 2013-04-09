@@ -113,8 +113,9 @@ INLINE real md_getekin(real *ekin, const real *v, int nd)
   return ek;
 }
 
-/* velocity scaling: for regular MD
- * ekt is the time-averaged ek, may not be *ekin  */
+/* velocity scaling: for regular (no thermostat) MD during equilibration
+ * `tp' is the target temperature
+ * `ekt' is the observed average kinetic energy, may not be the current *ekin  */
 INLINE void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, real *tkin)
 {
   int i;

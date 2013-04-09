@@ -8,7 +8,8 @@
 #define CAGO_C__
 #include "cago.h"
 
-/* initialize data for the potential energy function */
+/* initialize data for the potential energy function
+ * compute the reference bonds and angles */
 INLINE int cago_initpot(cago_t *go)
 {
   int i, j, n = go->n;
@@ -43,21 +44,26 @@ INLINE int cago_initpot(cago_t *go)
 }
 
 /* return cago_t from pdb file fnpdb
- * rcc is the cutoff radius for defining contacts */
-cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
-    real nbe, real nbc, real rcc)
+ * `rcc' is the cutoff radius for defining contacts
+ * the last fours bits of `flags' is reserved for defining PDB_CONTACT_XXX */
+cago_t *cago_openx(const char *fnpdb, real kb, real ka, real kd1, real kd3,
+    real nbe, real nbc, real rcc, unsigned flags)
 {
   cago_t *go;
   int i, j, id;
   pdbmodel_t *pm;
   pdbaac_t *c;
-  real rmin = 1e9, rmax = 0;
 
   xnew(go, 1);
 
+  /* read all atoms from the .pdb file */
   if ((pm = pdbm_read(fnpdb, 0)) == NULL)
     return NULL;
-  go->iscont = pdbm_contact(pm, rcc, PDB_CONTACT_HEAVY, 3, 1);
+  go->iscont = pdbm_contact(pm, rcc,
+      flags & 0xf, /* the last four bits is translated to PDB_CONTACT_XXX */
+      3, /* `a' and `d' in -a-b-c-d- are excluded from being contacts */
+      flags & CAGO_VERBOSE);
+  /* parse it into amino-acid residues */
   if ((c = pdbaac_parse(pm, 0)) == NULL)
     return NULL;
   pdbm_free(pm);
@@ -72,32 +78,20 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
   go->nbc = nbc;
   xnew(go->xref, go->n);
   xnew(go->aa, go->n);
+  /* extract the C-alpha coordinates */
   for (i = 0; i < go->n; i++) {
     for (j = 0; j < 3; j++)
       go->xref[i][j] = (real) c->res[i].xca[j];
     go->aa[i] = c->res[i].aa;
   }
-  pdbaac_free(c);
+  pdbaac_free(c); /* throw away pdbaac */
 
+  /* compute the reference bond length, angles, etc. */
   cago_initpot(go);
 
-  go->ncont = 0;
-  go->kave = 0;
-  for (i = 0; i < go->n - 1; i++)
+  for (go->ncont = 0, i = 0; i < go->n - 1; i++)
     for (j = i+1; j < go->n; j++)
-      if (go->iscont[ (id = i*go->n + j) ]) {
-        if (go->r2ref[id] > rmax)
-          rmax = go->r2ref[id];
-        else if (go->r2ref[id] < rmin)
-          rmin = go->r2ref[id];
-        go->ncont++;
-        go->kave += 120.f/go->r2ref[id];
-      }
-  if (go->ncont > 0) go->kave /= go->ncont;
-  rmin = sqrt(rmin); rmax = sqrt(rmax);
-  go->rrtp = (real) sqrt(1.5 * go->dof/ (go->ncont*go->kave));
-  //printf("CONTACTS: %g < ca_rmsd < %g, %d contacts, average K = %g, r/sqrt(tp) = %g\n",
-  //    rmin, rmax, go->ncont, go->kave, go->rrtp);
+      go->ncont += go->iscont[ (id = i*go->n + j) ];
   return go;
 }
 
@@ -245,14 +239,14 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
       rv3_diff(dx, x[i], x[j]);
       dr2 = rv3_sqr(dx);
       invr2 = 1/dr2;
-      if (go->iscont[i*n + j]) { /* is a contact */
+      if (go->iscont[i*n + j]) { /* a contact pair */
         dr2 = go->r2ref[i*n+j]*invr2;
         dr4 = dr2*dr2;
         dr6 = dr4*dr2;
         dr10 = dr4*dr6;
         amp = nbe*60*(dr2 - 1)*dr10*invr2;
         ene += nbe*(5*dr2 - 6)*dr10;
-      } else {
+      } else { /* none contact pair */
         dr2 = nbc2/dr2;
         dr6 = dr2*dr2*dr2;
 	dr6 *= dr6;
@@ -421,6 +415,33 @@ INLINE int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   return 0;
 }
 
+/* count the number of native contacts that are formed in the structure `x'
+ * this counting process is independent of the process of defining contacts
+ *   although the two processes are very similar, and may be the same
+ * here, given a set of defined contacts, we simple observe how many pairs
+ *   are close enough to be regarded as contacts
+ * a contact is formed if the pair distance is <= gam * native-distance
+ * return the number of contacts
+ * `*Q' is the ratio of formed contacts / the total number of contacts  */
+INLINE int cago_countcontact(cago_t *go, rv3_t *x, real gam, real *Q, int *mat)
+{
+  int i, j, id, nct = 0, n = go->n;
+
+  if (mat) for (id = 0; id < n * n; id++) mat[id] = 0;
+
+  for (i = 0; i < n - 1; i++)
+    for (j = i+1; j < n; j++) {
+      if (!go->iscont[ (id = i*n + j) ]) continue;
+      if (rv3_dist(x[i], x[j]) < sqrt(go->r2ref[id]) * gam) {
+        if (mat) mat[id] = mat[j*n + i] = 1;
+        nct++;
+      }
+    }
+
+  if (Q) *Q = nct / go->ncont;
+  return nct;
+}
+
 /* read position/velocity file */
 INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
 {
@@ -484,36 +505,6 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
         i+1, pdbaaname(go->aa[i]), i+1, x[i][0], x[i][1], x[i][2]);
   fprintf(fp, "END%77s\n", " ");
   fclose(fp);
-  return 0;
-}
-
-/* run a regular md
- * teql steps for equilibration, tmax steps for production
- * tp: the real temperature, tps: thermostat temperature */
-INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
-    real tps, real tp, av_t *avep, av_t *avrmsd,
-    int teql, int tmax, int trep)
-{
-  int t;
-  real fs = tps/tp;
-
-  tmax = (tmax < 0) ? -1 : (tmax + teql);
-  av_clear(avep);
-  av_clear(avrmsd);
-  for (t = 1; tmax < 0 || t <= tmax; t++) {
-    cago_vv(go, fs, mddt);
-    if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
-    cago_vrescale(go, (real) tps, thermdt);
-    go->rmsd = cago_rmsd(go, go->x, NULL);
-    if (t > teql) {
-      av_add(avep, go->epot);
-      av_add(avrmsd, go->rmsd);
-    }
-    if (trep > 0 && t % trep == 0) {
-      printf("%9d: tp %.4f, tps %.4f, rmsd %7.4f, K %.2f, U %.2f\n",
-          t, tp, tps, go->rmsd, go->ekin, go->epot);
-    }
-  }
   return 0;
 }
 

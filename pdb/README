@@ -1,0 +1,60 @@
+Overview
+===========
+The module centers around two objects,
+  pdbmodel_t: generic information of a .pdb file (not necessarily a protein)
+      it is basically a line-by-line literal translation of atom in the .pdb file.
+      The useful function is pdbm_contact() which returns a residue-residue contact matrix.
+      
+  pdbaac_t: particularly for protein structure, i.e., the residues
+      must be amino acids.  It is contructed from a pdbmodel_t object.
+      The basic unit is residue, and the backbone coordinates can be 
+      readily extracted once parsed.
+      
+
+The `pdb' subdirectory collects commonly used PDB files,
+  in conjugate with the `cago' module (C-alpha Go-model).
+
+
+
+pdbmodel_t (generic information PDB file)
+==========================================
+
+This object is a direct translation of a .PDB file.
+From a PDB file, it reads atom information line by line.
+Thus, it does not necessarily apply to proteins.
+The only useful function is pdbm_contact().
+
+
+Functions
+
+  pdbm_read()/pdbm_readpdb()/pdbm_readgro():
+      This function reads structural information from an either .pdb or .gro file
+
+  pdbm_write():
+      This function writes file in .pdb format
+
+  pdbm_contact():
+      returns the nxn residue-residue contact matrix 
+      whose element is 1 for a contact, 0 otherwise.
+      The 
+
+
+pdbaac_t (PDB information parsed into amino acid residues)
+==============================================================
+This object assumes that the PDB is actually a protein.
+It basically parses the PDB into _amino acid_ residues,
+  which is done by pdbaac =  pdbaac_parse(pdbmodel).
+For each residue, the backbone coordinates are extracted.
+
+Functions:
+
+  pdbaac = pdbaac_parse(pdbmodel, verbose);
+      This function constructs a pdbaac from pdbmodel.
+      The 
+  
+  pdbaac_parsehelices(pdbaac)
+      for a helical protein, returns the number of helices,
+      and start-ending residue indices for each helix.
+
+
+

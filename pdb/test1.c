@@ -10,9 +10,7 @@ int main(int argc, char **argv)
   int *se, i, ng;
 
   fn = (argc > 1) ? argv[1] : "test.pdb";
-  if ((m = pdbm_read(fn, 2)) == NULL) {
-    return -1;
-  }
+  die_if ((m = pdbm_read(fn, 2)) == NULL, "cannot read %s\n", fn);
   pdbm_write(m, "out.pdb");
   c = pdbaac_parse(m, 1);
   die_if (c == NULL, "bad pdb\n");

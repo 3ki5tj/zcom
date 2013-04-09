@@ -1,0 +1,84 @@
+Overview
+=========
+This is a module for C-alpha Go model.
+The key reference is
+  Cecilia Clementi, Hugh Nymeyer and Jose Nelson Onuchic
+  J. Mol. Biol. Vol. 298, pg. 937-954 (2000)
+  Topological and Energetic Factors: What Determines the Structural Details 
+  of the Transition State Ensemble and ``En-route'' Intermediates for Protein Folding? 
+  An Investigation for Small Globular Proteins
+
+
+
+Usage
+=======
+
+Example through zcom.h
+~~~~~~~~~~~~~~~~~~~~~~
+A basic MD example, which uses this module through zcom.h is:
+  examle/go.c
+Go to the `example' directory, type `make', and play with it.
+
+Several example test code
+~~~~~~~~~~~~~~~~~~~~~~~~~
+testannl.c   annealing program using basic functions
+testmd.c     regular MD: cago_mdrun()
+testucvg.c   U-convergent MD: cago_ucvgmdrun()
+testrcvg.c   RMSD-convergent MD: cago_rcvgmdrun()
+
+Notes:
+~~~~~~
+
+
+Code
+=============
+
+cago_t;
+  Object of C-alpha Go model
+ 
+
+Functions:
+
+  cago_open(fnpdb, kb, ka, ..., rcc)
+      Open the structure from a .pdb file
+      Define contacts by calling pdbm_contact
+      The contact matrix is saved in `go->iscont'
+      The default cutoff rcc 4.5~5A in cago_open() gives 
+        consistent contacts to the CSU data.
+      Double-peak distributions are observed in 1KIK with rcc = 4.5A
+      For 1VII (36-aa villin headpiece), the critical rcc
+        should be larger 6.5A, may be because the structure not as tight.
+
+
+  cago_close()
+
+
+  The following are MD/MC functions
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  cago_initmd()
+      initialize a structure either random (open chain)
+      or somewhere close the to the native
+
+  cago_vv()
+      velocity verlet
+
+  cago_vrescale()
+      velocity rescaling
+
+  cago_metro()
+      Metropolis algorithm
+
+  cago_writepos()/cago_writepdb()
+      write position
+
+  rmsd = cago_rmsd(go, x, NULL);
+
+  ncontact = cago_countcontact(go, x);
+
+
+
+
+
+
+

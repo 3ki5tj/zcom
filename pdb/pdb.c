@@ -212,10 +212,13 @@ INLINE int iscontactatom(int level, const char *atnm)
   else return strcmp(atnm, "CA") == 0; /* PDB_CONTACT_CA */
 }
 
-/* return a nres x nres array to indicate if two residues form a contact
- * it is a contact only if the distance of any two atoms from the two residues 
- * is less than rc,
- * 'level' : one of the PDB_CONTACT_XX values above.
+/* return a nres x nres matrix that defines if two residues are contacts
+ * a pair is considered as a contact only if the distance of two
+ * specific-type atoms from the two residues is less than rc
+ * 'level' : types of atoms to be used in defining atoms
+ *           PDB_CONTACT_CA:      only alpha carbon atoms
+ *           PDB_CONTACT_HEAVY:   non-hydrogen atoms
+ *           PDB_CONTACT_ALL:     include hydrogen atoms 
  * 'nearby': # of adjacent resdiues to be excluded from the list
  * */
 int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
@@ -223,17 +226,21 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
   int ir, jr, i, j, im, jm, ica, jca, n = pm->natm, nres = pm->nres, ct, cnt = 0;
   pdbatom_t *atm = pm->atm;
   real d, dmin, dca;
-  int *ds;
+  int *iscont;
 
-  xnew(ds, nres*nres);
+  xnew(iscont, nres*nres);
   for (ir = 0; ir < nres; ir++) {
-    for (jr = ir+1; jr < nres; jr++) {
-      /* compute the minimal distance between ir and jr */
+    for (jr = ir + nearby + 1; jr < nres; jr++) {
+      /* compute the minimal distance between atoms
+       * in residues `ir' and `jr' of certain types */
       dmin = 1e9; dca = 0; im = jm = -1;
+      /* loop through atoms to collect those of residue id `ir'
+       * the loop is inefficient, but this function is rarely called */
       for (i = 0; i < n; i++) {
         if (atm[i].rid != ir) continue;
         if (!iscontactatom(level, atm[i].atnm)) continue;
         ica = iscontactatom(PDB_CONTACT_CA, atm[i].atnm);
+        /* loop through atoms to collect those of residue id `jr' */
         for (j = 0; j < n; j++) {
           if (atm[j].rid != jr) continue;
           if (!iscontactatom(level, atm[j].atnm)) continue;
@@ -243,20 +250,15 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
           if (ica && jca) dca = d; /* CA distance */
         }
       }
-      ds[ir*nres+jr] = ds[jr*nres+ir] = ct = (dmin < rc) ? 1 : 0;
+      iscont[ir*nres+jr] = iscont[jr*nres+ir] = ct = (dmin < rc) ? 1 : 0;
       if (ct) cnt++;
-      if (dbg > 1 || (dbg && ct))/* print decision */
-        printf("[%d/%3d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
-          ct, cnt, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin, 
+      if (dbg && ct) /* print decision */
+        printf("[%3d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
+          cnt, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin, 
           atm[im].atnm, im+1, atm[jm].atnm, jm+1);
     }
   }
-
-  /* exclude nearby residues */
-  for (ir = 0; ir < nres; ir++)
-    for (jr = ir+1; jr <= ir+nearby && jr < nres; jr++)
-      ds[ir*nres + jr] = ds[jr*nres + ir] = 0;
-  return ds;
+  return iscont;
 }
 
 /* get amino acid chain by parsing pdbmodel_t m */
@@ -393,7 +395,7 @@ ERR:
   return NULL;
 }
 
-/* parse helices, return number of helices nse
+/* parse helices, return the number of helices `nse'
  * (*pse)[0..nse*2 - 1] are start and finishing indices of helices */
 INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
 {

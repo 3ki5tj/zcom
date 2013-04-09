@@ -11,6 +11,8 @@ typedef struct {
   real ka; /* .5 ka (a - a0)^2, usually 40 */
   real kd1, kd3; /* kd1 (1 - cos(d - d0)) + kd3 (1 - cos(3*(d-d0))), 1 & 0.5 */
   real nbe, nbc; /* nbc = 4 A */
+  unsigned flags; /* input flags */
+
   rv3_t *xref;
   real epotref; /* energy of the reference structure */
   int *aa;
@@ -18,20 +20,29 @@ typedef struct {
   real *aref; /* angle */
   real *dref; /* dihedral */
   real *r2ref; /* pair distance */
-  int ncont; /* number of contacts */
+  int ncont; /* number of defined contacts */
   int *iscont;
-  real kave; /* average spring constant of contacts */
-  real rrtp; /* estimate of sqrt( <r^2> / tp ) at low temperature */
-  
+ 
   /* variables for MD simulations */
   rv3_t *x, *v, *f, *x1;
   real ekin, tkin, epot, etot, t;
-  real rmsd; /* result from a rotfit call  */
+  real rmsd; /* root-mean-square deviation, result from a rotfit call  */
 } cago_t;
 
-cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
-    real nbe, real nbc, real rcc);
+#define CAGO_VERBOSE 0x1000
+#define CAGO_NCWCA   0x2000  /* use WCA-potential for noncontact pairs,
+                              * otherwise, use r^12 repulsion */
+
+#define cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc) \
+        cago_openx(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc, \
+                  CAGO_VERBOSE + (unsigned) PDB_CONTACT_HEAVY)
+/* by default, we use heavy atoms to define contacts,
+ * and we are print out the contact information */
+
+cago_t *cago_openx(const char *fnpdb, real kb, real ka, real kd1, real kd3,
+    real nbe, real nbc, real rcc, unsigned flags);
 void cago_close(cago_t *go);
+
 INLINE void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v);
 INLINE int cago_initmd(cago_t *go, double rndamp, double T0);
 INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f);
@@ -42,6 +53,7 @@ INLINE void cago_vrescale(cago_t *go, real tp, real dt)
   { md_vrescale3d(go->v, go->n, go->dof, tp, dt, &go->ekin, &go->tkin); }
 INLINE int cago_mcvrescale(cago_t *go, real tp, real dt)
   { return md_mcvrescale3d(go->v, go->n, go->dof, tp, dt, &go->ekin, &go->tkin); }
+INLINE int cago_metro(cago_t *go, real amp, real bet);
 INLINE int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
@@ -50,10 +62,10 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 #define cago_rmsd(go, x, xf) rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL)
 #define cago_rotfit(go, x, xf) { go->rmsd = cago_rmsd(go, x, xf); }
 
-#define cago_copyvec(go, t, s) rv3_ncopy(t, s, go->n)
+/* compute the number of contacts from the current configuration */
+INLINE int cago_countcontact(cago_t *go, rv3_t *x, real gam, real *Q, int *mat);
 
-INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt, int nstcom, 
-    real tps, real tp, av_t *avep, av_t *avrmsd,
-    int teql, int tmax, int trep);
+/* copy position or velocities */
+#define cago_copyvec(go, t, s) rv3_ncopy(t, s, go->n)
 
 #endif
