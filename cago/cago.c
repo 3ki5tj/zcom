@@ -250,7 +250,7 @@ INLINE real pot1210(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
 }
 
 /* WCA potential: u = (rc/r)^12 - 2 (rc/r)^6 + 1 if r < rc, or 0 otherwise
- * without the truncation, the minimum is at r = rc, and u = 0 */
+ * without the truncation, the minimum is at r = rc, and u = 0 there */
 INLINE real potwca(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
 {
   real dx[3], dr2, invr2, invr6, amp;

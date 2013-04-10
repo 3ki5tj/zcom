@@ -27,20 +27,14 @@ real thermdt = 0.1f; /* thermostat dt */
  * the double-peak structure can be seen from the potential-energy
  * and rmsd distributions */
 char *fnpdb = "pdb/1KIK.pdb";
-real umin = 0.f;
-real umax = 140.f;
-real udel = 2.0f;
 /* parameters for the potential energy histogram */
-real uhmin = -300.f;
-real uhmax = 300.f;
-real uhdel = 0.1f;
 int nevery = 10000;
 int nreport = 500000;
 int nequil = 10000;
 
-const char *fnephis = "epot.his";
+const char *fnephis = "ep.his";
 const char *fnrmsdhis = "rmsd.his";
-const char *fnconthis = "cont.his";
+const char *fnconthis = "nc.his";
 const char *fnpos = "go.pos";
 
 /* handle input arguments */
@@ -56,12 +50,6 @@ static void doargs(int argc, char **argv)
   argopt_add(ao, "-d", "%r",  &mddt,      "time step for molecular dynamics");
   argopt_add(ao, "-q", "%r",  &thermdt,   "time step for mc-vrescaling thermostat");
   argopt_add(ao, "-c", "%r",  &rcc,       "cutoff distance for defining contacts");
-  argopt_add(ao, "--umin",   "%r", &umin,    "minimal potential energy");
-  argopt_add(ao, "--umax",   "%r", &umax,    "maximal potential energy");
-  argopt_add(ao, "--udel",   "%r", &udel,    "potential energy interval");
-  argopt_add(ao, "--uhmin",  "%r", &uhmin,   "minimal potential energy for histogram");
-  argopt_add(ao, "--uhmax",  "%r", &uhmax,   "maximal potential energy for histogram");
-  argopt_add(ao, "--uhdel",  "%r", &uhdel,   "potential energy interval for histogram");
   argopt_add(ao, "--every",  "%d", &nevery,  "print messages every this number of steps");
   argopt_add(ao, "--report", "%d", &nreport, "save data every this number of steps");
   argopt_addhelp(ao, "-h");
@@ -80,11 +68,11 @@ static void domd(void)
 
   go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc);
   cago_initmd(go, fromrand ? -0.1 : 0.1, 0.0);
-  printf("epot %g, epotref %g\n", go->epot, go->epotref);
+  printf("epot %.2f (ref %.2f)\n", go->epot, go->epotref);
 
-  hsep = hs_open(1, uhmin, uhmax, uhdel);
-  hsrmsd = hs_open(1, 0, 100.0, 0.1);
-  hscont = hs_open(1, 0, go->ncont + 1, 1);
+  hsep = hs_open1(go->epotref*2, fabs(go->epotref)*5, 0.1);
+  hsrmsd = hs_open1(0, 100.0, 0.1);
+  hscont = hs_open1(0, go->ncont + 1, 1);
 
   for (it = 1; it <= nsteps; it++) {
     cago_vv(go, 1.0f, mddt);
@@ -94,19 +82,19 @@ static void domd(void)
     nc = cago_ncontacts(go, go->x, ncgam, NULL, NULL);
     
     if (it >= nequil) {
-      hs_add1ez(hsep, go->epot, HIST_VERBOSE); /* add to histogram */
+      hs_add1ez(hsep, go->epot, 0); /* add to histogram */
       hs_add1ez(hsrmsd, rmsd, HIST_VERBOSE);
       hs_add1ez(hscont, nc, HIST_VERBOSE);
 
       if (it % nevery == 0) {
-        printf("t %d, T %g, ep %g/%g, rmsd %g/%g Q %d/%d=%g(%g)\n", it, go->tkin,
+        printf("t %d, T %.2f, ep %.2f/%.2f, rmsd %.2f/%.2f Q %d/%d=%.2f(%.2f)\n", it, go->tkin,
           go->epot, hs_getave(hsep, 0, NULL, NULL),
           rmsd, hs_getave(hsrmsd, 0, NULL, NULL),
           nc, go->ncont, 1.0*nc/go->ncont,
           hs_getave(hscont, 0, NULL, NULL)/go->ncont);
       }
       if (it % nreport == 0 || it == nsteps) {
-        printf("saving %s, %s, %s\n", fnephis, fnrmsdhis, fnpos);
+        printf("saving %s, %s, %s, %s\n", fnephis, fnrmsdhis, fnconthis, fnpos);
         cago_writepos(go, go->x, go->v, fnpos);
         hs_save(hsep, fnephis, HIST_ADDAHALF);
         hs_save(hsrmsd, fnrmsdhis, HIST_ADDAHALF);
