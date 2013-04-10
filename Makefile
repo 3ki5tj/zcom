@@ -5,7 +5,7 @@ prj = zcom
 
 subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
 	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj \
-	  distr abpro cago tmh
+	  distr abpro cago tmh objgen
 
 $(prj).h::
 	$(MAKE) -C lj lj.c

@@ -11,7 +11,7 @@ $(bin): def.h rv3.h rotfit.c rotfit.h Makefile
 	$(CC) -o $@ $< -lm
 
 clean:
-	rm -f $(bin) *~ *.o a.out
+	rm -f $(bin) *~ *.o a.outi *.pos
 
 .PHONY: all clean
 
