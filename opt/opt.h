@@ -10,10 +10,10 @@
 
 /* option either from arguments or configuration */
 typedef struct {
-  int isopt; /* is option or argument */
+  int isopt; /* is option (1) or argument (0) or cfg file entry (2) */
   char ch; /* single letter option flag */
   const char *sflag; /* long string flag */
-  const char *key; /* key */
+  const char *key; /* key, for cfg files as in `key = val' */
   
   const char *val; /* raw string from command line */
   const char *desc; /* description */
@@ -53,7 +53,7 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
     const char *fmt, void *ptr, const char *desc)
 {
   o->ch = '\0';
-  if (key) {
+  if (key) { /* cfg file `key = val', not a command-line argument */
     o->isopt = 2;
   } else if (sflag) { /* option */
     o->isopt = 1;
@@ -71,6 +71,9 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
     fmt++;
     o->flags |= OPT_MUST;
   }
+  die_if (fmt[0] != '\0' && fmt[0] != '%',
+      "unknown format (missing `%%') flag `%s\', fmt `%s', description: %s\n",
+       sflag, fmt, desc);
   if (strcmp(fmt, "%b") == 0) {
     fmt = "%d";
     o->flags |= OPT_SWITCH;

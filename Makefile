@@ -1,11 +1,7 @@
 CC = gcc -O0 -g3 -Wall -Wextra -pedantic -Wno-variadic-macros
-CX = icc -O3 -Wall
+LM = -lm
 usbdir = /media/C3
 prj = zcom
-
-subdirs = def util ss endn bio rng rv2 rv3 eig lu svd rotfit savgol specfunc \
-	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj \
-	  distr abpro cago tmh objgen
 
 $(prj).h::
 	$(MAKE) -C lj lj.c
@@ -17,8 +13,12 @@ $(prj).zip::
 
 # test object file
 $(prj).o: $(prj).c $(prj).h Makefile
-	$(CC) -c -DZCOM_XFUNCS $< -o $@
+	$(CC) -c -DZCOM_XFUNCS $< -o $@ $(LM)
 	wc $@
+
+subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd rotfit savgol specfunc \
+	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj \
+	  distr abpro cago tmh objgen
 
 clean:
 	$(RM) -f *~ $(prj).o $(prj).zip */*~ */*/*~ */a.out *.tmp

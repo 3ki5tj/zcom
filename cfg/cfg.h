@@ -8,7 +8,7 @@
 #include <ctype.h>
 
 typedef struct {
-  char *key, *val;
+  char *key, *val; /* a cfg line looks like `key = val' */
   int used;
 } cfgent_t; /* line from cfg file */
 

@@ -20,12 +20,12 @@ double ncgam = 1.2;
 
 int nsteps = 1000000000;
 real mddt = 0.002f;
-real tp = 1.0f;
+real tp = 1.07f;
 real thermdt = 0.1f; /* thermostat dt */
 
-/* for SH3 domain (1KIK), if rcc = 4.5 --> then Tc = 1.12 
- * the double-peak structure can be seen from the potential-energy
- * and rmsd distributions */
+/* for SH3 domain (1KIK), if rcc = 4.5 --> then Tc = 1.07 
+ * the double-peak structure can be seen from the potential-energy,
+ * RMSD and number of contacts distributions */
 char *fnpdb = "pdb/1KIK.pdb";
 /* parameters for the potential energy histogram */
 int nevery = 10000;
@@ -87,7 +87,8 @@ static void domd(void)
       hs_add1ez(hscont, nc, HIST_VERBOSE);
 
       if (it % nevery == 0) {
-        printf("t %d, T %.2f, ep %.2f/%.2f, rmsd %.2f/%.2f Q %d/%d=%.2f(%.2f)\n", it, go->tkin,
+        printf("t %d, T %.2f(%.2f), ep %.2f/%.2f, rmsd %.2f/%.2f Q %d/%d=%.2f(%.2f)\n",
+          it, go->tkin, tp,
           go->epot, hs_getave(hsep, 0, NULL, NULL),
           rmsd, hs_getave(hsrmsd, 0, NULL, NULL),
           nc, go->ncont, 1.0*nc/go->ncont,

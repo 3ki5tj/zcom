@@ -4,3 +4,5 @@
 *.pyc
 *.clean.*
 abpro.c
+lj.c
+

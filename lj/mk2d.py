@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """ create 2d versions from 3d versions """
-import os, sys, inspect
+import os, sys 
 
 # add the parent path
 sys.path.insert(0, '..')

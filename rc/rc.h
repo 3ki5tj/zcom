@@ -7,8 +7,8 @@
 
 typedef struct { real re, im; } rcomplex_t;
 
-/* complex zero */
-static rcomplex_t rc_zero = {0.f, 0.f};
+///* complex zero */
+//static rcomplex_t rc_zero = {0.f, 0.f};
 
 /* make complex */
 INLINE rcomplex_t rc_make(real re, real im)

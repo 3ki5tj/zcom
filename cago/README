@@ -84,14 +84,28 @@ Reference data
 Below we list the transition temperature (where the folded and unfolded 
   peaks are of equal heights) of a few proteins
 
-Generally with `rcc' increases, Tc also increases,
+With `rcc' increases, Tc also increases,
   for it's harder to melt down the structure
 
               rcc   ncont     Tc                   Comment
+1VII (36aa)   6.5     50      1.25                verge of a double-peak feature
+
               3.5     64      (0.65, 0.7)         double peak 
 1KIK (57aa)   4.5    132      1.07 (1.05, 1.1)    double peak
          
-1VII (36aa)   6.5     50      1.25                verge of a double-peak feature
-
 4MBN (153aa)  5.0    364      1.2 (1, 1.4)        double peak
+
+
+
+Discussions
+--------------
+
+When there is a double-peak feature in RMSD distribution, 
+  there is usually also double-peak feature in the # of contacts
+  and potential energy distributions.
+Thus, an energy space multicanonical sampling is effective.
+For a small protein 1VII, the double-peak feature will manifest itself
+  only with a rather large `rcc' in the multicanonical thermostat study
+  (Zhang and Deem, JCP, 2013),
+  this shows that protein is not geometrically tight.
 

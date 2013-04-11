@@ -577,17 +577,18 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
     r[i] += v[i] * dtxp;
 }
 
-#define md_mutv2d(v, n, tp) md_mutv((real *)(rv2_t *)v, n * 2, tp)
-#define md_mutv3d(v, n, tp) md_mutv((real *)(rv3_t *)v, n * 3, tp)
+#define md_mutv2d(v, n, tp, r) md_mutv((real *)(rv2_t *)v, n * 2, tp, r)
+#define md_mutv3d(v, n, tp, r) md_mutv((real *)(rv3_t *)v, n * 3, tp, r)
 
-/* mutate velocities */
-INLINE int md_mutv(real *v, int nd, real tp)
+/* mutate velocities with the probability of r */
+INLINE int md_mutv(real *v, int nd, real tp, double r)
 {
   int i;
   real vamp = sqrt(tp);
 
   for (i = 0; i < nd; i++)
-    v[i] = vamp * grand0();
+    if (rnd0() < r)
+      v[i] = vamp * grand0();
   return 0;
 }
 
