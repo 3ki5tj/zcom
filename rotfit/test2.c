@@ -53,11 +53,10 @@ real foo(int n, int nt)
 
 int main(void) {
   int n, t;
-  real rmsd;
 
   for (t = 1; t <= 1000000; t++) {
     n = 1 + (int)(8.0*rand()/RAND_MAX);
-    rmsd = foo(n, t);
+    foo(n, t);
   }
   printf("max rmsd diff = %g\n", max);
   return 0;

@@ -1,23 +1,26 @@
-CC = gcc -Wall -O0 -g3 -lm -pedantic
+CC = gcc -Wall -Wextra -pedantic -O0 -g3
+LM = -lm
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+CX = icc -Wall -O3 -march=native -g -vec_report0
+LMX =
+#CX = gcc -Wall -O3 -g -march=native -mcpu=native -mfpmath=sse -funroll-all-loops
+#LMX = -lm
 deps = ss.c ss.h Makefile
-bin = $(patsubst %.c,%, $(wildcard test*.c)) \
-      $(patsubst %.c,%_d, $(wildcard test*.c))
+bin = $(patsubst %.c,%, $(wildcard test*.c))
+bin_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 
-all: $(bin)
+all: $(bin) $(bin_d)
 
 $(bin): $(deps)
 
-%_d: %.c
-	$(CC) -o $@ $< -lm
+$(bin_d) : %_d: %.c $(deps)
+	$(CC) -o $@ $< $(LM)
 
-%: %.c
-	$(CX) -o $@ $< 
+$(bin) : %: %.c $(deps)
+	$(CX) -o $@ $< $(LMX)
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin)
+	rm -f *~ *.out MTSEED *.dat $(bin) $(bin_d)
 
 .PHONY: clean all
 

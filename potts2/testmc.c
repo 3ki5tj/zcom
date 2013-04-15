@@ -16,7 +16,7 @@ static void mc(potts_t *pt, double steps, double beta, int ncheck)
 {
   double t, acc, tot;
   double e, s1, se, se2, eav, cv;
-  int nb[Q], de, nt, so, sn;
+  int nb[Q], nt, so, sn;
   unsigned id = 0;
 
   if (0 != pt2_load(pt, DATAFILE))

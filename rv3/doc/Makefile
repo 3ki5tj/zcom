@@ -1,18 +1,18 @@
-.PHONY: clean
+deps = Makefile
 
-dih.pdf: dih.tex dihfig.ps
-	pdflatex $<
+all: dih.pdf
+
+dih.pdf: dih.tex dihfig.pdf $(deps)
 	pdflatex $<
 
-dihfig.ps: dihfig.mp
+dihfig.ps: dihfig.mp $(deps)
 	mpost $<
 	mv dihfig.1 $@
 
-dih.pdf: dih.ps
-	ps2pdf dih.ps
+dihfig.pdf: dihfig.ps $(deps)
+	epstopdf dihfig.ps
 
-dih.ps: dih.dvi
-	dvips dih.dvi
+.PHONY: clean
 
 clean:
-	rm -f *.log *~ *.aux *.mpx *.dvi *.ps
+	rm -f *.log *~ *.aux *.mpx *.dvi *.ps *.pdf

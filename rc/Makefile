@@ -6,9 +6,7 @@ bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin): def.h rc.h Makefile
-
-%: %.c
+$(bin) : % : %.c def.h rc.h Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:

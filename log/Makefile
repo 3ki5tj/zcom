@@ -1,13 +1,11 @@
 INCLUDE=-I./include
-CC=gcc -O0 -g3 -Wall -Wextra -pedantic -lm $(INCLUDE)
+CC=gcc -O0 -g3 -Wall -Wextra -pedantic $(INCLUDE)
 
 bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin): log.h log.c Makefile
-
-%: %.c
+$(bin) : %: %.c log.h log.c Makefile
 	$(CC) -o $@ $<
 
 clean:

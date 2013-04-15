@@ -1,3 +1,4 @@
+#include "_rc.h"
 #ifndef DISTR2D_H__
 #define DISTR2D_H__
 
@@ -66,7 +67,7 @@ INLINE int ftsolver2d_ft(ftsolver2d_t *fts, rcomplex_t *rf, const rcomplex_t *f,
 {
   int i, j, k, l, n = fts->n, m = fts->m;
   int sgn = (flags & 0x1), inpre = (flags & 0x2);
-  rcomplex_t fkl, x;
+  rcomplex_t fkl, x, rc_zero = {0, 0};
 
   /* FT along the m direction, save to tmp */
   for (i = 0; i < n; i++) { /* for different rows */

@@ -1,13 +1,12 @@
-CC=gcc -std=c99 -O0 -g3 -Wall -Wextra -pedantic -lm
+CC=gcc -std=c99 -O0 -g3 -Wall -Wextra -pedantic
+LM=-lm
 
 bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin): util.h util.c Makefile
-
-%: %.c
-	$(CC) -o $@ $<
+$(bin): %: %.c util.h util.c Makefile
+	$(CC) -o $@ $< $(LM)
 
 clean:
 	rm -f $(bin) *~ *.o 

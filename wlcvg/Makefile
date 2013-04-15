@@ -6,13 +6,12 @@ bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin): util.h hist.h hist.c wlcvg.h wlcvg.c Makefile
-
-%: %.c
+$(bin) : % : %.c util.h hist.h hist.c wlcvg.h wlcvg.c Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:
 	rm -f $(bin) *~ *.o a.out
+	$(MAKE) -C doc clean
 
 .PHONY: all clean
 
