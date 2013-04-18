@@ -65,6 +65,8 @@ INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn);
 #define LJ_LOADBOX 0x10
 INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags);
 
+#define lj_copyvec(lj, t, s) memcpy(t, s, lj->d * lj->n * sizeof(real))
+
 /* open rdf */
 INLINE hist_t *lj_rdfopen(lj_t *lj, double dr, double rmax);
 /* add pairs to the RDF data */

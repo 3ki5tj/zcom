@@ -119,17 +119,16 @@ lj_t *lj_open(int n, int d, real rho, real rcdef)
  * cannot copy vectors other than xvf */
 INLINE lj_t *lj_copy(lj_t *dest, const lj_t *src, unsigned flags)
 {
-  int nd = src->n * src->d;
-  /* to preserve the pointers */
+  /* to preserve the pointers before the memcpy(dest, src) call */
   real *x = dest->x, *v = dest->v, *f = dest->f;
 
   memcpy(dest, src, sizeof(lj_t));
 
-  if (flags & LJ_CPX) memcpy(x, src->x, sizeof(real) * nd);
+  if (flags & LJ_CPX) lj_copyvec(src, x, src->x);
   dest->x = x;
-  if (flags & LJ_CPV) memcpy(v, src->v, sizeof(real) * nd);
+  if (flags & LJ_CPV) lj_copyvec(src, v, src->v);
   dest->v = v;
-  if (flags & LJ_CPF) memcpy(f, src->f, sizeof(real) * nd);
+  if (flags & LJ_CPF) lj_copyvec(src, f, src->f);
   dest->f = f;
   return dest;
 }
@@ -147,19 +146,19 @@ INLINE lj_t *lj_clone(const lj_t *src, unsigned flags)
   dest->isclone = LJ_CPRDF | LJ_CPPR | LJ_CPGDG | LJ_CPXDG;
   if (flags & LJ_CPX) {
     xnew(dest->x, nd);
-    memcpy(dest->x, src->x, sizeof(real) * nd);
+    lj_copyvec(src, dest->x, src->x);
   } else {
     dest->isclone |= LJ_CPX;
   }
   if (flags & LJ_CPV) {
     xnew(dest->v, nd);
-    memcpy(dest->v, src->v, sizeof(real) * nd);
+    lj_copyvec(src, dest->v, src->v);
   } else {
     dest->isclone |= LJ_CPV;
   }
   if (flags & LJ_CPF) {
     xnew(dest->f, nd);
-    memcpy(dest->f, src->f, sizeof(real) * nd);
+    lj_copyvec(src, dest->f, src->v);
   } else {
     dest->isclone |= LJ_CPF;
   }
