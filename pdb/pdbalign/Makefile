@@ -1,7 +1,10 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic
+LM = -lm
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm
+CX = icc -Wall -O3 -g -march=native -vec_report0
+LMX =
+#CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
+#LMX = -lm
 src = zcom.h
 dep = $(src) Makefile
 bin = pdbalign
@@ -9,7 +12,7 @@ bin = pdbalign
 all: $(bin)
 
 pdbalign: pdbalign.c $(dep)
-	$(CX) -o $@ $<
+	$(CX) -o $@ $< $(LMX)
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

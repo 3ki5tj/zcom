@@ -10,8 +10,11 @@ CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 test1: test1.c $(dep)
 	$(CC) -o $@ $< -lm
 
+subdirs = pdbalign
+
 clean:
 	rm -f $(bin) *~ out.pdb a.out
+	-for d in $(subdirs); do ($(MAKE) -C $$d clean ); done
 
 .PHONY: all clean
 
