@@ -8,6 +8,8 @@ $(prj).h::
 	$(MAKE) -C abpro abpro.c
 	python assemble.py -a -v1
 
+zip: $(prj).zip
+
 $(prj).zip::
 	git archive --format=zip -9 HEAD > $@
 
@@ -23,7 +25,7 @@ subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd rotfit savgol specfunc 
 clean:
 	$(RM) -f *~ $(prj).o $(prj).zip */*~ */*/*~ */a.out *.tmp
 	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
-	-rstrip.py -R *.[ch] *.py *.ma *.txt README* *akefile
+	-rstrip.py -R *.[ch] *.py *.ma *.txt *.cfg README* *akefile
 
 pack: $(prj).zip
 	wc $<
