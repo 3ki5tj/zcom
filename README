@@ -51,7 +51,7 @@ add2host.py     add modules to zcom.h using the template zcom.0.h
 modules with a leading underscore are experimental, and not added to zcom.h
 
 Although the project is mainly a library, several useful programs
-  are collected `_programs' directory
+  are collected `programs' directory
 
 
 Notes:
