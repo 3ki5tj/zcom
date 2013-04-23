@@ -32,7 +32,6 @@ abpro.c: abpro.0.c mk2d.py
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bin) $(bin_d) $(bin_m) \
 	  shakefail* rattlefail* ab.pos guide.gvs
-	$(MAKE) clean -C tmhab
 	$(MAKE) clean -C abemin
 
 .PHONY: clean all

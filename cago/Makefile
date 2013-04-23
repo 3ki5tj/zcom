@@ -19,7 +19,7 @@ $(bin) : % : %.c $(deps)
 $(bin_d) : %_d : %.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
-subdirs=tmhcago gl example
+subdirs=gl example
 
 clean:
 	rm -f *~ *.out MTSEED *.dat *.pos $(bin) $(bin_d) final.pdb ref.pdb
