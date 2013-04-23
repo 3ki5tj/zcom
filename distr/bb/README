@@ -1,5 +1,0 @@
-To reproduce the figure in the paper, type
-
-  make run
-
-This will do the calculation from bbcompat.txt.

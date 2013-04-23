@@ -1,1 +1,0 @@
-../prog/barm.c

@@ -1,1 +1,0 @@
-../prog/islogdos32x32.txt

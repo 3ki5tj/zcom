@@ -35,7 +35,6 @@ pdb:            read/write pdb
 clus:           a Monte Carlo based clustering
 md:             common molecular dynamics routines
 wl:             Wang-Laudau related
-tmh:            tempering with modified Hamiltonian
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model
 lj:             Lennard Jones system
