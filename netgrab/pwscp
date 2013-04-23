@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+# password scp
+# pwscp password a b
+
+set password [lrange $argv 0 0]
+set src [lrange $argv 1 1]
+set dest [lrange $argv 2 10000]
+
+set timeout -1
+spawn scp -r $src "$dest"
+
+match_max 100000
+
+expect "*?assword:*"
+send -- "$password\r"
+send -- "\r"
+expect eof
+

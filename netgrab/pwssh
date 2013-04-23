@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+
+# send a remote ssh command
+# pwssh  password ab@sugar.rice.edu ls /home/
+
+set password [lrange $argv 0 0]
+set addr [lrange $argv 1 1]
+set sshcmd [lrange $argv 2 10000]
+
+set timeout -1
+
+spawn -noecho ssh $addr "$sshcmd"
+
+match_max 100000
+
+expect "*?assword:*"
+send -- "$password\r"
+send -- "\r"
+expect eof
+

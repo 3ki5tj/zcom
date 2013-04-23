@@ -1,4 +1,8 @@
-Although this project is mainly a library, it has several useful programs
+Collections of useful programs and scripts
+
+
+Programs in other directories
+------------------------------
 
 assemble.py                 assemble `zcom.h' from individual modules,
                             for internal use only
@@ -9,4 +13,12 @@ cspacer/cspacer.py          add spaces to C code
 cspacer/rstrip.py           (recursively) remove trailing white spaces
 og/og.py                    object code generator
 pdb/pdbalign/pdbalign.c     align two pdb structures
+netgrab/                    grab/backup files on a server
+
+
+Additional programs
+--------------------
+gpload.py                   load a gnuplot script
+mkclean                     clean up common backup files
+
 

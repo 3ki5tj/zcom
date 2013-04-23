@@ -8,6 +8,8 @@ $(prj).h::
 	$(MAKE) -C abpro abpro.c
 	python assemble.py -a -v1
 
+zip: $(prj).zip
+
 $(prj).zip::
 	git archive --format=zip -9 HEAD > $@
 
