@@ -1,4 +1,7 @@
-Common code
+Overview
+=========
+
+This project collects commonly used into a single header file zcom.h.
 
 Individual module should have their separate directories, except
   zcom.h, which is a combination of all frequently used ones.
@@ -48,10 +51,14 @@ add2host.py     add modules to zcom.h using the template zcom.0.h
 
 modules with a leading underscore are experimental, and not added to zcom.h
 
-Notes:
-Try to apply cspacer.py under cspacer to check the source here from time to time
+Although the project is mainly a library, several useful programs
+  are collected `_programs' directory
 
-zcom.h should not have a routine like zcom_finish()
+
+Notes:
+* Try to apply cspacer.py under cspacer to check the source here from time to time
+
+* zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,
   it has no knowledge of modules included later.
 

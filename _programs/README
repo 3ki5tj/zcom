@@ -1,0 +1,11 @@
+Although this project is mainly a library, it has several useful programs
+
+assemble.py                 assemble `zcom.h' from individual modules,
+                            for internal use only
+zcompick.py                 make `zcom.h' smaller by selecting only a few modules
+                            independent of `assemble.py'
+cspacer/cspacer.py          add spaces to C code
+cspacer/rstrip.py           (recursively) remove trailing white spaces
+og/og.py                    object code generator
+pdb/pdbalign/pdbalign.c     align two pdb structures
+
