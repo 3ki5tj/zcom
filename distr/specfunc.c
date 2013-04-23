@@ -1,1 +1,0 @@
-../specfunc/specfunc.c

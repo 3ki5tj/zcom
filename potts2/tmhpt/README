@@ -1,8 +1,0 @@
-Programs:
-=========
-tmhpt_e.c   algorithm E (minimalist version)
-tmhpt_t.c   algorithm T (minimalist version)
-tmhpt0.c    simplicist version
-tmhpt.c     improved version (for performance)
-gtmhpt.c    OpenGL graphics version for designing algorithm T
-

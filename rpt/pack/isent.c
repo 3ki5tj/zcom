@@ -1,1 +1,0 @@
-../prog/isent.c
