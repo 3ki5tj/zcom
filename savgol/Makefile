@@ -1,4 +1,4 @@
-bin=test 
+bin=test
 hdr=savgol.h lu.h
 src=savgol.c lu.c
 dep=$(src) $(hdr) Makefile

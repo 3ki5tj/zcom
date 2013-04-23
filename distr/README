@@ -15,7 +15,7 @@ distr_iiez(d, iitype, halfwin, mfhalfwin, gam, mlimit, sampmin);
   mfhalfwin: 0 for single-bin average
   gam: if halfwin == 0, this is a factor to determin the window size
        from the mean force fluctuation (1.5)
-  mlimit (-1) and sampmin (100) are for nonuniform distributions 
+  mlimit (-1) and sampmin (100) are for nonuniform distributions
 
 /* save data, also distr_load(d, fnds); */
 distr_save(d, fnds);
@@ -58,13 +58,13 @@ Main functions
 
 Distribution
 ------------
-  distr_aj(d, m) 
+  distr_aj(d, m)
 
 
 Mean force
 ----------
   distr_mf0(),  single-bin mean force, unbiased for lnrho
-  distr_mfwin(), multiple-bin mean force 
+  distr_mfwin(), multiple-bin mean force
 
 
 Help functions

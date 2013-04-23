@@ -14,8 +14,8 @@ README          this file
 
 Compile
 =======
-To compile: enter 
-    make 
+To compile: enter
+    make
 under Linux, or under windows (assuming visual C++)
     cl ene.c
     cl vol.c
@@ -25,7 +25,7 @@ Run
 ====
 To run (use rdf for example):
 first edit `rdf.cfg' for parameters, then type (under Linux)
-  ./rdf 
+  ./rdf
 or (under windows)
   rdf
 

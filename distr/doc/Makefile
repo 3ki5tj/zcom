@@ -43,11 +43,11 @@ phiaj.ps: phi.gp
 .PHONY: clean deepclean
 
 clean:
-	rm -rf $(prj).log *.aux *~ 
+	rm -rf $(prj).log *.aux *~
 	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf ref.pdf
 
 deepclean: $(clean)
-	rm -rf $(prj).log *.aux *~ 
+	rm -rf $(prj).log *.aux *~
 	rm -rf  phi.pdf ene.pdf vol.pdf rdf.pdf phiaj.pdf phi.ps phiaj.ps ref.pdf ref.ps
 	$(MAKE) -C ../ene clean
 	$(MAKE) -C ../vol clean

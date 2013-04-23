@@ -29,4 +29,4 @@ The speed up of using a stack is > 10%.
 
 Interestingly, swapping xnew(x) and xnew(f) alleviates the problem
 
-Monte Carlo pair version: old/ljpr.c 
+Monte Carlo pair version: old/ljpr.c

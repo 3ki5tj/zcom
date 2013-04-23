@@ -1,7 +1,7 @@
 random number generator
 
 Benchmark:
-make testsp && time ./testsp 
+make testsp && time ./testsp
 16.2~16.4 s for 2x10^9 calls (using rnd0()).
 6.5s for 2x10^9 calls (using rand32()).
 
@@ -18,7 +18,7 @@ A. it's tempting to change the following loop
     }
     x = (mt_[MT_N-1] & MT_UMASK) | (mt_[0] & MT_LMASK);
     mt_[MT_N-1] = mt_[MT_M-1] ^ (x>>1) ^ mag01[x&1UL];
-to 
+to
     for (; k < MT_N; k++) {
       if ((kp = (k+1)) == MT_N) kp = 0;
       x = (mt_[k] & MT_UMASK) | (mt_[kp] & MT_LMASK);
@@ -37,10 +37,10 @@ Benchmark:  16.0  (good?)
 
 C. for the second loop
     for (; k < MT_N-1; k++) {
-is equivalent to 
+is equivalent to
     for (k = MT_N-MT_M; k < MT_N-1; k++) {
 Ising:      33.0
-Benchmark:  18.23  (very bad) 
+Benchmark:  18.23  (very bad)
 
 2. claim mag01[2] as static
 This avoids the system allocate space on the stack.

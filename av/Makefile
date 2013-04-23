@@ -8,7 +8,7 @@ test1: test1.c $(deps)
 	$(CC) -o $@ $< -lm
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o
 
 .PHONY: all clean
 

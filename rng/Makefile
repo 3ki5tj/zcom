@@ -15,10 +15,10 @@ all: $(bin)
 $(bin): $(deps)
 
 %_d: %.c
-	$(CC) -o $@ $< -lm 
+	$(CC) -o $@ $< -lm
 
 %: %.c
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $<
 
 clean:
 	rm -f $(bin) out* MTSEED mt.dat *~

@@ -9,7 +9,7 @@ $(bin) : % : %.c def.h argopt.h argopt.c opt.h Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o
 
 .PHONY: all clean
 

@@ -15,7 +15,7 @@ testsvdsolve: testsvdsolve.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o
 
 .PHONY: all clean
 

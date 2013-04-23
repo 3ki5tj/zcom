@@ -2,6 +2,6 @@
 
 OpenGL/GLUT functions
 
-On Mac, use 
-  gcc -framework OpenGL -framework GLUT 
+On Mac, use
+  gcc -framework OpenGL -framework GLUT
 to compile a program

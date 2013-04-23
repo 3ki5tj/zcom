@@ -11,7 +11,7 @@ $(bin): def.h rv3.h glez.h glez.c Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o
 
 .PHONY: all clean
 

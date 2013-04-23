@@ -3,10 +3,10 @@ Common code
 Individual module should have their separate directories, except
   zcom.h, which is a combination of all frequently used ones.
 
-Code should be concise and limited in size, 
+Code should be concise and limited in size,
   module names should be short.
 
-Try to use symbolic links to files in this folder if possible, 
+Try to use symbolic links to files in this folder if possible,
   otherwise try to use rsync to other locations
 
 def:            definition of real and M_PI
@@ -61,7 +61,7 @@ Makefile
   make: call assemble.py to assemble zcom.h from modules
   make zcom.zip: make a package
 
-assemble.py -a 
+assemble.py -a
   assemble zcom.h from modules
 
 zcompick.py

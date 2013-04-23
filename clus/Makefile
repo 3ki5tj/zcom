@@ -14,7 +14,7 @@ testload: testload.c $(deps)
 	$(CC) -o $@ $< -lm
 
 clean:
-	rm -f $(bin) *~ *.o x.txt clus.txt 
+	rm -f $(bin) *~ *.o x.txt clus.txt
 
 .PHONY: all clean
 

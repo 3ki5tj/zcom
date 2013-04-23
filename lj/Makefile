@@ -12,10 +12,10 @@ all: $(bin)
 $(bin): $(deps)
 
 %_d: %.c
-	$(CC) -o $@ $< -lm 
+	$(CC) -o $@ $< -lm
 
 %: %.c
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $<
 
 lj.c: lj.0.c mk2d.py
 	python mk2d.py $@

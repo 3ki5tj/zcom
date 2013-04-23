@@ -3,7 +3,7 @@ LM = -lm
 # optimized compiling
 CX = icc -Wall -O3 -g -vec_report0
 LMX =
-#CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops -lm 
+#CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops -lm
 #LMX = -lm
 src = zcom.h
 dep = $(src) Makefile

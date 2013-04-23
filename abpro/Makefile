@@ -2,11 +2,11 @@ CC = gcc -Wall -Wextra -Wno-unknown-pragmas -O0 -g3 -pedantic
 LM = -lm
 # optimized compiling
 CX = icc -Wall -O3 -march=native -vec_report0 -wd161
-LMX = 
+LMX =
 #CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
 #LMX =-lm
-CM = $(CX) -openmp -D_OPENMP -openmp-report0 
-LMM = 
+CM = $(CX) -openmp -D_OPENMP -openmp-report0
+LMM =
 #CM = $(CX) -openmp-profile -D_OPENMP -openmp-report0
 #CM = $(CC) -fopenmp
 

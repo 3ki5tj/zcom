@@ -2,19 +2,27 @@
 
 import os, sys, glob, getopt
 
+bytessaved = 0
+
 def trim(fn):
   ''' remove trailing spaces of a file '''
+
   try:
     s0 = open(fn).read()
   except Exception:
     print "cannot open %s" % fn
     return
   s1 = ''.join( [ln.rstrip() + '\n' for ln in s0.splitlines(True)] )
+  
+  bsaved = len(s0) - len(s1)
+  global bytessaved
+  bytessaved += bsaved
+
   if s0 == s1:
     print "keep %s" % fn
   else:
     print "overwrite %s, len %s -> %s (save %s bytes)" % (
-        fn, len(s0), len(s1), len(s0) - len(s1))
+        fn, len(s0), len(s1), bsaved)
     open(fn, "w").writelines(s1)
 
 
@@ -66,6 +74,7 @@ def main():
   fns = doargs()
   for fn in fns:
     trim(fn)
+  print "saved %s bytes" % bytessaved
 
 
 if __name__ == "__main__":

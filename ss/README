@@ -13,10 +13,10 @@ Branch
 ==========
 Master branch only has clean code from the best branch.
 
-simple_double_linked_list: 
+simple_double_linked_list:
   use a signature mark, unsafe but fast verification
 
-simple_list: 
+simple_list:
   a simple linked list, safe but slow verification
 
 hash:

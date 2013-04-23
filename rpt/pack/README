@@ -16,8 +16,8 @@ README          this file
 
 Compile
 =======
-To compile: enter 
-    make 
+To compile: enter
+    make
 under Linux, or under windows (assuming visual C++)
     cl ljmc.c
     cl ljmd.c
@@ -33,7 +33,7 @@ To run a program (e.g., ljmc):
 or (under windows)
   ljmc
 
-For advanced options, type 
+For advanced options, type
   ljmc -h
 for usage.
 

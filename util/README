@@ -1,4 +1,4 @@
-Offers several common macros 
+Offers several common macros
 
 Memory allocation
 -----------------
@@ -6,13 +6,13 @@ xnew(a, n)/xrenew(a, n)  for declare/reallocate an array of n
 
 Error reporting
 ---------------
-die_if(n > 1000, "error: n %d is too large\n", n); 
+die_if(n > 1000, "error: n %d is too large\n", n);
 msg_if()/fatal();
 
 Files
 ------
 xfopen(fp, fn, fmt, err)
-  is equivalent to 
+  is equivalent to
 if ((fp = fopen(fn, fmt)) == NULL) { fprintf(stderr, "cannot open file"); err; }
 
 fexists();

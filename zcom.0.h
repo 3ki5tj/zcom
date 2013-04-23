@@ -39,7 +39,7 @@
         #define RESRICT restrict
       before including this file. Otherwise the two keywords are guessed
       according to the compiler.
-      
+
   6.  Define HAVEVAM if the compiler supports variable-argument macros.
 
   7.  The def module defines `real' as a double, to override it, write
@@ -110,7 +110,7 @@
 #ifndef HAVEVAM
   #if (  (defined(__GNUC__) && (__GNUC__ >= 3))   \
       || (defined(__xlC__)  && (__xlC__ >= 0x0700)) \
-      || (defined(_MSC_VER) && (_MSC_VER >= 1400)) ) 
+      || (defined(_MSC_VER) && (_MSC_VER >= 1400)) )
     #define HAVEVAM 1
   #endif
 #endif
@@ -119,7 +119,7 @@
   #pragma warning(disable:981) /* unspecified order warning */
   #pragma warning(disable:177) /* unreferenced function */
   #pragma warning(disable:161) /* unrecognized #pragma, for omp */
-#elif defined(__GNUC__) && (__GNUC__ >= 4 && __GNUC_MINOR__ >= 2) 
+#elif defined(__GNUC__) && (__GNUC__ >= 4 && __GNUC_MINOR__ >= 2)
   #pragma GCC diagnostic ignored "-Wunknown-pragmas"
   #pragma GCC diagnostic ignored "-Wvariadic-macros"
 #endif
@@ -138,6 +138,6 @@
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
- * in order to avoid multiple inclusions. 
+ * in order to avoid multiple inclusions.
  * A single ZCOM_ABC__ won't do because different module-set may be selected */
 

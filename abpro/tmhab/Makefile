@@ -1,7 +1,7 @@
 CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 # optimized compiling
 CX = icc -Wall -O3 -g -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm
 src = zcom.h
 dep = $(src) Makefile
 bin = tmhab tmhab_d gtmhab
@@ -9,10 +9,10 @@ bin = tmhab tmhab_d gtmhab
 all: $(bin)
 
 tmhab: tmhab.c $(dep)
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $<
 
 tmhab_d: tmhab.c $(dep)
-	$(CC) -o $@ $< -lm 
+	$(CC) -o $@ $< -lm
 
 gtmhab: gtmhab.c $(dep) gtmh.h
 	$(CX) -o $@ $< -lglut

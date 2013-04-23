@@ -1,7 +1,7 @@
 CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic
 # optimized compiling
 CX = icc -Wall -O3 -vec_report0
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm
 src = zcom.h
 dep = $(src) Makefile
 bin = $(patsubst %.c,%, $(wildcard *.c))
@@ -14,7 +14,7 @@ gtmhpt: gtmhpt.c
 	$(CX) -o $@ $< -lglut
 
 %: %.c
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $<
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

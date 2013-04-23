@@ -2,9 +2,9 @@ CC = gcc -Wall -O0 -g3 -pedantic
 LM = -lm
 # optimized compiling
 CX = icc -Wall -O3 -g -vec_report0
-LMX = 
+LMX =
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops
-#LMX = -lm 
+#LMX = -lm
 deps = ising2.c ising2.h rng.c rng.h util.h Makefile
 bin = $(patsubst %.c,%, $(wildcard test*.c))
 bin_d = $(patsubst %.c,%_d, $(wildcard test*.c))

@@ -10,7 +10,7 @@ $(bin): specfunc.c specfunc.h Makefile
 	$(CC) -o $@ $< -lm
 
 clean:
-	rm -f $(bin) *~ *.o 
+	rm -f $(bin) *~ *.o
 
 .PHONY: all clean
 

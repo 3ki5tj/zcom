@@ -1,7 +1,7 @@
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -lglut 
+CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic -std=c99 -lglut
 # optimized compiling
-CX = icc -Wall -O3 -g -vec_report0 -lglut 
-#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm 
+CX = icc -Wall -O3 -g -vec_report0 -lglut
+#CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm
 dep = zcom.h Makefile
 bin = glgo
 
@@ -10,7 +10,7 @@ all: $(bin)
 $(bin): $(dep)
 
 %: %.c
-	$(CX) -o $@ $< 
+	$(CX) -o $@ $<
 
 zcom.h::
 	cd ../.. && python ./assemble.py -a -v -1

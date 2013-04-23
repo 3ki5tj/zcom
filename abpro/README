@@ -7,7 +7,7 @@ testbr.c  Brownian dynamics
 testvv.c  Velocity Verlet
 abemin.c  Energy minimization
 
-Note: 
+Note:
 * remove ab_checkxv() to testcn.c
 
 Force calculation
@@ -23,7 +23,7 @@ For model 1: ABA and ABBA can be used
 For model 2: ABA can be used
 
 To see if LGC is applicable, use
-  abemin -l 
+  abemin -l
 to check the energy of a few low energy states
 
 Variables
@@ -34,7 +34,7 @@ ab {
   lgact;    number of active constraints
   lgc[0..lgcnt-1];  array of constraints
 }
-ab->dof (degrees of freedom also changes during the 
+ab->dof (degrees of freedom also changes during the
 process building of constraints)
 dof = dof0 - lgact;
 
@@ -58,7 +58,7 @@ OpenMP optimization
 ====================
 force() routines has been parallelized.
   only nonbonded interaction
-  bonded interaction involves 
+  bonded interaction involves
 
 shake3d()
   parallel only for successive bonds

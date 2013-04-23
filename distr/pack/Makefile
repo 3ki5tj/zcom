@@ -5,7 +5,7 @@
 CC = gcc -Wall -Wextra -O3 -march=native -g -pedantic -std=c99 -Wno-unknown-pragmas -Wno-variadic-macros
 LM = -lm
 #CC = icc -Wall -O3 -g -vec_report0
-#LM = 
+#LM =
 src = zcom.h
 dep = $(src) Makefile
 bin = $(patsubst %.c,%, $(wildcard *.c))

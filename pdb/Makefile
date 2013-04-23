@@ -7,7 +7,7 @@ all: $(bin)
 
 CC = gcc -O0 -g3 -Wall -pedantic -Wextra
 
-test1: test1.c $(dep) 
+test1: test1.c $(dep)
 	$(CC) -o $@ $< -lm
 
 clean:
