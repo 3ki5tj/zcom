@@ -29,7 +29,7 @@ INLINE void av_addw(av_t *av, double x, double w)
 }
 #define av_add(av, x) av_addw(av, x, 1)
 
-/* update: sX = sX*gam + X */
+/* adaptive averaging: sX = sX * gam + X */
 INLINE void av_gaddw(av_t *av, double x, double w, double ngam)
 {
   double s, sx, del, gam = 1.0 - ngam;

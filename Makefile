@@ -6,7 +6,7 @@ prj = zcom
 $(prj).h::
 	$(MAKE) -C lj lj.c
 	$(MAKE) -C abpro abpro.c
-	python assemble.py -a -v1
+	python assemble.py -a -v 1
 
 zip: $(prj).zip
 
