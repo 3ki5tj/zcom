@@ -38,6 +38,7 @@ EXIT:
   return output;
 }
 
+
 /* Get a list of file names satisfying a pattern
  * `pat' is the file name pattern, such as '*.c'
  * `*n' returns the number of matches
@@ -67,5 +68,7 @@ INLINE char **fnglob(const char *pat, int *pn, const char *lscmd, unsigned flags
    * don't ssdel(output), for it's used in the output */
   return ssparse(output, pn, NULL);
 }
+
+
 #endif
 

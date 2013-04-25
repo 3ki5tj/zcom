@@ -6,6 +6,7 @@
 #endif
 #include "rv2.h"
 #include "rv3.h"
+#include "rng.c"
 #ifndef MD_H__
 #define MD_H__
 

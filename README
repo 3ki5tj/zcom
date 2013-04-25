@@ -9,15 +9,17 @@ Individual module should have their separate directories, except
 Code should be concise and limited in size,
   module names should be short.
 
-Try to use symbolic links to files in this folder if possible,
-  otherwise try to use rsync to other locations
+Use symbolic links to define intermodular dependence,
+Use `_' to define the preceeding module.
 
-def:            definition of real and M_PI
+def:            definition of `real' and M_PI
 util:           useful but unclassified routines
 ss:             smart string
 endn:           handle endianness
 bio:            macros for read/write binary files
+osys:           operating system related
 rng:            random number generator
+rc:             real complex number
 rv2:            real [2] vectors and 2x2 matrices
 rv3:            real [3] vectors and 3x3 matrices
 eig:            eigenvalues and eigenvectors
@@ -26,6 +28,8 @@ svd:            single value decomposion
 rotfit:         fit two structures via rotation and translation
 savgol:         compute Savitzky-Golay coeffcients
 specfunc:       special functions
+opt:            options
+argopt:         command line arguments and options
 cfg:            configuration file
 log:            log file
 av:             simple mean/deviation
@@ -34,7 +38,7 @@ mds:            multidimensional scaling
 pdb:            read/write pdb
 clus:           a Monte Carlo based clustering
 md:             common molecular dynamics routines
-wl:             Wang-Laudau related
+hmc:            hybrid Monte Carlo/molecular dynamics
 ising2:         two dimensional ising model
 potts2:         two dimensional potts model
 lj:             Lennard Jones system
