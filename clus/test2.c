@@ -9,7 +9,7 @@ static float **getdismat(int n)
 {
   float **mat;
   int i, j;
-  
+
   mat = dismat_alloc(n);
   for (i = 0; i < n-1; i++) {
     for (j = i+1; j < n; j++) {
@@ -28,7 +28,7 @@ int main(void)
   mat = getdismat(n);
   cls = cls_init(mat, NULL, n, mu);
   cls_anneal(cls, 3000*n, CLUS_HEATBATH, 1.0, 10.0);
-  printf("mu = %g, %d points, %d clusters, ene = %g\n", 
+  printf("mu = %g, %d points, %d clusters, ene = %g\n",
       cls->mu0, cls->np, cls->nc, cls->ene);
   cls_write(cls, "clus.txt", NULL, NULL, 0);
   dismat_free(mat);

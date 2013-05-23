@@ -24,7 +24,7 @@ static pdbmodel_t *pdbm_readpdb(const char *fname)
   ir = -1;
   while (fgets(s, sizeof s, fp)) {
     if (strncmp(s, "TER", 3) == 0 ||
-        strncmp(s, "ENDMDL", 6) == 0 || 
+        strncmp(s, "ENDMDL", 6) == 0 ||
         strncmp(s, "END", 3) == 0)
       break;
     if (strncmp(s, "ATOM ", 5) != 0)
@@ -140,12 +140,12 @@ ERR:
 }
 
 /* read pdb */
-pdbmodel_t *pdbm_read(const char *fname, int verbose) 
+pdbmodel_t *pdbm_read(const char *fname, int verbose)
 {
   int i, j, ir, iro;
   pdbmodel_t *m;
   const char *p;
- 
+
   p = strrchr(fname, '.');
   if (p != NULL && strcmp(p + 1, "gro") == 0) {
     m = pdbm_readgro(fname);
@@ -170,12 +170,12 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
     i = j;
   }
   m->nres = ir;
-  
+
   if (verbose >= 3)
     for (i = 0; i < m->natm; i++) {
       pdbatom_t *atm = m->atm + i;
       printf("%4d %4s %4d %4s %8.3f %8.3f %8.3f\n",
-          atm->aid+1, atm->atnm, atm->rid+1, atm->resnm, 
+          atm->aid+1, atm->atnm, atm->rid+1, atm->resnm,
           atm->x[0], atm->x[1], atm->x[2]);
     }
   return m;
@@ -196,7 +196,7 @@ INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
     atm = m->atm + i;
     pdbm_fmtatom(atnm, atm->atnm, ATMFMT);
     x = m->x[i];
-    fprintf(fp, "ATOM  %5d %-4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00          %2s  \n", 
+    fprintf(fp, "ATOM  %5d %-4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00          %2s  \n",
         aid++, atnm, atm->resnm, atm->rid+1, x[0], x[1], x[2], atm->elem);
   }
   fprintf(fp, "TER   %5d      %-4sA%4d%54s\n", m->natm+1, atm->resnm, atm->rid+1, "");
@@ -218,7 +218,7 @@ INLINE int iscontactatom(int level, const char *atnm)
  * 'level' : types of atoms to be used in defining atoms
  *           PDB_CONTACT_CA:      only alpha carbon atoms
  *           PDB_CONTACT_HEAVY:   non-hydrogen atoms
- *           PDB_CONTACT_ALL:     include hydrogen atoms 
+ *           PDB_CONTACT_ALL:     include hydrogen atoms
  * 'nearby': # of adjacent resdiues to be excluded from the list
  * */
 int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
@@ -253,8 +253,8 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
       iscont[ir*nres+jr] = iscont[jr*nres+ir] = ct = (dmin < rc) ? 1 : 0;
       if (ct) cnt++;
       if (dbg && ct) /* print decision */
-        printf("[%3d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n", 
-          cnt, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin, 
+        printf("[%3d] %s%-3d and %s%-3d: dca %6.3fA dmin %6.3fA (%s:%d, %s:%d)\n",
+          cnt, atm[im].resnm, ir+1, atm[jm].resnm, jr+1, dca, dmin,
           atm[im].atnm, im+1, atm[jm].atnm, jm+1);
     }
   }
@@ -283,7 +283,7 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     r = c->res + atm->rid;
     r->aa = pdbaaidx(atm->resnm);
     if (r->aa < 0) {
-      fprintf(stderr, "unknown amino acid residue %d/%d[%s]\n", 
+      fprintf(stderr, "unknown amino acid residue %d/%d[%s]\n",
           atm->rid, m->nres, atm->resnm);
       goto ERR;
     }
@@ -320,7 +320,7 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
             break;
           }
       }
-    }        
+    }
     if (!match)
       printf("unknown atom %s:%d res %s%d\n", atm->atnm, i+1, atm->resnm, atm->rid+1);
   }
@@ -417,10 +417,10 @@ INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
     phi = rv3_calcdihv(NULL, c->x, quin, 0);
     psi = rv3_calcdihv(NULL, c->x, quin+1, 0);
     ishx[i] = (phi < 0 && psi > -100*M_PI/180 && psi < 80*M_PI/180);
-  } 
-  
-  /* B. searching for segments 
-   * make 2*pro->ngrp for start/end of each segment 
+  }
+
+  /* B. searching for segments
+   * make 2*pro->ngrp for start/end of each segment
    * range of segment k is se[2*k] <= id < se[2*k+1] */
   xnew(se, 2);
   aagly = pdbaaidx("GLY");
@@ -445,7 +445,7 @@ INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
       se[2*nse+1] = it;
       nse++;
     } else { } /* just let go, don't increment nse */
-  } 
+  }
   free(ishx);
   *pse = se;
   return nse;

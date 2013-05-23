@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-''' dependency list '''
+''' sort dependency list, used by assemble.py '''
 
 def depsort(deps):
   ''' returns a sorted list s.t. dependencies specified in 'deps' are satisfied

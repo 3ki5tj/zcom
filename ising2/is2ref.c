@@ -36,7 +36,7 @@ int main(void)
     }
   }
   x = se / s1;
-  printf("beta = %g, E = %d, Eav = %g, Cv = %g\n", 
+  printf("beta = %g, E = %d, Eav = %g, Cv = %g\n",
       beta, E, x, (beta*beta)*(se2/s1 - x*x));
   return 0;
 }

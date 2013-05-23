@@ -28,7 +28,7 @@ void argopt_close(argopt_t *ao)
 /* print version and die */
 static void argopt_version(argopt_t *ao)
 {
-  fprintf(stderr, "%s: %s, version %d\n", 
+  fprintf(stderr, "%s: %s, version %d\n",
       ao->prog, ao->desc ? ao->desc : "", ao->version);
   if (ao->author && ao->tm)
     fprintf(stderr, "Copyright (c) %s %d\n", ao->author, ao->tm->tm_year + 1900);
@@ -43,7 +43,7 @@ static void argopt_help(argopt_t *ao)
   opt_t *o;
   const char *sysopt[2] = {"print help message", "print version"}, *desc;
 
-  fprintf(stderr, "%s, version %d", 
+  fprintf(stderr, "%s, version %d",
       ao->desc ? ao->desc : ao->prog, ao->version);
   if (ao->author && ao->tm)
     fprintf(stderr, ", Copyright (c) %s %d", ao->author, ao->tm->tm_year + 1900);
@@ -53,14 +53,14 @@ static void argopt_help(argopt_t *ao)
     o = ao->opts + i;
     if (o->isopt) continue;
     if (o->flags & OPT_MUST) {
-      if (strchr(o->desc, ' ')) 
+      if (strchr(o->desc, ' '))
         bra = "[", ket = "]";
     } else
       bra = "{", ket = "}";
     fprintf(stderr, " %s%s%s", bra, o->desc, ket);
   }
   fprintf(stderr, "\n");
- 
+
   fprintf(stderr, "OPTIONS:\n") ;
   for (maxlen = 0, i = 0; i < ao->nopt; i++) { /* compute the longest option */
     if (!ao->opts[i].isopt) continue;
@@ -106,7 +106,7 @@ int argopt_add(argopt_t *ao, const char *sflag,
 }
 
 /* main parser of arguments */
-void argopt_parse(argopt_t *ao, int argc, char **argv) 
+void argopt_parse(argopt_t *ao, int argc, char **argv)
 {
   int i, j, k, ch, acnt = 0;
   opt_t *ol = ao->opts;
@@ -127,10 +127,10 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
     /* it's an option, loop for abbreviated form "-abc" == "-a -b -c" */
     for (j = 1; (ch = argv[i][j]) != '\0'; j++) {
       int islong = (j == 1 && argv[i][1] == '-') | (ao->flags & ARGOPT_LONGOPT);
-      
+
       if (islong) { /* compare against long options */
         for (k = 0; k < ao->nopt; k++)
-          if (ol[k].isopt && 
+          if (ol[k].isopt &&
               strncmp(argv[i], ol[k].sflag, strlen(ol[k].sflag)) == 0)
             break;
       } else { /* compare against short options */
@@ -142,7 +142,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
         fprintf(stderr, "cannot handle option [%s]\n", argv[i]);
         argopt_help(ao);
       }
-      
+
       if (ol[k].desc[0] == '$') { /* system commands */
         if (strcmp(ol[k].desc, "$HELP") == 0)
           argopt_help(ao);
@@ -168,7 +168,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
             hasv = 1;
           }
         }
-        
+
         if (!hasv) { /* --version 11 or -n 8 */
           if (++i >= argc) {
             fprintf(stderr, "%s(%s) requires an argument!\n", ol[k].sflag, argv[i-1]);

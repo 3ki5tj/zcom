@@ -11,28 +11,34 @@ LMM =
 #CM = $(CC) -fopenmp
 
 deps = abpro.c abpro.h rv3.h rv2.h util.h md.c md.h Makefile
-bin = $(patsubst %.c,%, $(wildcard test*.c))
-bin_d = $(patsubst %.c,%_d, $(wildcard test*.c))
-bin_m = $(patsubst %.c,%_m, $(wildcard test*.c))
+bins = $(patsubst %.c,%, $(wildcard test*.c))
+bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
+bins_m = $(patsubst %.c,%_m, $(wildcard test*.c))
 
-all: $(bin) $(bin_d) $(bin_m)
+debug: $(bins_d)
 
-$(bin_d) : %_d : %.c $(deps)
+build: $(bins)
+
+omp: $(bins_m)
+
+all: $(bins) $(bins_d) $(bins_m)
+
+$(bins_d) : %_d : %.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
-$(bin) : % : %.c $(deps)
+$(bins) : % : %.c $(deps)
 	$(CX) -o $@ $< $(LMX)
 
-$(bin_m) : %_m : %.c $(deps)
+$(bins_m) : %_m : %.c $(deps)
 	$(CM) -o $@ $< $(LMM)
 
-abpro.c: abpro.0.c mk2d.py
-	python mk2d.py $@
+abpro.c: abpro.0.c mkab2d.py
+	python mkab2d.py $@
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin) $(bin_d) $(bin_m) \
+	rm -f *~ *.out MTSEED *.dat $(bins) $(bins_d) $(bins_m) \
 	  shakefail* rattlefail* ab.pos guide.gvs
 	$(MAKE) clean -C abemin
 
-.PHONY: clean all
+.PHONY: clean all debug build omp
 

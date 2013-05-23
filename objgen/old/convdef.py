@@ -116,8 +116,8 @@ for line in src:
     cond1 = sub(m.group(9).strip())
     desc  = sub(m.group(10).strip(' "'))
     cmds = ""
-    
-    if var != "" and tag != "FLAG": 
+
+    if var != "" and tag != "FLAG":
       var = var_prefix + var
 
     if tp.endswith("*"):
@@ -131,7 +131,7 @@ for line in src:
         cmds += "$altvar: %s; " % (var)
       var = ""
       tp = ""
-      
+
     if len(key):
       cmds += " $key: %s; " % (key_prefix + key)
 
@@ -139,7 +139,7 @@ for line in src:
       cmds += " $cnt: %s; " % cnt
     if defl != "" and not (tag == "FLAG" and key == ""):
       # remove ssdup
-      pat1 = r'ssdup\(\"(.*?)\"\)' 
+      pat1 = r'ssdup\(\"(.*?)\"\)'
       m = re.match(pat1, defl);
       if m:
         defl = re.sub(pat1, r"\1", defl)
@@ -192,7 +192,7 @@ for line in src:
     print "  /* */"
     #raw_input()
     block = []
-    
-  
-    
+
+
+
 

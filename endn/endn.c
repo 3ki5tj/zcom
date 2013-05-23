@@ -8,7 +8,7 @@ int endn_system(void)
 {
   unsigned feff = 0xFEFF; /* assume unsigned is at least 16-bit */
   unsigned char *p;
-      
+
   p  = (unsigned char *) &feff;
   return (*p == 0xFF) ? 0 : 1;
 }
@@ -39,7 +39,7 @@ size_t endn_fwrite(void *ptr, size_t size, size_t n, FILE *fp, int endn)
   /* initial determine the machine's endianess */
   if (endsys < 0) endsys = endn_system();
   if (endn == endsys) return fwrite(ptr, size, n, fp);
-  
+
   endn_flip(ptr, size, n);
   n = fwrite(ptr, size, n, fp);
   endn_flip(ptr, size, n);
@@ -47,7 +47,7 @@ size_t endn_fwrite(void *ptr, size_t size, size_t n, FILE *fp, int endn)
 }
 
 /* read an object test object *src, compared with *ref
- * return 0 if they are identical without endian change 
+ * return 0 if they are identical without endian change
  * return 1 if changing the endianness of *src matches *ref
  * otherwise return -1 */
 int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
@@ -57,7 +57,7 @@ int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
 #ifdef ENDN_DBG
   if (size == sizeof(int))
     printf("A: 0x%X vs. 0x%X size = %u, cmp = %d\n",
-      *(int *)src, *(int *)ref, (unsigned)size, 
+      *(int *)src, *(int *)ref, (unsigned)size,
       memcmp(src, ref, size));
 #endif
   if (memcmp(src, ref,  size) == 0)
@@ -66,8 +66,8 @@ int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
   endn_flip(src, size, 1);
 #ifdef ENDN_DBG
   if (size == sizeof(int))
-    printf("B: 0x%X vs. 0x%X size = %u, cmp = %d\n", 
-      *(int *)src, *(int *)ref, (unsigned)size, 
+    printf("B: 0x%X vs. 0x%X size = %u, cmp = %d\n",
+      *(int *)src, *(int *)ref, (unsigned)size,
       memcmp(src, ref, size));
 #endif
   return (memcmp(src, ref, size) == 0) ? 1 : -1;
@@ -80,7 +80,7 @@ int endn_rmatchi(int *src, int iref, FILE *fp)
   return endn_rmatch(src, &iref, sizeof(int), fp);
 }
 
-/* read data from file to ptr with endianness changed if 'flip' is 1 
+/* read data from file to ptr with endianness changed if 'flip' is 1
  * flip can be initialized by calling endn_rmatch() for a test object */
 size_t endn_fread(void *ptr, size_t size, size_t n, FILE *fp, int flip)
 {

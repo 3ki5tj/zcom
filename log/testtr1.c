@@ -16,7 +16,7 @@ int main(void)
     func("%6d: %24.12e %s\n", i, 3.14, msg); \
   } \
   func(NULL, NULL)
-  
+
   wtrace("%@freq=",  2);
   test(wtrace, 1);
 

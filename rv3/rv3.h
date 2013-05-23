@@ -2,7 +2,7 @@
 #define INLINE __inline static
 #endif
 #ifndef RESTRICT
-#define RESTRICT __restrict 
+#define RESTRICT __restrict
 #endif
 #include "def.h"
 #include "rng.c"
@@ -57,7 +57,7 @@ INLINE void rv3_fprint(FILE *fp, real *r, const char *nm, const char *fmt, int n
 INLINE void rm3_fprint(FILE *fp, real (*m)[3], const char *nm, const char *fmt, int nl)
   rm3_fprint_(fp, m, nm, fmt, nl)
 
-/* due to possible pointer overlap, be careful when to use 'const' */
+/* due to possible pointer overlap, 'const' are not add to some parameters */
 
 INLINE double *dv3_make(double *x, double a, double b, double c)
   { x[0] = a; x[1] = b; x[2] = c; return x; }
@@ -160,13 +160,13 @@ INLINE double *dv3_diff(double * RESTRICT diff, const double *a, const double *b
   return diff;
 }
 
-INLINE double dv3_dist2(const double *a, const double *b) 
+INLINE double dv3_dist2(const double *a, const double *b)
 {
-  double d[3]; 
+  double d[3];
   return dv3_sqr(dv3_diff(d, a, b));
 }
 
-INLINE double dv3_dist(const double *a, const double *b) 
+INLINE double dv3_dist(const double *a, const double *b)
 {
   return (double) sqrt(dv3_dist2(a, b));
 }
@@ -301,14 +301,14 @@ INLINE real *rv3_diff(real * RESTRICT diff, const real *a, const real *b)
 }
 
 /* distance^2 between a and b */
-INLINE real rv3_dist2(const real *a, const real *b) 
+INLINE real rv3_dist2(const real *a, const real *b)
 {
-  real d[3]; 
+  real d[3];
   return rv3_sqr(rv3_diff(d, a, b));
 }
 
 /* distance between a and b */
-INLINE real rv3_dist(const real *a, const real *b) 
+INLINE real rv3_dist(const real *a, const real *b)
 {
   return (real) sqrt(rv3_dist2(a, b));
 }
@@ -364,7 +364,7 @@ INLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {
   real dot, sn;
-  
+
   dot = rv3_cosang(x1, x2, x3, g1, g2, g3);
   sn = (real) sqrt(1 - dot*dot);
   if (sn < 1e-7) sn = 1; else sn = -1.f/sn;
@@ -466,7 +466,7 @@ typedef struct {
   unsigned int flags; /* a copy of flags used */
   int t1, t2, t3; /* gromacs shift indices */
   const void *pbcdata; /* periodic boundary condition descriptor */
-  int (*pbcdiff)(real *xij, const real *xi, const real *xj, const void *); 
+  int (*pbcdiff)(real *xij, const real *xi, const real *xj, const void *);
     /* function to handle pbc, use GROMACS convention: the last is the difference */
 } dihcalc_t;
 
@@ -550,7 +550,7 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
     scl = (real) sqrt(m2*n2);
     dot = rv3_dot(m, n);
     cosphi = dot/scl;
-    if (cosphi >= (real) 1.) cosphi = 1.f; 
+    if (cosphi >= (real) 1.) cosphi = 1.f;
     else if (cosphi < (real)(-1.)) cosphi = -1.f;
   } else {
     cosphi = 1.f;
@@ -683,7 +683,7 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
  * http://planetmath.org/encyclopedia/TrihedralAngle.html
  * tan(omega/2) = vol/den,
  * where
- * den = r1 (r2.r3) + r2 (r1.r3) + r3 (r1.r2) + r1 r2 r3 
+ * den = r1 (r2.r3) + r2 (r1.r3) + r3 (r1.r2) + r1 r2 r3
  */
 INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
   real g1[], real g2[], real g3[])
@@ -702,44 +702,44 @@ INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
 
   /* at least two points coincide */
   if (r1 < eps || r2 < eps || r3 < eps) return 0;
-    
+
   /* the numerator */
   vol = rv3_dot(v3, rv3_cross(vc, v1, v2));
-  
+
   /* the denominator */
   den = r1*rv3_dot(v3, v2) + r2*rv3_dot(v3, v1)
       + r3*(r1*r2 + rv3_dot(v1, v2));
 
   v2d2 = vol*vol + den*den;
-  
+
   /* this happens if two vector are opposite
      the solid angle could be evolved from  +/-pi or 0
      but unfortunately, we don't know which one */
   if (v2d2 < eps) return 0;
-  
+
   if (g1 != NULL && g2 != NULL && g3 != NULL) { /* compute the gradients */
     scnum =  2.f*den/v2d2;
     scden = -2.f*vol/v2d2;
-    
+
     /* cross products */
     rv3_smul(rv3_cross(g3, v1, v2), scnum);
     rv3_smul(rv3_cross(g1, v2, v3), scnum);
     rv3_smul(rv3_cross(g2, v3, v1), scnum);
-    
+
     /* compute the contributions to the denominator */
     rv3_lincomb2(vc, v2, v3, r3, r2);
     rv3_sinc(vc, v1, (rv3_dot(v2, v3) + r2*r3)/r1);
     rv3_sinc(g1, vc, scden);
-  
+
     rv3_lincomb2(vc, v1, v3, r3, r1);
     rv3_sinc(vc, v2, (rv3_dot(v1, v3) + r1*r3)/r2);
     rv3_sinc(g2, vc, scden);
-  
+
     rv3_lincomb2(vc, v1, v2, r2, r1);
     rv3_sinc(vc, v3, (rv3_dot(v1, v2) + r1*r2)/r3);
     rv3_sinc(g3, vc, scden);
   }
-  
+
   /* calculate tan(omega/2) */
   ang = atan2(vol, den); /* 0 to pi */
   return 2*ang;
@@ -747,8 +747,8 @@ INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
 
 
 
-/* compute the Gauss integral for the two line segments, with gradients 
- *    int_i \int_j (dri X drj).rij/ rij^3, 
+/* compute the Gauss integral for the two line segments, with gradients
+ *    int_i \int_j (dri X drj).rij/ rij^3,
  * over two line segments rip - ri, rjp - rj, and rij = ri - rj
  * (-2 pi, 2 pi)
  * Note the sign is opposite to that of the dihedral */
@@ -762,25 +762,25 @@ INLINE real rv3_solidang2g(const real ri[], const real rip[], const real rj[],
   rv3_diff(v1, ri, rjp);
   rv3_diff(v2, rip, rj);
   rv3_diff(v3, rip, rjp);
-  
+
   ang1 = rv3_solidang(v0, v1, v2, g0, g1, g2);
   ang2 = rv3_solidang(v2, v1, v3, g3, g4, g5);
-  
+
   rv3_inc(rv3_inc(rv3_copy(gi,  g0), g1), g4);
   rv3_inc(rv3_inc(rv3_copy(gip, g2), g3), g5);
   rv3_neg(rv3_inc(rv3_inc(rv3_copy(gj,  g0), g2), g3));
   rv3_neg(rv3_inc(rv3_inc(rv3_copy(gjp, g1), g4), g5));
-  
+
   return ang1 + ang2;
 }
 
 
 /* compute the double integral, old code
- *    \int_i \int_j (dri X drj).rij/ rij^3, 
+ *    \int_i \int_j (dri X drj).rij/ rij^3,
  * over two line segments rip - ri, rjp - rj, and rij = ri - rj
  * (-2 pi, 2 pi)
  * Note the sign is opposite to that of the dihedral */
-INLINE real rv3_solidang2(const real *ri, const real *rip, 
+INLINE real rv3_solidang2(const real *ri, const real *rip,
     const real *rj, const real *rjp)
 {
   real v0[3], v1[3], v2[3], v3[3], vc[3];
@@ -798,7 +798,7 @@ INLINE real rv3_solidang2(const real *ri, const real *rip,
 
   /* calculate the denominator */
   tmp = r1*r2 + rv3_dot(v1, v2);
-  /* http://planetmath.org/encyclopedia/TrihedralAngle.html 
+  /* http://planetmath.org/encyclopedia/TrihedralAngle.html
    * tan(omega/2) = vol/den,
    * where
    * den = r1 (r2.r3) + r2 (r1.r3) + r3 (r1.r2) + r1 r2 r3
@@ -840,7 +840,7 @@ INLINE dv3_t *dm3_copy(double a[3][3], double b[3][3])
 }
 
 /* transpose */
-INLINE dv3_t *dm3_trans(double a[3][3]) 
+INLINE dv3_t *dm3_trans(double a[3][3])
 {
   double x;
   x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
@@ -995,7 +995,7 @@ INLINE rv3_t *rm3_copy(real a[3][3], real b[3][3])
 }
 
 /* transpose */
-INLINE rv3_t *rm3_trans(real a[3][3]) 
+INLINE rv3_t *rm3_trans(real a[3][3])
 {
   real x;
   x = a[0][1], a[0][1] = a[1][0], a[1][0] = x;
@@ -1175,7 +1175,7 @@ INLINE void dv3_sort3(double s[3], double (*u)[3], double (*v)[3])
 {
   double tmp;
 
-  if (s[2] > s[1]) { 
+  if (s[2] > s[1]) {
     tmp = s[1]; s[1] = s[2]; s[2] = tmp;
     if (u) dv3_swap(u[1], u[2]);
     if (v) dv3_swap(v[1], v[2]);
@@ -1194,15 +1194,15 @@ INLINE void dv3_sort3(double s[3], double (*u)[3], double (*v)[3])
 
 /* return the pivot row for column c, row index starts from r0 */
 INLINE int dm3_pivot_(double m[3][3], int r0, int c, double *max)
-{ 
-  int i, r = r0; 
+{
+  int i, r = r0;
   double tmp;
 
-  for (*max = fabs(m[r = r0][c]), i = r0 + 1; i < 3; i++) 
+  for (*max = fabs(m[r = r0][c]), i = r0 + 1; i < 3; i++)
     if ((tmp = fabs(m[i][c])) > *max) r = i, *max = tmp;
   return r;
 }
- 
+
 /* solve matrix equation a x = 0, matrix 'a' is destroyed
  * solutions are saved as *row* vectors in 'x'
  * return the number of solutions */
@@ -1270,7 +1270,7 @@ INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int n
 {
   double vs[5][3], sq, tol, nv; /* for safty, vs needs 5 rows */
   int n = 0, nn, i;
- 
+
   dm3_eigval(v, mat);
   for (sq = 0, i = 0; i < 3; i++) sq += dv3_sqr(mat[i]);
   /* errors of the eigenvalues from the cubic equation can reach sqrt(eps)
@@ -1282,7 +1282,7 @@ INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int n
     if (n == 0) goto ERR;
     if ((nn += n) >= 3) break;
   }
-  
+
   /* NOTE: make sure eigenvectors are orthogonal */
   dv3_normalize( dv3_cross(vs[2], vs[0], vs[1]) );
   dv3_normalize( dv3_cross(vs[1], vs[2], vs[0]) );
@@ -1351,7 +1351,7 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
     dm3_print(us, "Us^T ", "%22.14e", 1);
     dv3_print(s, "S ", "%22.14e", 1);
     dm3_print(a, "A ",  "%20.14f", 1);
-    printf("rank = %d, tol %g, det %g, u0.u0 %g, u0.u1 %g, u0.u2 %g, u1.u1 %g, u1.u2 %g, u2.u2 %g\n\n\n", rank, tol, dm3_det(u), 
+    printf("rank = %d, tol %g, det %g, u0.u0 %g, u0.u1 %g, u0.u2 %g, u1.u1 %g, u1.u2 %g, u2.u2 %g\n\n\n", rank, tol, dm3_det(u),
         dv3_sqr(u[0]), dv3_dot(u[0], u[1]), dv3_dot(u[0], u[2]), dv3_sqr(u[1]), dv3_dot(u[1], u[2]), dv3_sqr(u[2]));
 #endif
     if (rank <= 2) {
@@ -1378,7 +1378,7 @@ INLINE void dm3_svd(double a[3][3], double u[3][3], double s[3], double v[3][3])
   dm3_trans(u);
 }
 
-/* eigenvalues of a 3x3 matrix 
+/* eigenvalues of a 3x3 matrix
  * internal calculation are carried out in double precision */
 INLINE real *rm3_eigval(real v[3], real a[3][3])
 {
@@ -1390,7 +1390,7 @@ INLINE real *rm3_eigval(real v[3], real a[3][3])
     dm3_fromrm3(da, a);
     dm3_eigval(dv, da);
     return rv3_fromdv3(v, dv);
-  } 
+  }
 }
 
 /* solve A x = 0 */
@@ -1434,7 +1434,7 @@ INLINE rv3_t *rm3_eigsys(real v[3], real vecs[3][3], real mat[3][3], int nt)
     dm3_eigsys(dv, dvecs, dmat, nt);
     rv3_fromdv3(v, dv);
     return rm3_fromdm3(vecs, dvecs);
-  } 
+  }
 }
 
 /* SVD decomposition of a 3x3 matrix a = u s v^T */
@@ -1444,7 +1444,7 @@ INLINE void rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
     dm3_svd((dv3_t *) a, (dv3_t *) u, (double *) s, (dv3_t *) v);
   } else {
     double da[3][3], du[3][3], ds[3], dv[3][3];
-    
+
     dm3_fromrm3(da, a);
     dm3_svd(da, du, ds, dv);
     rm3_fromdm3(u, du);
@@ -1457,7 +1457,7 @@ INLINE void rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
 INLINE rv3_t *rm3_mkrot(real m[3][3], const real *v, real ang)
 {
   real c = (real) cos(ang), s = (real) sin(ang), nc, n[3];
-  
+
   rv3_copy(n, v);
   rv3_normalize(n);
   nc = 1 - c;

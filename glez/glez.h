@@ -11,7 +11,7 @@
 static int glez_x, glez_y; /* current position */
 static int glez_msdown; /* mouse state */
 
-typedef struct tag_glez_menukey_t { 
+typedef struct tag_glez_menukey_t {
   int id;
   int key;
   const char *str;
@@ -22,7 +22,7 @@ static glez_menukey_t *glez_user_menukey;
 
 enum { GLEZ_MENU0 = 1000,
   GLEZ_MOVXM, GLEZ_MOVXP, GLEZ_MOVYM, GLEZ_MOVYP, GLEZ_MOVZM, GLEZ_MOVZP,
-  GLEZ_ROTXM, GLEZ_ROTXP, GLEZ_ROTYM, GLEZ_ROTYP, GLEZ_ROTZM, GLEZ_ROTZP, 
+  GLEZ_ROTXM, GLEZ_ROTXP, GLEZ_ROTYM, GLEZ_ROTYP, GLEZ_ROTZM, GLEZ_ROTZP,
   GLEZ_SCLM, GLEZ_SCLP, GLEZ_FULLS, GLEZ_MENU1 };
 
 /* rotation sub-menu */

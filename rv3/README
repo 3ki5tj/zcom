@@ -1,3 +1,24 @@
+3D real vectors
+
+Overview
+---------
+* several functions have double versions
+
+
+Files
+------
+rv3.h       source code
+rv3.c       empty, merely includes rv3.h
+
+
+Test programs
+~~~~~~~~~~~~~
+All testxxx.c are test programs.
+
+
+Notes
+------
+
 add _rv2.h so it stays in front of rv3.h
 
 svd3 is code from internet

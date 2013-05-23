@@ -14,7 +14,7 @@ int main(int argc, char **argv)
   pdbm_write(m, "out.pdb");
   c = pdbaac_parse(m, 1);
   die_if (c == NULL, "bad pdb\n");
-  
+
   ng = pdbaac_parsehelices(c, &se);
   for (i = 0; i < ng; i++) /* print helix groups */
     printf("Helix %2d: %d - %d\n", i + 1, se[2*i] + 1, se[2*i+1]);

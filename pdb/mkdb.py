@@ -71,12 +71,12 @@ struct %s {
   for i in range(20):
     s = '{"%s", ' % resnm[i]
     # list atoms
-    s += '{' 
+    s += '{'
     for at in resat[i]: s += '"%s", ' % at
     s += 'NULL}, '
-    
+
     # list substitutions
-    s += '{' 
+    s += '{'
     for sub in resub[i]:
       alt = sub.split(":")
       s += '"%s", "%s", ' % (alt[0], alt[1])

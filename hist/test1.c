@@ -16,7 +16,7 @@ int main(void)
   hs = hs_open(LCNT, XMIN, XMAX, XDEL);
   /* generate histogram */
   for (i = 0; i < n; i++) {
-    for (j = 0; j < LCNT; j++) 
+    for (j = 0; j < LCNT; j++)
       x[j] = lam[j]*x[j]*(1 - x[j]);
     hs_add(hs, x, 1., HIST_VERBOSE);
   }
@@ -30,6 +30,6 @@ int main(void)
   /* write again */
   hs_save(hs, "HIST2", wflags);
   hs_close(hs);
-  return 0; 
+  return 0;
 }
 

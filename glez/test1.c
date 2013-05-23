@@ -28,7 +28,7 @@ int main(int argc, char **argv)
   glezInitWindow(&argc, argv, 600, 600, "GLEZ test");
   glutDisplayFunc(display);
   initgui();
-  glutMainLoop(); 
+  glutMainLoop();
   return 0;
 }
 

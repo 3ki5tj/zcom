@@ -303,15 +303,15 @@ def mkanchors(shost, srclist):
 
 
 
-def integrate(srclist, host, output):
+def integrate(srclist, host, fnout):
   ''' integrate source code to output according to host '''
 
   # 1a. load the template host0
   fnr = os.path.splitext(host)
   host0  = fnr[0] + ".0" + fnr[1]
-  if not output: output = host
+  if not fnout: fnout = host
   if verbose > 0:
-    print "Output: %s, template: %s" % (output, host0)
+    print "Output: %s, template: %s" % (fnout, host0)
   host_src = open(host0, 'r').readlines()
 
   # 1b. add anchors and dependencies
@@ -382,17 +382,18 @@ def integrate(srclist, host, output):
     host_src[i] = host_src[i].rstrip() + '\n'
 
   # 6. save it back to output
-  # save first to a temporary file,
-  # overwrite the original if necessary
-  fn_outtmp = output + ".tmp"
-  open(fn_outtmp, 'w').write(''.join(host_src))
-  if os.system('cmp '+fn_outtmp + ' '+ output):
-    shutil.copy(fn_outtmp, output)
+  # overwrite the original only if necessary
+  newsrc = ''.join(host_src)
+  oldsrc = ""
+  if os.path.exists(fnout):
+    oldsrc = open(fnout).read()
+  if newsrc != oldsrc:
+    print "updating", fnout
+    open(fnout, 'w').write(newsrc)
   else:
-    print "no need to update", output
+    print "no need to update", fnout
   if verbose > 0:
-    os.system('wc ' + output);
-  os.remove(fn_outtmp)
+    os.system('wc ' + fnout);
 
 
 

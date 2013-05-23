@@ -32,7 +32,7 @@ static int ab_checkxv(abpro_t *ab, const real *x, const real *v, double tol)
 
 /* randomly displace ab->x by del, then shake it
  * save result to ab->x1 (if repl, also to ab->x) */
-static int randmove(abpro_t *ab, real del, int repl, 
+static int randmove(abpro_t *ab, real del, int repl,
     int milc, int it, const char *tag)
 {
   int i, j, verbose = 0;

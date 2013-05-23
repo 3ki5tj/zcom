@@ -14,7 +14,7 @@ typedef struct {
   char ch; /* single letter option flag */
   const char *sflag; /* long string flag */
   const char *key; /* key, for cfg files as in `key = val' */
-  
+
   const char *val; /* raw string from command line */
   const char *desc; /* description */
   const char *fmt; /* sscanf format */
@@ -27,14 +27,15 @@ typedef struct {
 #define OPT_SWITCH   0x0002  /* an option is a switch */
 #define OPT_SET      0x0004  /* an argument/option is set */
 
-/* translate string values to actual ones through sscanf() */
+/* translate string value in `o->val' into
+ * actual ones through sscanf(), etc */
 INLINE int opt_getval(opt_t *o)
 {
   const char *fmt = o->fmt;
-  
+
   if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
     *(const char **)o->ptr = o->val;
-  } else if (strcmp(fmt, "%s") == 0) {
+  } else if (strcmp(fmt, "%s") == 0) { /* copy the string */
     sscpy( *(char **)o->ptr, o->val);
   } else { /* call sscanf */
     if (strcmp(fmt, "%r") == 0) /* real */
@@ -48,7 +49,19 @@ INLINE int opt_getval(opt_t *o)
   return 0;
 }
 
-/* set properties of an option: fmt = "%b" for a switch */
+/* register an option
+ *
+ * for a configure entry, set `key' and leave `sflag' = NULL
+ * for a command-line option, set `sflag' and leave `key' = NULL
+ * `fmt' is the sscanf() format string
+ * `*ptr' is the target variable
+ * `fmt' can "%b" for a switch (like an command-line option "-v")
+ * `fmt' can have a prefix `!' to mean a mandatory option
+ * both NULL and "%s" of `fmt' mean string values, the type of
+ *  `ptr' should be `char **', the difference is that `*ptr'
+ *  is directly assigned to `o->val' during opt_getval() in the
+ *  former case, but extra memory is allocated to copy `o->val'
+ *  in the latter case */
 INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
     const char *fmt, void *ptr, const char *desc)
 {
@@ -112,7 +125,7 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
   ELIF_PF_("%lf", "%g", double);
   ELIF_PF_("%r", "%g", real);
   else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *)o->ptr);
-#undef ELIF_PF_  
+#undef ELIF_PF_
 }
 
 /* search an option list, return an option whose variable address is p */

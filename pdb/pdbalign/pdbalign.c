@@ -32,11 +32,11 @@ static void doargs(int argc, char **argv)
 static real elem2mass(const char *elem)
 {
   static struct { const char *name; double mass; } elemtab[] = {
-    {"H", 1.00794}, {"D", 2.0141}, {"C", 12.0107}, {"N", 14.0067}, 
+    {"H", 1.00794}, {"D", 2.0141}, {"C", 12.0107}, {"N", 14.0067},
     {"O", 15.9994}, {"F", 18.9984}, {"Na", 22.98976928}, {"Mg", 24.3050f},
     {"Al", 26.9815386}, {"Si", 28.0855}, {"P", 30.973762}, {"S", 32.065},
     {"Cl", 35.453}, {"K", 39.0983}, {"Ca", 40.078}, {"Mn", 54.938045},
-    {"Fe", 55.845}, {"Cu", 63.546}, {"Zn", 65.38}, {"Ga", 69.723}, 
+    {"Fe", 55.845}, {"Cu", 63.546}, {"Zn", 65.38}, {"Ga", 69.723},
     {"Ge", 72.63}, {"As", 74.9216}, {"Se", 78.96}, {"Br", 79.904},
     {"Ag", 107.8682} /* silver */, {"Au", 196.966569} /* gold */,
     {"Hg", 200.59} /* mercury */,
@@ -75,8 +75,8 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
     xnew(x, n);
     xnew(w, n);
     for (i = 0; i < nres; i++) {
-      rv3_copy(x[3*i],   c->res[i].xn); 
-      rv3_copy(x[3*i+1], c->res[i].xca); 
+      rv3_copy(x[3*i],   c->res[i].xn);
+      rv3_copy(x[3*i+1], c->res[i].xca);
       rv3_copy(x[3*i+2], c->res[i].xc);
       w[3*i] = 14;
       w[3*i+1] = 12;
@@ -87,8 +87,8 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
     xnew(x, n);
     xnew(w, n);
     for (i = 0; i < nres; i++) {
-      rv3_copy(x[4*i],   c->res[i].xn); 
-      rv3_copy(x[4*i+1], c->res[i].xca); 
+      rv3_copy(x[4*i],   c->res[i].xn);
+      rv3_copy(x[4*i+1], c->res[i].xca);
       rv3_copy(x[4*i+2], c->res[i].xc);
       rv3_copy(x[4*i+3], c->res[i].xo);
       w[4*i] = 14;
@@ -103,7 +103,7 @@ static rv3_t *load(const char *fn, int *pn, pdbmodel_t **pmdl, real **pw)
     xnew(w, n);
     for (i = 0; i < n; i++) {
       w[i] = elem2mass(m->atm[i].elem);
-      if (aligntype == ALN_HEAVY && 
+      if (aligntype == ALN_HEAVY &&
          (strcmp(m->atm[i].elem, "H") == 0 || strcmp(m->atm[i].elem, "D") == 0))
         w[i] = 0.f; /* annihilate hydrogen atoms */
       else nhvy++;

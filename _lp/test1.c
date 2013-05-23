@@ -3,8 +3,8 @@ static void test1(void)
 {
   lpcore_t *lp = lpcore_open(3, 3);
   double a[4][4] = { {0, 3, 1, 2}, /* target function */
-    {30, 1, 1, 3}, 
-    {24, 2, 2, 5}, 
+    {30, 1, 1, 3},
+    {24, 2, 2, 5},
     {36, 4, 1, 2},
   };
   int j;
@@ -20,8 +20,8 @@ static void test2(void)
 {
   lpcore_t *lp = lpcore_open(2, 2);
   double a[3][3] = { {0, 2, -1}, /* target function */
-    {2, 2, -1}, 
-    {-4, 1, -5}, 
+    {2, 2, -1},
+    {-4, 1, -5},
   };
   int j;
   lpcore_setc(lp, a[0]);

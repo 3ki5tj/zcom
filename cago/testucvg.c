@@ -29,16 +29,16 @@ static void doargs(int argc, char **argv)
 /* guess a proper temperature for a target potential energy
  * return 0 if successful
  *
- * temperature is updated according to epot 
+ * temperature is updated according to epot
  * several stages of updating are used, each with a fixed tpdt
  * after a stage, the updating magnitude amp is multiplied by ampf
- * iterations finish when the temperature difference is less than 
+ * iterations finish when the temperature difference is less than
  * a given tolerance 'tptol'
  * a pass is defined every time the potential energy crosses 'epot'
  * in every stage, npass passes are required to determine convergence
  * */
 INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real epot, int npass, 
+    real epot, int npass,
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep)
 {
@@ -82,14 +82,14 @@ INLINE int cago_ucvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
       const char fnfail[] = "fail.pos";
       go->rmsd = cago_rmsd(go, go->x, go->x1);
       cago_writepos(go, go->x1, NULL, fnfail);
-      fprintf(stderr, "%d: failed to converge, epot: %g - %g, %d passes, %s\n", 
+      fprintf(stderr, "%d: failed to converge, epot: %g - %g, %d passes, %s\n",
           stg, epot, go->epot, ipass, fnfail);
       return 1;
     }
     tpav = av_getave(avtp);
     epav = av_getave(avep);
     rdav = av_getave(avrmsd);
-    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n", 
+    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n",
         stg, amp, tp, tpav, tpp, epav, rdav, ipass, npass);
     tmp = .5*(tpav + tpp);
     if (stg > 0 && fabs(tpav - tpp) < tptol*tmp) break;
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
   }
 
   ret = cago_ucvgmdrun(go, mddt, thermdt, nstcom,
-      epot_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 
+      epot_target, npass, amp, ampf, tptol, avtp, avep, avrmsd,
       tptry, tpmin, tpmax, tmax, trep);
   tpav = av_getave(avtp);
   tpdv = av_getdev(avtp);

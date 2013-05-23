@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     if (t % tfreq == 0) {
       eftest(go, 0.1);
       go->rmsd = cago_rmsd(go, go->x, NULL);
-      printf("t %d, tp = %g, ene = %g+%g = %g, %g\n", 
+      printf("t %d, tp = %g, ene = %g+%g = %g, %g\n",
     	  t, tp, go->epot, go->ekin, go->epot + go->ekin, go->rmsd);
     }
   }

@@ -7,7 +7,7 @@
 typedef struct {
   int n; /* number of non-basic variables */
   int m; /* number of connstraints, i.e., basic variables */
-  double *c;  /* c[1..n]: coefficients to objective function: -c[0]  + sum_i c[i] xi 
+  double *c;  /* c[1..n]: coefficients to objective function: -c[0]  + sum_i c[i] xi
                * array also the space holder for a[][] */
   double **a; /* a[1..m][0..n]: constraints */
   int *nid; /* indicies for nonbasic varaibles */
@@ -30,7 +30,7 @@ INLINE void lpcore_seta(lpcore_t *lp, double *a, int j)
 INLINE void lpcore_fprintf(const lpcore_t *lp, FILE *fp, const char *fmt)
 {
   int i, j;
-  
+
   for (j = 0; j <= lp->m; j++) {
     if (j == 0) {
       fprintf(fp, "Objective function:\n");

@@ -53,7 +53,7 @@ static void myforce(double *f)
 int main(void)
 {
   int t;
-  
+
   xnew(x, N*3);
   xnew(v, N*3);
   xnew(f, N*3);

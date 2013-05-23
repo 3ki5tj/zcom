@@ -1,5 +1,5 @@
 Overview
-=========
+---------
 
 This project collects commonly used into a single header file zcom.h.
 
@@ -12,6 +12,19 @@ Code should be concise and limited in size,
 Use symbolic links to define intermodular dependence,
 Use `_' to define the preceeding module.
 
+
+Files
+------
+zcom.0.h        template
+zcom.h          generated from zcom.0.h and modules by assemble.py
+assemble.py     the python script that assemble modules
+Makefile        Makefile for common tasks, such as `usb', `usball', etc
+gen.mak         generic Makefile to be used for new modules
+license.txt     GPL less license, version 2
+zcompick.py     end-user tool to remove certain modules from zcom.h
+
+Modules
+-------
 def:            definition of `real' and M_PI
 util:           useful but unclassified routines
 ss:             smart string

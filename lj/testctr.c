@@ -25,7 +25,7 @@ static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
     i = lj_randmv3d(lj, xi, amp*sqrt(lj->n));
     du = lj_depot3d(lj, i, xi, &vir, &rmin);
     hs_add(hs, &du, 1.0, 0);
-    av_add(avdu, du); 
+    av_add(avdu, du);
   }
   du = av_getave(avdu);
   du2 = av_getvar(avdu);
@@ -55,7 +55,7 @@ static real tcr3d_g(lj_t *lj, int tmax, real amp, real umax, real udel)
     du = lj_energy3d(lj) - ep;
 
     hs_add(hs, &du, 1.0, 0);
-    av_add(avdu, du); 
+    av_add(avdu, du);
   }
   du = av_getave(avdu);
   du2 = av_getvar(avdu);

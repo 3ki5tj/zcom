@@ -23,7 +23,7 @@ typedef struct { /* clsys: array of all clusters */
   double ene;   /* energy of all clusters */
   /* auxiliary variables */
   double mu0;   /* input mu */
-  double muw;   /* penalty of adding a cluster the actual one 
+  double muw;   /* penalty of adding a cluster the actual one
                    the weighted version, 0.5 * mu0  */
   double bet;   /* inverse temperature */
   int acc; /* accepted metropolis moves */
@@ -45,7 +45,7 @@ clsys_t *cls_read(const char *fn, void (*rhead)(FILE *, clsys_t *, void *data), 
 int cls_write(clsys_t *cls, const char *fn,
     void (*whead)(FILE *, const clsys_t *cls, const void *data), const void *data, int ver);
 clsys_t *cls_anneal(clsys_t *cls, int itmax, int method, double bet0, double bet1);
-clsys_t *cls_zalgo(clsys_t *cls, int itmax, int method, 
+clsys_t *cls_zalgo(clsys_t *cls, int itmax, int method,
     double bet0, double bet1, int nbet, int nstmin, int verbose);
 
 #endif

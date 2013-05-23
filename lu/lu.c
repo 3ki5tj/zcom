@@ -5,7 +5,7 @@
 #include "lu.h"
 
 /* solve A x = b by L U decomposition
- * the matrix `a' will be destroyed 
+ * the matrix `a' will be destroyed
  * the vector `b' will be `x' on return */
 int lusolve(real *a, real *b, int n)
 {
@@ -15,12 +15,12 @@ int lusolve(real *a, real *b, int n)
 
   for (i = 0; i < n; i++) {  /* normalize each equation */
     for (max = 0.0, j = 0; j < n; j++)
-      if ((x = fabs(a[i*n+j])) > max) 
+      if ((x = fabs(a[i*n+j])) > max)
         max = x;
     if (max < mintol) {
       return 1;
     }
-    for (x = 1.0/max, j = 0; j < n; j++) 
+    for (x = 1.0/max, j = 0; j < n; j++)
       a[i*n+j] *= x;
     b[i] *= x;
   }
@@ -37,10 +37,10 @@ int lusolve(real *a, real *b, int n)
     /* matrix L, diagonal of L are 1 */
     max = 0.0;
     for (i = j; i < n; i++) {
-      for (x = a[i*n+j], k = 0; k < j; k++) 
+      for (x = a[i*n+j], k = 0; k < j; k++)
         x -= a[i*n+k]*a[k*n+j];
       a[i*n+j] = x;
-      if (fabs(x) >= max) { 
+      if (fabs(x) >= max) {
         max = fabs(x);
         imax = i;
       }

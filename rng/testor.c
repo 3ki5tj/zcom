@@ -4,7 +4,7 @@
 
 #define N 10000
 
-int main(void) 
+int main(void)
 {
   int i;
   double v[3];

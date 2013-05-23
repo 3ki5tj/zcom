@@ -7,7 +7,7 @@ INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int 
 {
   int i, j;
   real rc, wtot = 0;
-  
+
   if (w) for (i = 0; i < n; i++) wtot += w[i];
   else wtot = (real) n;
   for (j = 0; j < d; j++) {
@@ -44,8 +44,8 @@ INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
  * solve
  *   /  y^2 + z^2    -x y      -x y      \
  *   |  -x y       X^2 + z^2   -y z      |  c  =  I
- *   \  -x z         -y z     x^2 + y^2  / 
- * use a velocity field 
+ *   \  -x z         -y z     x^2 + y^2  /
+ * use a velocity field
  *    v = c X r
  *   */
 
@@ -151,7 +151,7 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
 {
   int i;
   real ekav = .5f*tp*dof, ek1, ek2, s, c = 0., r;
-  
+
   if (dt < 10.0) c = exp(-dt);
   r = (real) grand0();
   ek1 = md_getekin(ekin, v, nd);
@@ -200,16 +200,16 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
 {
   int i;
   real ek1, ek2, s, dt2 = .5f*dt;
- 
-  ek1 = md_getekin(ekin, v, nd); 
+
+  ek1 = md_getekin(ekin, v, nd);
   *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
-  
+
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
   if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
-  
+
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
 }
 
@@ -227,9 +227,9 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
 {
   int i, j;
   real ek1, ek2, s, dt2 = .5f*dt, dt4 = .25f*dt, G, xp = 1.f;
- 
+
   ek1 = md_getekin(ekin, v, nd);
-  
+
   /* propagate the chain */
   for (j = M-1; j > 0; j--) {
     if (j < M-1) {
@@ -251,15 +251,15 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   zeta[0] += G * dt2;
   if (M >= 2)
     zeta[0] *= xp;
- 
-  /* scale the velocities */ 
+
+  /* scale the velocities */
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
   if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
- 
-  /* the first thermotat variable */ 
+
+  /* the first thermotat variable */
   if (M >= 2) {
     xp = exp(-dt4*zeta[1]);
     zeta[0] *= xp;
@@ -268,7 +268,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   zeta[0] += G * dt2;
   if (M >= 2)
     zeta[0] *= xp;
-  
+
   /* propagate the chain */
   for (j = M-1; j > 0; j--) {
     if (j < M-1) {
@@ -296,7 +296,7 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
 {
   int i;
   real ek1, ek2, s, dt2 = .5f*dt, xp, amp;
-  
+
   ek1 = md_getekin(ekin, v, nd);
   xp = (real) exp(-zeta2*.25*dt);
   amp = (real) sqrt(2*zeta2/Q*dt2);
@@ -304,13 +304,13 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
   *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
   *zeta += amp * grand0(); /* white noise */
   *zeta *= xp;
-  
+
   s = (real) exp(-(*zeta)*dt);
   for (i = 0; i < nd; i++) v[i] *= s;
   ek2 = ek1 * (s*s);
   if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
-  
+
   *zeta *= xp;
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
   *zeta += amp * grand0(); /* white noise */
@@ -349,7 +349,7 @@ INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
 
 /* Nose-Hoover thermostat/barostat
  * set cutoff to half of the box */
-INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt, 
+INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
     real tp, real pext, real *zeta, real *eta, real Q, real W,
     real vol, real vir, real ptail, int ensx,
     real *ekin, real *tkin)
@@ -385,7 +385,7 @@ INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
 
 /* Nose-Hoover chain thermostat/barostat
  * set cutoff to half of the box */
-INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt, 
+INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
     real tp, real pext, real *zeta, real *eta, const real *Q, int M, real W,
     real vol, real vir, real ptail, int ensx,
     real *ekin, real *tkin)
@@ -461,13 +461,13 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
 
 /* Langevin barostat
  *   d eta / dt = -zeta * eta
- *      + [ (Pint - Pext) * V + (1 - ensx) T ] * d / W 
+ *      + [ (Pint - Pext) * V + (1 - ensx) T ] * d / W
  *      + sqrt( 2 * zeta * T / W ) xi
  * the ideal-gas part of the pressure, Pint, is computed as \sum p^2/m / V
  * the additional volume distribution weight is V^(-ensx)
  * the scaling is r = r*s, p = p/s;
  * set the cutoff rc to half of the box */
-INLINE void md_langtp(real *v, int n, int d, real dt, 
+INLINE void md_langtp(real *v, int n, int d, real dt,
     real tp, real pext, real zeta, real *eta, real W,
     real vol, real vir, real ptail, int ensx,
     real *ekin, real *tkin)
@@ -519,12 +519,12 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
   amp = (real) sqrt(2.f * barodt);
   dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt + amp*grand0();
   vn = *vol * exp( dlnv );
-  
+
   s = (real) exp( dlnv/d );
   for (i = 0; i < d * n; i++) v[i] *= s;
   *ekin *= s*s;
   *tkin *= s*s;
-  
+
   *vol = vn;
 }
 
@@ -560,8 +560,8 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
 {
   int i;
   real dtxp, xph, etadt2;
-  
-  /* r' = r*exp(eta*dt) + v*(exp(eta*dt) - 1)/eta 
+
+  /* r' = r*exp(eta*dt) + v*(exp(eta*dt) - 1)/eta
    * now exp(eta*dt) is the volume scaling factor
    * so for the reduced coordinates R = r*exp(-eta*dt)
    * R' = R + v*(1 - exp(-eta*dt))/eta; */
@@ -569,9 +569,9 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
   xph = (real) exp(etadt2);
   *xp = xph * xph;
   dtxp = 1.f/xph * dt * md_mysinc(etadt2) / l;
-/*  
+/*
   dtxp = (1 - 1/(*xp))/eta/l;
-*/  
+*/
   for (i = 0; i < nd; i++)
     r[i] += v[i] * dtxp;
 }

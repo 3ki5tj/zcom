@@ -1,7 +1,7 @@
 /* test rv3_solvezero */
 #include "rv3.h"
 
-static void foo(real a00, real a01, real a02, 
+static void foo(real a00, real a01, real a02,
                 real a10, real a11, real a12,
                 real a20, real a21, real a22)
 {
@@ -15,7 +15,7 @@ static void foo(real a00, real a01, real a02,
   rv3_make(a[2], a20, a21, a22);
   rm3_copy(as, a);
   rm3_print(a, "A", "%10.6f", 1);
-  
+
   n = rm3_solvezero(a, x, tol);
 
   printf("%d solutions\n", n);
@@ -32,7 +32,7 @@ static void foo(real a00, real a01, real a02,
 int main(void)
 {
   foo(  1,  3.,   1.5,
-        1,  5.3,  2.5,   
+        1,  5.3,  2.5,
         2,  6,    3);
   return 0;
 }

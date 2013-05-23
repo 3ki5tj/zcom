@@ -5,7 +5,7 @@
 #define L         (1 << LB)
 #define DATAFILE  "is.dat"
 
-#define IS2_LB  LB 
+#define IS2_LB  LB
 #include "ising2.c"  /* swap with the #define LB line to test two different versions */
 
 /* randomly pick a site and flip it */
@@ -24,11 +24,11 @@ static void mc(ising_t *is, double steps, double beta, int ncheck)
   s1 = se = se2 = 0.0;
   nt = ncheck;
   for (t = 1.0; t <= steps; t += 1.0) {
-/*    
+/*
     IS2_PSEQ(is, id, h);
 */
     IS2_PICK(is, id, h);
-    
+
     if (h <= 0 || mtrand() < is->uproba[h]) {
       IS2_FLIP(is, id, h);
     }
@@ -42,7 +42,7 @@ static void mc(ising_t *is, double steps, double beta, int ncheck)
   eav = se/s1;
   cv = (beta*beta)*(se2/s1 - eav*eav);
   lnzref = is2_exact(is, beta, &eref, &cvref);
-  printf("ar: %g, eav: %.6f (%.6f), cv: %.3f (%.3f), lnz: %.6f\n", 
+  printf("ar: %g, eav: %.6f (%.6f), cv: %.3f (%.3f), lnz: %.6f\n",
       acc/tot, eav, eref, cv, cvref, lnzref);
   is2_save(is, DATAFILE);
   mtsave(NULL);

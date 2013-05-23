@@ -14,7 +14,7 @@ real nbc = (real) 4.0;
 real rcc = (real) 4.5;
 int fromrand = 0;
 /* in counting formed contacts in a configuration
- * we consider a contact is formed if the pair distance is shorter 
+ * we consider a contact is formed if the pair distance is shorter
  * than the `ncgam' * the distance in the reference structure */
 double ncgam = 1.2;
 
@@ -23,7 +23,7 @@ real mddt = 0.002f;
 real tp = 1.07f;
 real thermdt = 0.1f; /* thermostat dt */
 
-/* for SH3 domain (1KIK), if rcc = 4.5 --> then Tc = 1.07 
+/* for SH3 domain (1KIK), if rcc = 4.5 --> then Tc = 1.07
  * the double-peak structure can be seen from the potential-energy,
  * RMSD and number of contacts distributions */
 char *fnpdb = "pdb/1KIK.pdb";
@@ -80,7 +80,7 @@ static void domd(void)
     cago_vrescale(go, tp, thermdt);
     rmsd = cago_rmsd(go, go->x, NULL); /* compute rmsd */
     nc = cago_ncontacts(go, go->x, ncgam, NULL, NULL);
-    
+
     if (it >= nequil) {
       hs_add1ez(hsep, go->epot, 0); /* add to histogram */
       hs_add1ez(hsrmsd, rmsd, HIST_VERBOSE);

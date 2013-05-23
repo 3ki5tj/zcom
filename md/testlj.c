@@ -31,7 +31,7 @@ INLINE double pbcdist2(double dx[], const double a[], const double b[])
   { return rv3_sqr(vpbc(rv3_diff(dx, a, b))); }
 
 /* initialize an md system */
-static void initmd(void) 
+static void initmd(void)
 {
   int i, j, k, n1, id;
   double a, irc3, irc6;
@@ -112,7 +112,7 @@ static void vv(void)
   force(); /* calculate the new force */
   for (i = 0; i < N; i++) /* VV part 2 */
     rv3_sinc(v[i], f[i], dth);
-  
+
   K  = md_ekin3d(v, N, DOF, NULL);
   if (thermostat) md_vrescale3d(v, N, DOF, T, thermdt, &K, NULL);
   step++;

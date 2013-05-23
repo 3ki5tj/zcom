@@ -5,7 +5,7 @@
 
 static void mkrotx(real m[3][3], real th)
 {
-  int i, j; 
+  int i, j;
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
   m[1][1] =  c; m[1][2] = -s;
@@ -14,7 +14,7 @@ static void mkrotx(real m[3][3], real th)
 
 static void mkroty(real m[3][3], real th)
 {
-  int i, j; 
+  int i, j;
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
   m[2][2] =  c; m[2][0] = -s;
@@ -23,7 +23,7 @@ static void mkroty(real m[3][3], real th)
 
 static void mkrotz(real m[3][3], real th)
 {
-  int i, j; 
+  int i, j;
   real c = (real) cos(th), s = (real) sin(th);
   for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) m[i][j] = (i == j);
   m[0][0] =  c; m[0][1] = -s;
@@ -49,7 +49,7 @@ int main(void)
   real r[3][3] = {{1,0,0}, {0,1,0}, {0,0,1}}, u[3][3], v[3][3], detm, amp = 0.5;
   int i;
 
-  for (i = 0; i < 1000; i++) {  
+  for (i = 0; i < 1000; i++) {
     mkrotx(u, amp*rand()/RAND_MAX);
     rot(r, u);
     mkroty(u, amp*rand()/RAND_MAX);

@@ -29,7 +29,7 @@ INLINE void av_addw(av_t *av, double x, double w)
 }
 #define av_add(av, x) av_addw(av, x, 1)
 
-/* update: sX = sX*gam + X */
+/* adaptive averaging: sX = sX * gam + X */
 INLINE void av_gaddw(av_t *av, double x, double w, double ngam)
 {
   double s, sx, del, gam = 1.0 - ngam;
@@ -130,7 +130,7 @@ INLINE void avn_gaddwv(avn_t *a, const double *x, double w, double ngam)
   if (s > 0) { /* update variance */
     for (k = 0; k < n; k++)
       for (l = k; l < n; l++)
-        a->sx2[k*n + l] = gam * (a->sx2[k*n + l] + 
+        a->sx2[k*n + l] = gam * (a->sx2[k*n + l] +
             w*(x[k]*s - a->sxb[k]) * (x[l]*s - a->sxb[l])/(s*a->s));
   }
 }
@@ -172,7 +172,7 @@ INLINE void avn_clear(avn_t *a)
 INLINE double avn_getave(const avn_t *a, int k)
 {
   die_if (k < 0 || k >= a->n, "avn index %d out of range %d\n", k, a->n);
-  return (a->s > 0) ? a->sx[k]/a->s : 0; 
+  return (a->s > 0) ? a->sx[k]/a->s : 0;
 }
 
 /* get averages of all quantities */
@@ -195,7 +195,7 @@ INLINE double avn_getvar(const avn_t *a, int k, int l)
   die_if (k < 0 || k >= a->n || l < 0 || l >= a->n,
       "avn index %d, %d out of range %d\n", k, l, a->n);
   if (k > l) intswap(k, l);
-  return (a->s > 0) ? a->sx2[k * a->n + l]/a->s : 0; 
+  return (a->s > 0) ? a->sx2[k * a->n + l]/a->s : 0;
 }
 
 /* get variances of all quantities */
@@ -217,10 +217,10 @@ INLINE double *avn_getvarn(const avn_t *a, double *val)
 }
 
 /* get standard deviation of quantity k */
-INLINE double avn_getdev(const avn_t *a, int k) 
+INLINE double avn_getdev(const avn_t *a, int k)
 {
   die_if (k < 0 || k >= a->n, "avn index %d out of range %d\n", k, a->n);
-  return (a->s > 0) ? sqrt(a->sx2[k * a->n + k]/a->s) : 0; 
+  return (a->s > 0) ? sqrt(a->sx2[k * a->n + k]/a->s) : 0;
 }
 
 /* get standard deviations of all quantities */
@@ -241,7 +241,7 @@ INLINE double *avn_getdevn(const avn_t *a, double *val)
 INLINE double avn_getcor(const avn_t *a, int k, int l)
 {
   int n = a->n;
-  die_if (k < 0 || k >= n || l < 0 || l >= n, 
+  die_if (k < 0 || k >= n || l < 0 || l >= n,
       "avn index %d, %d out of range %d\n", k, l, n);
   if (k > l) intswap(k, l);
   return (a->s > 0) ? a->sx2[k*n+l] / sqrt(a->sx2[k*n+k] * a->sx2[l*n+l]) : 0;

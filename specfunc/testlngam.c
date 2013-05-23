@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "specfunc.c"
-        
+
 int main(int argc, char **argv)
 {
   double a = .5, x, y;

@@ -25,7 +25,7 @@ static void genhist(hist_t *hs, int nfr, double l, den_t *den)
       x[i][1] = l*rand()/RAND_MAX;
       x[i][2] = l*rand()/RAND_MAX;
     }
-    
+
     for (i = 0; i < N; i++)
       for (j = i+1; j < N; j++) {
         rv3_diff(dx, x[i], x[j]);
@@ -44,14 +44,14 @@ static void genhist(hist_t *hs, int nfr, double l, den_t *den)
 
 static int fwheader(FILE *fp, void *pdata)
 {
-  den_t *den = (den_t *)pdata;  
+  den_t *den = (den_t *)pdata;
   fprintf(fp, "RDF %d %d %g | ", den->nfr, den->n, den->vol);
   return 0;
 }
 
 static int frheader(const char *s, void *pdata)
 {
-  den_t *den = (den_t *)pdata;  
+  den_t *den = (den_t *)pdata;
   int ret = sscanf(s, " RDF %d%d%lf | ", &(den->nfr), &(den->n), &(den->vol));
   return (ret == 3) ? 0 : 1;
 }
@@ -61,8 +61,8 @@ static double rdfnorm(int j, int i, double xmin, double dx, void *pdata)
   den_t *den = (den_t *)pdata;
   int npr;
   double x, fac, vsph;
- 
-  (void)j; 
+
+  (void)j;
   x = xmin + i*dx;
   vsph = (4.*M_PI/3)*dx*(3*x*(x+dx) + dx*dx);
   npr = den->n*(den->n-1)/2;
@@ -79,7 +79,7 @@ int main(void)
 
   /* generate histogram */
   genhist(hs, 17, 1., den);
-  
+
   hs_savex(hs, "RDF", den, HIST_ADDAHALF|HIST_KEEPHIST);
   hs_savex(hs, "rdf.dat", den, HIST_ADDAHALF);
 
@@ -92,6 +92,6 @@ int main(void)
   hs_savex(hs, "RDF2", den, HIST_ADDAHALF|HIST_KEEPHIST);
   hs_savex(hs, "rdf2.dat", den, HIST_ADDAHALF);
   hs_close(hs);
-  return 0; 
+  return 0;
 }
 

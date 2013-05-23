@@ -7,19 +7,25 @@
 #include <string.h>
 #include <ctype.h>
 
+/* a line in the cfg file: `key = val'
+ * `key' and `val' point to spaces allocated in cfg->buf
+ * and no additional memory are allocated */
 typedef struct {
-  char *key, *val; /* a cfg line looks like `key = val' */
+  char *key, *val;
   int used;
-} cfgent_t; /* line from cfg file */
+} cfgln_t;
 
+/* the entire cfg file */
 typedef struct {
-  char *buf;      /* the entire configuration file */
-  int nent;       /* number of entries */
-  cfgent_t *ents; /* entries */
+  char *buf;      /* string buffer for the entire file */
+  int nln;        /* number of input lines */
+  cfgln_t *lns;   /* parsed lines */
   int nopt;       /* number of user-requested options */
-  opt_t *opts;    /* user-requested options */
+  opt_t *opts;    /* user-requested options, such that
+                     cfg works like command-line options */
 } cfg_t;
-typedef cfg_t cfgdata_t;
+
+typedef cfg_t cfgdata_t; /* old alias */
 
 #define CFG_CHECKUSE 0x0100
 #define CFG_VERBOSE  0x1000
@@ -50,14 +56,14 @@ INLINE int cfgget(cfg_t *cfg, void *var, const char *key, const char *fmt)
 {
   int i;
 
-  for (i = 0; i < cfg->nent; i++) {
-    cfgent_t *ent = cfg->ents + i;
-    if (ent->key != NULL && strcmp(ent->key, key) == 0) {
+  for (i = 0; i < cfg->nln; i++) {
+    cfgln_t *cln = cfg->lns + i;
+    if (cln->key != NULL && strcmp(cln->key, key) == 0) {
       if (strcmp(fmt, "%s") == 0) { /* string */
-        sscpy( *(char **)var, ent->val); /* make a copy and return */
+        sscpy( *(char **)var, cln->val); /* make a copy and return */
         return 0;
       } else /* use sscanf for other cases, like int, float,... */
-        return EOF == sscanf(ent->val, fmt, var) ? 2 : 0;
+        return EOF == sscanf(cln->val, fmt, var) ? 2 : 0;
     }
   }
   return 1; /* no match */

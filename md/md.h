@@ -22,7 +22,7 @@ INLINE void md_shiftcomw3d(rv3_t * RESTRICT x, const real * RESTRICT w, int n)
 
 INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n);
 INLINE void md_shiftang3d(rv3_t * RESTRICT x, rv3_t * RESTRICT v, int n);
-INLINE void md_shiftang(real * RESTRICT x, real * RESTRICT v, int n, int d) 
+INLINE void md_shiftang(real * RESTRICT x, real * RESTRICT v, int n, int d)
 {
   if (d == 2) md_shiftang2d((rv2_t *) x, (rv2_t *) v, n);
   else md_shiftang3d((rv3_t *) x, (rv3_t *) v, n);

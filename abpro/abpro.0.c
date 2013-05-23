@@ -97,17 +97,17 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   {
     int sz, ir, jr, k;
     abpairid_t *pr;
-    
+
     ab->nthreads = omp_get_max_threads();
     xnew(ab->f_l, nd * ab->nthreads);
-  
+
     /* partition home atoms, for thread i: [ab->homeid[i], ab->homeid[i+1]) */
     xnew(ab->homeid, ab->nthreads + 1);
     sz = (ab->n + ab->nthreads - 1) / ab->nthreads; /* chunck size */
     for (i = 0; i < ab->nthreads; i++)
       ab->homeid[ i ] = sz * i;
     ab->homeid[ ab->nthreads ] = ab->n;
- 
+
     /* make a list of pairs */
     xnew(ab->pair, ab->n * (ab->n - 1) / 2 * sizeof(*ab->pair));
     pr = ab->pair;
@@ -326,7 +326,7 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
       if (r2 > r2max) { /* too large, impossible to correct */
         if (verbose)
           fprintf(stderr, "shake: r(%d, %d) = %g\n", i,i+1, sqrt(r2));
-        r2 = r2max; 
+        r2 = r2max;
       }
 
       if (fabs(r2-1) > tol) {
@@ -354,7 +354,7 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
       }
     }
    } /* end of parallel code */
-    
+
     /* local constraints */
     if (lgcon) {
       for (k = 0; k < lgcnt; k++) {
@@ -380,10 +380,10 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
         }
       }
     }
-    
+
     if (!again) break;
   }
-  
+
   if (it >= itmax) {
     if (verbose) {
       const char *fnf = "shakefail.pos";
@@ -403,12 +403,12 @@ int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
 {
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-4;
-  return (ab->d == 3) ? 
+  return (ab->d == 3) ?
     ab_shake3d(ab, (crv3_t *)x0, (rv3_t *)x1, (rv3_t *)v, dt, itmax, tol, verbose) :
     ab_shake2d(ab, (crv2_t *)x0, (rv2_t *)x1, (rv2_t *)v, dt, itmax, tol, verbose);
 }
 
-static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v, 
+static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
     int itmax, double tol, int verbose)
 {
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
@@ -450,7 +450,7 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
         rv3_sinc(v[j], lgdx0, -g);
       }
     }
-    
+
     if (!again) break;
   }
   if (it >= itmax) {
@@ -458,7 +458,7 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
       const char *fnf = "rattlefail.pos";
       fprintf(stderr, "rattle: failed after %d iter. rv = %+g, see %s\n", it, rvbad, fnf);
       ab_writepos(ab, (real *)x0, (real *)v, fnf);
-    }    
+    }
     return -1;
   }
   return 0;
@@ -469,7 +469,7 @@ int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int v
 {
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = 1e-4;
-  return (ab->d == 3) ? 
+  return (ab->d == 3) ?
     ab_rattle3d(ab, (crv3_t *)x0, (rv3_t *)v, itmax, tol, verbose) :
     ab_rattle2d(ab, (crv2_t *)x0, (rv2_t *)v, itmax, tol, verbose);
 }
@@ -495,12 +495,12 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   for (i = 1; i < nl; i++) {
     dl[i] = -2*rv3_dot(dx1[i], dx0[i-1]);
     dm[i] =  4*rv3_dot(dx1[i], dx0[i]);
-    du[i] = -2*rv3_dot(dx1[i], dx0[i+1]); /* no dx0[nl], but doesn't matter */ 
+    du[i] = -2*rv3_dot(dx1[i], dx0[i+1]); /* no dx0[nl], but doesn't matter */
   }
 
   /* solve matrix equation D lam = rhs
-   * first LU decompose D; 
-   * U --> du with diagonal being unity; 
+   * first LU decompose D;
+   * U --> du with diagonal being unity;
    * L --> dm and dl with dl unchanged */
   if (fabs(dm[0]) < 1e-6) return 1;
   for (i = 1; i < nl; i++) {
@@ -544,7 +544,7 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
       const char *fnf = "shakefail.pos";
       fprintf(stderr, "milcshake: failed after %d iter. see %s\n", it, fnf);
       ab_writepos(ab, (real *)x1, NULL, fnf);
-    }    
+    }
     return -1;
   }
   return 0;
@@ -581,14 +581,14 @@ static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
   for (i = 1; i < nl; i++) {
     dl[i] =  -rv3_dot(dx[i], dx[i-1]);
     dm[i] = 2*rv3_dot(dx[i], dx[i]);
-    du[i] =  -rv3_dot(dx[i], dx[i+1]); /* no dx[nl], but doesn't matter */ 
+    du[i] =  -rv3_dot(dx[i], dx[i+1]); /* no dx[nl], but doesn't matter */
   }
   for (i = 0; i < nl; i++)
     rhs[i] = -rv3_dot(dv[i], dx[i]);
 
   /* solve matrix equation D lam = rhs
-   * first LU decompose D; 
-   * U --> du with diagonal being unity; 
+   * first LU decompose D;
+   * U --> du with diagonal being unity;
    * L --> dm and dl with dl unchanged */
   if (fabs(dm[0]) < 1e-6) return 1;
   for (i = 1; i < nl; i++) {
@@ -611,7 +611,7 @@ static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
 }
 
 /* MILC rattle, make dr.v = 0 */
-int ab_milcrattle(abpro_t *ab, const real *x, real *v) 
+int ab_milcrattle(abpro_t *ab, const real *x, real *v)
 {
   return (ab->d == 3) ?
     ab_milcrattle3d(ab, (crv3_t *)x, (rv3_t *)v) :
@@ -728,18 +728,18 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 #else
   f = f_g;
 #endif
-  
+
 #ifdef _OPENMP
-  for (ipr = ipr0; ipr < ipr1; ipr++) { 
+  for (ipr = ipr0; ipr < ipr1; ipr++) {
     i = ab->pair[ipr].i;
     j = ab->pair[ipr].j;
     c = ab->pair[ipr].c;
 #else
-  for (i = 0; i < n - 2; i++) 
+  for (i = 0; i < n - 2; i++)
   for (j = i + 2; j < n; j++) {
     c = ab->clj[ ab->type[i] ][ ab->type[j] ];
 #endif
-  
+
     dr2 = rv3_sqr( rv3_diff(dxi, r[i], r[j]) );
 
     if (soft && dr2 < 1.) {
@@ -758,11 +758,11 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 #ifdef _OPENMP
 #pragma omp barrier
   for (i = imin; i < imax; i++) /* collect global force, f_l flushed by barrier */
-    for (j = 0; j < np; j++) { 
+    for (j = 0; j < np; j++) {
       rv3_inc(f_g[i], f_l[n*j + i]);
     }
 #endif
-#pragma omp atomic 
+#pragma omp atomic
   U += ulj;
 } /* parallel code stops */
   return ua * 0.25f + U;
@@ -788,7 +788,7 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
     rv3_dec(f_g[i+1], dxm);
     ua += rv3_dot(dxp, dxm);
   }
-  
+
   for (i = 1; i < n-2; i++) {
     dxp = dx[i+1];
     dxm = dx[i-1];
@@ -799,7 +799,7 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
     ud -= .5f*rv3_dot(dxp, dxm);
   }
 
-#pragma omp parallel firstprivate(n) private(i, j) 
+#pragma omp parallel firstprivate(n) private(i, j)
 { /* parallel code starts here */
   real dr2, dr6, ff, c;
   rv3_t *f, dxi;
@@ -819,12 +819,12 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 #endif
 
 #ifdef _OPENMP
-  for (ipr = ipr0; ipr < ipr1; ipr++) { 
+  for (ipr = ipr0; ipr < ipr1; ipr++) {
     i = ab->pair[ipr].i;
     j = ab->pair[ipr].j;
     c = ab->pair[ipr].c;
 #else
-  for (i = 0; i < n - 2; i++) 
+  for (i = 0; i < n - 2; i++)
   for (j = i + 2; j < n; j++) {
     c = ab->clj[ ab->type[i] ][ ab->type[j] ];
 #endif
@@ -847,10 +847,10 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 #ifdef _OPENMP
 #pragma omp barrier
   for (i = imin; i < imax; i++) /* collect global force, barrier flushes f_l */
-    for (j = 0; j < np; j++) 
+    for (j = 0; j < np; j++)
       rv3_inc(f_g[i], f_l[n*j + i]);
 #endif
-#pragma omp atomic 
+#pragma omp atomic
   U += ulj;
 }
   return ua + ud + U;
@@ -912,7 +912,7 @@ real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
 SHRINK:
     step *= 0.5;
   }
-  if (t > itmax && (flags & AB_VERBOSE)) 
+  if (t > itmax && (flags & AB_VERBOSE))
     fprintf(stderr, "localmin failed to converge, t = %d.\n", t);
 
   memcpy(ab->lmx, x[id], n*d*sizeof(real));
@@ -946,7 +946,7 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
   rv3_ncopy(x, x1, n);
 
   ab->epot = ab_force(ab, ab->x, ab->f, soft); /* calculate force */
-  
+
 #pragma omp parallel for schedule(static)
   for (i = 0; i < n; i++) { /* vv part 2 */
     rv3_sinc(v[i], f[i], dth);
@@ -980,7 +980,7 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   int i, nd = ab->n * ab->d, verbose = 1;
   real amp = (real) sqrt(2*dt*T);
 
-  for (i = 0; i < nd; i++) 
+  for (i = 0; i < nd; i++)
     ab->x1[i] = ab->x[i] + fscal*ab->f[i]*dt + (real)(grand0()*amp);
 
   if (milc) {
@@ -994,7 +994,7 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   ab->epot = ab_force(ab, ab->x, ab->f, soft); /* calculate force */
   ab->t += dt;
   return 0;
-} 
+}
 
 /* local geometric constraints (LGC) */
 

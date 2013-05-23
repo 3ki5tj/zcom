@@ -35,9 +35,9 @@ int main(void)
 
   for (t = 1; t <= nsteps; t++) {
     acc += lj_metro3d(lj, amp, 1.0f/tp);
-   
+
     isrun = (t > nsteps / 2);
-    
+
     if (nstvmove && t % nstvmove == 0) {
       vtot += 1;
       vacc += lj_mcp(lj, 0.01, tp, pressure, 0, 1e300, 0, 0);

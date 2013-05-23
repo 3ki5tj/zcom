@@ -13,7 +13,7 @@ typedef struct {
   int *s; /* 0 or 1 */
   double *logdos; /* logarithmic density of states */
   /* helper vars */
-  uint32_t *uproba; /* temporary probability for MC transitions */ 
+  uint32_t *uproba; /* temporary probability for MC transitions */
 } ising_t;
 
 INLINE int     is2_em(ising_t *is);
@@ -35,7 +35,7 @@ void      is2_close(ising_t *is);
   is->uproba[4] = (uint32_t) ((double)(0xffffffff) * x_*x_); }
 
 /* faster macros for systems with fixed (upon compiling) size
- * to use them one must define IS2_LB before including 
+ * to use them one must define IS2_LB before including
  * IS2_PICK()/IS2_PSEQ() and IS2_FLIP() */
 #ifdef  IS2_LB  /* L = 2^LB, N = L*L */
 #define IS2_L   (1 << IS2_LB)

@@ -3,11 +3,13 @@
 #define CFG_C__
 #include "cfg.h"
 
+
+
 /* load the whole configuration file into memory, parse it to entries */
 cfg_t *cfg_open(const char *fn)
 {
   cfg_t *cfg;
-  cfgent_t *ent;
+  cfgln_t *cln;
   FILE *fp;
   size_t i, j, n, size = 0;
   char *p, *q;
@@ -26,101 +28,111 @@ cfg_t *cfg_open(const char *fn)
   for (p = cfg->buf, i = 0, n = 0; i < size; i++) {
     if (p[i] == '\n' || p[i] == '\r') {
       if (i > 0 && p[i-1] == '\\') {
-        /* multiple-line splicing by replacing cr, lf with spaces
-           parse should be aware of these additional spaces */
+        /* splice multiple lines: replace CR/LF with spaces
+           the parser should be insensitive to the extra spaces */
         p[i-1] = p[i] = ' ';
-      } else {
+      } else { /* mark the end the current line */
         p[i] = '\0';
         n++;
       }
 
-      /* replace following CR LF by spaces for efficiency
-         as the size of the key table == the number of blank lines */
+      /* replace successive CR/LF by spaces for efficiency
+         the size of the key-table == the number of nonblank lines */
       for (j = i+1; j < size && cisspace(p[j]); j++) p[j] = ' ';
     }
   }
 
-  xnew(cfg->ents, n);
+  xnew(cfg->lns, n);
 
-  /* load lines into the keytable */
+  /* load lines into the key-table */
   for (p = cfg->buf, j = 0, i = 0; i < size; i++) {
     if (cfg->buf[i] == '\0') {
-      cfg->ents[j++].key = p;
+      cfg->lns[j++].key = p;
       if (j >= n) break;
       p = cfg->buf + i + 1;
     }
   }
   n = j;
 
-  /* parse each line to a key-value pair */
+  /* parse each line to a key/value pair */
   for (j = 0; j < n; j++) {
-    ent = cfg->ents + j;
-    p = ent->key;
-    strip(p);
+    cln = cfg->lns + j;
+    p = cln->key;
+    strip(p); /* remove leading and trailing spaces */
 
     /* skip a blank or comment line */
-    if (p[0] == '\0' || strchr("#%!;", p[0]) != NULL) {
-      ent->key = NULL;
+    if (p[0] == '\0' || strchr("#;", p[0]) != NULL) {
+      cln->key = NULL;
       continue;
     }
 
-    /* remove trailing space and ';' */
-    for (q = p + strlen(p) - 1; q >= p && (cisspace(*q) || *q == ';'); q--)
+    /* remove trailing spaces and ';' */
+    for (q = p + strlen(p) - 1;
+         q >= p && (cisspace(*q) || *q == ';'); q--)
       *q = '\0';
 
-    if ((q = strchr(p, '=')) == NULL) { /* skip a line without '=' */
-      ent->key = NULL;
+    /* skip a line without '=' */
+    if ((q = strchr(p, '=')) == NULL) {
+      cln->key = NULL;
       continue;
     }
     *q = '\0';
-    ent->val = q + 1;
-    strip(ent->key);
-    strip(ent->val);
+    cln->val = q + 1;
+    strip(cln->key);
+    strip(cln->val);
   }
-  cfg->nent = (int) n;
+  cfg->nln = (int) n;
   cfg->nopt = 0;
-  xnew(cfg->opts, 1);
+  xnew(cfg->opts, 1); /* s.t. we call `xrenew' the next time */
   return cfg;
 }
+
+
 
 void cfg_close(cfg_t *cfg)
 {
   ssdelete(cfg->buf);
-  free(cfg->ents);
+  free(cfg->lns);
   free(cfg->opts);
   memset(cfg, 0, sizeof(*cfg));
   free(cfg);
 }
 
+
+
 /* register an option request, return the index */
-int cfg_add(cfg_t *cfg, const char *key, const char *fmt, void *ptr, const char *desc)
+int cfg_add(cfg_t *cfg, const char *key, const char *fmt,
+            void *ptr, const char *desc)
 {
-  int n = cfg->nopt++;
-  opt_t *o;
-  xrenew(cfg->opts, cfg->nopt);
-  o = cfg->opts + n;
-  opt_set(o, NULL, key, fmt, ptr, desc);
-  return n;
+  /* if fmt == NULL, the memory space of (*ptr) will be invalid
+   * after cfg_close(), "%s" is much safer */
+  if (fmt == NULL) fmt = "%s";
+  xrenew(cfg->opts, cfg->nopt + 1);
+  opt_set(cfg->opts + cfg->nopt, NULL, key, fmt, ptr, desc);
+  return cfg->nopt++;
 }
+
+
 
 /* match requested options with entries in cfg file
  * returns 0 if successful
- * if mandetory variables are not set  
- * if `flags' has OPT_CHECKUSE, then unused setting cause an error code CFG_UNUSED */
+ * if mandetory variables are not set, the return `ret' contains CFG_NOTSET
+ * if `flags' has OPT_CHECKUSE, the return `ret' has CFG_UNUSED if
+ * there are unused variables */
 int cfg_match(cfg_t *cfg, unsigned flags)
 {
   int i, j, ret = 0, verbose = flags & CFG_VERBOSE, must;
   opt_t *o;
-  cfgent_t *ent;
+  cfgln_t *cln;
 
   for (i = 0; i < cfg->nopt; i++) {
     o = cfg->opts + i;
-    for (j = 0; j < cfg->nent; j++) {
-      ent = cfg->ents + j;
-      if (ent->key != NULL && strcmp(ent->key, o->key) == 0) {
-        ent->used = 1;
+    for (j = 0; j < cfg->nln; j++) {
+      cln = cfg->lns + j;
+      if (cln->key != NULL && strcmp(cln->key, o->key) == 0) {
+        cln->used = 1;
         o->flags |= OPT_SET;
-        o->val = ent->val;
+        o->val = cln->val;
         opt_getval(o);
         break;
       }
@@ -135,10 +147,11 @@ int cfg_match(cfg_t *cfg, unsigned flags)
   }
 
   if (flags & CFG_CHECKUSE) {
-    for (j = 0; j < cfg->nent; j++) {
-      ent = cfg->ents + j;
-      if (ent->key != NULL && !ent->used && verbose) {
-        fprintf(stderr, "cfg: unused entry: %s = %s\n", ent->key, ent->val);
+    for (j = 0; j < cfg->nln; j++) {
+      cln = cfg->lns + j;
+      if (cln->key != NULL && !cln->used && verbose) {
+        fprintf(stderr, "cfg: unused line: %s = %s\n",
+            cln->key, cln->val);
         ret |= CFG_UNUSED;
       }
     }

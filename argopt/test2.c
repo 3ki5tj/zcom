@@ -7,7 +7,7 @@
 static int argopt_reg(argopt_t *ao, const char *str, void *ptr)
 {
   char *fmt, *desc, *opt;
-  
+
   xnew(opt, strlen(str) + 1);
   strcpy(opt, str);
   if (*opt == '-') { /* options */
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
   argopt_reg(ao, "-y:%r:a real y", &y);
   argopt_parse(ao, argc, argv);
   printf("fn %s, fn2 %s, verbose %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d\n",
-      fn, fn2, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y, 
+      fn, fn2, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y,
       argopt_set(ao, freq), freq);
   argopt_close(ao);
   return 0;

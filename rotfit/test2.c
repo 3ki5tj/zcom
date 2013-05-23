@@ -22,7 +22,7 @@ real foo(int n, int nt)
       y[i][j] = 1.*rand()/RAND_MAX;
       x[i][j] = 1.*rand()/RAND_MAX;
     }
-  
+
   rmsd1 = rotfit3(x, NULL, y, NULL, n, r, t);
 
   for (rmsd2 = 0, i = 0; i < n; i++) {
@@ -30,12 +30,12 @@ real foo(int n, int nt)
     rv3_add(xf[i], rm3_mulvec(xs, r, x[i]), t); /* xf = R x + t */
     rmsd2 += rv3_dist2(y[i], xf[i]);
   }
-  rmsd2 = (real) sqrt(rmsd2/n); 
+  rmsd2 = (real) sqrt(rmsd2/n);
   tmp = fabs(rmsd1 - rmsd2);
   if (tmp > max) max = tmp;
   /* verify rmsd */
   printf("%d, n = %d rmsd %g, corr. %g, diff = %e\n", nt, n, rmsd1, rmsd2, tmp);
-  
+
   if (fabs(rmsd1 - rmsd2) > 1e-4) {
     if (n == 2) {
       real x01 = rv3_dist(x[0], x[1]), y01 = rv3_dist(y[0], y[1]);

@@ -88,7 +88,7 @@ static void mds_trim(real *x, int n, int dim)
 }
 
 /* multidimensional scaling - steepest descend
- * given a distance matrix dm[n x n], 
+ * given a distance matrix dm[n x n],
  * return best mds position x[n x dim];
  * dim is the target dimensional, e.g. 2
  * return the total discrepancy */
@@ -129,7 +129,7 @@ real mds_min0(real *x, real *dm, int n, int dim, double tol)
     }
   }
   if (it >= itermax) {
-    fprintf(stderr, "mds: failed to converge after %d iterations, %g\n", 
+    fprintf(stderr, "mds: failed to converge after %d iterations, %g\n",
         it, fabs(ene-enep));
   }
   mds_trim(x, n, dim);

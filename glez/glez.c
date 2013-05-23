@@ -2,7 +2,7 @@
 #define GLEZ_C__
 #include "glez.h"
 
-/* standard reshape function for GLUT 
+/* standard reshape function for GLUT
  * x: (-1, 1), y: (-1, 1), z: (-10, 10) */
 static void glez_reshapefunc(int w, int h)
 {
@@ -26,7 +26,7 @@ static void glez_menufunc(int id)
 
   if (id <= GLEZ_MENU0 || id >= GLEZ_MENU1) {
     if (glez_user_menufunc) (*glez_user_menufunc)(id);
-  } else if (id == GLEZ_SCLM || id == GLEZ_SCLP) { /* scaling */ 
+  } else if (id == GLEZ_SCLM || id == GLEZ_SCLP) { /* scaling */
     GLfloat s = (id == GLEZ_SCLP) ? 1.02f : 1.0f/1.02f;
 
     glScalef(s, s, s);
@@ -84,7 +84,7 @@ static void glez_addmenu(glez_menukey_t *mk)
 {
   int i, menuid, subid;
   char s[64];
-  
+
   if (mk == NULL) return;
   for (i = 0; ; i++) {
     //printf("%d: id %d, str %s, sub %p\n", i, mk[i].id, mk[i].str, mk[i].sub);
@@ -109,7 +109,7 @@ void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
   glez_user_menufunc = menuf;
   glez_user_keyboardfunc = keyf;
   glez_user_menukey = mk;
-  
+
   glutCreateMenu(glez_menufunc);
   glez_addmenu(mk); /* add user menu */
   glez_addmenu(glez_menukey); /* add system menu */
@@ -135,7 +135,7 @@ static void glez_mousefunc(int button, int state, int x, int y)
 }
 
 /* mouse motion function for GLUT */
-static void glez_motionfunc(int x, int y) 
+static void glez_motionfunc(int x, int y)
 {
   if (x == glez_x && y == glez_y) return;
   if (glez_msdown) {
@@ -164,7 +164,7 @@ void glez_fullscreen(void)
     y = glutGet(GLUT_WINDOW_Y);
     w = glutGet(GLUT_WINDOW_WIDTH);
     h = glutGet(GLUT_WINDOW_HEIGHT);
-    glutFullScreen(); 
+    glutFullScreen();
   } else {
     glutPositionWindow(x, y);
     glutReshapeWindow(w, h);
@@ -201,7 +201,7 @@ void glez_drawstick(real a[], real b[], real r, int nface)
   rv3_diff(z, b, a);
   l = rv3_norm(z); /* stick length */
   rv3_smul(z, 1.f/l);
-  
+
   rv3_normalize( rv3_make(x, z[1], -z[0], 0) ); /* a vector perpendicular to v */
   rv3_normalize( rv3_cross(y, z, x) );
 

@@ -4,7 +4,7 @@
 typedef float real;
 #define HAVEREAL 1
 
-#include "rv3.h" 
+#include "rv3.h"
 
 
 
@@ -21,9 +21,9 @@ int main(void)
   real g[4][3];
 
 /*
-  real a[3] = {1.0, 3.123456789, -0.577350269}, 
-       b[3] = {0, 0, 0}, 
-       c[3] = {0, -1, 0}, 
+  real a[3] = {1.0, 3.123456789, -0.577350269},
+       b[3] = {0, 0, 0},
+       c[3] = {0, -1, 0},
        d[3] = {1.0, -1.2345, 1.73205080757};
 */
   real a2[3], b2[3], c2[3], d2[3];
@@ -36,7 +36,7 @@ int main(void)
   phi = rv3_calcdih(&dih, a, b, c, d, DIH_GRAD);
   phi2 = rv3_dih(a, b, c, d, g[0], g[1], g[2], g[3]);
   printf("phi = %.14f %.14f PI = %.14f\n", phi, phi2, (real)(M_PI));
-  
+
   /* test if moving along gradient increases the dihedral by 1.0 */
   g2a = rv3_dot(dih.g[0], dih.g[0]);
   rv3_lincomb2(a2, a, dih.g[0], 1.0, del/g2a);

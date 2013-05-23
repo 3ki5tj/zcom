@@ -9,7 +9,7 @@ int main(void)
 {
   char s[] = "hello world";
 
-  die_if (strlen(s) > 8, 
+  die_if (strlen(s) > 8,
       "string \"%s\" is too long\n", s);
   return 0;
 }

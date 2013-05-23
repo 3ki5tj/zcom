@@ -35,7 +35,7 @@ static void test_strip(void)
 {
   char s[128];
   const char *src = "  Hello world!\t ";
- 
+
   printf("\nTesting strip(s)...\n");
   printf("s = [%s]\n", src);
   printf("lstrip(s) = [%s]\n", lstrip(strcpy(s, src)));

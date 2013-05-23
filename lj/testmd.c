@@ -80,7 +80,7 @@ int main(void)
         hs_add1ez(hsvol, lj->vol, HIST_VERBOSE);
       }
     }
-    
+
     if (isrun) {
       av_add(&avU, lj->epot);
       av_add(&avK, lj->ekin);

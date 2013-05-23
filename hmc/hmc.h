@@ -58,7 +58,7 @@ hmc_t *hmc_open_(int nd, real *x, real *v, real *f)
   xnew(h->x, nd);
   xnew(h->v, nd);
   xnew(h->f, nd);
-  hmc_push(h, x, v, f); 
+  hmc_push(h, x, v, f);
   return h;
 }
 
@@ -68,6 +68,27 @@ void hmc_close(hmc_t *h)
   free(h->v);
   free(h->f);
   free(h);
+}
+
+/* compute the reduce-momentum-flipping rate
+ * J. Sohl-Dickstein, arXiv 1205.1939
+ * the Metropolis probability of accepting x => x+ is min{1, exp(-dep)}
+ * that of accepting x~ => x-~ is min{1, exp(-dem)}
+ * where `~' means the momentum reversal operation */
+int hmcgetredvflipr(double dem, double dep)
+{
+  die_if (dep <= 0, "the forward move must be rejected, dep %g\n", dep);
+  /* 1. If the state x-, hence x-~, has higher energy than x+
+   * dem >= dep, then x-~ is more likely rejected, and x~ should
+   * inject probability into x; thus, there is no need to flip x
+   * 2. We now have dem < dep.  We also have dep > 0, for x => x+
+   * has been rejected. If dem <= 0, x~ => x-~ is definitely accepted,
+   * then x should compensate the probability outflow of x~ and be flipped
+   * 3. The only case left is 0 < dem < dep */
+  if ( (dem >= dep)
+    || (dem >= 0 && rnd0() >= (exp(dep-dem) - 1)/(exp(dep) - 1)) )
+    return 0;
+  return 1;
 }
 
 #endif

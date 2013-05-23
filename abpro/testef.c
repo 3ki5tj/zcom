@@ -31,16 +31,16 @@ int main(void)
 
       /* slightly distub around the equilibrium position */
       for (i = 0; i < ab->n; i++) {
-        for (j = 0; j < ab->d; j++) 
+        for (j = 0; j < ab->d; j++)
           ab->x[i*ab->d + j] += del*(2.f*rand()/RAND_MAX - 1);
       }
       E0 = ab_force(ab, ab->x, ab->f, soft);
-      
+
       /* update position according to the force by a unit */
       for (f2 = 0., i = 0; i < ab->n; i++) {
         if (ab->d == 3)
           f2 += rv3_sqr(ab->f + i*ab->d);
-        else 
+        else
           f2 += rv2_sqr(ab->f + i*ab->d);
       }
       mag = del/f2;
@@ -50,9 +50,9 @@ int main(void)
           rv3_lincomb2(ab->x1 + di, ab->x + di, ab->f + di, 1, mag);
         else
           rv2_lincomb2(ab->x1 + di, ab->x + di, ab->f + di, 1, mag);
-      } 
+      }
       E1 = ab_energy(ab, ab->x1, soft);
-      printf("%dD, model %d, %dmer, soft = %d, E = %.6f, %.6f, f2 = %g, dE = %g\n", 
+      printf("%dD, model %d, %dmer, soft = %d, E = %.6f, %.6f, f2 = %g, dE = %g\n",
         d, model, ab->n, soft, Ep, E, f2, (E0 - E1)/del);
     }
     ab_close(ab);

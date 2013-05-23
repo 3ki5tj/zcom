@@ -27,14 +27,14 @@ static void testsimp(void)
 {
   real v[3] = {0, 0, 0}, vecs[3][3], mat[3][3];
   int j;
-  
-  /* cheap 3x3 eigensystem */ 
+
+  /* cheap 3x3 eigensystem */
   memcpy(mat, a, sizeof(real)*9);
   rm3_eigsys(v, vecs, mat, 0);
   printf("eigenvalues are %g, %g, %g\n", v[0], v[1], v[2]);
   for (j = 0; j < 3; j++)
     printf("eigenvector %d: %g, %g, %g\n", j, vecs[0][j], vecs[1][j], vecs[2][j]);
-  
+
   /* general eigen system */
   printf("\n\nCHECKING using eigsys()...\n");
   memcpy(mat, a, sizeof(mat));
@@ -82,7 +82,7 @@ static void testrnd(int nrands)
         m[i][j] = 1.0 * rand()/RAND_MAX;
         if (j != i) m[j][i] = m[i][j];
       }
-    
+
     /* compute eigenvalues and eigenvectors */
     rm3_eigsys(vals, vecs, m, 1);
 
@@ -98,9 +98,9 @@ static void testrnd(int nrands)
     /* accuracy of eigenvalues */
     for (i = 0; i < 3; i++) {
       real vn;
-      
+
       rm3_mulvec(vs[i], m, vecs[i]);
-      
+
       /* check the magnitude of vs */
       vn = rv3_norm(vs[i]);
       del = fabs(vn - fabs(vals[i]));

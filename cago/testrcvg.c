@@ -25,16 +25,16 @@ static void doargs(int argc, char **argv)
  * for a rmsd in the transition region, it can be stuck in a local minimal,
  * in which rmsd is greater than the target value, but tp reaches tpmin
  *
- * temperature is updated according to rmsd 
+ * temperature is updated according to rmsd
  * several stages of updating are used, each with a fixed tpdt
  * after a stage, the updating magnitude amp is multiplied by ampf
- * iterations finish when the temperature difference is less than 
+ * iterations finish when the temperature difference is less than
  * a given tolerance 'tptol'
  * a pass is defined every time the rmsd crosses 'rmsd'
  * in every stage, npass passes are required to determine convergence
  * */
 INLINE int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    real rmsd, int npass, 
+    real rmsd, int npass,
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep)
 {
@@ -78,14 +78,14 @@ INLINE int cago_rcvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
       const char fnfail[] = "fail.pos";
       go->rmsd = cago_rmsd(go, go->x, go->x1);
       cago_writepos(go, go->x1, NULL, fnfail);
-      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes, %s\n", 
+      fprintf(stderr, "%d: failed to converge, rmsd: %g - %g, %d passes, %s\n",
           stg, rmsd, go->rmsd, ipass, fnfail);
       return 1;
     }
     tpav = av_getave(avtp);
     epav = av_getave(avep);
     rdav = av_getave(avrmsd);
-    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n", 
+    printf("%d: amp %g, tp %g, tpav %g/%g, epotav %g, rmsd %g, pass %d/%d\n",
         stg, amp, tp, tpav, tpp, epav, rdav, ipass, npass);
     tmp = .5*(tpav + tpp);
     if (stg > 0 && fabs(tpav - tpp) < tptol*tmp) break;
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
   printf("%s n %d, epot = %g, %g, rmsd = %g\n", fnpdb, go->n, go->epot, go->epotref, go->rmsd);
 
   ret = cago_rcvgmdrun(go, mddt, thermdt, nstcom,
-      rmsd_target, npass, amp, ampf, tptol, avtp, avep, avrmsd, 
+      rmsd_target, npass, amp, ampf, tptol, avtp, avep, avrmsd,
       tptry, tpmin, tpmax, tmax, trep);
   tpav = av_getave(avtp);
   tpdv = av_getdev(avtp);

@@ -69,17 +69,17 @@ int main(int argc, char **argv)
   }
   cago_initmd(go, -0.1, 0.0);
   ncont = cago_ncontacts(go, go->x, 1.2, NULL, NULL);
-  printf("%s n %d, tp %.3f, tps %.3f, epot %g, %g (ref), rmsd %g, cont %d/%d\n", 
+  printf("%s n %d, tp %.3f, tps %.3f, epot %g, %g (ref), rmsd %g, cont %d/%d\n",
       fnpdb, go->n, tp, tps, go->epot, go->epotref,
       go->rmsd, ncont, go->ncont);
-  
+
   cago_mdrun(go, mddt, thermdt, tps, tp, avep, avrmsd,
      teql, tmax, trep);
   epav = av_getave(avep);
   epdv = av_getdev(avep);
   rdav = av_getave(avrmsd);
   rddv = av_getdev(avrmsd);
-  printf("tp %.3f, tps %.3f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n", 
+  printf("tp %.3f, tps %.3f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n",
       tp, tps, epav, epdv, rdav, rddv);
   cago_close(go);
   return 0;

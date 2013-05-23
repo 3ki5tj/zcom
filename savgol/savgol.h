@@ -1,7 +1,7 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
-#define RESTRICT __restrict 
+#define RESTRICT __restrict
 #ifndef SAVGOL_H__
 #define SAVGOL_H__
 

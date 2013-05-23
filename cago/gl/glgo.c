@@ -40,7 +40,7 @@ static int initmd(void)
     return 1;
   }
   cago_initmd(go, 0.1, 0.0);
-  printf("%s n %d, tp %.3f, epot = %g, %g (ref), rmsd = %g\n", 
+  printf("%s n %d, tp %.3f, epot = %g, %g (ref), rmsd = %g\n",
       fnpdb, go->n, tp, go->epot, go->epotref, go->rmsd);
   return 0;
 }
@@ -97,10 +97,10 @@ static void timer(int ival)
     av_add(avep, go->epot);
     av_add(avtk, go->tkin);
     av_add(avrmsd, go->rmsd);
-  } 
+  }
   glutPostRedisplay();
   glutTimerFunc(delay, timer, 0);
-  
+
   if (step % trep == 0 && ival == 0)
     printf("t = %.3f, U/N %10.3f(%10.3f), T %6.3f(%6.3f) rmsd %8.3f(%8.3f)\n",
       step*mddt, go->epot, av_getave(avep), go->tkin, av_getave(avtk),
@@ -110,17 +110,17 @@ static void timer(int ival)
 static void display(void)
 {
   int i, j, aa;
-  real xi[3], xj[3], xm = 0, sm, rb, rs; 
+  real xi[3], xj[3], xm = 0, sm, rb, rs;
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  for (i = 0; i < go->n; i++) 
+  for (i = 0; i < go->n; i++)
     for (j = 0; j < 3; j++)
       xm += fabs(go->x[i][j]);
   xm *= 2.0/(3*go->n); /* average box size */
   sm = 0.5f/xm;
   rs = stcolorrad[4]*sm;
-  
+
   /* draw sticks */
   glLightfv(GL_LIGHT0, GL_DIFFUSE, stcolorrad);
   for (i = 1; i < go->n; i++) {
@@ -172,7 +172,7 @@ static void menu(int id)
   if (id == T_MINUS || id == T_PLUS) {
     real T1 =  tp+ (id == T_PLUS ? 0.02 : -0.02);
     if (T1 > 0.049) tp = T1;
-    reset(); 
+    reset();
   } else if (id == SPEED_MINUS || id == SPEED_PLUS) {
     int sp1 = speed + (id == SPEED_PLUS ? 10 : -10);
     if (sp1 >= 10 && sp1 <= 10000) speed = sp1;
@@ -183,7 +183,7 @@ static void menu(int id)
     s1 = stcolorrad[4] + (id == STICK_PLUS ? 0.02 : -0.02);
     if (s1 >= 0.02) stcolorrad[4] = (GLfloat) s1;
   }
-  printf("T %.2f, speed %d, ball %g, stick %g\n", 
+  printf("T %.2f, speed %d, ball %g, stick %g\n",
       tp, speed, ballfudge, stcolorrad[4]);
 }
 
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
   if (initmd() != 0) exit(1);
   initgui();
   glutTimerFunc(delay, timer, 0);
-  glutMainLoop();  
+  glutMainLoop();
   return 0;
 }
 

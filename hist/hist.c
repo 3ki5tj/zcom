@@ -3,16 +3,16 @@
 #include "hist.h"
 
 /* compute sum, average and variance */
-INLINE double *histgetsums_(const double *h, int rows, int n, 
+INLINE double *histgetsums_(const double *h, int rows, int n,
     double xmin, double dx, double *sums)
 {
   double *xav, *xxc, x, w;
   int i, r;
-  
+
   xav = sums + rows;
   xxc = xav  + rows;
   for (r = 0; r < rows; r++) {
-    sums[r] = xav[r] = xxc[r] = 0.; 
+    sums[r] = xav[r] = xxc[r] = 0.;
     for (i = 0; i < n; i++) {
       x = xmin + (i+.5)*dx;
       w = h[r*n + i];
@@ -47,8 +47,8 @@ INLINE double hs_getave(const hist_t *hs, int row, double *sum, double *var)
  * (*fwheader) is function to print additional information
  * (*fnorm) is advanced normalization function */
 INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
-    unsigned flags, 
-    int (*fwheader)(FILE *fp, void *data), 
+    unsigned flags,
+    int (*fwheader)(FILE *fp, void *data),
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata,
     const char *fn)
@@ -62,17 +62,17 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
 
   if (fn == NULL) fn = "HIST";
   xfopen(fp, fn, "w", return -1);
- 
-  /* get statistics */ 
+
+  /* get statistics */
   xnew(sums, rows * 3);
   histgetsums_(h, rows, n, xmin, dx, sums);
- 
+
   /* compute the overall histogram */
   if (flags & HIST_OVERALL) {
     xnew(htot, n); /* the overall histogram */
     for (i = 0; i < n; i++) htot[i] = 0.;
-    
-    for (r = 0; r < rows; r++) 
+
+    for (r = 0; r < rows; r++)
       for (i = 0; i < n; i++)
         htot[i] += h[r*n + i];
     histgetsums_(htot, 1, n, xmin, dx, smtot);
@@ -82,7 +82,7 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   }
 
   /* print basic information */
-  fprintf(fp, "# %d 0x%X | %d %d %g %g | ", 
+  fprintf(fp, "# %d 0x%X | %d %d %g %g | ",
       version, flags, rows, n, xmin, dx);
   for (r = 0; r < rows; r++) /* number of visits */
     fprintf(fp, "%g ", sums[r]);
@@ -126,7 +126,7 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
       if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
         continue;
       fprintf(fp,"%g ", xmin+(i+delta)*dx);
-      if (flags & HIST_KEEPHIST) 
+      if (flags & HIST_KEEPHIST)
         fprintf(fp, "%20.14E ", p[i]);
       rp = (r == rows) ? (-1) : r;
       if (fnorm != NULL) /* advanced normalization, note the r = -1 case */
@@ -139,7 +139,7 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   if (flags & HIST_VERBOSE) {
     fprintf(stderr, "successfully wrote %s\n", fn);
     for (r = 0; r < rows; r++)
-      fprintf(stderr, "%2d cnt: %20.4f av: %10.4f(%10.4f)\n", 
+      fprintf(stderr, "%2d cnt: %20.4f av: %10.4f(%10.4f)\n",
           r, sums[r], sums[r+rows], sums[r+rows*2]);
   }
   free(sums);
@@ -156,14 +156,14 @@ INLINE int histgetinfo(const char *fn, int *row, double *xmin, double *xmax, dou
   FILE *fp;
   char s[1024];
   int n;
-  
+
   xfopen(fp, fn, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "%s: missing the first line\n", fn);
-    fclose(fp);    
+    fclose(fp);
     return -1;
   }
-  if (6 != sscanf(s, "# %d 0x %X | %d %d %lf %lf ", 
+  if (6 != sscanf(s, "# %d 0x %X | %d %d %lf %lf ",
         version, fflags, row, &n, xmin, xdel)) {
     fprintf(stderr, "%s: bad first line\n%s", fn, s);
     fclose(fp);
@@ -187,8 +187,8 @@ INLINE char *skipabar_(char *p)
  * (*fnorm) normalization factor
  * flags can have HIST_ADDITION and/or HIST_VERBOSE */
 INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
-    unsigned flags, 
-    int (*frheader)(const char *s, void *data), 
+    unsigned flags,
+    int (*frheader)(const char *s, void *data),
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata,
     const char *fn)
@@ -201,9 +201,9 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
   int i, i1, r, r1, nlin = 0;
   unsigned fflags;
   double x, y, y2, fac, delta, *arr, *sums = NULL;
-    
+
   xfopen(fp, fn, "r", return -1);
-  
+
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
     fprintf(stderr, "%s: missing the first line\n", fn);
@@ -213,7 +213,7 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
   nlin++;
   if (6 != sscanf(s, " # %d 0x %X | %d%d%lf%lf | %n", &ver, &fflags, &r, &i, &y, &x, &next)
       || i < n || r != rows || fabs(x - dx) > 1e-5) {
-    fprintf(stderr, "Error: bins = %d, %d, ng = %d, %d; dx = %g, %g\n", 
+    fprintf(stderr, "Error: bins = %d, %d, ng = %d, %d; dx = %g, %g\n",
         i, n, r, rows, x, dx);
     fclose(fp);
     return -1;
@@ -247,14 +247,14 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
   if (!add) { /* clear histogram */
     for (i = 0; i < rows*n; i++) hist[i] = 0.;
   }
-  
+
   /* loop over r = 0..rows-1 */
   for (r = 0; r < rows; r++) {
     arr = hist + r*n;
     fac = sums[r]*dx;
     while (fgets(s, sizeof s, fp)) {
       nlin++;
-      for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--) 
+      for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--)
         *p = '\0'; /* trim ending */
       if (s[0] == '#' || s[0] == '\0') break;
       if (hashist) {
@@ -281,7 +281,7 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
       }
       i1 = (int)((x - xmin)/dx - delta + .5);
       if (i1 < 0 || i1 >= n) {
-        fprintf(stderr, "cannot find index for x = %g, delta = %g, i = %d/%d, on line %d\n", 
+        fprintf(stderr, "cannot find index for x = %g, delta = %g, i = %d/%d, on line %d\n",
             x, delta, i1, n, nlin);
         goto EXIT;
       }
@@ -298,7 +298,7 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
   }
   if (verbose)
     fprintf(stderr, "histogram loaded successfully from %s\n", fn);
-  
+
   if (sums) free(sums);
   fclose(fp);
   return 0;
@@ -312,7 +312,7 @@ EXIT:
 
 /* add x of weight w, into histogram h
  * return number of success */
-INLINE int histadd(const double *xarr, double w, double *h, int rows, 
+INLINE int histadd(const double *xarr, double w, double *h, int rows,
     int n, double xmin, double dx, unsigned flags)
 {
   int r, ix, good = 0, verbose = flags & HIST_VERBOSE;
@@ -343,7 +343,7 @@ INLINE double *hist2getsums_(const double *h, int rows, int n,
 {
   double *xav, *yav, *xxc, *yyc, *xyc, x, y, w;
   int i, j, r;
-  
+
   xav = sums + rows;
   xxc = sums + rows*2;
   yav = sums + rows*3;
@@ -388,12 +388,12 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 
   if (fn == NULL) fn = "HIST2";
   xfopen(fp, fn, "w", return 1);
-  
+
   nm = n*m;
   xnew(sums, rows * 6);
   hist2getsums_(h, rows, n, xmin, dx, m, ymin, dy, sums);
   /* print basic information */
-  fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ", 
+  fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ",
       version, flags, rows, n, xmin, dx, m, ymin, dy);
   for (r = 0; r < rows; r++) /* number of visits */
     fprintf(fp, "%g ", sums[r]);
@@ -442,7 +442,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
       }
       jmax = j+1;
     }
-    
+
     if (flags & HIST_KEEPLEFT2) {
       jmin = 0;
     } else { /* trim the left edge of j */
@@ -457,7 +457,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
     if (fabs(sums[r]) < 1e-6) fac = 1.;
     else fac = 1.0/(sums[r]*dx*dy);
 
-    for (i = imin; i < imax; i++) { 
+    for (i = imin; i < imax; i++) {
       for (j = jmin; j < jmax; j++) {
         double x, y;
         if ((flags & HIST_NOZEROES) && p[i*m + j] < 1e-16)
@@ -465,7 +465,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
         x = xmin + (i+delta)*dx;
         y = ymin + (j+delta)*dy;
         fprintf(fp,"%g %g ", x, y);
-        if (flags & HIST_KEEPHIST) 
+        if (flags & HIST_KEEPHIST)
           fprintf(fp, "%20.14E ", p[i*m+j]);
         fprintf(fp,"%20.14E %d\n", p[i*m+j]*fac, r);
       }
@@ -477,7 +477,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
   if (flags & HIST_VERBOSE) {
     fprintf(stderr, "successfully wrote %s\n", fn);
     for (r = 0; r < rows; r++)
-      fprintf(stderr, "%2d cnt: %20.4f xav: %10.4f(%10.4f) yav: %10.4f(%10.4f)\n", 
+      fprintf(stderr, "%2d cnt: %20.4f xav: %10.4f(%10.4f) yav: %10.4f(%10.4f)\n",
           r, sums[r], sums[r+rows], sums[r+rows*2], sums[r+rows*3], sums[r+rows*4]);
   }
   free(sums);
@@ -496,9 +496,9 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
   unsigned fflags;
   double x, y, g, g2, fac, delta, *arr, *sums = NULL;
   double xmin1, dx1, ymin1, dy1;
-    
+
   xfopen(fp, fn, "r", return -1);
-  
+
   nm = n*m;
   /* check the first line */
   if (fgets(s, sizeof s, fp) == NULL || s[0] != '#') {
@@ -507,11 +507,11 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     return -1;
   }
   nlin++;
-  if (9 != sscanf(s, " # %d 0x %X | %d%d%lf%lf%d%lf%lf | %n", &ver, &fflags, &r, 
+  if (9 != sscanf(s, " # %d 0x %X | %d%d%lf%lf%d%lf%lf | %n", &ver, &fflags, &r,
         &i, &xmin1, &dx1, &j, &ymin1, &dy1, &next)
       || i < n || j < m || r != rows
       || fabs(dx1 - dx) > 1e-5 || fabs(dy1 - dy) > 1e-5 ) {
-    fprintf(stderr, "Error: bins %d, %d; %d, %d; ng %d, %d; dx %g, %g; dy %g, %g\n", 
+    fprintf(stderr, "Error: bins %d, %d; %d, %d; ng %d, %d; dx %g, %g; dy %g, %g\n",
         i, n, j, m, r, rows, dx1, dx, dy1, dy);
     fclose(fp);
     return -1;
@@ -540,18 +540,18 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
   if (!add) { /* clear histogram */
     for (i = 0; i < rows*nm; i++) hist[i] = 0.;
   }
-  
+
   /* loop over r = 0..rows-1 */
   for (r = 0; r < rows; r++) {
     arr = hist + r*nm;
     fac = sums[r]*(dx*dx);
     while (fgets(s, sizeof s, fp)) {
       nlin++;
-      for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--) 
+      for (p = s+strlen(s)-1; isspace((unsigned char)(*p)) && p >= s; p--)
         *p = '\0'; /* trim ending */
       if (s[0] == '#') break;
       if (s[0] == '\0') continue;
-      
+
       if (hashist) {
         if (5 != sscanf(s, "%lf%lf%lf%lf%d", &x, &y, &g, &g2, &r1)) {
           fprintf(stderr, "error on line %d\n", nlin);
@@ -588,7 +588,7 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
   if (verbose) fprintf(stderr, "%s loaded successfully\n", fn);
   return 0;
 EXIT:
-  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);  
+  fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
   if (sums) free(sums);
   for (i = 0; i < rows*nm; i++) hist[i] = 0.;
   return -1;
@@ -597,7 +597,7 @@ EXIT:
 /* add (xarr[skip*r], yarr[skip*r]) of weight w, into histogram h
  * return number of success */
 INLINE int hist2add(const double *xarr, const double *yarr, int skip,
-    double w, double *h, int rows, 
+    double w, double *h, int rows,
     int n, double xmin, double dx,
     int m, double ymin, double dy, unsigned flags)
 {

@@ -1,14 +1,22 @@
+#!/usr/bin/env python
+'''
+add 2d-version functions before the 3d-version functions
+currently only on INLINE or static functions
+'''
+
+
 import re, os, copy
 
 def addfunc2d(lines, funcname):
   ''' add 2D version of a 3D function '''
-  
+
   ismacro = 0
 
   # 1. search the beginning of the function
   for i0 in range(len(lines)):
     s = lines[i0]
-    if ( (s.startswith("static") or s.startswith("INLINE") ) 
+    # we only operate on static and inline functions
+    if ( (s.startswith("static") or s.startswith("INLINE") )
         and s.find(funcname + "(") >= 0):
       break
     if ( s.startswith("#define")
@@ -45,6 +53,11 @@ def addfunc2d(lines, funcname):
   for i in range(len(func2)):
     s = func3[i]
     s = re.sub("rv3_", "rv2_", s)
+    s = re.sub("rm3_", "rm2_", s)
+    s = re.sub("dv3_", "dv2_", s)
+    s = re.sub("dm3_", "dm2_", s)
+    s = re.sub("fv3_", "fv2_", s)
+    s = re.sub("fm3_", "fm2_", s)
     s = re.sub(r"\[3\]", "[2]", s)
     s = re.sub(r"3d\(", "2d(", s)
     s = re.sub(r"d < 3", "d < 2", s)
@@ -59,12 +72,18 @@ def addfunc2d(lines, funcname):
   lines = lines[:i0] + func2 + ["\n"] + lines[i0:]
   return lines
 
-def add2d(fnin, fnout, list):
+def add2d(fnin, fnout, funcls):
   ''' add 2D version '''
   s = open(fnin, "r").readlines()
-  for f in list:
+  for f in funcls:
     s = addfunc2d(s, f)
-  s = ["/* Don't edit this file, edit %s instead. */\n" % fnin,] + s
-  open(fnout, 'w').writelines(s)
+  s = ["/* Don't edit this file, edit %s instead. */\n"
+       % fnin,] + s
+  if fnout:
+    open(fnout, 'w').writelines(s)
+  else:
+    print ''.join(s)
 
+if __name__ == "__main__":
+  add2d("add2dtest.c", None, ["func3d", ])
 

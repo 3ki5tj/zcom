@@ -7,7 +7,7 @@
 #define Q         10
 #define DATAFILE  "pt.dat"
 
-#define PT2_LB  LB 
+#define PT2_LB  LB
 #define PT2_Q   Q
 #include "potts2.c"  /* swap with the #define LB line to test two different versions */
 
@@ -56,7 +56,7 @@ static void mc(potts_t *pt, double steps, double beta, int ncheck)
   }
   eav = se/s1;
   cv = (beta*beta)*(se2/s1 - eav*eav);
-  printf("ar: %g, eav: %.6f, cv: %.3f\n", 
+  printf("ar: %g, eav: %.6f, cv: %.3f\n",
       acc/tot, eav, cv);
   pt2_save(pt, DATAFILE);
   mtsave(NULL);

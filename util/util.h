@@ -18,7 +18,7 @@
     exit(1); \
   } else if ((x = calloc(n, sizeof(*(x)))) == NULL) { \
     fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
-    exit(1); } 
+    exit(1); }
 #endif
 
 #ifndef xrenew
@@ -28,7 +28,7 @@
     exit(1); \
   } else if ((x = realloc(x, (n)*sizeof(*(x)))) == NULL) { \
     fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
-    exit(1); } 
+    exit(1); }
 #endif
 
 /* print an error message */
@@ -41,7 +41,7 @@ INLINE void perrmsg__(const char *file, int line, const char *why,
     fprintf(stderr, "\n"); /* add a new line if needed */
   if (file != NULL) fprintf(stderr, "file: %s\n", file);
   if (line >= 0) fprintf(stderr, "line: %d\n", line);
-  if (why != NULL && strcmp(why, "1") != 0) 
+  if (why != NULL && strcmp(why, "1") != 0)
     fprintf(stderr, "cond: %s\n", why);
 }
 
@@ -85,10 +85,10 @@ INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
 
 INLINE int fexists(const char *fn)
 {
-  FILE *fp; 
+  FILE *fp;
   if ((fp = fopen(fn, "r")) == NULL) return 0;
   else { fclose(fp); return 1; }
-} 
+}
 
 /* swap two variables */
 #ifndef xtpswap

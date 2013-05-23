@@ -29,8 +29,7 @@ INLINE size_t sshashval_(const char *p)
   return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
 }
 
-/*
- * return the *previous* header to the one that associates with s
+/* return the *previous* header to the one that associates with s
  * first locate the list from the Hash value, then enumerate the linked list.
  * */
 INLINE struct ssheader *sslistfind_(const char *s)
@@ -41,13 +40,12 @@ INLINE struct ssheader *sslistfind_(const char *s)
   head = ssbase_ + sshashval_(s);
   if (head->next == NULL) return NULL; /* uninitialized head node */
   for (hp = head; hp->next != head; hp = hp->next)
-    if ((char *)(hp->next + 1) == s)
+    if ((char *)(hp->next + 1) == s) /* match the string address */
       return hp;
   return NULL;
 }
 
-/*
- * simply add the entry h at the begining of the list
+/* simply add the entry h at the begining of the list
  * we do not accept a precalculated hash value,
  * since realloc might have changed it
  * */
@@ -102,7 +100,7 @@ INLINE char *ssresize_(struct ssheader **php, size_t n, unsigned flags)
         free(h);
       }
       h = hn;
-      
+
       *php = hp = sslistadd_(h);
       hp->next->size = size;
     }
@@ -125,7 +123,7 @@ INLINE int ssmanage(char *s, unsigned flags)
   unsigned opt = flags & 0xFF;
   size_t i;
 
-  if (flags & SSSINGLE) {
+  if (flags & SSSINGLE) { /* working on a single string */
     if (s == NULL || (hp = sslistfind_(s)) == NULL) {
       if (s) fprintf(stderr, "ssmanage: unknown address %p (%s)\n",  s, s);
       return -1;
@@ -140,8 +138,7 @@ INLINE int ssmanage(char *s, unsigned flags)
   return 0;
 }
 
-/*
- * copy/cat t to *ps
+/* copy/cat t to *ps
  *
  * If (flags & SSCAT) == 0:
  * copy t to *ps, if ps is not NULL, and return the result

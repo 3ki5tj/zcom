@@ -124,10 +124,10 @@ INLINE void lj_vvx(lj_t *lj, real fscal, real dt);
 /* velocity scaling for regular (no thermostat) MD during equilibration
  * `tp' is the target temperature
  * `ekt' is the observed average kinetic energy over several steps */
-INLINE void lj_vscale(lj_t *lj, real tp, real ekt) 
+INLINE void lj_vscale(lj_t *lj, real tp, real ekt)
  { md_vscale(lj->v, lj->n * lj->d, lj->dof, tp, ekt, &lj->ekin, &lj->tkin); }
 
-INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt) 
+INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt)
  { md_vrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
 INLINE void lj_vrescalex(lj_t *lj, real tp, real thermdt)

@@ -42,7 +42,7 @@ typedef struct {
   int lgact; /* active local constraints */
   lgconstr_t *lgc;
 
-#define AB_XXCNT 6 
+#define AB_XXCNT 6
   real *xx[AB_XXCNT]; /* extra memory allocations, each of the size of x */
 
 #ifdef _OPENMP
@@ -51,7 +51,7 @@ typedef struct {
   int *homeid; /* [homeid[tid], homeid[tid + 1]): atoms belongs to thread id */
   int paircnt; /* number of pairs */
   abpairid_t *pair; /* the entire pair */
-  int *pairid; /* [pairid[tid], pairid[tid + 1]): pairs belong to thread tid */ 
+  int *pairid; /* [pairid[tid], pairid[tid + 1]): pairs belong to thread tid */
 #endif
 } abpro_t;
 
@@ -80,13 +80,13 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fname);
 int ab_readpos(abpro_t *ab, real *x, real *v, const char *fname);
 int ab_initpos(abpro_t *ab, real *x, real randev);
 
-int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt, 
+int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose);
-int ab_rattle(abpro_t *ab, const real *x0, real *v, 
+int ab_rattle(abpro_t *ab, const real *x0, real *v,
     int itmax, double tol, int verbose);
 int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose);
-int ab_milcrattle(abpro_t *ab, const real *x0, real *v); 
+int ab_milcrattle(abpro_t *ab, const real *x0, real *v);
 
 real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
     int sh_itmax, double sh_tol, unsigned flags);

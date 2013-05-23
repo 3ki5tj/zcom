@@ -4,7 +4,7 @@
 
 #include "savgol.h"
 
-/* compute 1d Savitzky-Golay coefficients 
+/* compute 1d Savitzky-Golay coefficients
  * der == 0 for function itself, 1 for first-order derivative */
 INLINE double *savgol(int w, int ord, int der, int h, int verbose)
 {
@@ -17,7 +17,7 @@ INLINE double *savgol(int w, int ord, int der, int h, int verbose)
   npt = h ? (2*w) : (2*w+1);
   i0 = -w;
   i1 = h ? w : (w+1);
-  if ((c = calloc(npt, sizeof(double))) == NULL) 
+  if ((c = calloc(npt, sizeof(double))) == NULL)
     return NULL;
   if ((b = calloc(nop, sizeof(double))) == NULL) {
     free(c);
@@ -55,11 +55,11 @@ INLINE double *savgol(int w, int ord, int der, int h, int verbose)
   for (ox = 0; ox < nop; ox++)
     for (oy = 0; oy < nop; oy++)
       mat[ox*nop + oy] = mmt[ox+oy];
- 
+
   /* we approximate y(x) = a0 + a1 x + a2 x^2 + ...
    * mat.a = b = x2m.y, or a = mat^(-1).b
    * since mat is symmetrical, rows == columns,
-   * we thus extract the first row by solving b = {1, 0, 0, ...} */ 
+   * we thus extract the first row by solving b = {1, 0, 0, ...} */
   for (i = 0; i < nop; i++) b[i] = 0;
   b[der] = 1.;
   i = lusolve(mat, b, nop);
@@ -107,7 +107,7 @@ INLINE double *savgol2d(int iw, int jw, int ord, int h, int verbose)
     i1 = iw + 1;
     j1 = jw + 1;
   }
-  if ((c = calloc(npt, sizeof(double))) == NULL) 
+  if ((c = calloc(npt, sizeof(double))) == NULL)
     return NULL;
   if ((b = calloc(nop, sizeof(double))) == NULL) {
     free(c);
@@ -148,14 +148,14 @@ INLINE double *savgol2d(int iw, int jw, int ord, int h, int verbose)
         for (o2 = 0; o2 <= o1; o2++, io++) {
           xyk = w;
           for (ox = 0; ox < o1 - o2; ox++) xyk *= x;
-          for (oy = 0; oy < o2; oy++) xyk *= y; 
+          for (oy = 0; oy < o2; oy++) xyk *= y;
           x2m[io*npt + id] = xyk;
         }
       }
     }
   }
 
-  /* install matrix from moments */ 
+  /* install matrix from moments */
   for (io = 0, o1 = 0; o1 <= ord; o1++)
   for (o2 = 0; o2 <= o1; o2++, io++) {
     /* x^(o1-o2) y^o2 */
@@ -166,8 +166,8 @@ INLINE double *savgol2d(int iw, int jw, int ord, int h, int verbose)
       oy = o4 + o2;
       mat[io*nop + iq] = mmt[ox*orm + oy];
     }
-  } 
-  
+  }
+
   for (i = 0; i < nop; i++) b[i] = 0.;
   b[0] = 1.;
   i = lusolve(mat, b, nop);

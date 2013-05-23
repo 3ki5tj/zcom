@@ -1,5 +1,5 @@
-/* print transition matrices according to code 
- * Copyright (C) 2012 Cheng Zhang */
+/* print transition matrices according to code
+ * Copyright (C) 2012-2013 Cheng Zhang */
 #include "spgr.h"
 
 int main(int argc, char **argv)

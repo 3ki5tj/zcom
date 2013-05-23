@@ -25,7 +25,7 @@ static void randflip(potts_t *pt)
   M = pt->M[0];
   E2 = pt2_em(pt);
   M2 = pt->M[0];
-  printf("id: %4d, s = %d, h = %2d, E = %4d, %4d, M = %4d, %4d\n", 
+  printf("id: %4d, s = %d, h = %2d, E = %4d, %4d, M = %4d, %4d\n",
       id, pt->s[id], h[0], E, E2, M, M2);
   if (pt2_check(pt) != 0) exit(1);
 }
@@ -41,7 +41,7 @@ int main(void)
   }
   for (i = 0; i < 1000; i++) randflip(pt);
   printf("E = %d, M = %d\n", pt->E, pt->M[0]);
-  pt2_close(pt); 
+  pt2_close(pt);
   return 0;
 }
 

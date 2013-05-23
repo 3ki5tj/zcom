@@ -6,7 +6,7 @@ lpcore_t *lpcore_open(int n, int m)
 {
   lpcore_t *lp;
   int i, j;
-  
+
   xnew(lp, 1);
   lp->n = n;
   lp->m = m;
@@ -37,7 +37,7 @@ static void lpcore_pivot(lpcore_t *lp, int mi, int mj)
 {
   int i, j, m = lp->m, n = lp->n;
   double tmp, **a = lp->a;
-  
+
   /* determine variable index */
   i = lp->mid[mj], lp->mid[mj] = lp->nid[mi], lp->nid[mi] = i;
 
@@ -59,12 +59,12 @@ static int lpcore_solve(lpcore_t *lp)
   double **a = lp->a;
   double inc, tmp;
   int mi, mj;
-  
+
   for (it = 0; ; it++) {
     /* 1. search the target function for a positive coefficient */
     for (mi = 1; mi <= n; mi++) if (a[0][mi] > 0) break;
     if (mi > n) break;
-    
+
     /* 2. compute the most stringent constraint */
     for (mj = 0, inc = 1e30, j = 1; j <= m; j++)
       if (a[j][mi] > 0 && (tmp = a[j][0]/a[j][mi]) < inc) {
@@ -72,7 +72,7 @@ static int lpcore_solve(lpcore_t *lp)
         mj = j;
       }
     if (mj <= 0) return -1; /* unbounded */
-      
+
     /* 3. swap non-basic variable mi with basic variable mj */
     lpcore_pivot(lp, mi, mj);
   }
@@ -98,7 +98,7 @@ static void lpcore_updobj(lpcore_t *lp, const double *c)
       a[j][i] = a[j][idum];
   }
 
-  /* express each cj xj in terms of current nonbasic variables */ 
+  /* express each cj xj in terms of current nonbasic variables */
   for (i = 1; i <= n; i++) {
     for (j = 1; j <= m; j++)
       if (lp->mid[j] == i) break;
@@ -140,7 +140,7 @@ int lpcore_simplex(lpcore_t *lp)
   lpcore_pivot(lp, idum, mj);
   i = lpcore_solve(lp);
   if (i != 0) return i; /* unbounded */
-  
+
   for (i = 1; i <= n+1; i++) /* see if the dummy variable is in the objective function */
     if (lp->nid[i] == idum) break;
   if (i <= n+1) { /* restore the original problem */

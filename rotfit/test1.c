@@ -6,7 +6,7 @@ int main(void)
 {
   int i, j;
   real x[N][3], y[N][3], tmp[3], dev;
-  real r0[3][3] = {{1, 0, 0}, {0, 0.8, 0.6}, {0, -.6, .8}}, 
+  real r0[3][3] = {{1, 0, 0}, {0, 0.8, 0.6}, {0, -.6, .8}},
        t0[3] = {0.75, .25, .5};
   real r[3][3], t[3];
 
@@ -22,9 +22,9 @@ int main(void)
     rv3_diff(tmp, y[i], t0);
     rm3_mulvec(x[i], r0, tmp);
   }
-  
+
   printf("\n\nPure rotation\n");
-  dev = rotfit3(x, NULL, y, NULL, N, r, t);  
+  dev = rotfit3(x, NULL, y, NULL, N, r, t);
   printf("dev = %g\n", dev);
   rm3_print(r, "R ", "%10.5f", 1);
   rm3_print(r0, "R0", "%10.5f", 1);
@@ -37,9 +37,9 @@ int main(void)
     rm3_mulvec(x[i], r0, tmp);
     x[i][2] = -x[i][2];
   }
-  
+
   printf("\n\nWith reflection\n");
-  dev = rotfit3(x, NULL, y, NULL, N, r, t);  
+  dev = rotfit3(x, NULL, y, NULL, N, r, t);
   printf("dev = %g\n", dev);
   rm3_print(r, "R ", "%10.5f", 1);
   rm3_print(r0, "R0", "%10.5f", 1);

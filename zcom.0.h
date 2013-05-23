@@ -1,6 +1,6 @@
 /*
   common routines
-  Copyright (c) 2006-2012 Cheng Zhang
+  Copyright (c) 2006-2013 Cheng Zhang
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public License

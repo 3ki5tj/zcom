@@ -4,7 +4,7 @@
 
 #include "svd.h"
 
-/* singular value decomposition of mxn matrix `a' 
+/* singular value decomposition of mxn matrix `a'
  * a[m*n] (or u[m*n] on return), w[n], v[n*n] */
 int svd(real *a, real *w, real *v, int m, int n)
 {
@@ -12,7 +12,7 @@ int svd(real *a, real *w, real *v, int m, int n)
   real c, f, h, s, x, y, z;
   real anorm = 0.0, g, scl;
   real *rv1;
-  
+
   die_if (m < n, "ERROR: m %d < n %d\n", m, n);
   xnew(rv1, n);
 
@@ -36,23 +36,23 @@ int svd(real *a, real *w, real *v, int m, int n)
         a[i*n+i] = f - g;
         if (i != n - 1) {
           for (j = l; j < n; j++) {
-            for (s = 0.0, k = i; k < m; k++) 
+            for (s = 0.0, k = i; k < m; k++)
               s += a[k*n+i] * a[k*n+j];
             f = s / h;
-            for (k = i; k < m; k++) 
+            for (k = i; k < m; k++)
               a[k*n+j] += f * a[k*n+i];
           }
         }
-        for (k = i; k < m; k++) 
+        for (k = i; k < m; k++)
           a[k*n+i] = a[k*n+i]*scl;
       }
     }
     w[i] = scl*g;
-    
+
     /* right-hand reduction */
     g = s = scl = 0.0;
     if (i < m && i != n - 1) {
-      for (k = l; k < n; k++) 
+      for (k = l; k < n; k++)
         scl += fabs(a[i*n+k]);
       if (scl > 0.) {
         for (k = l; k < n; k++) {
@@ -63,24 +63,24 @@ int svd(real *a, real *w, real *v, int m, int n)
         g = (f > 0.) ? -sqrt(s) : sqrt(s);
         h = f * g - s;
         a[i*n+l] = f - g;
-        for (k = l; k < n; k++) 
+        for (k = l; k < n; k++)
           rv1[k] = a[i*n+k] / h;
         if (i != m - 1) {
           for (j = l; j < m; j++) {
-            for (s = 0.0, k = l; k < n; k++) 
+            for (s = 0.0, k = l; k < n; k++)
               s += a[j*n+k] * a[i*n+k];
-            for (k = l; k < n; k++) 
+            for (k = l; k < n; k++)
               a[j*n+k] += s * rv1[k];
           }
         }
-        for (k = l; k < n; k++) 
+        for (k = l; k < n; k++)
           a[i*n+k] *= scl;
       }
     }
     x = fabs(w[i]) + fabs(rv1[i]);
     if (x > anorm) anorm = x;
   }
-  
+
   /* accumulate the right-hand transformation */
   for (i = n - 1; i >= 0; i--) {
     if (i < n - 1) {
@@ -89,13 +89,13 @@ int svd(real *a, real *w, real *v, int m, int n)
                 v[j*n+i] = ((a[i*n+j] / a[i*n+l]) / g);
                 /* real division to avoid underflow */
             for (j = l; j < n; j++) {
-                for (s = 0.0, k = l; k < n; k++) 
+                for (s = 0.0, k = l; k < n; k++)
                     s += (a[i*n+k] * v[k*n+j]);
-                for (k = l; k < n; k++) 
+                for (k = l; k < n; k++)
                     v[k*n+j] += (s * v[k*n+i]);
             }
         }
-        for (j = l; j < n; j++) 
+        for (j = l; j < n; j++)
             v[i*n+j] = v[j*n+i] = 0.0;
     }
     v[i*n+i] = 1.0;
@@ -107,20 +107,20 @@ int svd(real *a, real *w, real *v, int m, int n)
   for (i = n - 1; i >= 0; i--) {
     l = i + 1;
     g = w[i];
-    if (i < n - 1) 
+    if (i < n - 1)
       for (j = l; j < n; j++) a[i*n+j] = 0.0;
     if (g != 0.) {
       g = 1.0 / g;
       if (i != n - 1) {
         for (j = l; j < n; j++) {
-          for (s = 0.0, k = l; k < m; k++) 
+          for (s = 0.0, k = l; k < m; k++)
             s += (a[k*n+i] * a[k*n+j]);
           f = s/a[i*n+i]*g;
-          for (k = i; k < m; k++) 
+          for (k = i; k < m; k++)
             a[k*n+j] += f*a[k*n+i];
         }
       }
-      for (j = i; j < m; j++) 
+      for (j = i; j < m; j++)
         a[j*n+i] = a[j*n+i]*g;
     } else {
       for (j = i; j < m; j++) a[j*n+i] = 0.0;
@@ -138,7 +138,7 @@ int svd(real *a, real *w, real *v, int m, int n)
           flag = 0;
           break;
         }
-        if (fabs(w[nm]) + anorm == anorm) 
+        if (fabs(w[nm]) + anorm == anorm)
           break;
       }
       if (flag) {
@@ -149,7 +149,7 @@ int svd(real *a, real *w, real *v, int m, int n)
           if (fabs(f) + anorm == anorm) continue;
           g = w[i];
           h = dblhypot(f, g);
-          w[i] = h; 
+          w[i] = h;
           h = 1.0 / h;
           c = g * h;
           s = (- f * h);
@@ -165,7 +165,7 @@ int svd(real *a, real *w, real *v, int m, int n)
       if (l == k) { /* convergence */
         if (z < 0.0) { /* flip sign of w */
           w[k] = -z;
-          for (j = 0; j < n; j++) 
+          for (j = 0; j < n; j++)
             v[j*n+k] = -v[j*n+k];
         }
         break;
@@ -186,7 +186,7 @@ int svd(real *a, real *w, real *v, int m, int n)
       g = dblhypot(f, 1.0);
       if (f < 0.) g = -g;
       f = ((x - z) * (x + z) + h * (y/(f + g) - h)) / x;
-    
+
       /* next QR transformation */
       c = s = 1.0;
       for (j = l; j <= nm; j++) {

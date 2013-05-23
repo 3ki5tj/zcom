@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-/* 
+/*
  * Helper macros for reading binary files with endianness
  * support.  However, sizeof(int) must remain the same
  * between system and file.
@@ -17,7 +17,7 @@
  *
  * 2. define a label ERR for error exit
  *
- * 3. in reading a file, use BIO_INITENDIAN to determine 
+ * 3. in reading a file, use BIO_INITENDIAN to determine
  *    the correct endianness
  * */
 
@@ -38,7 +38,7 @@
 /* initialize file endian state to variable 'endn'
  * endn = 1: a conversion is needed from file's endianess to system's
  * endn = 0: otherwise
- * read an int variable x, 
+ * read an int variable x,
  * determine endian by comparing the value of x with ref
  * quit if neither endians makes x == ref */
 #define BIO_INIT_ENDIAN(x, ref) {                                     \

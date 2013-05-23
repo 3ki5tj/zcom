@@ -3,7 +3,7 @@
 #include "mds.c"
 #ifndef CLUS_C__
 #define CLUS_C__
-/* abstract function for cluster analysis using Monte Carlo sampling 
+/* abstract function for cluster analysis using Monte Carlo sampling
  * given the distance matrix, we give out a cluster*/
 #include "clus.h"
 
@@ -12,7 +12,7 @@ static float **dismat_alloc(int n)
 {
   float **mat, *larr;
   int npr, offset, i;
-  
+
   xnew(mat, n);
   npr = (n+1)*n/2;
   xnew(larr, npr);
@@ -63,7 +63,7 @@ static void cl_copy(clus_t *a, const clus_t *b)
   for (k = 0; k < a->cnt; k++)
     a->idx[k] = b->idx[k];
   a->smdis = b->smdis;
-  a->smwt  = b->smwt; 
+  a->smwt  = b->smwt;
   a->centroid = b->centroid;
 }
 
@@ -82,7 +82,7 @@ static void cl_padd(clus_t *cl, int i, double deldis, double delwt)
 }
 
 /* remove the kth item in cluster 'cl', the energy change de  */
-static void cl_premove(clus_t *cl, int k, double deldis, double delwt) 
+static void cl_premove(clus_t *cl, int k, double deldis, double delwt)
 {
   die_if (k >= cl->cnt, "index error %d >= %d\n", k, cl->cnt);
   cl->cnt--;
@@ -148,7 +148,7 @@ static int cls_find(clsys_t *cls, int ip, int *k)
   for (ic = 0; ic < cls->nc; ic++) {
     ci = cls->c + ic;
     for (*k = 0; *k < ci->cnt; (*k)++) {
-      if (ip == ci->idx[*k]) 
+      if (ip == ci->idx[*k])
         return ic;
     }
   }
@@ -193,7 +193,7 @@ void cls_free(clsys_t *cls, int matwt)
 /* compute distance between two points i and j */
 INLINE double cls_pdis(clsys_t *cls, int i, int j)
 {
-  die_if (i == j || i < 0 || i >= cls->np || j < 0 || j >= cls->np, 
+  die_if (i == j || i < 0 || i >= cls->np || j < 0 || j >= cls->np,
       "bad index  i: %d, j: %d, np: %g", i, j, cls->np);
   if (i < j) return cls->mat[i][j]; else return cls->mat[j][i];
 }
@@ -245,9 +245,9 @@ static void cls_sort(clsys_t *cls)
       }
     }
     if (im != ic) {
-      memcpy(&cbuf, cls->c + ic, sizeof(clus_t)); 
-      memcpy(cls->c + ic, cls->c + im, sizeof(clus_t)); 
-      memcpy(cls->c + im, &cbuf, sizeof(clus_t)); 
+      memcpy(&cbuf, cls->c + ic, sizeof(clus_t));
+      memcpy(cls->c + ic, cls->c + im, sizeof(clus_t));
+      memcpy(cls->c + im, &cbuf, sizeof(clus_t));
     }
   }
 }
@@ -313,7 +313,7 @@ static double cls_ene1(clsys_t *cls, int ic, unsigned flags)
     }
   }
   if (flags & CLUS_CHECK) {
-    die_if (fabs(cl->smdis - dis) > 1e-2, 
+    die_if (fabs(cl->smdis - dis) > 1e-2,
       "corruption distance sum %d, %g, vs. %g\n", ic, cl->smdis, dis);
   }
   cl->smdis = dis;
@@ -396,7 +396,7 @@ static void cls_transfer(clsys_t *cls, int i, int k, int j,
  * and add it to the cluster j
  * combines cls_merge() and cls_transfer()
  * removes cluster i, if there is only one point there, i.e., cls_merge() */
-static int cls_pmove(clsys_t *cls, int i, int ik, int j, 
+static int cls_pmove(clsys_t *cls, int i, int ik, int j,
     double disi, double disj, double dene)
 {
   const int freq = 1000;
@@ -416,12 +416,12 @@ static int cls_pmove(clsys_t *cls, int i, int ik, int j,
   cls_check(cls, mvtype);
   if (++cls->acc % freq == 0) {
     double ene1 = cls_ene(cls, CLUS_CHECK);
-    die_if (fabs(ene1 - cls->ene) > 1e-1, 
-        "iter %d, type %d: ene diff %g, %g; de %g, clus i: %d (%d:%d), clus j: %d\n", 
+    die_if (fabs(ene1 - cls->ene) > 1e-1,
+        "iter %d, type %d: ene diff %g, %g; de %g, clus i: %d (%d:%d), clus j: %d\n",
         cls->iter, mvtype, ene1, cls->ene, dene, i, ik, ip, j);
     cls->ene = ene1;
   }
-  return mvtype; 
+  return mvtype;
 }
 
 /* compute the energy change of adding from point k of cluster i to cluster j */
@@ -472,7 +472,7 @@ static double cls_deremove(clsys_t *cls, int i, int k, double *dis)
   return (ci->smdis - *dis)/(ci->smwt - wi) - ci->smdis/ci->smwt;
 }
 
-/* one step, metropolis move of a cluster 
+/* one step, metropolis move of a cluster
  * iter is the index of iteration */
 static int cls_metropolis(clsys_t *cls, unsigned flags)
 {
@@ -488,7 +488,7 @@ static int cls_metropolis(clsys_t *cls, unsigned flags)
   if (ci->cnt == 1) { /* a cluster of a single point */
     /* try to merge to another cluster */
     if ((flags & CLUS_NOGIANT) && cls->nc == 2) return 0; /* forbid giant formation */
-    j = (int)((cls->nc - 1) * rnd0()); 
+    j = (int)((cls->nc - 1) * rnd0());
     j = (i + 1 + j) % cls->nc; /* choose any other cluster */
   } else {
     j = (int)(cls->nc * rnd0());
@@ -556,7 +556,7 @@ static int cls_heatbath(clsys_t *cls, int ip, unsigned flags)
 
   if (flags & CLUS_NOGIANT) {
     /* forbid the transition from cluster i to the other (giant) */
-    if (cls->nc == 2 && ci->cnt == 1) 
+    if (cls->nc == 2 && ci->cnt == 1)
       return 0;
   }
 
@@ -571,7 +571,7 @@ static int cls_heatbath(clsys_t *cls, int ip, unsigned flags)
   }
   if (ci->cnt == 1) dene[cls->nc] = 1e9; /* disable the last option for an alone cluster */
   dene[i] = 0.0;
- 
+
   /* choose from the heat bath */
   if ((flags & CLUS_NOGIANT) && cls->nc == 1) {
     j = 1;
@@ -579,7 +579,7 @@ static int cls_heatbath(clsys_t *cls, int ip, unsigned flags)
     j = heatbathchoose(dene, cls->nc + 1, cls->bet);
   }
   if (j == i) goto EXIT; /* no move */
- 
+
   /* accept the move */
   mvtype = cls_pmove(cls, i, k, j, disi, disj[j], dene[j]);
 EXIT:
@@ -608,15 +608,15 @@ static int cls_minimize(clsys_t *cls, unsigned flags)
     if (!changed) break;
   }
   cls->bet = bet;
-  if (verbose) 
-    printf("enemin %4d iter: (%3d %12.7f) --> (%3d %12.7f)\n", 
+  if (verbose)
+    printf("enemin %4d iter: (%3d %12.7f) --> (%3d %12.7f)\n",
       cls->iter, nc0, ene0, cls->nc, cls->ene);
   ip = cls->iter > 1;
   cls->iter = iter;
   return ip;
 }
 
-/* do multidimensional scaling, cls_centroid should be called 
+/* do multidimensional scaling, cls_centroid should be called
  * assuming clusters are in descending order */
 static int cls_mdscal(clsys_t *cls, int nmax, int cntmin)
 {
@@ -634,7 +634,7 @@ static int cls_mdscal(clsys_t *cls, int nmax, int cntmin)
   if (n < 2) return 0;
 
   printf("doing multidimensional scaling n %d\n", n);
-  
+
   xnew(dm, n*n);
   for (i = 0; i < n; i++) {
     ci = cls->c + i;
@@ -646,7 +646,7 @@ static int cls_mdscal(clsys_t *cls, int nmax, int cntmin)
     }
     dm[i*n+i] = 0.;
   }
-  
+
   /* initialize coordinates */
   xnew(xy, n*2);
 
@@ -672,7 +672,7 @@ static void cls_trim(clsys_t *cls)
 
   cls_sort(cls); /* sort the cluster list */
   cls_centroid(cls);
-  cls_mdscal(cls, mds_nmax, cmin); 
+  cls_mdscal(cls, mds_nmax, cmin);
 }
 
 /* evenly spaced nc clusters */
@@ -686,12 +686,12 @@ static int cls_evensplit(clsys_t *cls, int nc)
 
   /* compute number of points in each cluster */
   ppc = cls->np / nc;
-  
+
   for (ic = 0; ic < nc; ic++) {
     ci = cls->c + ic;
     ci->cnt = (ic == nc - 1) ? (cls->np - ppc*(nc-1)) : ppc;
     ci->cap = ci->cnt;
-    die_if(ci->cnt <= 0, "cnt %d, np %d, ic %d, nc %d, ppc %d\n", 
+    die_if(ci->cnt <= 0, "cnt %d, np %d, ic %d, nc %d, ppc %d\n",
         ci->cnt, cls->np, ic, nc, ppc);
     xrenew(ci->idx, ci->cap);
     for (i = 0; i < ci->cnt; i++) {
@@ -706,7 +706,7 @@ static int cls_evensplit(clsys_t *cls, int nc)
 
 
 /* main function for clustering: given a distance matrix return a clustering conf. */
-clsys_t *cls_anneal(clsys_t *cls, 
+clsys_t *cls_anneal(clsys_t *cls,
     int itmax, int method, double bet0, double bet1)
 {
   for (cls->iter = 0; cls->iter < itmax; cls->iter++) {
@@ -722,7 +722,7 @@ clsys_t *cls_anneal(clsys_t *cls,
   return cls;
 }
 
-clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method, 
+clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
     double bet0, double bet1, int nbet,
     int nstmin, int verbose)
 {
@@ -790,7 +790,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
       lnz[ib] += lnf;
       hist[ib] += 1.;
       esum[ib] += cls->ene;
-      
+
       isz = (cls->nc > ncm) ? 0 : cls->nc;
       muhist[isz] += 1.;
       if (cls->ene < clsb[isz]->ene) {
@@ -800,7 +800,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
       }
       if (cls->ene < gemin) {
         gemin = cls->ene;
-        if (verbose) 
+        if (verbose)
           printf("found new gemin = %g     \r", gemin);
       }
       if (++cls->iter >= itermax) break;
@@ -820,7 +820,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
             if (hist[i] < hmin) hmin = hist[i];
             if (hist[i] > hmax) hmax = hist[i];
           }
-          if ((hmax-hmin)/(hmax+hmin) < 0.3) break; /* each bet met once */ 
+          if ((hmax-hmin)/(hmax+hmin) < 0.3) break; /* each bet met once */
         }
       }
       if (it % nstmin == 0) { /* try to minimize */
@@ -835,7 +835,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
       }
     }
     if (verbose) {
-      printf("stage %d is complete after %d/%d, emin = %g, lnf = %g, lnfree = %g\n", 
+      printf("stage %d is complete after %d/%d, emin = %g, lnf = %g, lnfree = %g\n",
           is, it, cls->iter, gemin, lnf, lnfree);
     }
     if (verbose >= 3 || (verbose >=2 && cls->iter >= itermax)) {
@@ -849,8 +849,8 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
       printf("exceeds the maximal iterations %d in stage %d\n", cls->iter, is);
       break;
     }
-  } 
-  
+  }
+
   free(lnz);
   free(barr);
   free(hist);
@@ -880,7 +880,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
   return cls;
 }
 
-/* write cluster results 
+/* write cluster results
  * `whead' is a call-back function for writing extra information */
 int cls_write(clsys_t *cls, const char *fn,
     void (*whead)(FILE *, const clsys_t *cls, const void *data), const void *data,
@@ -895,7 +895,7 @@ int cls_write(clsys_t *cls, const char *fn,
 
   /* basic information */
   fprintf(fp, "# %d %d %g %d\n", cls->np, cls->nc, cls->mu0, version);
-  
+
   /* call the callback function */
   if (whead != NULL) {
     (*whead)(fp, cls, data);
@@ -922,7 +922,7 @@ int cls_write(clsys_t *cls, const char *fn,
       ip = ci->idx[k];
       wtot += cls_getwt(cls, ip);
     }
-    fprintf(fp, "%d %d %g %d %g %g: ", 
+    fprintf(fp, "%d %d %g %d %g %g: ",
         ic, ni, wtot, ci->idx[ci->centroid], ci->x, ci->y);
     for (k = 0; k < ni; ) {
       ip = ci->idx[k];
@@ -956,13 +956,13 @@ clsys_t *cls_read(const char *fn,
   double *wt, wtot, mu, x, y;
 
   xfopen(fp, fn, "r", return NULL);
-  
+
   /* read in basic information */
   die_if (NULL == fgets(buf, sizeof buf, fp), "%s: no first line\n", fn);
-  die_if (4 != sscanf(buf, "#%d%d%lf%d", &np, &nc, &mu, &ver), 
+  die_if (4 != sscanf(buf, "#%d%d%lf%d", &np, &nc, &mu, &ver),
       "%s: first line broken\n", fn);
 
-  /* allocate space */ 
+  /* allocate space */
   xnew(wt, np);
   dismat = dismat_alloc(np);
 
@@ -980,7 +980,7 @@ clsys_t *cls_read(const char *fn,
     die_if (1 != ret, "cannot scan index k = %d, ret = %d\n", k, ret);
     die_if (k != itmp, "wrong id %d should be %d\n", itmp, k);
     for (k1 = k+1; k1 < np; k1++) {
-      die_if (1 != fscanf(fp, "%f", &dismat[k][k1]), 
+      die_if (1 != fscanf(fp, "%f", &dismat[k][k1]),
           "cannot read matrix %d, %d\n", k, k1);
     }
   }

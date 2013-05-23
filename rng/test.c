@@ -10,7 +10,7 @@
 #define N 1000000
 #endif
 
-int main(void) 
+int main(void)
 {
   int i, id;
   uint32_t x;

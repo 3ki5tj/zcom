@@ -25,7 +25,7 @@ subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd rotfit savgol specfunc 
 clean:
 	$(RM) -f *~ $(prj).o $(prj).zip */*~ */*/*~ */a.out *.tmp
 	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
-	-rstrip.py -R *.[ch] *.py *.ma *.txt *.cfg README* *akefile
+	-rstrip.py -Rv
 
 pack: $(prj).zip
 	wc $<
@@ -40,6 +40,10 @@ usball::
 	$(MAKE) usb
 	zip -r --symlinks --filesync -9 $(usbdir)/zcomall.zip *
 
-dodep:
+# add symbolic links of header files that are referenced elsewhere
+dodep::
 	git add [a-z0-9]*/*.h
 	git add [a-z0-9]*/*/zcom.h
+
+.PHONY: zip clean pack usb usball dodep
+

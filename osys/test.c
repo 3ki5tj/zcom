@@ -4,7 +4,7 @@ int main(void)
 {
   char *out, **fnls;
   int i, n;
-  
+
   out = sysrun("df", NULL, 0);
   printf("Output:\n%s\n\n", out);
   ssdel(out);

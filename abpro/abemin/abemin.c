@@ -71,7 +71,7 @@ static void ab_printcontact(abpro_t *ab)
       av_add(av, dr);
       printf("%3d: %3d - %3d: %9.6f - %9.6f = %9.6f\n", ++cnt, i, i + di, dr, dr0, dr - dr0);
     }
-    printf("average distance %9.6f +/- %9.6f\n", 
+    printf("average distance %9.6f +/- %9.6f\n",
         av_getave(av), av_getdev(av));
   }
 }
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
   real Em, E;
 
   doargs(argc, argv);
-  if (getinfo(fnpos, &d, &model, &seqid) != 0) 
+  if (getinfo(fnpos, &d, &model, &seqid) != 0)
     return -1;
   ab = ab_open(seqid, d, model, 0.);
   if (verbose) fprintf(stderr, "load %s\n", fnpos);
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     return -1;
   }
   memcpy(ab->x1, ab->x, ab->n*d*sizeof(real));
-  if (milcshake) 
+  if (milcshake)
     ab_milcshake(ab, ab->x1, ab->x, NULL, 0., sh_itmax, sh_tol, 0);
   else
     ab_shake(ab, ab->x1, ab->x, NULL, 0., sh_itmax, sh_tol, 0);

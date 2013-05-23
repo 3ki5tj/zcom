@@ -63,7 +63,7 @@ static float **getdismat(double *arr, int n)
 {
   float **mat;
   int i, j;
-  
+
   mat = dismat_alloc(n);
   for (i = 0; i < n-1; i++) {
     for (j = i+1; j < n; j++) {
@@ -89,7 +89,7 @@ int main(void)
   cls = cls_init(mat, wt, n, mu);
   if (zalgo)
     cls_zalgo(cls, 100*n*n, method, bet0, bet1, nbet, nstmin, verbose);
-  else 
+  else
     cls_anneal(cls, 10*n*n, method, 0.001, 0.02);
   cls_write(cls, "clus.txt", NULL, NULL, 0);
   printf("Final, energy %g, %d clusters\n", cls->ene, cls->nc);

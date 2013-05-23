@@ -52,13 +52,14 @@ INLINE void lj_setrho(lj_t *lj, real rho)
   if ((lj->rc = lj->rcdef) > lj->l * .5f) lj->rc = lj->l * .5f;
   lj->rc2 = lj->rc * lj->rc;
   irc = 1.0/lj->rc;
-  irc3 = irc*irc*irc; irc6 = irc3*irc3;
+  irc3 = irc * irc * irc;
+  irc6 = irc3 * irc3;
   if (lj->usesw) { /* assume u(L/2) = 0 */
     lj->epot_shift = 0.f;
     lj->epot_tail = 0.f;
     lj->p_tail = 0.f;
   } else {
-    lj->epot_shift = (real)( 4*irc6*(irc6-1) );
+    lj->epot_shift = (real)( 4*irc6*(irc6 - 1) );
     if (lj->d == 3) {
       lj->epot_tail = (real)( 8*M_PI*rho*lj->n/9*(irc6 - 3)*irc3 );
       lj->p_tail = (real)( 32*M_PI*rho*rho/9*(irc6 - 1.5)*irc3 );
@@ -272,7 +273,7 @@ ERR:
 INLINE int lj_rdffwheader(FILE *fp, void *pdata)
 {
   lj_t *lj = (lj_t *) pdata;
-  fprintf(fp, "RDF %d %d %d %.10e | ", 
+  fprintf(fp, "RDF %d %d %d %.10e | ",
       lj->d, lj->rdfnfr, lj->n, lj->l);
   return 0;
 }
@@ -296,10 +297,10 @@ INLINE double lj_rdfnorm(int row, int i, double xmin, double dx, void *pdata)
   lj_t *lj = (lj_t *) pdata;
   int npr;
   double x, vsph;
- 
-  (void)row; 
+
+  (void)row;
   x = xmin + i*dx;
-  if (lj->d == 2) 
+  if (lj->d == 2)
     vsph = 2.*M_PI*dx*(2*x + dx);
   else
     vsph = (4.*M_PI/3)*dx*(3*x*(x+dx) + dx*dx);
@@ -326,7 +327,7 @@ INLINE int lj_rdfadd(lj_t *lj)
   rc2 = rc2*rc2;
   for (i = 0; i < lj->n; i++) {
     for (j = i + 1; j < lj->n; j++) {
-      if (lj->d == 2) 
+      if (lj->d == 2)
         dr2 = lj_pbcdist2_2d(dx, lj->x + 2*i, lj->x + 2*j, lj->l);
       else
         dr2 = lj_pbcdist2_3d(dx, lj->x + 3*i, lj->x + 3*j, lj->l);
@@ -395,7 +396,7 @@ INLINE double lj_eos3d(double rho, double T, double *P, double *Ar, double *Gr)
   const double gamma = 3.0;
   double a[8], b[6], c[8], d[6], G[6], F, rhop, rho2 = rho*rho, Pa = 0., Pb = 0., U;
   int i;
-    
+
   a[0] = x1*T + x2*sqrt(T) + x3 + x4/T + x5/(T*T);
   a[1] = x6*T + x7 + x8/T + x9/(T*T);
   a[2] = x10*T + x11 + x12/T;
@@ -424,7 +425,7 @@ INLINE double lj_eos3d(double rho, double T, double *P, double *Ar, double *Gr)
   d[3] = (3*x26 + 5*x27/(T*T))/(T*T);
   d[4] = (3*x28 + 4*x29/T)/(T*T);
   d[5] = (3*x30 + 4*x31/T + 5*x32/(T*T))/(T*T);
-  
+
   F = exp(-gamma*rho*rho);
   G[0] = (1 - F)/(2*gamma);
   for (rhop = 1, i = 1; i < 6; i++) {
@@ -439,7 +440,7 @@ INLINE double lj_eos3d(double rho, double T, double *P, double *Ar, double *Gr)
     if (Ar) *Ar = rho * (a[i]/(i+1) + (*Ar));
     if (P)  Pa  = rho * (a[i] + Pa);
   }
-  
+
   for (i = 5; i >= 0; i--) {
     U += d[i]*G[i];
     if (Ar) *Ar += b[i]*G[i];
@@ -641,7 +642,7 @@ INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *rmin,
 /* compute the energy of the current configuration and set lj->epot */
 INLINE real lj_energy3d(lj_t *lj)
 {
-  return lj->epot = lj_energyx3d(lj, (rv3_t *) lj->x, &lj->vir, &lj->iepot, 
+  return lj->epot = lj_energyx3d(lj, (rv3_t *) lj->x, &lj->vir, &lj->iepot,
       &lj->rmin, &lj->epot0, &lj->epots, &lj->lap);
 }
 
@@ -722,7 +723,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
       vir += fs; /* f.r */
       if (laplace) /* 2.f for it applies to both particles */
         lap += 2.f * ((168 - 12*3) * dr6 - (48 - 6*3)) * dr6 * dr2;
- 
+
       fs *= dr2; /* f.r / r^2 */
       for (d = 0; d < 3; d++) {
         tmp = dx[d] * fs;
@@ -735,7 +736,7 @@ static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
     }
     rv3_inc(f[i], fi);
   }
-  if (ep0) *ep0 = ep;  
+  if (ep0) *ep0 = ep;
   if (eps) *eps = ep - prcnt * lj->epot_shift; /* shifted energy */
   if (virial) *virial = vir;
   if (laplace) *laplace = 4*lap;
@@ -821,7 +822,7 @@ INLINE int lj_depotsq3d(lj_t *lj, int i, const real *xi, real *rm)
 
   /* hard sphere, no collision */
   if (fabs(ra2 - rb2) < 2e-6 && npr > -inf/10 && npr < inf/10) {
-    npr = 0; /* number of neighbors */ 
+    npr = 0; /* number of neighbors */
   }
   return -npr; /* increased number of pairs == decreased energy */
 }
@@ -888,7 +889,7 @@ INLINE real lj_depotsw3d(lj_t *lj, int i, real *xi, real *vir)
   return u;
 }
 
-/* commit a particle displacement 
+/* commit a particle displacement
  * like energysw3d, it does not set pair data, lj->pr
  * call lj_forcesw3d() if it is needed */
 INLINE void lj_commitsw3d(lj_t *lj, int i, const real *xi, real du, real dvir)
@@ -997,7 +998,7 @@ INLINE real lj_depot3d(lj_t *lj, int i, real *xi, real *vir, real *rmin)
 /* return the energy change from displacing x[i] to xi */
 INLINE real lj_depot(lj_t *lj, int i, real *xi, real *vir, real *rmin)
 {
-  return lj->d == 2 ?  lj_depot2d(lj, i, xi, vir, rmin) 
+  return lj->d == 2 ?  lj_depot2d(lj, i, xi, vir, rmin)
     : lj_depot3d(lj, i, xi, vir, rmin);
 }
 
@@ -1005,11 +1006,12 @@ INLINE real lj_depot(lj_t *lj, int i, real *xi, real *vir, real *rmin)
 #define lj_commit3d(lj, i, xi, du, dvir) { \
   (lj->usesq) ? lj_commitsq3d(lj, i, xi, du) : \
   (lj->usesw) ? lj_commitsw3d(lj, i, xi, du, dvir) : \
-  lj_commitlj3d(lj, i, xi, du, dvir); }
+                lj_commitlj3d(lj, i, xi, du, dvir); }
 
 /* commit a move */
 #define  lj_commit(lj, i, xi, du, dvir) \
-  (lj->d == 2 ? lj_commit2d(lj, i, xi, du, dvir) : lj_commit3d(lj, i, xi, du, dvir); )
+  (lj->d == 2 ? lj_commit2d(lj, i, xi, du, dvir) \
+              : lj_commit3d(lj, i, xi, du, dvir); )
 
 INLINE int lj_metro3d(lj_t *lj, real amp, real bet)
 {
@@ -1061,10 +1063,10 @@ INLINE real lj_duinsert3d(lj_t *lj, real *xt)
 {
   int j, n = lj->n;
   real xt0[3], u, du, dvir;
-  
+
   if (xt == NULL) for (xt = xt0, j = 0; j < 3; j++) xt[j] = (real) rnd0();
   for (u = 0.f, j = 0; j < n; j++) /* pair energy */
-    if (lj_pair(lj, xt, lj->x + 3*j, &du, &dvir)) 
+    if (lj_pair(lj, xt, lj->x + 3*j, &du, &dvir))
       u += du;
   return u;
 }
@@ -1170,7 +1172,7 @@ INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta)
   /* position update with scaling */
   md_hoovertpdr(lj->x, lj->v, nd, &xp, lj->l, eta, dt);
   lj->l *= xp;
-  lj_setrho(lj, lj->rho/(xp*xp*xp)); 
+  lj_setrho(lj, lj->rho/(xp*xp*xp));
   lj_force(lj); /* calculate the new force */
 
   for (i = 0; i < nd; i++) /* VV part 2 */
@@ -1187,7 +1189,7 @@ INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
   real pint, vn, lo = lj->l, s, dlnv;
 
   pint = (lj->vir + 2.f * lj->ekin)/ (lj->d * lj->vol) + lj->p_tail;
-  
+
   /* proposed change of log V */
   dlnv = (pint - pext)*lj->vol/tp*barodt;
   if (dlnv < -0.1) dlnv = -0.1; else if (dlnv > 0.1) dlnv = 0.1;
@@ -1202,7 +1204,7 @@ INLINE void lj_pberendsen(lj_t *lj, real barodt, real tp, real pext)
 
 /* Monte Carlo barostat
  * the ideal gas part computed as \sum p^2/m / V
- * the scaling is r = r*s, p = p/s; 
+ * the scaling is r = r*s, p = p/s;
  * set cutoff to half of the box */
 INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, int ensx, unsigned flags)
@@ -1222,7 +1224,7 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
     return 0;
   if ((flags & LJ_FIXEDRC) && ln < lj->rc * 2)
     return 0; /* box too small */
-  
+
   epo = lj->epot;
   lj1 = lj_clone(lj, LJ_CPF); /* make a copy */
   lj_setrho(lj, lj->n/vn);
@@ -1261,7 +1263,7 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
   ln = (real) exp(lnln);
   for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax) return 0;
-  
+
   /* check if there is a clash */
   rmn = lj->rmin * ln / lo;
   if (ln < lo) {
@@ -1290,7 +1292,7 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
     acc = 1;
   } else {
     lj_setrho(lj, lj->n/vo);
-  } 
+  }
   return acc;
 }
 

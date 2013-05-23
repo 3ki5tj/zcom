@@ -1,3 +1,7 @@
+# Lennard-Jones equation of states
+# J. Karl Johnson et al. The Lennard-Jones equation of states revisited,
+#  Molecular Physics (1993) Vol. 78, No 3, 591-618
+# equivalent to the lj_eos3d() in lj.0.c
 x1  =  0.8623085097507421;
 x2  =  2.976218765822098;
 x3  = -8.402230115796038;
@@ -74,9 +78,9 @@ Ar(rho, T) = rho*(a1(T) + rho*(a2(T)/2 + rho*(a3(T)/3 + rho*(a4(T)/4 + rho*(a5(T
 # pressure
 P(rho, T) = rho*T + rho*rho*(a1(T) + rho*(a2(T) + rho*(a3(T) + rho*(a4(T) + rho*(a5(T) + rho*(a6(T) + rho*(a7(T) + rho*a8(T)))))))) + F(rho)*rho*rho*rho*(b1(T) + rho*rho*(b2(T) + rho*rho*(b3(T) + rho*rho*(b4(T) + rho*rho*(b5(T) + rho*rho*b6(T))))));
 
-# Gibbs free energy 
+# Gibbs free energy
 Gr(rho, T) = Ar(rho, T) + P(rho,T)/rho - T;
-
 
 # internal energy
 U(rho, T) = rho*(c1(T) + rho*(c2(T)/2 + rho*(c3(T)/3 + rho*(c4(T)/4 + rho*(c5(T)/5 + rho*(c6(T)/6 + rho*(c7(T)/7 + rho*c8(T)/8))))))) + d1(T)*G1(rho) + d2(T)*G2(rho) + d3(T)*G3(rho) + d4(T)*G4(rho) + d5(T)*G5(rho) + d6(T)*G6(rho);
+

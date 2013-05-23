@@ -35,7 +35,7 @@ INLINE int mtload(const char *fname, uint32_t seed)
   static char s[64];
   int k, z, err = 1;
   FILE *fp;
-  
+
   if (fname == NULL) fname = MTFILE;
   if ((fp = fopen(fname, "r")) != NULL) { /* try to load from file */
     if (fgets(s, sizeof s, fp) == NULL) {
@@ -160,7 +160,7 @@ INLINE double randgam(int k)
 /* return the sum of the square of Gaussian random numbers  */
 INLINE double randgausssum(int n)
 {
-  double x, r; 
+  double x, r;
   if (n <= 0) return 0.0;
   x = 2.0*randgam(n/2);
   if (n % 2) { r = grand0(); x += r*r; }

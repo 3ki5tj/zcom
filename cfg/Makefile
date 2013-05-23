@@ -1,19 +1,35 @@
-bin=test1 test2
-hdr=cfg.h ss.h opt.h def.h util.h
-src=cfg.c ss.c
-dep=$(src) $(hdr) Makefile
+# generic make file for new modules
 
-all: $(bin)
+CC = gcc -O0 -g3 -Wall -Wextra -pedantic
+LM = -lm
+# optimized compiling
+CX = icc -Wall -O3 -march=native -vec_report0
+LMX =
+#CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
+#LMX =-lm
 
-CC = gcc -O0 -g3 -Wall -pedantic -Wextra
+deps = cfg.c cfg.h ss.c ss.h opt.h def.h util.h Makefile
+bins = $(patsubst %.c,%, $(wildcard test*.c))
+bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 
-$(bin): $(dep)
+debug: $(bins_d)
 
-%:: %.c
-	$(CC) -o $@ $< -lm
+build: $(bins)
+
+all: $(bins) $(bins_d)
+
+$(bins_d) : %_d : %.c $(deps)
+	$(CC) -o $@ $< $(LM)
+
+$(bins) : % : %.c $(deps)
+	$(CX) -o $@ $< $(LMX)
+
+subdirs =
 
 clean:
-	rm -f $(bin) *~ a.out *.o
+	$(RM) -f *~ *.out MTSEED *.dat $(bins) $(bins_d)
+	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
+	rstrip.py -lRv
 
-.PHONY: all clean
+.PHONY: clean all debug build
 

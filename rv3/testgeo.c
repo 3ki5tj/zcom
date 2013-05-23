@@ -19,15 +19,15 @@ static void testang(void)
   rv3_sinc(a, fa, del/rv3_sqr(fa));
   printf("%g, %g, %g\n", a[0], a[1], a[2]);
   ang2 = rv3_ang(a, b, c, NULL, NULL, NULL);
-  printf("ang = %g, del = %g\n", ang2, ang2 - ang); 
-  
+  printf("ang = %g, del = %g\n", ang2, ang2 - ang);
+
   rv3_sinc(b, fb, del/rv3_sqr(fb));
   ang = rv3_ang(a, b, c, NULL, NULL, NULL);
-  printf("ang = %g, del = %g\n", ang, ang - ang2); 
+  printf("ang = %g, del = %g\n", ang, ang - ang2);
 
   rv3_sinc(c, fc, del/rv3_sqr(fc));
   ang2 = rv3_ang(a, b, c, NULL, NULL, NULL);
-  printf("ang = %g, del = %g\n", ang, ang2 - ang); 
+  printf("ang = %g, del = %g\n", ang, ang2 - ang);
 }
 
 static void testvdist(void)
@@ -47,13 +47,13 @@ static void testvpdist(void)
   /* compute the distance from d to plane a-b-c */
   /* method 1 */
   vd1 = rv3_vpdist(d, a, b, c);
-  
+
   /* method 2 */
   vd2 = rv3_vdist(d, a, b);
   phi = rv3_calcdih(NULL, d, a, b, c, 0);
   vd2 *= -sin(phi);
-  
-  printf("vd %g, %g; dihedral d - (a-b) - c = %g\n", vd1, vd2, phi);  
+
+  printf("vd %g, %g; dihedral d - (a-b) - c = %g\n", vd1, vd2, phi);
 }
 
 int main(void)

@@ -76,7 +76,7 @@ INLINE int log_hardflush(logfile_t *log)
 logfile_t log_stock_[1] = {{ NULL, "TRACE", 0 }};
 #define wtrace(fmt, ...) { \
   if (fmt) log_printf(log_stock_, fmt, ##__VA_ARGS__); \
-  else if (log_stock_->fp) { fclose(log_stock_->fp); log_stock_->fname = NULL; } } 
+  else if (log_stock_->fp) { fclose(log_stock_->fp); log_stock_->fname = NULL; } }
 #endif
 
 #endif

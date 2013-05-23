@@ -27,9 +27,9 @@ int main(void)
   int i;
   char *sa="A", *sb="B";
   char *s=NULL, *t=NULL, *r=NULL;
-  
+
   r = ssnew(512);
-  for (i=0; i<512; i++) 
+  for (i=0; i<512; i++)
     r[i] = 'j';
   r[i] = '\0';
 
@@ -44,7 +44,7 @@ int main(void)
   sscpy(s, "new");
   ssshrink(s);
   ssdelall();
-  
+
   test_ssfgets();
   return 0;
 }

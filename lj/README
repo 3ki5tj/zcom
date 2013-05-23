@@ -1,27 +1,51 @@
-2D/3D Lennard Jones system
+Lennard Jones system
+===========================
 
-also support
-Square-well potential with the special of a hard-sphere potential
-Switched potential
+Overview
+--------
+o supports 2d/3d versions, 2d functions are generated
+  from the 3d ones by the script mklj2d.py
+o supports square-well and hard-sphere potential
+o supports switched potential
 
-test programs
-===============
+
+Files
+-------
+lj.h        header file
+lj.0.c      source code
+lj.c        generate from lj.0.c by mklj2d.py, do not edit!
+mklj2d.py   generate a version lj.c with 2d support from lj.0.c
+            the script uses a generic add2d.py, which is located
+            in the $(ROOT)/python.  But python can automatically
+            locate add2d.py without symbolic links because of the
+            __init__.py, which treats the entire directory tree
+            as a python package.
+ljeos.gp    standard equation of states, gnuplot script
+
+
+Test programs
+~~~~~~~~~~~~~~
 testmc.c    Monte Carlo simulation
 testmd.c    molecular dynamics with thermostat and barostat
 testctr.c   prototype of the perturbation temperature
 testref.c   reference equation of states
 testsw.c    print out the switch potential
 
-ljmatch/ljmatch.c stillborn
 
-Speed test
-==========
+Notes
+-------------------
+Monte Carlo pair version: old/ljpr.c
+
+
+An old speed test
+~~~~~~~~~~~~~~~~~
 testmd.c is somehow slower than ../md/testlj.c
 because the array were allocated on the heap instead of the stack
 
 test2.c is a better illustration
 Using -DSTACK
-          icc -O3     gcc -O3 -mfpmath=sse -march=pentium4 -fstrict-aliasing -funroll-all-loops -lm
+          icc -O3     gcc -O3 -mfpmath=sse -march=pentium4 \
+                              -fstrict-aliasing -funroll-all-loops
  (HEAP)   14.6s       15.5s
 -DSTACK   12.0s       12.8s
 
@@ -29,4 +53,4 @@ The speed up of using a stack is > 10%.
 
 Interestingly, swapping xnew(x) and xnew(f) alleviates the problem
 
-Monte Carlo pair version: old/ljpr.c
+

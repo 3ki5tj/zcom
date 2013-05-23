@@ -125,7 +125,7 @@ INLINE void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
  *  o create an initial structure
  *    if rndamp >= 0, start from the reference structure,
  *      with a random disturbance of rndamp
- *    if rndamp < 0, start from a nearly-straight chain, 
+ *    if rndamp < 0, start from a nearly-straight chain,
  *      with a disturbance of rndamp in the x, y directions
  *  o initialize the velocity with the center of mass motion removed
  *  o compute the initial force and energy
@@ -178,11 +178,11 @@ INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
 }
 
 /* bond energy 1/2 k (r - r0)^2 */
-INLINE real potbond(rv3_t a, rv3_t b, real r0, real k, 
+INLINE real potbond(rv3_t a, rv3_t b, real r0, real k,
     rv3_t fa, rv3_t fb)
 {
   real dx[3], r, dr, amp;
-  
+
   r = rv3_norm( rv3_diff(dx, a, b) );
   dr = r - r0;
   if (fa != NULL) {
@@ -199,7 +199,7 @@ INLINE real potang(rv3_t a, rv3_t b, rv3_t c, real ang0, real k,
 {
   real dang, amp, ga[3], gb[3], gc[3];
 
-  if (fa) { /* compute gradient */ 
+  if (fa) { /* compute gradient */
     dang = rv3_ang(a, b, c, ga, gb, gc) - ang0;
     amp = -k * dang;
     rv3_sinc(fa, ga, amp);
@@ -213,10 +213,10 @@ INLINE real potang(rv3_t a, rv3_t b, rv3_t c, real ang0, real k,
 
 /* 1-3 dihedral: k1 * (1 - cos(dang)) + k3 * (1 - cos(3*dang)) */
 INLINE real potdih13(rv3_t a, rv3_t b, rv3_t c, rv3_t d, real ang0,
-    real k1, real k3, rv3_t fa, rv3_t fb, rv3_t fc, rv3_t fd) 
+    real k1, real k3, rv3_t fa, rv3_t fb, rv3_t fc, rv3_t fd)
 {
   real dang, amp, ga[3], gb[3], gc[3], gd[3];
-  
+
   if (fa) {
     dang = rv3_dih(a, b, c, d, ga, gb, gc, gd) - ang0;
     amp  = (real)( -k1 * sin(dang) - 3 * k3 * sin(3*dang));
@@ -352,8 +352,8 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
   real ene = 0;
   real ka = go->ka, kb = go->kb, kd1 = go->kd1, kd3 = go->kd3;
   real nbe = go->nbe, nbc2 = go->nbc * go->nbc;
- 
-  /* copy coordinates */ 
+
+  /* copy coordinates */
   for (j = 0; j < n; j++) {
     if (j == i) rv3_copy(xn[i], xi);
     else rv3_copy(xn[j], x[j]);
@@ -383,7 +383,7 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
     ene += potdih13(xn[j], xn[j+1], xn[j+2], xn[j+3], go->dref[j],
         kd1, kd3, NULL, NULL, NULL, NULL);
   }
-  
+
   /* nonbonded interaction */
   for (j = 0; j < n; j++) {
     if (abs(i - j) < 4) continue;
@@ -396,7 +396,7 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
       ene -= ncwca ? potwca(x[i], x[j], nbc2, nbe, NULL, NULL)
         : potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
     }
-    
+
     /* add the new energies */
     if ( go->iscont[id] ) { /* contact pair */
       ene += pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
@@ -483,6 +483,7 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   int i, hasv = 0, next, n = go->n;
   const char *fmt;
   real vtmp[3], *vi;
+  rv3_t *x0, *v0;
 
   if (fn == NULL) fn = "cago.pos";
   xfopen(fp, fn, "r", return -1);
@@ -493,7 +494,7 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
   } else {
     if (2 != sscanf(s+1, "%d%d", &i, &hasv) || i != n ) {
       fprintf(stderr, "first line is corrupted:\n%s", s);
-      goto ERR;
+      fclose(fp); return -1;
     }
   }
 
@@ -501,6 +502,9 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
     fmt = "%lf%lf%lf%n";
   else
     fmt = "%f%f%f%n";
+  xnew(x0, n); cago_copyvec(go, x0, x);
+  if (v && hasv) { xnew(v0, n); cago_copyvec(go, v0, v); }
+
   for (i = 0; i < n; i++) {
     fgets(s, sizeof s, fp);
     if (strlen(s) < 10) goto ERR;
@@ -517,11 +521,16 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn)
       }
     }
   }
+  free(x0);
+  if (v && hasv) free(v0);
   fclose(fp);
   return 0;
 
 ERR:
   fprintf(stderr, "position file [%s] appears to be broken on line %d!\n%s\n", fn, i, s);
+  /* recover the original position */
+  cago_copyvec(go, x, x0); free(x0);
+  if (v && hasv) { cago_copyvec(go, v, v0); free(v0); }
   fclose(fp);
   return -1;
 }
@@ -534,7 +543,7 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
 
   xfopen(fp, fn, "w", return -1);
   for (i = 0; i < n; i++)
-    fprintf(fp, "ATOM  %5d  CA  %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           C  \n", 
+    fprintf(fp, "ATOM  %5d  CA  %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           C  \n",
         i+1, pdbaaname(go->aa[i]), i+1, x[i][0], x[i][1], x[i][2]);
   fprintf(fp, "END%77s\n", " ");
   fclose(fp);

@@ -1,2 +1,36 @@
-option object
-used by cfg and argopt
+Option Object
+==============
+
+Overview
+---------
+ *  This is shared by cfg and argopt
+
+
+
+Usage
+------
+
+To register (no actual computation) an option, use
+
+  opt_set(o, sflag, key, fmt, ptr, desc);
+
+for a configuration file entry,
+    set `key' as in `key = val', set `sflag = NULL'
+for a command-line option,
+    set `sflag' such as `-v', `--file', set `key = NULL'
+`fmt' is a sscanf() formatting string
+    `fmt[0]' may be `!' to denote a mandatory entry
+    "%b" is used for a switch
+    NULL or "%s" are used for string
+`ptr' is the pointer the variable for storage:
+    if fmt == "%d", ptr should be `&ival'
+    if fmt == "%s" or NULL, ptr should be a pointer to a pointer to char
+    in the former case, `*ptr' will be allocated by sscpy()
+       so a call ssdel(*ptr) should be used in the end
+    in the latter case, `*ptr' is directed assigned to `o->val'
+
+Once `o->val' is set, the particular value in `o->ptr'
+can be retrieved by calling
+
+  opt_getval(o)
+

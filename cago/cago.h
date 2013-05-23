@@ -2,7 +2,7 @@
 #ifndef CAGO_H__
 #define CAGO_H__
 
-/* alpha-carbon based Go-model 
+/* alpha-carbon based Go-model
  * J. Mol. Biol, Vol. 298 (2000) 937-953 */
 typedef struct {
   int n; /* number of residues */
@@ -22,7 +22,7 @@ typedef struct {
   real *r2ref; /* pair distance */
   int ncont; /* number of defined contacts */
   int *iscont;
- 
+
   /* variables for MD simulations */
   rv3_t *x, *v, *f, *x1;
   real ekin, tkin, epot, etot, t;
@@ -65,7 +65,7 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 /* compute the number of contacts from the current configuration */
 INLINE int cago_ncontacts(cago_t *go, rv3_t *x, real gam, real *Q, int *mat);
 
-/* copy position or velocities */
+/* copy position or velocities, from `s' to `t' */
 #define cago_copyvec(go, t, s) rv3_ncopy(t, s, go->n)
 
 #endif

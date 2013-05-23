@@ -22,7 +22,7 @@ static void randflip(ising_t *is)
   M = is->M;
   E2 = is2_em(is);
   M2 = is->M;
-  printf("id: %4d, s = %d, h = %2d, E = %4d, %4d, M = %4d, %4d\n", 
+  printf("id: %4d, s = %d, h = %2d, E = %4d, %4d, M = %4d, %4d\n",
       id, is->s[id], h, E, E2, M, M2);
   if (is2_check(is) != 0) exit(1);
 }
@@ -38,7 +38,7 @@ int main(void)
   }
   for (i = 0; i < 10; i++) randflip(is);
   printf("E = %d, M = %d\n", is->E, is->M);
-  is2_close(is); 
+  is2_close(is);
   return 0;
 }
 

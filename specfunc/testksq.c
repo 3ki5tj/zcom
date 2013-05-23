@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "specfunc.c"
-        
+
 static void test_ksq(double x)
 {
   FILE *fp;
@@ -16,7 +16,7 @@ static void test_ksq(double x)
     }
     fclose(fp);
   }
-} 
+}
 
 int main(int argc, char **argv)
 {

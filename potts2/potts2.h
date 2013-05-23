@@ -52,7 +52,7 @@ INLINE int pt2_check(potts_t *pt)
 }
 
 /* faster macros for systems with fixed (upon compiling) size
- * to use them one must define PT2_LB and PT2_Q before including 
+ * to use them one must define PT2_LB and PT2_Q before including
  * PT2_PICK()/PT2_PSEQ() and PT2_FLIP() */
 #ifdef  PT2_LB  /* L = 2^LB, N = L*L */
 #define PT2_L   (1 << PT2_LB)
@@ -119,15 +119,15 @@ INLINE int pt2_pick(const potts_t *pt, int h[])
   return id;
 }
 
-INLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn, 
-    const int h[]) 
+INLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn,
+    const int h[])
 {
   double rs_;
   int i, mx_ = 4;
   *so = pt->s[id];
-  for (i = 0; i < pt->q; i++) 
+  for (i = 0; i < pt->q; i++)
     pt->accprb[i+1] = pt->accprb[i] + pt->dproba[mx_-h[i]];
-  for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++) 
+  for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++)
     if (pt->accprb[i+1] > rs_) break;
   die_if (i >= pt->q, "no suitable selection, i = %d\n", i);
   *sn = i;

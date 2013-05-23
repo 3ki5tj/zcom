@@ -15,7 +15,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
 
   if (r == NULL) r = r_;
   if (t == NULL) t = t_;
-    
+
   /* 1. compute the centers */
   rv3_zero(xc);
   rv3_zero(yc);
@@ -45,7 +45,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
     if (w) {
       rm3_sinc(s, xy, w[i]);
       dev += w[i]*sq;
-    } else {      
+    } else {
       rm3_inc(s, xy);
       dev += sq; /* Tr(x^T x + y^T y) */
     }

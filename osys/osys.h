@@ -17,7 +17,7 @@ INLINE char *sysrun(const char *cmd, size_t *nc, unsigned flags)
   int i;
 
   if (nc) *nc = 0;
-  
+
   /* construct the command */
   ncmd = ssdup(cmd);
   sscat(ncmd, " > ");
@@ -25,13 +25,13 @@ INLINE char *sysrun(const char *cmd, size_t *nc, unsigned flags)
 
   /* run it */
   if ((i = system(ncmd)) != 0)
-    if (flags & OSYS_VERBOSE) 
+    if (flags & OSYS_VERBOSE)
       fprintf(stderr, "command \"%s\" failed\n", ncmd);
   ssdel(ncmd);
   if (i != 0) goto EXIT; /* output should be NULL in this case */
 
   xfopen(fp, fntmp, "r", goto EXIT);
-  ssfgetall(output, nc, fp); 
+  ssfgetall(output, nc, fp);
   fclose(fp);
 EXIT:
   remove(fntmp);
@@ -51,14 +51,14 @@ INLINE char **fnglob(const char *pat, int *pn, const char *lscmd, unsigned flags
   char *cmd, *output;
 
   if (pn) *pn = 0;
-  
+
   /* construct a command first */
   cmd = ssnew(256);
   if (lscmd == NULL) /* assuming linux */
     lscmd = "ls --color=never ";
   sscpy(cmd, lscmd);
   sscat(cmd, pat);
-  
+
   /* run the command and get the output */
   output = sysrun(cmd, &nc, flags);
   ssdel(cmd);

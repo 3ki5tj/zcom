@@ -46,7 +46,7 @@ INLINE double grand0(void);
 /* metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
 INLINE int metroacc0(double r) { r = exp(r); return rnd0() < r; }
 
-/* metropolis acceptance probability rnd0() < exp(- bet * de), assuming bet > 0 
+/* metropolis acceptance probability rnd0() < exp(- bet * de), assuming bet > 0
  * defined as a macro, in case r is an integer */
 #define metroacc1(de, bet) ((de <= 0) ? 1 : metroacc0(- bet * de))
 

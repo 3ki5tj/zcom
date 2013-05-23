@@ -101,7 +101,7 @@ INLINE int pdbaaidx(const char *res)
   if (strcmp(res, "HID") == 0 || strcmp(res, "HIE") == 0 || strcmp(res, "HIP") == 0)
     res = "HIS"; /* quick fix for HIS */
   for (i = 0; i < 20; i++)
-    if (strcmp(res, pdb_aadb[i].resnm) == 0) 
+    if (strcmp(res, pdb_aadb[i].resnm) == 0)
       return i;
   return -1;
 }
@@ -130,7 +130,7 @@ INLINE int pdbaac_getaid(pdbaac_t *c, int i, const char *atnm)
 INLINE real *pdbaac_getx(pdbaac_t *c, int i, const char *atnm)
   { int id = pdbaac_getaid(c, i, atnm); return (id < 0) ? NULL : c->x[id]; }
 
-/* format atom name, out could be equal to atnm 
+/* format atom name, out could be equal to atnm
  * style 0: atom name first, e.g., "HE21", "CB", or style 1: "1HE2" or " CB " */
 INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
 {
@@ -139,13 +139,13 @@ INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
   const char *p;
 
   die_if (style > 2 || style < 0, "bad format style %d\n", style);
-  
+
   /* copy inp to a buffer without space */
   for (p = inp; *p == ' '; p++) ;
   for (n = 0; n < 4 && p[n] && p[n] != ' '; n++) atnm[n] = p[n];
   atnm[n] = '\0';
   die_if (n == 4 && p[n] && p[n] != ' ', "bad input atom name [%s]\n", atnm);
-  
+
   if (style <= 1) { /* style 0: "H", "CA", "HE21", style 1: " H", " CA", "HE21" */
     if (n == 4) {
       c = atnm[0];

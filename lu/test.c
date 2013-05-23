@@ -16,15 +16,15 @@ int main(void)
     for (j = 0; j < N; j++)
       printf("%10.6f ", A[i][j]);
     printf("\t%10.6f\n", b[i]);
-  }    
+  }
   printf("matrix LU:\n");
   for (i = 0; i < N; i++) {
     for (j = 0; j < N; j++)
       printf("%10.6f ", a[i][j]);
     printf("\n");
-  }  
+  }
   printf("solution x:\n");
-  for (i = 0; i < N; i++) 
+  for (i = 0; i < N; i++)
     printf("%d: %g\n", i, x[i]);
 
   return 0;

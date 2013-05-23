@@ -28,9 +28,9 @@
 #define histsave(h,rows,n,xmin,dx,flags,fname) \
   histsavex((const double *)h,rows,n,xmin,dx,flags,NULL,NULL,NULL,fname)
 
-INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx, 
+INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
     unsigned flags, int (*fwheader)(FILE *, void *),
-    double (*fnorm)(int, int, double, double, void *), 
+    double (*fnorm)(int, int, double, double, void *),
     void *pdata, const char *fname);
 
 #define histload(h,rows,n,xmin,dx,flags,fname) \
@@ -38,10 +38,10 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
 
 INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     unsigned flags, int (*frheader)(const char *, void *),
-    double (*fnorm)(int, int, double, double, void *), 
+    double (*fnorm)(int, int, double, double, void *),
     void *pdata, const char *fn);
 
-INLINE int histadd(const double *x, double w, double *h, int rows, 
+INLINE int histadd(const double *x, double w, double *h, int rows,
     int n, double xmin, double dx, unsigned flags);
 
 /* object oriented wrapper functions */
@@ -80,7 +80,7 @@ INLINE hist_t *hs_openx(int rows, double xmin, double xmax, double dx,
   hs->frheader = frh;
   hs->fnorm = fnorm;
   return hs;
-}  
+}
 
 INLINE void hs_close(hist_t *hs)
 {
@@ -100,7 +100,7 @@ INLINE void hs_check(const hist_t *hs)
 INLINE int hs_savex(const hist_t *hs, const char *fn, void *pdata, unsigned flags)
 {
   hs_check(hs);
-  return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags, 
+  return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags,
       hs->fwheader, hs->fnorm, pdata, fn);
 }
 
@@ -132,7 +132,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     int m, double ymin, double dy, unsigned flags, const char *fname);
 INLINE int hist2add(const double *xarr, const double *yarr, int skip,
-    double w, double *h, int rows, 
+    double w, double *h, int rows,
     int n, double xmin, double dx,
     int m, double ymin, double dy, unsigned flags);
 
@@ -184,7 +184,7 @@ INLINE void hs2_close(hist2_t *hs2)
 INLINE void hs2_check(const hist2_t *hs)
 {
   die_if (hs == NULL, "hist2 is %p", (const void *) hs);
-  die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0 || hs->m == 0, 
+  die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0 || hs->m == 0,
     "hist2: arr %p rows %d n %d m %d\n",
     (const void *)(hs->arr), hs->rows, hs->n, hs->m);
 }
@@ -192,14 +192,14 @@ INLINE void hs2_check(const hist2_t *hs)
 INLINE int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)
 {
   hs2_check(hs);
-  return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+  return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx,
       hs->m, hs->ymin, hs->dy, flags, fn);
 }
 
 INLINE int hs2_load(hist2_t *hs, const char *fn, unsigned flags)
 {
   hs2_check(hs);
-  return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+  return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx,
       hs->m, hs->ymin, hs->dy, flags, fn);
 }
 
@@ -207,7 +207,7 @@ INLINE int hs2_add(hist2_t *hs, const double *x, const double *y, int skip,
     double w, unsigned flags)
 {
   hs2_check(hs);
-  return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, 
+  return hist2add(x, y, skip, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx,
       hs->m, hs->ymin, hs->dy, flags);
 }
 

@@ -580,7 +580,7 @@ static const SpacegroupType spacegroup_types[] = {
   {230, "Oh^10 ", "-I 4bd 2c 3     ", "I a -3 d                       ", "I 4_1/a -3 2/d     ", "Ia-3d     ", CUBIC }, /*530*/
 };
 
-static const int symmetry_operations[] = { 
+static const int symmetry_operations[] = {
   0       ,  /* dummy */
   16484   ,  /*    1 (  1) [  1, 0, 0, 0, 1, 0, 0, 0, 1,  0, 0, 0] */
   16484   ,  /*    2 (  2) [  1, 0, 0, 0, 1, 0, 0, 0, 1,  0, 0, 0] */
@@ -8506,7 +8506,7 @@ static const int symmetry_operation_index[][2] = {
   {  96, 7293}, /* 530 */
 };
 
-/* translate the index of a symmetry-group operation 
+/* translate the index of a symmetry-group operation
  * to the rotation matrix and translation vector */
 int spgr_getop( int rot[3][3], double trans[3], const int index )
 {

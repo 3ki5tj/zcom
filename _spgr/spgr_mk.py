@@ -122,14 +122,14 @@ def iscsym(hall):
   cnt = symmetry_operation_index[hall][0]
   ist = symmetry_operation_index[hall][1]
   for i in range(cnt):
-    if symmetry_operations[ist + i] == 3198: # inversion 
+    if symmetry_operations[ist + i] == 3198: # inversion
       return 1
   return 0
 
 def getmatstr(s, offset = 0):
   ''' get spacegroup from string '''
   SPMAX = 530
-  
+
   for i in range(1, SPMAX+1):
     buf1 = spacegroup_types[i][3].replace(" ", "")
     buf2 = spacegroup_types[i][4].replace(" ", "")

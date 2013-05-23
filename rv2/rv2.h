@@ -2,7 +2,7 @@
 #define INLINE __inline static
 #endif
 #ifndef RESTRICT
-#define RESTRICT __restrict 
+#define RESTRICT __restrict
 #endif
 #include "def.h"
 #include "rng.c"
@@ -103,14 +103,14 @@ INLINE real *rv2_diff(real *diff, const real *a, const real *b)
 }
 
 /* distance^2 between a and b */
-INLINE real rv2_dist2(const real *a, const real *b) 
+INLINE real rv2_dist2(const real *a, const real *b)
 {
-  real d[2]; 
+  real d[2];
   return rv2_sqr(rv2_diff(d, a, b));
 }
 
 /* distance between a and b */
-INLINE real rv2_dist(const real *a, const real *b) 
+INLINE real rv2_dist(const real *a, const real *b)
 {
   return (real) sqrt(rv2_dist2(a, b));
 }
@@ -139,7 +139,7 @@ INLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, real
 }
 
 /* consine of the angle of x1-x2-x3 */
-INLINE real rv2_cosang(const real *x1, const real *x2, const real *x3, 
+INLINE real rv2_cosang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {
   real a[2], b[2], ra, rb, dot;
@@ -251,7 +251,7 @@ INLINE rv2_t *rm2_rnduni(real a[2][2])
 {
   rv2_rnd(a[0], -.5f, 1.f);
   rv2_normalize(a[0]);
-  
+
   a[1][0] = a[0][1];
   a[1][1] = -a[0][0];
   if (rnd0() > 0.5) rv2_neg(a[1]);

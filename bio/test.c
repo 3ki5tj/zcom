@@ -36,7 +36,7 @@ static int bread(const char *fname)
   BIO_RD(dval);
   BIO_RIARR(iarr, N);
   BIO_RDARR(darr, N);
-  
+
   printf("successfully read file %s\n", fname);
   print();
   getchar();
@@ -57,7 +57,7 @@ static int bwrite(const char *fname)
     fprintf(stderr, "cannot write file %s\n", fname);
     return 1;
   }
-  
+
   size = sizeof(int);
   BIO_WI(size);
   size = sizeof(double);
@@ -68,7 +68,7 @@ static int bwrite(const char *fname)
   BIO_WDARR(darr, N);
 
   fclose(fp);
-  
+
   printf("successfully wrote file %s\n", fname);
   getchar();
   return 0;

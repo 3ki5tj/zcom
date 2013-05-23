@@ -31,7 +31,7 @@ int main(int argc, char **argv)
   argopt_parse(ao, argc, argv);
   argopt_dump(ao);
   printf("fn %s, verbose %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d\n",
-      fn, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y, 
+      fn, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y,
       argopt_set(ao, freq), freq);
   argopt_close(ao);
   return 0;

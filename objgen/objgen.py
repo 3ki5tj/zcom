@@ -1167,7 +1167,7 @@ class Parser:
       t += obj.source
     lines = self.trim_code(t.splitlines(True))
 
-    # insert declaration and functions 
+    # insert declaration and functions
     return self.insert_code(s, lines)
 
 

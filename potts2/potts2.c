@@ -39,7 +39,7 @@ INLINE int pt2_load(potts_t *pt, const char *fname)
     fprintf(stderr, "missing first line %s\n", fname);
     return -1;
   }
-  if (4 != sscanf(s, "%d%d%d%d", &i, &lx, &ly, &n) 
+  if (4 != sscanf(s, "%d%d%d%d", &i, &lx, &ly, &n)
       || i != 2 || lx != ly || lx != pt->l || n != pt->n) {
     fprintf(stderr, "bad setting: %dD, %dx%d = %d\n", i, lx, ly, n);
     return -1;

@@ -1,28 +1,33 @@
-CC = gcc -Wall -Wextra -O0 -g3 -pedantic -lm
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic
+LM = -lm
 # optimized compiling
 CX = icc -Wall -O3 -g -vec_report0 -fno-alias -fargument-noalias
+LMX =
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm -Wstrict-aliasing -fstrict-aliasing
+#LMX = -lm
 
 deps = lj.c lj.h rv3.h rv2.h def.h util.h md.c md.h rng.h rng.c Makefile
-bin = $(patsubst %.c,%, $(wildcard test*.c)) \
-      $(patsubst %.c,%_d, $(wildcard test*.c))
+bins = $(patsubst %.c,%, $(wildcard test*.c))
+bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 
-all: $(bin)
+debug: $(bins_d)
 
-$(bin): $(deps)
+build: $(bins)
 
-%_d: %.c
-	$(CC) -o $@ $< -lm
+all: $(bins) $(bins_d)
 
-%: %.c
-	$(CX) -o $@ $<
+$(bins) : %: %.c $(deps)
+	$(CX) -o $@ $< $(LMX)
 
-lj.c: lj.0.c mk2d.py
-	python mk2d.py $@
+$(bins_d) : %_d: %.c $(deps)
+	$(CC) -o $@ $< $(LM)
+
+lj.c: lj.0.c mklj2d.py
+	python mklj2d.py $@
 
 clean:
-	rm -f *~ *.out MTSEED *.dat $(bin) shakefail* rattlefail* lj.pos *.his
+	rm -f *~ *.out MTSEED *.dat $(bins) $(bins_d) shakefail* rattlefail* lj.pos *.his
 	rm -rf bin obj *.layout *.depend
 
-.PHONY: clean all
+.PHONY: clean all debug build
 
