@@ -218,7 +218,7 @@ INLINE int hs2_add1(hist2_t *hs, int r, double x, double y,
 {
   hs2_check(hs);
   return hist2add(&x, &y, 1, w, hs->arr+r*hs->n*hs->m, 1,
-     hs->n, hs->xmin, hs->dx, hs->m, hs->ymin, hs->dy, flags);
+      hs->n, hs->xmin, hs->dx, hs->m, hs->ymin, hs->dy, flags);
 }
 
 #endif

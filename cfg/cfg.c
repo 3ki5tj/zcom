@@ -67,8 +67,8 @@ cfg_t *cfg_open(const char *fn)
     }
 
     /* remove trailing spaces and ';' */
-    for (q = p + strlen(p) - 1;
-         q >= p && (cisspace(*q) || *q == ';'); q--)
+    for ( q = p + strlen(p) - 1;
+          q >= p && (cisspace(*q) || *q == ';'); q--)
       *q = '\0';
 
     /* skip a line without '=' */

@@ -44,10 +44,10 @@ void      is2_close(ising_t *is);
 #define IS2_GETH(is, id, h) { \
   unsigned ix, iy; \
   iy = id / IS2_L, ix = id % IS2_L; \
-  h = is->s[id]*(is->s[iy*IS2_L + (ix+1)%IS2_L] \
-               + is->s[iy*IS2_L + (ix+IS2_L-1)%IS2_L] \
-               + is->s[(iy+1)%IS2_L*IS2_L + ix] \
-               + is->s[(iy-1+IS2_L)%IS2_L*IS2_L + ix]); }
+  h = is->s[id] * ( is->s[iy*IS2_L + (ix+1)%IS2_L] \
+                  + is->s[iy*IS2_L + (ix+IS2_L-1)%IS2_L] \
+                  + is->s[(iy+1)%IS2_L*IS2_L + ix] \
+                  + is->s[(iy-1+IS2_L)%IS2_L*IS2_L + ix] ); }
 #define IS2_IRND(is, id)  id = rand32() >> (32 - 2*IS2_LB);
 /* random picking */
 #define IS2_PICK(is, id, h) { IS2_IRND(is, id); IS2_GETH(is, id, h); }

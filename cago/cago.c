@@ -288,8 +288,8 @@ INLINE real potr12(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
 INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
 {
   int i, j, id, n = go->n, ncwca = go->flags & CAGO_NCWCA;
-  real ene = 0, kb = go->kb, ka = go->ka, kd1 = go->kd1, kd3 = go->kd3,
-       nbe = go->nbe, nbc2 = go->nbc*go->nbc;
+  real ene = 0, kb = go->kb, ka = go->ka, kd1 = go->kd1, kd3 = go->kd3;
+  real nbe = go->nbe, nbc2 = go->nbc*go->nbc;
 
   if (f != NULL) {
     for (i = 0; i < n; i++) rv3_zero(f[i]);
@@ -370,9 +370,9 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
   for (j = i - 1; j <= i + 1; j++) {
     if (j < 1 || j >= n - 1) continue;
     ene -= potang(x[j-1], x[j], x[j+1], go->aref[j-1], ka,
-       NULL, NULL, NULL);
+        NULL, NULL, NULL);
     ene += potang(xn[j-1], xn[j], xn[j+1], go->aref[j-1], ka,
-       NULL, NULL, NULL);
+        NULL, NULL, NULL);
   }
 
   /* dihedrals */

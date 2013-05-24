@@ -190,13 +190,13 @@ INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin,
 }
 
 INLINE int md_mcvrescale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { return md_mcvrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
+  { return md_mcvrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
 INLINE int md_mcvrescale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { return md_mcvrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
+  { return md_mcvrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
 
 /* Nose-Hoover thermostat */
 INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
-   real *zeta, real Q, real *ekin, real *tkin)
+    real *zeta, real Q, real *ekin, real *tkin)
 {
   int i;
   real ek1, ek2, s, dt2 = .5f*dt;
@@ -214,16 +214,16 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
 }
 
 INLINE void md_hoover2d(rv2_t *v, int n, int dof, real tp, real dt,
-   real *zeta, real Q, real *ekin, real *tkin)
+    real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *)v, n*2, dof, tp, dt, zeta, Q, ekin, tkin); }
 
 INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
-   real *zeta, real Q, real *ekin, real *tkin)
+    real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *)v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
 
 /* Nose-Hoover chain thermostat */
 INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
-   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+    real *zeta, const real *Q, int M, real *ekin, real *tkin)
 {
   int i, j;
   real ek1, ek2, s, dt2 = .5f*dt, dt4 = .25f*dt, G, xp = 1.f;
@@ -283,16 +283,16 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
 }
 
 INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
-   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+    real *zeta, const real *Q, int M, real *ekin, real *tkin)
   { md_nhchain((real *)v, n*2, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
 
 INLINE void md_nhchain3d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
-   real *zeta, const real *Q, int M, real *ekin, real *tkin)
+    real *zeta, const real *Q, int M, real *ekin, real *tkin)
   { md_nhchain((real *)v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
 
 /* velocity-scaling Langevin thermostat */
 INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
-   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+    real *zeta, real zeta2, real Q, real *ekin, real *tkin)
 {
   int i;
   real ek1, ek2, s, dt2 = .5f*dt, xp, amp;
@@ -318,11 +318,11 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
 }
 
 INLINE void md_vslang2d(rv2_t *v, int n, int dof, real tp, real dt,
-   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+    real *zeta, real zeta2, real Q, real *ekin, real *tkin)
   { md_vslang((real *)v, n*2, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
 
 INLINE void md_vslang3d(rv3_t *v, int n, int dof, real tp, real dt,
-   real *zeta, real zeta2, real Q, real *ekin, real *tkin)
+    real *zeta, real zeta2, real Q, real *ekin, real *tkin)
   { md_vslang((real *)v, n*3, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
 
 
@@ -506,8 +506,8 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
  * the scaling is r = r*s, p = p/s;
  * set cutoff to half of the box */
 INLINE void md_langtp0(real *v, int n, int d, real barodt,
-   real tp, real pext, real *vol, real vir, real ptail, int ensx,
-   real *ekin, real *tkin)
+    real tp, real pext, real *vol, real vir, real ptail, int ensx,
+    real *ekin, real *tkin)
 {
   int i;
   real pint, amp, vn, s, dlnv;
@@ -533,7 +533,7 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
  * the scaling is r = r*s
  * set cutoff to half of the box */
 INLINE void md_langp0(int dof, int d, real barodt,
-   real tp, real pext, real *vol, real vir, real ptail, int ensx)
+    real tp, real pext, real *vol, real vir, real ptail, int ensx)
 {
   real pintv, amp, dlnv;
 

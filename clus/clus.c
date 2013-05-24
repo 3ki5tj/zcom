@@ -494,8 +494,7 @@ static int cls_metropolis(clsys_t *cls, unsigned flags)
     j = (int)(cls->nc * rnd0());
     j = (i + 1 + j) % (cls->nc + 1); /* m for a new cluster */
   }
-  dene = cls_deremove(cls, i, k, &disi)
-       + cls_deadd(cls, i, k, j, &disj);
+  dene = cls_deremove(cls, i, k, &disi) + cls_deadd(cls, i, k, j, &disj);
 /*
   printf("metro: %d, i %d, j %d, ene %g, %g; dene %g\n", cls->iter, i, j, cls_ene(cls, 0), cls->ene, dene);
 */

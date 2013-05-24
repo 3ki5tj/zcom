@@ -86,7 +86,7 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
   }
   die_if (fmt[0] != '\0' && fmt[0] != '%',
       "unknown format (missing `%%') flag `%s\', fmt `%s', description: %s\n",
-       sflag, fmt, desc);
+      sflag, fmt, desc);
   if (strcmp(fmt, "%b") == 0) {
     fmt = "%d";
     o->flags |= OPT_SWITCH;
@@ -131,9 +131,10 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
 /* search an option list, return an option whose variable address is p */
 INLINE opt_t *opt_find(opt_t *ls, int n, const void *p)
 {
-   int i;
-   for (i = 0; i < n; i++) if (ls[i].ptr == p) return ls + i;
-   return NULL;
+  int i;
+
+  for (i = 0; i < n; i++) if (ls[i].ptr == p) return ls + i;
+  return NULL;
 }
 
 /* search an option list to see if an option is explicitly set */

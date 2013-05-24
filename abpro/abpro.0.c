@@ -245,7 +245,7 @@ int ab_readpos(abpro_t *ab, real *x, real *v, const char *fn)
     rewind(fp);
   } else {
     if (5 != sscanf(s+1, "%d%d%d%d%d", &i, &j, &seq, &next, &hasv)
-       || i != d || j != ab->model || seq != ab->seqid || next != n) {
+        || i != d || j != ab->model || seq != ab->seqid || next != n) {
       fprintf(stderr, "first line is corrupted:\n%s", s);
       goto ERR;
     }
@@ -292,8 +292,9 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   static const real glow = .5, r2max = 4.0;
   lgconstr_t *lgc = ab->lgc;
 
+#ifdef _OPENMP
 #pragma omp threadprivate(r2max, glow)
-
+#endif
   /* pre-compute reference difference */
   for (i = 0; i < n-1; i++)
     rv3_diff(dx0[i], x0[i+1], x0[i]);
@@ -307,18 +308,22 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   }
 
   for (it = 0; it < itmax; it++) {
+    int imin, imax;
+
     again = 0;
-#pragma omp parallel firstprivate(n) private(i, r2, dxi, g)
-   {
 #ifdef _OPENMP
+#pragma omp parallel firstprivate(n) private(i, r2, dxi, g)
+    {
     int ip = omp_get_thread_num();
     int np = omp_get_num_threads();
     int n1 = n - 1;
     int sz = (n1 + np - 1)/np;
-    int imin = ip * sz, imax = (ip + 1) * sz;
+    imin = ip * sz;
+    imax = (ip + 1) * sz;
     if (imax > n1) imax = n1;
 #else
-    int imin = 0, imax = n - 1;
+    imin = 0;
+    imax = n - 1;
 #endif
 
     for (i = imin; i < imax; i++) { /* standard constaints */
@@ -342,18 +347,22 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
         rv3_sinc(x1[i],   dx0[i], -g);
         if (v) rv3_sinc(v[i], dx0[i], -g/dt);
         if (i == imax - 1) {
+#ifdef _OPENMP
 #pragma omp critical
-         {
+#endif
+          {
           rv3_sinc(x1[i+1], dx0[i],  g);
           if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
-         }
+          }
         } else {
           rv3_sinc(x1[i+1], dx0[i],  g);
           if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
         }
       }
     }
-   } /* end of parallel code */
+#ifdef _OPENMP
+    } /* end of parallel code */
+#endif
 
     /* local constraints */
     if (lgcon) {
@@ -630,7 +639,9 @@ static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
   for (i = 0; i < n - 2; i++)
     ua += 1.f - rv3_dot(dx[i+1], dx[i]);
 
+#ifdef _OPENMP
 #pragma omp parallel for reduction(+:ulj) private(i, j)
+#endif
   for (i = 0; i < n - 2; i++) {
     real dr, dr2, dr6;
     for (j = i+2; j < n; j++) {
@@ -663,7 +674,9 @@ static real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
   for (i = 1; i < n-2; i++)
     ud -= .5f * rv3_dot(dx[i+1], dx[i-1]);
 
+#ifdef _OPENMP
 #pragma omp parallel for reduction(+:ulj) private(i, j)
+#endif
   for (i = 0; i < n-2; i++) {
     real dr2, dr6;
     for (j = i+2; j < n; j++) {
@@ -695,6 +708,9 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
   real U = 0.0f, ua = 0.0f, *dxm, *dxp;
+  real dr2, dr6, ff, c;
+  rv3_t *f, dxi;
+  real ulj = 0.f;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
@@ -710,13 +726,9 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
     rv3_sinc(f_g[i+1], dxm,  .25f);
   }
 
+#ifdef _OPENMP
 #pragma omp parallel firstprivate(n) private(i, j)
 { /* parallel code starts here */
-  real dr2, dr6, ff, c;
-  rv3_t *f, dxi;
-  real ulj = 0.f;
-
-#ifdef _OPENMP
   int ip = omp_get_thread_num();
   int np = omp_get_num_threads();
   int imin = ab->homeid[ip], imax = ab->homeid[ip + 1];
@@ -755,16 +767,21 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
     rv3_sinc(f[i], dxi, +ff);
     rv3_sinc(f[j], dxi, -ff);
   }
+
 #ifdef _OPENMP
 #pragma omp barrier
   for (i = imin; i < imax; i++) /* collect global force, f_l flushed by barrier */
     for (j = 0; j < np; j++) {
       rv3_inc(f_g[i], f_l[n*j + i]);
     }
-#endif
+
 #pragma omp atomic
   U += ulj;
 } /* parallel code stops */
+#else
+  U += ulj;
+#endif
+
   return ua * 0.25f + U;
 }
 
@@ -773,6 +790,9 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
   real U = 0.f, ua = 0.f, ud = 0.f, *dxm, *dxp;
+  real dr2, dr6, ff, c;
+  rv3_t *f, dxi;
+  real ulj = 0.f;
 
   for (i = 0; i < n - 1; i++)
     rv3_diff(dx[i], r[i+1], r[i]);
@@ -799,13 +819,9 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
     ud -= .5f*rv3_dot(dxp, dxm);
   }
 
+#ifdef _OPENMP
 #pragma omp parallel firstprivate(n) private(i, j)
 { /* parallel code starts here */
-  real dr2, dr6, ff, c;
-  rv3_t *f, dxi;
-  real ulj = 0.f;
-
-#ifdef _OPENMP
   int ip = omp_get_thread_num();
   int np = omp_get_num_threads();
   int imin = ab->homeid[ip], imax = ab->homeid[ip + 1];
@@ -849,10 +865,13 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
   for (i = imin; i < imax; i++) /* collect global force, barrier flushes f_l */
     for (j = 0; j < np; j++)
       rv3_inc(f_g[i], f_l[n*j + i]);
-#endif
 #pragma omp atomic
   U += ulj;
-}
+} /* parallel code ends here */
+#else
+  U += ulj;
+#endif
+
   return ua + ud + U;
 }
 
@@ -932,7 +951,9 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
   real dth = .5f*dt*fscal;
   rv3_t *v = (rv3_t *)ab->v, *x = (rv3_t *)ab->x, *x1 = (rv3_t *)ab->x1, *f = (rv3_t *)ab->f;
 
+#ifdef _OPENMP
 #pragma omp parallel for schedule(static)
+#endif
   for (i = 0; i < n; i++) { /* vv part 1 */
     rv3_sinc(v[i], f[i], dth);
     rv3_lincomb2(x1[i], x[i], v[i], 1, dt);
@@ -947,7 +968,9 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
 
   ab->epot = ab_force(ab, ab->x, ab->f, soft); /* calculate force */
 
+#ifdef _OPENMP
 #pragma omp parallel for schedule(static)
+#endif
   for (i = 0; i < n; i++) { /* vv part 2 */
     rv3_sinc(v[i], f[i], dth);
   }

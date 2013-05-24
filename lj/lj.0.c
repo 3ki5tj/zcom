@@ -635,8 +635,8 @@ INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *rmin,
     real *ep0, real *eps, real *lap)
 {
   return lj->d == 2 ?
-         lj_energyx2d(lj, (rv2_t *)x, vir, iep, rmin, ep0, eps, lap) :
-         lj_energyx3d(lj, (rv3_t *)x, vir, iep, rmin, ep0, eps, lap);
+      lj_energyx2d(lj, (rv2_t *)x, vir, iep, rmin, ep0, eps, lap) :
+      lj_energyx3d(lj, (rv3_t *)x, vir, iep, rmin, ep0, eps, lap);
 }
 
 /* compute the energy of the current configuration and set lj->epot */
@@ -666,8 +666,9 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
     for (j = i + 1; j < n; j++) {
       dr2 = lj_pbcdist2_3d(dx, x[i], x[j], l);
       if (dr2 > lj->rc2) {
-        if (lj->usesw & LJ_SWALLPAIRS) { /* save out-of-range pairs, so we can later
-            * locate the pair from indices i and j using getpairindex() */
+        /* save out-of-range pairs, so we can later
+         * locate the pair from indices i and j using getpairindex() */
+        if (lj->usesw & LJ_SWALLPAIRS) {
           rv3_copy(pr->dx, dx);
           pr->i = i;
           pr->j = j;
@@ -775,7 +776,7 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
 
 /* compute energy data for a 3D pair with a square well potential */
 INLINE int lj_pairsq3d(const real *xi, const real *xj, real l,
-   real ra2, real rb2, real *pdr2, int inf)
+    real ra2, real rb2, real *pdr2, int inf)
 {
   real dx[3], dr2;
   dr2 = lj_pbcdist2_3d(dx, xi, xj, l);

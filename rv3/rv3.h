@@ -1158,7 +1158,8 @@ INLINE double *dm3_eigval(double v[3], double a[3][3])
     v[1] = m + 2.0 * pr * cos(phi - 2*M_PI/3); /* second largest */
     v[2] = m + 2.0 * pr * cos(phi + 2*M_PI/3); /* smallest */
 #ifdef RV3_DEBUG
-    { int i; double vi, y[3], dy[3];
+    {
+      int i; double vi, y[3], dy[3];
       for (i = 0; i < 3; i++) { vi = v[i] - m; y[i] = vi*(vi*vi - 3*p) - 2 * q; dy[i] = 3*(vi*vi - p); }
       dv3_print(v,  "roots   ", "%26.14e", 1);
       dv3_print(y,  "residues", "%26.14e", 1);

@@ -36,21 +36,21 @@ INLINE real md_ekin3d(rv3_t * RESTRICT v, int n, int dof, real * RESTRICT tkin)
 
 INLINE void md_vscale(real * RESTRICT v, int nd, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vscale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vscale((real *) v, n*2, dof, tp, ekt, ekin, tkin); }
+  { md_vscale((real *) v, n*2, dof, tp, ekt, ekin, tkin); }
 INLINE void md_vscale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vscale((real *) v, n*3, dof, tp, ekt, ekin, tkin); }
+  { md_vscale((real *) v, n*3, dof, tp, ekt, ekin, tkin); }
 
 INLINE void md_vrescale(real * RESTRICT v, int nd, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vrescale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
+  { md_vrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
 INLINE void md_vrescale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
+  { md_vrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
 
 INLINE void md_vrescalex(real * RESTRICT v, int nd, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vrescalex2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vrescalex((real *) v, n*2, dof, tp, dt, ekin, tkin); }
+  { md_vrescalex((real *) v, n*2, dof, tp, dt, ekin, tkin); }
 INLINE void md_vrescalex3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
-    { md_vrescalex((real *) v, n*3, dof, tp, dt, ekin, tkin); }
+  { md_vrescalex((real *) v, n*3, dof, tp, dt, ekin, tkin); }
 
 #endif
 

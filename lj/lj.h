@@ -125,16 +125,16 @@ INLINE void lj_vvx(lj_t *lj, real fscal, real dt);
  * `tp' is the target temperature
  * `ekt' is the observed average kinetic energy over several steps */
 INLINE void lj_vscale(lj_t *lj, real tp, real ekt)
- { md_vscale(lj->v, lj->n * lj->d, lj->dof, tp, ekt, &lj->ekin, &lj->tkin); }
+  { md_vscale(lj->v, lj->n * lj->d, lj->dof, tp, ekt, &lj->ekin, &lj->tkin); }
 
 INLINE void lj_vrescale(lj_t *lj, real tp, real thermdt)
- { md_vrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
+  { md_vrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
 INLINE void lj_vrescalex(lj_t *lj, real tp, real thermdt)
- { md_vrescalex(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
+  { md_vrescalex(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
 INLINE int lj_mcvrescale(lj_t *lj, real tp, real thermdt)
- { return md_mcvrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
+  { return md_mcvrescale(lj->v, lj->n * lj->d, lj->dof, tp, thermdt, &lj->ekin, &lj->tkin); }
 
 /* Nose-Hoover thermostat/barostat
  * set cutoff to half of the box */
@@ -172,7 +172,7 @@ INLINE void lj_langtp(lj_t *lj, real dt, real tp, real pext,
 INLINE void lj_langtp0(lj_t *lj, real barodt, real tp, real pext, int ensx)
 {
   md_langtp0(lj->v, lj->n, lj->d, barodt, tp, pext, &lj->vol,
-     lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
+      lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
   lj_setrho(lj, lj->n/lj->vol);
   lj_force(lj);
 }

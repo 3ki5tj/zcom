@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
-import os, sys, glob, getopt
+''' remove trailing spaces of a text file
+    Copyright (c) 2013 Cheng Zhang '''
+
+import os, sys, getopt
+import fileglob
 
 verbose = 0
 bytessaved = 0
 
-def trim(fn):
+def rtrim(fn):
   ''' remove trailing spaces of file `fn' '''
 
   try:
@@ -37,48 +41,16 @@ def usage():
   """ print usage and die """
   print sys.argv[0], "[Options] input"
   print """
+  Remove trailing spaces
+
   OPTIONS:
 
-   -s: include symbolic links
+   -l: include symbolic links
    -R: apply to subdirectories, if `input' is a wildcard pattern
        like *.c, the pattern must be quoted as '*.c'
    -v: be verbose
   """
   exit(1)
-
-
-def fglob(pat, links = False, dir = None):
-  ''' list files that match `pat' under `dir' '''
-
-  if dir: pat = os.path.join(dir, pat)
-  ls = [ a for a in glob.glob(pat) if os.path.isfile(a) ]
-  if not links: # exclude symbolic links
-    ls = [ a for a in ls if not os.path.islink(a) ]
-  if verbose >= 3 and len(ls): print ls, pat
-  return ls
-
-
-def fileglob(pats, links = False, recur = False):
-  ''' find all files that match a list of patterns `pats' '''
-
-  ls = []
-  if not recur: # list files under this dir
-    ls += [ g for pat in pats for g in fglob(pat, links) ]
-  else: # recursively list all files under all subdirectories
-    root = os.getcwd()
-    for r, d, f in os.walk(root):
-      # stay away from `.git' ...
-      danger = [ len(p) >= 2 and p[0] == "."
-                 for p in r.split(os.sep) ]
-      if sum(danger) > 0: continue
-      ls0 = [ g for p in pats for g in fglob(p, links, r) ]
-      for fn0 in ls0:
-        ls += [ os.path.join(r, fn0), ]
-
-  # remove dupliated files by convert the list to a set
-  # then convert it back to a list
-  ls = list( set(ls) )
-  return ls
 
 
 
@@ -108,23 +80,31 @@ def doargs():
       usage()
 
   # common text files
-  pats = '''*.c *.cpp *.h *.hpp *.java *.py
-            *.m *.ma *.gp *.txt *.tex
-            *.html *.htm *.cfg *.mdp README* *akefile'''.split()
+  pats = '''*.c *.cpp *.h *.hpp *.java
+            *.py *.pl *.rb *.php *.js
+            *.f *.f90 *.f95 *.pas *.bas
+            *.m *.ma *.gp *.tcl
+            *.txt *.tex *.html *.htm
+            *.cfg *.mdp
+            *.sh *.csh
+            README* *akefile'''.split()
+  # add uppercase
+  pats += [ p.upper() for p in pats ]
+  pats = list( set( pats ) )
   if len(args) > 0:
     # parse the pattern in each argument
     pats = [ a for pat in args for a in pat.split() ]
 
   # compile a list of files
-  ls = fileglob(pats, links, recur)
-  if len(ls) <= 0: print "no file"
+  ls = fileglob.fileglob(pats, links, recur)
+  if len(ls) <= 0: print "no file for %s" % pats
   return ls
 
 
 
 def main():
   fns = doargs()
-  for fn in fns: trim(fn)
+  for fn in fns: rtrim(fn)
   print "saved %s bytes" % bytessaved
 
 

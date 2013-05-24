@@ -322,7 +322,7 @@ INLINE int histadd(const double *xarr, double w, double *h, int rows,
     x = xarr[r];
     if (x < xmin) {
       if (verbose)
-       fprintf(stderr, "histadd underflows %d: %g < %g\n", r, x, xmin);
+        fprintf(stderr, "histadd underflows %d: %g < %g\n", r, x, xmin);
       continue;
     }
     ix = (int)((x - xmin)/dx);
@@ -609,7 +609,7 @@ INLINE int hist2add(const double *xarr, const double *yarr, int skip,
     y = yarr[skip*r];
     if (x < xmin || y < ymin) {
       if (verbose)
-       fprintf(stderr, "histadd underflows %d: %g < %g or %g < %g\n",
+        fprintf(stderr, "histadd underflows %d: %g < %g or %g < %g\n",
           r, x, xmin, y, ymin);
       continue;
     }

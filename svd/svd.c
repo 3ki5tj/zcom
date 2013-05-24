@@ -84,19 +84,19 @@ int svd(real *a, real *w, real *v, int m, int n)
   /* accumulate the right-hand transformation */
   for (i = n - 1; i >= 0; i--) {
     if (i < n - 1) {
-        if (g != 0.) {
-            for (j = l; j < n; j++)
-                v[j*n+i] = ((a[i*n+j] / a[i*n+l]) / g);
-                /* real division to avoid underflow */
-            for (j = l; j < n; j++) {
-                for (s = 0.0, k = l; k < n; k++)
-                    s += (a[i*n+k] * v[k*n+j]);
-                for (k = l; k < n; k++)
-                    v[k*n+j] += (s * v[k*n+i]);
-            }
-        }
+      if (g != 0.) {
         for (j = l; j < n; j++)
-            v[i*n+j] = v[j*n+i] = 0.0;
+          v[j*n+i] = ((a[i*n+j] / a[i*n+l]) / g);
+        /* real division to avoid underflow */
+        for (j = l; j < n; j++) {
+          for (s = 0.0, k = l; k < n; k++)
+            s += (a[i*n+k] * v[k*n+j]);
+          for (k = l; k < n; k++)
+            v[k*n+j] += (s * v[k*n+i]);
+        }
+      }
+      for (j = l; j < n; j++)
+        v[i*n+j] = v[j*n+i] = 0.0;
     }
     v[i*n+i] = 1.0;
     g = rv1[i];

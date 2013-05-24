@@ -113,35 +113,35 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
 
       /* Rotations */
       for (j = i; j <= m-1; j++) {
-       /* calculate c and s */
-       if (j == i) {
-         /* First rotation */
-         r = (real) dblhypot(d[i]-ks, e[i]);
-         c = (d[i]-ks)/r;
-         s = e[i]/r;
-       } else {
-         /* Givens rotations */
-         r = (real) dblhypot(e[j-1], f);
-         c = e[j-1]/r;
-         s = f/r;
-         e[j-1] = r;
-       }
+        /* calculate c and s */
+        if (j == i) {
+          /* First rotation */
+          r = (real) dblhypot(d[i]-ks, e[i]);
+          c = (d[i]-ks)/r;
+          s = e[i]/r;
+        } else {
+          /* Givens rotations */
+          r = (real) dblhypot(e[j-1], f);
+          c = e[j-1]/r;
+          s = f/r;
+          e[j-1] = r;
+        }
 
-       /* update the diagonal and off-diagonal elements */
-       r = s*(d[j+1]-d[j]) + 2*c*e[j];
-       d[j]   += s*r;
-       d[j+1] -= s*r;
-       e[j]    = c*r - e[j];
-       f       = s*e[j+1];
-       e[j+1] *= c;
+        /* update the diagonal and off-diagonal elements */
+        r = s*(d[j+1]-d[j]) + 2*c*e[j];
+        d[j]   += s*r;
+        d[j+1] -= s*r;
+        e[j]    = c*r - e[j];
+        f       = s*e[j+1];
+        e[j+1] *= c;
 
-       /* update eigenvectors */
-       for (k = 0; k < n; k++) {
-         t1 = mat[k*n + j];
-         t2 = mat[k*n + j+1];
-         mat[k*n + j]   = c*t1+s*t2;
-         mat[k*n + j+1] = -s*t1+c*t2;
-       }
+        /* update eigenvectors */
+        for (k = 0; k < n; k++) {
+          t1 = mat[k*n + j];
+          t2 = mat[k*n + j+1];
+          mat[k*n + j]   = c*t1+s*t2;
+          mat[k*n + j+1] = -s*t1+c*t2;
+        }
       } /* end of rotations */
     } /* end for iteration */
     /*printf("Iterate %d times for %d'th eigenvalue.\n", iter, i);*/
