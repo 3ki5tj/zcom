@@ -1,0 +1,38 @@
+Object generator
+=================
+
+Overview
+--------
+ * generates object-oriented code that uses zcom functions
+ * manual is found in the string variable `manual' in objgen.py
+
+
+
+Files
+------
+og.py               driver
+|
++-objgen.py         class Object, Fold, Parser and the `manual' string
+  |
+  +-objitm.py       class Item
+  | |
+  | +-objdcl.py     class CDeclaratorList
+  | |
+  | +-objpre.py     class CPreprocessor
+  |
+  +-objcmt.py       class CComment
+  |
+  +-objcow.py       class CCodeWriter
+  |
+  +-objcmd.py       class Commands, user-supplied commands
+  |
+  +-objpos.py       class P(line, column)
+  |
+  +-objext.py       utility functions
+
+The resulting files
+~~~~~~~~~~~~~~~~~~~~
+at.c --> mdXcore.c
+spb.c ---> md2spb.h
+mb.c --> mb_t.c
+

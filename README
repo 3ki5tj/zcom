@@ -15,13 +15,24 @@ Use `_' to define the preceeding module.
 
 Files
 ------
-zcom.0.h        template
-zcom.h          generated from zcom.0.h and modules by assemble.py
-assemble.py     the python script that assemble modules
+zcom.0.h:       template that creates zcom.h
+zcom.h          generated from zcom.0.h, combined header, by assemble.py
+assemble.py     the python script that assembles modules to a single header
+                ./assemble.py -a
 Makefile        Makefile for common tasks, such as `usb', `usball', etc
 gen.mak         generic Makefile to be used for new modules
 license.txt     GPL less license, version 2
 zcompick.py     end-user tool to remove certain modules from zcom.h
+
+
+
+Directories
+-----------
+python          helper python scripts, such as add2d.py, rmdbg.py
+programs        although the project is mainly a library, several useful programs
+                are collected `programs' directory
+cspacer.py      code beautifiers: cspacer.py, rstrip.py
+
 
 Modules
 -------
@@ -60,25 +71,21 @@ cago:           C-alpha Go model
 --
 glez:           common uses for GLUT
 
-zcom.h:         a combination of useful routines
-zcom.0.h:       template that creates zcom.h
-add2host.py     add modules to zcom.h using the template zcom.0.h
-                useful ./add2host.py -a
-
 modules with a leading underscore are experimental, and not added to zcom.h
-
-Although the project is mainly a library, several useful programs
-  are collected `programs' directory
 
 
 Notes:
+-------
 * Try to apply cspacer.py under cspacer to check the source here from time to time
 
 * zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,
   it has no knowledge of modules included later.
 
+
+
 TOOLS:
+-------
 Makefile
   common tasks
   make: call assemble.py to assemble zcom.h from modules
