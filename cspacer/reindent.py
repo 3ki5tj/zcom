@@ -4,21 +4,19 @@
     Copyright (c) 2013 Cheng Zhang
 
     Main functions:
-    * guessindent():    guess the indent size
     * tab2sp():         change leading tabs to spaces
     * reindent():       main function, reformat the leading indents
       reindentf():      wrapper for reindent, accepts a file
+    * guessindent():    guess the indent size
 
     Helper functions:
     * cleanline():      remove comments, then strip()
     * getindent():      get the leading indent of the line
-    * switchpp():       switch the current preprocessor state
-    * switchcmt():      switch the current comment state
     * gcd():            greatest common divisors
 '''
 
 import os, sys, getopt, re
-import fileglob, cfmt
+import fileglob, cparser
 
 verbose = 0
 defindent = "  "
@@ -26,13 +24,11 @@ forcedef = False
 backup = True
 fnout = None
 emacstag = True  # trust Emacs tag for tab size
+fmtcmt = True # treat comment lines as code
 
 strict = False
 maxind = 80 # maximial number of leading characters
 
-# flags for preprocessor and comment states
-PPFLAG = 1
-CMTFLAG = 2
 
 
 
@@ -58,53 +54,6 @@ def getindent(ln):
   else:
     return ln
 
-
-
-def switchpp(ln, pplevel, inpp, incmt):
-  ''' switch the current state for preprocessors '''
-
-  if not incmt:
-    if ln.startswith("#"):
-      inpp = True
-      if ln.startswith("#if"):
-        pplevel += 1
-      elif ln.startswith("#endif"):
-        pplevel = max(pplevel - 1, 0)
-
-  inppthis = inpp
-
-  # compute the pp state of the next line
-  if inpp:
-    # end the processor, unless there's a line continuation
-    if not ln.endswith("\\"):
-      inpp = False
-
-  return pplevel, inpp, inppthis
-
-
-
-"""
-def getprevln(s0, i, inppcmt = None):
-  ''' get the index of the preceeding code line before line `i' '''
-
-  iprev = max(i - 1, 0)
-  while iprev > 0:
-    pln = s0[iprev].strip()
-    pgood = True
-
-    # always skip a blank line
-    if pln == "": pgood = False
-    
-    # the previous line is a label, e.g., EXIT:
-    if re.match("\w+:", pln): pgood = False
-    
-    # comment or preprocessor 
-    if inppcmt and inppcmt[iprev]: pgood = False
-    
-    if pgood: break
-    iprev -= 1
-  return iprev
-"""
 
 
 def gcd(a, b):
@@ -147,21 +96,15 @@ def guessindent(lines):
   # 3. try to guess the indent size
   lntab = 0 # number of lines that uses tabs
   lnsp = [0] * maxind # number of lines that uses spaces
-  pplevel = 0
-  inpp = False  # in preprocessors
-  incmt = False # in comments
+  cp = cparser.CParser()
   lnum = 0
   for line in lines:
     lnum += 1
     ln = line.rstrip()
 
-    # preprocessor control
-    pplevel, inpp, inppthis = cfmt.switchpp(ln, pplevel, inpp, incmt)
-    if inppthis: continue
-
-    # comment control
-    incmt, incmtthis = cfmt.switchcmt(ln, incmt)
-    if incmtthis: continue
+    # skip preprocessor and comments
+    if cp.switchpp(ln): continue
+    if cp.switchcmt(ln): continue
     
     ind = getindent(ln)
     if len(ind) == 0: continue
@@ -175,7 +118,7 @@ def guessindent(lines):
     # compute the number of spaces in the indent
     ns = len(ind)
     if ns == 0: continue
-    if ns % 2 != 0 and verbose >= 2:
+    if ns % 2 != 0 and verbose >= 3:
       print "strange indents", ns, ":", lnum, ":", line.strip()
     if ns < len(lnsp): lnsp[ns] += 1
 
@@ -197,22 +140,51 @@ def guessindent(lines):
 
 
 
-def tab2sp(s0):
+def lntab2sp(s, tab):
+  ''' convert tab into spaces '''
+  s1 = ""
+  for k in range(len(s)):
+    if s[k] == '\t':
+      s1 += " " * int( (len(s1) + tab) / tab ) * tab
+  return s1
+
+
+
+def tab2sp(s0, tabsize = 4):
   ''' remove leading tabs in the indent to spaces
       called in `reindent'  '''
 
-  # guess the soft tab size
-  unitind = guessindent(s0)
-
   s1 = [ln.rstrip() + '\n' for ln in s0]
   n = len(s0)
-  i = 0
-  while i < n:
-    ln = s1[i].rstrip()
-    lnstrip = ln.strip()
-    i += 1
+  iprev = 0
+  cp = cparser.CParser()
+  for i in range(n):
+    # skip preprocessor and comments
+    if cp.switchpp(s0[i]): continue
+    if cp.switchcmt(s0[i]): continue
 
-  return s0[:]
+    ind0 = getindent(s0[i])
+
+    # skip if the previous line has no tab
+    if '\t' in ind0:
+      # compute the proper tabsize
+      indprev0 = getindent(s0[iprev])
+      indprev1 = getindent(s1[iprev])
+      if indprev0 == ind0:
+        # if the indent is the same as the previous line, use the old tab
+        ind1 = indprev1
+      else:
+        # try different tab sizes, and choose the proper one
+        for tb in [2, 4, 8]:
+          ind1 = lntab2sp(ind0, tb)
+          if len(ind1) >= len(indprev1):
+            break
+        if verbose >= 2:
+          print "TAB2SP line %s, [%s|%s]%s" % (i+1, indprev1, ind1, s0[i].strip())
+      # apply the new indent
+      s1[i] = ind1 + s1[i].lstrip()
+    iprev = i
+  return s1
 
 
 
@@ -225,21 +197,22 @@ def reindent(s0):
       between the current line and previous line, and try to
       the mimic the difference in the output '''
 
+
   # remove trailing spaces
   s0 = [ln.rstrip() + '\n' for ln in s0]
-  # change leading tabs to spaces
-  s1 = tab2sp(s0)
-
   unitind = guessindent(s0)
+  # change leading tabs to spaces
+  if unitind != '\t':
+    s1 = tab2sp(s0, len(unitind))
+  else:
+    s1 = s0[:]
+
   level = 0
   levels = [ level ] * len(s0)
   indents = [ "" ] * 100
 
   iprev = 0
-  pplevel = 0
-  inpp = False  # in preprocessor
-  incmt = False # in comments
-  inppcmt = [0] * len(s0)
+  cp = cparser.CParser()
   n = len(s0)
 
   for i in range(n):
@@ -249,17 +222,12 @@ def reindent(s0):
       continue
 
     # preprocessor control
-    pplevel, inpp, inppthis = cfmt.switchpp(lnstrip, pplevel, inpp, incmt)
-    if inppthis:
-      inppcmt[i] = PPFLAG
-      continue
+    if cp.switchpp(lnstrip): continue
 
     # control comments
-    incmt, incmtthis = cfmt.switchcmt(lnstrip, incmt)
-    if incmtthis:
-      inppcmt[i] += CMTFLAG
-      if i > 0: levels[i] = levels[iprev]
-      continue
+    incmt = cp.switchcmt(lnstrip)
+    if not fmtcmt: # skip comments
+      if incmt: continue
 
     # start formating
     lnclean = cleanline(ln)
@@ -268,11 +236,16 @@ def reindent(s0):
     indincr = inddecr = ""
     # if this line has no indent, reset
     if not ln[0].isspace():
-      # avoid resetting if it is a tag line like `EXIT:'
+      # avoid resetting if it is a label line like `EXIT:'
       if re.match(r"\w+:", lnclean):
         s1[i] = s0[i].strip() + '\n'
         continue
-      else:
+      elif level != 0:
+        if incmt: # a quick fix for mdrun.c
+          continue
+        if verbose >= 3:
+          print "RESET indent level %s at line %s: %s" % (level, i+1, lnstrip)
+        # reset the level, nasty trick, should be avoided
         level = 0
     elif i > 0:
       # compute the indent difference from the previous line
@@ -289,6 +262,8 @@ def reindent(s0):
 
     # adjust the indent level, before the current line
     if lnclean.startswith("}"):
+      if verbose >= 3:
+        print "UNDENT line", i+1, "level", level, ":", s1[i].strip()
       level = max(0, level - 1)
     levels[i] = level
 
@@ -314,18 +289,19 @@ def reindent(s0):
     s1[i] = indent + s0[i].strip() + '\n'
 
     # DEBUGGING BLOCK
-    if verbose == 10:
-      print "iprev %s, i %s, [%s,%s]" % (iprev, i, getindent(s0[iprev]), getindent(s0[i]))
-      print "indent [%s], level %d, %d, indprev [%s] indincr [%s] inddecr [%s] follow %s, inppcmt %s\n%s" % (
-          indent, level, levels[iprev], indprev, indincr, inddecr, follow, inppcmt[i], lnstrip)
+    if 0 and i == 381:
+      print "DEBUG iprev %s, i %s, [%s,%s]" % (iprev, i, getindent(s0[iprev]), getindent(s0[i]))
+      print "DEBUG indent [%s], level %d, %d, indprev [%s] indincr [%s] inddecr [%s] follow %s\n%s" % (
+          indent, level, levels[iprev], indprev, indincr, inddecr, follow, lnstrip)
       raw_input()
 
-    # adjust the indent level for the following lines
+    # adjust the indent level for the ensuing lines
     iref = -1
     if lnclean.endswith("{"):
       iref = i
       # if we encounter an ending `) {'
       # try to find its starter if/else/for/while
+      # s.t. we can reset the indent level
       if re.search(r"\)\s*{$", lnclean):
         while iref >= 0:
           lnref = cleanline( s0[iref] )
@@ -340,19 +316,19 @@ def reindent(s0):
             break
           iref -= 1
       ss = getindent(s1[iref])
+      if verbose >= 3:
+        print "INDENT line", i+1, "level", level, "iref", iref+1, ":", s1[iref].strip()
       # try to update also the indent of this level
       # as long as this is not the ground level,
       if level > 0: indents[ level ] = ss
       indents[ level+1 ] = ss + unitind
       level += 1
 
+    # The difference does not count the trailing spaces
     if s1[i] != s0[i] and verbose >= 2:
-      print "%s, prev-level %s, level %s, next-level %s, indent %s, [%s], incmt %s, iprev %s, iref %s\nold:%snew:%s" % (
-          i, levels[iprev], levels[i], level, len(indent), indent, incmt, iprev, iref,
+      print "DIFF: %s, prev-level %s, level %s, next-level %s, indent %s, [%s], incmt %s, iprev %s, iref %s\nold:%snew:%s" % (
+          i+1, levels[iprev], levels[i], level, len(indent), indent, cp.incmt, iprev, iref,
           s0[i], s1[i]),
-      if verbose >= 3:
-        raw_input("indent %s, follow %s, [%s], [%s]" % (
-          indent, follow, getindent(s0[iprev]), indents[:level+2] ) )
     
     # register the last good code line
     iprev = i
@@ -406,7 +382,6 @@ def usage():
    -t:                by default, use tab instead of spaces
    -s n, --spaces=n:  the default number `n' of spaces of an indent
    -f, --force:       always use the default indent
-   -l, --links:       include symbolic links
    -R, --recursive:   apply to subdirectories, if `input' is
                       a wildcard pattern like `*.c',
                       the pattern must be quoted as '*.c'
@@ -422,8 +397,8 @@ def usage():
 def doargs():
   ''' Handle common parameters from command line options '''
   try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "ts:flRo:hv",
-         ["spaces=", "force", "links", "recursive", "output=",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "ts:fRo:hv",
+         ["spaces=", "force", "recursive", "output=",
           "noemacs", "verbose=", "help",])
   except getopt.GetoptError, err:
     # print help information and exit:
@@ -432,7 +407,7 @@ def doargs():
 
   global verbose, defindent, forcedef, fnout, emacstag
 
-  recur = links = False
+  recur = False
 
   for o, a in opts:
     if o in ("-f", "--force",):
@@ -443,8 +418,6 @@ def doargs():
       defindent = "\t"
     elif o in ("-R", "--recursive",):
       recur = True
-    elif o in ("-l", "--links",):
-      links = True
     elif o in ("-o", "--output",):
       fnout = a
     elif o in ("--noemacs",):
@@ -463,7 +436,7 @@ def doargs():
     pats = [ a for pat in args for a in pat.split() ]
 
   # compile a list of files
-  ls = fileglob.fileglob(pats, links, recur)
+  ls = fileglob.fileglob(pats, True, recur)
   if len(ls) <= 0: print "no file for %s" % pats
   return ls
 
