@@ -33,9 +33,9 @@ static void myforce(double *f)
   for (i = 0; i < N*3; i++) f[i] = 0;
   for (i = 0; i < N - 1; i++) {
     for (j = i+1; j < N; j++) {
-      dx[0]=(x[i*3] - x[j*3])*L;
-      dx[1]=(x[i*3+1] - x[j*3+1])*L;
-      dx[2]=(x[i*3+2] - x[j*3+2])*L;
+      dx[0] = (x[i*3] - x[j*3])*L;
+      dx[1] = (x[i*3+1] - x[j*3+1])*L;
+      dx[2] = (x[i*3+2] - x[j*3+2])*L;
       dr2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]; /* no pbc for simplicity */
       if (dr2 > rc2) continue;
       dr2 = 1.f/dr2;

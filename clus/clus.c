@@ -220,7 +220,7 @@ static void cls_check(clsys_t *cls, int acctype)
 /* comparison of two integers */
 static int cls_cmpint_(const void *a, const void *b)
 {
-  return (*(const int *)a) - (*(const int *)b);
+  return (*(const int *) a) - (*(const int *) b);
 }
 
 /* sort 1) indices in a cluster, 2) clusters by size */
@@ -837,7 +837,7 @@ clsys_t *cls_zalgo(clsys_t *cls, int itermax, int method,
       printf("stage %d is complete after %d/%d, emin = %g, lnf = %g, lnfree = %g\n",
           is, it, cls->iter, gemin, lnf, lnfree);
     }
-    if (verbose >= 3 || (verbose >=2 && cls->iter >= itermax)) {
+    if (verbose >= 3 || (verbose >= 2 && cls->iter >= itermax)) {
       for (i = 0; i < nbet; i++) {
         double eav;
         if (hist[i] > 0.) eav = esum[i]/hist[i]; else eav = 0.;

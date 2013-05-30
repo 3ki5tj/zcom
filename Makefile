@@ -45,5 +45,9 @@ dodep::
 	git add [a-z0-9]*/*.h
 	git add [a-z0-9]*/*/zcom.h
 
-.PHONY: zip clean pack usb usball dodep
+# run the code beautifier
+cspacer::
+	python cspacer/cspacer.py -RLwv
+
+.PHONY: zip clean pack usb usball dodep cspacer
 

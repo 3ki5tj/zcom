@@ -102,7 +102,7 @@ def remove_cpp_comments(src):
     s = src[i].strip()
     if s.startswith("//"):
       if verbose >= 2:
-        print "Remove commment [%s]" % s; raw_input()
+        print "Remove comment [%s]" % s; raw_input()
       src = src[:i]+src[i+1:]
     else:
       i += 1

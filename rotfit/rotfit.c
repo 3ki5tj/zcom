@@ -11,7 +11,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   int i;
   real wtot = 0, sq, dev = 0, dev0, detm;
   rv3_t xc, yc, xs, ys, sig, t_;
-  real u[3][3], v[3][3], s[3][3] = {{0,0,0},{0,0,0},{0,0,0}}, xy[3][3], r_[3][3];
+  real u[3][3], v[3][3], s[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, xy[3][3], r_[3][3];
 
   if (r == NULL) r = r_;
   if (t == NULL) t = t_;
@@ -35,7 +35,7 @@ real rotfit3(rv3_t *x, rv3_t *xf, rv3_t *y, const real *w, int n,
   rv3_smul(xc, 1.f/wtot);
   rv3_smul(yc, 1.f/wtot);
 
-  /* 2. compute 3x3 asymmetric covarience matrix S = (x-xc) (y-yc)^T */
+  /* 2. compute 3x3 asymmetric covariance matrix S = (x-xc) (y-yc)^T */
   for (i = 0; i < n; i++) {
     rv3_diff(xs, x[i], xc); /* shift to the center avoid the translation */
     rv3_diff(ys, y[i], yc);

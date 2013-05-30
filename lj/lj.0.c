@@ -298,7 +298,7 @@ INLINE double lj_rdfnorm(int row, int i, double xmin, double dx, void *pdata)
   int npr;
   double x, vsph;
 
-  (void)row;
+  (void) row;
   x = xmin + i*dx;
   if (lj->d == 2)
     vsph = 2.*M_PI*dx*(2*x + dx);
@@ -500,7 +500,7 @@ INLINE void lj_initsw(lj_t *lj, real rs)
  * fscal = -phi = uij'/rij
  * psi = phi'/rij
  * xi = psi'/rij
- * laplacian = psi*rij^2 + 3*phi = psi*rij^2 - 3*fscal */
+ * Laplacian = psi*rij^2 + 3*phi = psi*rij^2 - 3*fscal */
 INLINE real lj_potsw(lj_t *lj, real r, real *fscal, real *psi, real *xi)
 {
   if (r < lj->rs) { /* normal lj */
@@ -635,8 +635,8 @@ INLINE real lj_energyx(lj_t *lj, real *x, real *vir, int *iep, real *rmin,
     real *ep0, real *eps, real *lap)
 {
   return lj->d == 2 ?
-      lj_energyx2d(lj, (rv2_t *)x, vir, iep, rmin, ep0, eps, lap) :
-      lj_energyx3d(lj, (rv3_t *)x, vir, iep, rmin, ep0, eps, lap);
+      lj_energyx2d(lj, (rv2_t *) x, vir, iep, rmin, ep0, eps, lap) :
+      lj_energyx3d(lj, (rv3_t *) x, vir, iep, rmin, ep0, eps, lap);
 }
 
 /* compute the energy of the current configuration and set lj->epot */
@@ -828,7 +828,7 @@ INLINE int lj_depotsq3d(lj_t *lj, int i, const real *xi, real *rm)
   return -npr; /* increased number of pairs == decreased energy */
 }
 
-/* commit a particle displacement for a square wel potential */
+/* commit a particle displacement for a square well potential */
 INLINE void lj_commitsq3d(lj_t *lj, int i, const real *xi, int du)
 {
   rv3_copy(lj->x + i*3, xi);
@@ -1075,7 +1075,7 @@ INLINE real lj_duinsert3d(lj_t *lj, real *xt)
 INLINE real lj_duinsert(lj_t *lj, real *xt)
 { return lj->d == 2 ? lj_duinsert2d(lj, xt) : lj_duinsert3d(lj, xt); }
 
-/* velocity verlet */
+/* velocity Verlet */
 INLINE void lj_vvx(lj_t *lj, real fscal, real dt)
 {
   int i, nd = lj->n*lj->d;
@@ -1108,7 +1108,7 @@ INLINE real lj_bconfsw3d(lj_t *lj, real *udb)
   real dlap, dgdx2;
   rv3_t *h = (rv3_t *) lj->gdg, *f = (rv3_t *) lj->f;
 
-  if(udb) for (i = 0; i < n; i++) rv3_zero(h[i]);  /* g * grad g */
+  if (udb) for (i = 0; i < n; i++) rv3_zero(h[i]);
 
   for (ipr = 0; ipr < npr; ipr++) {
     pr = lj->pr + ipr;
@@ -1161,7 +1161,7 @@ INLINE real lj_vir2sw3d(lj_t *lj)
   return vir2;
 }
 
-/* velocity verlet with the scaling step in the Nose-Hoover barostat */
+/* velocity Verlet with the scaling step in the Nose-Hoover barostat */
 INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta)
 {
   int i, nd = lj->n*lj->d;
@@ -1246,7 +1246,7 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
   return acc;
 }
 
-/* Monte Carlo barostat for the square-well potential, for coordiantes only
+/* Monte Carlo barostat for the square-well potential, for coordinates only
  * suppose lj->rmin has been correctly set
  * use lnvamp 0.03 ~ 0.06 for 256 system */
 INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
@@ -1297,7 +1297,7 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
   return acc;
 }
 
-/* Monte Carlo barostat, coordiantes only
+/* Monte Carlo barostat, coordinates only
  * use lnvamp 0.03 ~ 0.06 for 256 system */
 INLINE int lj_mcplj(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, int ensx, unsigned flags)
@@ -1333,7 +1333,7 @@ INLINE int lj_mcplj(lj_t *lj, real lnvamp, real tp, real pext,
   return acc;
 }
 
-/* Monte Carlo barostat, coordiantes only */
+/* Monte Carlo barostat, coordinates only */
 INLINE int lj_mcp(lj_t *lj, real lnvamp, real tp, real pext,
     real vmin, real vmax, int ensx, unsigned flags)
 {

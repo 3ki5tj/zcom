@@ -4,7 +4,7 @@
 
 static void test_svdsolve(void)
 {
-  double a[N*N] = {1,2,3, 2,3,4, 2,4,5.9999}, b[N] = {2., 4, 4.0};
+  double a[N*N] = {1, 2, 3,  2, 3, 4,  2, 4, 5.9999}, b[N] = {2., 4, 4.0};
   double x[N], y;
   int i, j;
 

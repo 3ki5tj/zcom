@@ -75,11 +75,11 @@ static void glez_keyboardfunc(unsigned char c, int x, int y)
 {
   if (glez_keylow(c, glez_menukey)) return;
   if (glez_keylow(c, glez_user_menukey)) return;
-  /* pass an unhandle key to glez_user_keyboardfunc */
+  /* pass an unhandled key to glez_user_keyboardfunc */
   if (glez_user_keyboardfunc) (*glez_user_keyboardfunc)(c, x, y);
 }
 
-/* create a menu hiararchy as specified by mk */
+/* create a menu hierarchy as specified by mk */
 static void glez_addmenu(glez_menukey_t *mk)
 {
   int i, menuid, subid;
@@ -91,7 +91,7 @@ static void glez_addmenu(glez_menukey_t *mk)
     if (mk[i].sub != NULL) { /* sub menu */
       menuid = glutGetMenu(); /* get menu id */
       subid = glutCreateMenu(glez_menufunc);
-      glez_addmenu(mk[i].sub); /* recursively create submenus */
+      glez_addmenu(mk[i].sub); /* recursively create sub-menus */
       glutSetMenu(menuid); /* return to the menu */
       glutAddSubMenu(mk[i].str, subid);
     } else if (mk[i].key == 0) {

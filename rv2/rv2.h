@@ -29,7 +29,7 @@ INLINE real *rv2_copy(real *x, const real *src) { x[0] = src[0]; x[1] = src[1]; 
 #define rv2_ncopy(x, src, n) memcpy(x, src, 2*n*sizeof(real))
 
 INLINE real rv2_sqr(const real *x) { return x[0]*x[0]+x[1]*x[1]; }
-INLINE real rv2_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]); }
+INLINE real rv2_norm(const real *x) { return (real) sqrt(x[0]*x[0]+x[1]*x[1]); }
 
 INLINE real rv2_dot(const real *x, const real *y) { return x[0]*y[0]+x[1]*y[1]; }
 
@@ -138,7 +138,7 @@ INLINE real *rv2_lincomb2(real *sum, const real *a, const real *b, real s1, real
   return sum;
 }
 
-/* consine of the angle of x1-x2-x3 */
+/* cosine of the angle of x1-x2-x3 */
 INLINE real rv2_cosang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {

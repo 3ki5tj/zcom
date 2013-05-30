@@ -34,9 +34,9 @@ INLINE int opt_getval(opt_t *o)
   const char *fmt = o->fmt;
 
   if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
-    *(const char **)o->ptr = o->val;
+    *((const char **) o->ptr) = o->val;
   } else if (strcmp(fmt, "%s") == 0) { /* copy the string */
-    sscpy( *(char **)o->ptr, o->val);
+    sscpy( *((char **) o->ptr), o->val);
   } else { /* call sscanf */
     if (strcmp(fmt, "%r") == 0) /* real */
       fmt = (sizeof(real) == sizeof(float)) ? "%f" : "%lf";
@@ -108,7 +108,7 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
     fprintf(fp, (o->pfmt ? o->pfmt : fmp), *(type *)o->ptr)
 
   if (fmt == NULL || *fmt == '\0' || strcmp(fmt, "%s") == 0)
-    fprintf(fp, "%s", (*(char **)o->ptr) ? (*(char **)o->ptr) : "NULL");
+    fprintf(fp, "%s", (*(char **) o->ptr) ? (*(char **) o->ptr) : "NULL");
   ELIF_PF_("%b", "%d", int); /* switch */
   ELIF_PF_("%d", "%d", int);
   ELIF_PF_("%u", "%u", unsigned);
@@ -124,7 +124,7 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
   ELIF_PF_("%f", "%g", float);
   ELIF_PF_("%lf", "%g", double);
   ELIF_PF_("%r", "%g", real);
-  else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *)o->ptr);
+  else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *) o->ptr);
 #undef ELIF_PF_
 }
 

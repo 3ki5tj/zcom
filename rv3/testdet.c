@@ -46,7 +46,7 @@ static void rot(real r[3][3], real u[3][3])
 
 int main(void)
 {
-  real r[3][3] = {{1,0,0}, {0,1,0}, {0,0,1}}, u[3][3], v[3][3], detm, amp = 0.5;
+  real r[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}, u[3][3], v[3][3], detm, amp = 0.5;
   int i;
 
   for (i = 0; i < 1000; i++) {

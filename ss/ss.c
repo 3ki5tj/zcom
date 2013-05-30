@@ -46,7 +46,7 @@ INLINE struct ssheader *sslistfind_(const char *s)
 }
 
 /* simply add the entry h at the begining of the list
- * we do not accept a precalculated hash value,
+ * we do not accept a pre-calculated hash value,
  * since realloc might have changed it
  * */
 INLINE struct ssheader *sslistadd_(struct ssheader *h)

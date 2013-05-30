@@ -36,7 +36,7 @@
 
   5.  If the compiler supports keywords inline and restrict, write
         #define INLINE inline
-        #define RESRICT restrict
+        #define RESTRICT restrict
       before including this file. Otherwise the two keywords are guessed
       according to the compiler.
 
@@ -63,7 +63,7 @@
 /* build dependencies */
 
 /* manage storage class: static is the safer choice
-   to avoid naming conclict.  Example:
+   to avoid naming conflict.  Example:
    both m.c and n.c include this file,
    m.c --> m.o, n.c --> n.o, m.o+n.o --> a.out
    static is the only way to avoid naming conflict in this case.

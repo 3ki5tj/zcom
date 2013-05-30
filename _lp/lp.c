@@ -13,7 +13,7 @@ lpcore_t *lpcore_open(int n, int m)
   xnew(lp->c, (n+2)*(m+1));
   for (i = 0; i < (n+2)*(m+1); i++) lp->c[0] = 0.0f;
   xnew(lp->a, m+1);
-  for (j = 0; j <= m; j++) /* map array indicies */
+  for (j = 0; j <= m; j++) /* map array indices */
     lp->a[j] = lp->c + j*(n + 2);
   xnew(lp->nid, n + 2);
   for (i = 0; i <= n + 1; i++) lp->nid[i] = i;

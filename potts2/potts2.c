@@ -45,7 +45,7 @@ INLINE int pt2_load(potts_t *pt, const char *fname)
     return -1;
   }
   for (i = 0; i < n; i++) {
-    while ((c=fgetc(fp)) != EOF && c == '\n') ;
+    while ((c = fgetc(fp)) != EOF && c == '\n') ;
     if (c == EOF) break;
     c -= '0';
     if (c < 0 || c >= pt->q) {

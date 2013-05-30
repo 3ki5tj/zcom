@@ -5,7 +5,7 @@
 
 static void test_svd(void)
 {
-  double a[M*N] = {1,2, 2,3, 3,4};
+  double a[M*N] = {1, 2,  2, 3,  3, 4};
   double u[M*N], v[N*N], w[N];
   int i, j;
 

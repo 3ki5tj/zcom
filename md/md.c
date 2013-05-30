@@ -23,7 +23,7 @@ INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int 
 INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 {
   int i;
-  real am, r2, xc[2] = {0,0}, xi[2];
+  real am, r2, xc[2] = {0, 0}, xi[2];
 
   for (i = 0; i < n; i++) rv2_inc(xc, x[i]);
   rv2_smul(xc, 1.f/n);
@@ -52,7 +52,7 @@ INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 INLINE void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
 {
   int i;
-  real xc[3] = {0,0,0}, xi[3], ang[3], am[3] = {0,0,0}, dv[3], mat[3][3], inv[3][3];
+  real xc[3] = {0, 0, 0}, xi[3], ang[3], am[3] = {0, 0, 0}, dv[3], mat[3][3], inv[3][3];
   real xx = 0, yy = 0, zz = 0, xy = 0, zx = 0, yz = 0;
 
   for (i = 0; i < n; i++) rv3_inc(xc, x[i]);
@@ -215,11 +215,11 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
 
 INLINE void md_hoover2d(rv2_t *v, int n, int dof, real tp, real dt,
     real *zeta, real Q, real *ekin, real *tkin)
-  { md_hoover((real *)v, n*2, dof, tp, dt, zeta, Q, ekin, tkin); }
+  { md_hoover((real *) v, n*2, dof, tp, dt, zeta, Q, ekin, tkin); }
 
 INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
     real *zeta, real Q, real *ekin, real *tkin)
-  { md_hoover((real *)v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
+  { md_hoover((real *) v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
 
 /* Nose-Hoover chain thermostat */
 INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
@@ -259,7 +259,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
 
-  /* the first thermotat variable */
+  /* the first thermostat variable */
   if (M >= 2) {
     xp = exp(-dt4*zeta[1]);
     zeta[0] *= xp;
@@ -284,11 +284,11 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
 
 INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
     real *zeta, const real *Q, int M, real *ekin, real *tkin)
-  { md_nhchain((real *)v, n*2, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+  { md_nhchain((real *) v, n*2, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
 
 INLINE void md_nhchain3d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
     real *zeta, const real *Q, int M, real *ekin, real *tkin)
-  { md_nhchain((real *)v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+  { md_nhchain((real *) v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
 
 /* velocity-scaling Langevin thermostat */
 INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
@@ -319,11 +319,11 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
 
 INLINE void md_vslang2d(rv2_t *v, int n, int dof, real tp, real dt,
     real *zeta, real zeta2, real Q, real *ekin, real *tkin)
-  { md_vslang((real *)v, n*2, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
+  { md_vslang((real *) v, n*2, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
 
 INLINE void md_vslang3d(rv3_t *v, int n, int dof, real tp, real dt,
     real *zeta, real zeta2, real Q, real *ekin, real *tkin)
-  { md_vslang((real *)v, n*3, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
+  { md_vslang((real *) v, n*3, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
 
 
 /* Anderson thermostat */
@@ -436,7 +436,7 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
   *eta *= xpz;
 
   /* 5. thermostat */
-  /* 5.A the first thermotat variable */
+  /* 5.A the first thermostat variable */
   if (M >= 2) {
     xp = exp(-dt4*zeta[1]);
     zeta[0] *= xp;

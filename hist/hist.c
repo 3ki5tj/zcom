@@ -125,15 +125,15 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
     for (i = imin; i < imax; i++) {
       if ((flags & HIST_NOZEROES) && p[i] < 1e-6)
         continue;
-      fprintf(fp,"%g ", xmin+(i+delta)*dx);
+      fprintf(fp, "%g ", xmin+(i+delta)*dx);
       if (flags & HIST_KEEPHIST)
         fprintf(fp, "%20.14E ", p[i]);
       rp = (r == rows) ? (-1) : r;
       if (fnorm != NULL) /* advanced normalization, note the r = -1 case */
         fac = (*fnorm)(rp, i, xmin, dx, pdata);
-      fprintf(fp,"%20.14E %d\n", p[i]*fac, rp);
+      fprintf(fp, "%20.14E %d\n", p[i]*fac, rp);
     }
-    fprintf(fp,"\n");
+    fprintf(fp, "\n");
   }
   fclose(fp);
   if (flags & HIST_VERBOSE) {
@@ -464,12 +464,12 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
           continue;
         x = xmin + (i+delta)*dx;
         y = ymin + (j+delta)*dy;
-        fprintf(fp,"%g %g ", x, y);
+        fprintf(fp, "%g %g ", x, y);
         if (flags & HIST_KEEPHIST)
           fprintf(fp, "%20.14E ", p[i*m+j]);
-        fprintf(fp,"%20.14E %d\n", p[i*m+j]*fac, r);
+        fprintf(fp, "%20.14E %d\n", p[i*m+j]*fac, r);
       }
-      fprintf(fp,"\n");
+      fprintf(fp, "\n");
     }
     fprintf(fp, "\n#\n");
   }

@@ -8,7 +8,7 @@ import os, sys, getopt
 verbose = 0
 bytessaved = 0
 
-def rtrim(fn):
+def rtrimf(fn):
   ''' remove trailing spaces of file `fn' '''
 
   try:
@@ -98,7 +98,7 @@ def doargs():
 
 def main():
   fns = doargs()
-  for fn in fns: rtrim(fn)
+  for fn in fns: rtrimf(fn)
   print "saved %s bytes" % bytessaved
 
 

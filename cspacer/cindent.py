@@ -87,11 +87,11 @@ def endingcmt(ln, incmt = False):
       if not m1: return False
       # both '//' and '/*' exist
       if m2.start(1) < m1.start(1):
-        # `//' preceeds `/*'
+        # `//' precedes `/*'
         #print "line comment:", ln[m2.start(1):]
         return False
       elif not m:
-        # `/*' preceeds `//', but no '*/'
+        # `/*' precedes `//', but no '*/'
         return True
       else: pass # closed `/* ... */', pass through
 

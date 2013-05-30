@@ -308,13 +308,13 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
     ene += potdih13(x[i], x[i+1], x[i+2], x[i+3], go->dref[i],
         kd1, kd3, f[i], f[i+1], f[i+2], f[i+3]);
 
-  /* nonbonded */
+  /* non-bonded */
   for (i = 0; i < n - 4; i++)
     for (j = i + 4; j < n; j++) {
       id = i*n + j;
       if ( go->iscont[id] ) { /* contact pair */
         ene += pot1210(x[i], x[j], go->r2ref[id], nbe, f[i], f[j]);
-      } else { /* noncontact pair */
+      } else { /* non-contact pair */
         ene += ncwca ? potwca(x[i], x[j], nbc2, nbe, f[i], f[j])
           : potr12(x[i], x[j], nbc2, nbe, f[i], f[j]);
       }
@@ -322,21 +322,21 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
   return ene;
 }
 
-/* velocity verlet */
+/* velocity Verlet */
 INLINE int cago_vv(cago_t *go, real fscal, real dt)
 {
   int i, n = go->n;
   real dth = .5f*dt;
   rv3_t *v = go->v, *x = go->x, *f = go->f;
 
-  for (i = 0; i < n; i++) { /* vv part 1 */
+  for (i = 0; i < n; i++) { /* VV part 1 */
     rv3_sinc(v[i], f[i], dth*fscal);
     rv3_sinc(x[i], v[i], dt);
   }
 
   go->epot = cago_force(go, go->x, go->f); /* calculate force */
 
-  for (i = 0; i < n; i++) { /* vv part 2 */
+  for (i = 0; i < n; i++) { /* VV part 2 */
     rv3_sinc(v[i], f[i], dth*fscal);
   }
   go->ekin = cago_ekin(go, go->v);
@@ -384,7 +384,7 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
         kd1, kd3, NULL, NULL, NULL, NULL);
   }
 
-  /* nonbonded interaction */
+  /* non-bonded interaction */
   for (j = 0; j < n; j++) {
     if (abs(i - j) < 4) continue;
 
@@ -392,7 +392,7 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
     id = i*n + j;
     if ( go->iscont[id] ) { /* contact pair */
       ene -= pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
-    } else { /* noncontact pair */
+    } else { /* non-contact pair */
       ene -= ncwca ? potwca(x[i], x[j], nbc2, nbe, NULL, NULL)
         : potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
     }
@@ -400,7 +400,7 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
     /* add the new energies */
     if ( go->iscont[id] ) { /* contact pair */
       ene += pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
-    } else { /* noncontact pair */
+    } else { /* non-contact pair */
       ene += ncwca ? potwca(x[i], x[j], nbc2, nbe, NULL, NULL)
         : potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
     }

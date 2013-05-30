@@ -61,7 +61,7 @@ bitws  = r"(\|\||\&\&)"  # || or &&
 # pattern, replacement, description
 rules_basic = [];
 rule_else = [
-    (r"\belse{",                   "else {",       r"\belse{"),
+    (r"\Else{",                   "else {",       r"\belse{"),
     (r"}else\b",                   "} else",       r"}else\b"),
     ]
 
@@ -226,7 +226,7 @@ def c_parse_line(s, cstype = 0):
 
   `cstype' is the current cstype
   '''
-  lst = [(s, cstype)] # construct an inital list
+  lst = [(s, cstype)] # construct an initial list
   id  = 0
 
   while id < len(lst):
@@ -256,7 +256,7 @@ def c_parse_line(s, cstype = 0):
 
 
 def backup_file(file, ext = "", verbose = 1):
-  ''' backup file to a nonexisting name '''
+  ''' backup file to a nonexistent name '''
   fn = file + ext
   i = 1
   if ext == "": fn += str(i)
@@ -424,12 +424,13 @@ def addspacef(fninp, fnout = ""):
     print "cannot open", fninp
     return
 
+  if verbose >= 2: print "processing", fninp
   olines, nchanges = addspace(ilines)
 
   # print the number of changes
   if not nchanges:
     if verbose:
-      print "Input", fninp, "is fine, I have nothing to change."
+      print "keep", fninp
     return
   else:
     nlines = len(ilines)
@@ -463,10 +464,11 @@ def usage():
    -R, --recursive        recursively apply to subdirectories
                           if `input' is a wildcard pattern like *.c
                           the pattern must be quoted as '*.c'
+   -L, --nolinks          skip symbolic links
    -w, --overwrite=       overwrite the original file
    -a, --add              add space around +, -, &, |
    --paren2               convert if(_ to if_(, and _){ to )_{
-   --noknr                allow { to hange after ) for functions
+   --noknr                allow { to hang after ) for functions
    --noparen0             don't convert if( to if (
    --noparen1             don't convert ){ to ) {
    --noelse               don't convert }else{ to } else {
@@ -491,7 +493,7 @@ def doargs():
       results saved to module attributes '''
 
   try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvbwacR",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvbwacRL",
          ["help", "verbose=", "backup", "overwrite",
           "add", "conservative", "nocomma", "noscolon",
           "noassign", "nocmp", "noter",
@@ -499,7 +501,8 @@ def doargs():
           "noelse", "noknr", "nobitws",
           "nospb4quo",
           "cppcmt",
-          "--recursive"])
+          "--recursive", "--nolinks",
+         ])
   except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -522,10 +525,13 @@ def doargs():
   global use_rule_spb4quo
 
   recur = False
+  links = True
 
   for o, a in opts:
     if o in ("-R", "--recursive",):
       recur = True
+    elif o in ("-L", "--nolinks",):
+      links = False
     elif o in ("-b", "-w", "--backup", "--overwrite"):
       overwrite = 1
     elif o in ("--cppcmt",):
@@ -569,7 +575,7 @@ def doargs():
       print "disable the comparison rule"
     elif o in ("--noter",):
       use_rule_ter = 0
-      print "disable the terary rule"
+      print "disable the ternary rule"
     elif o in ("--nobitws",):
       use_rule_bitws = 0
       print "disable the bitws rule"
@@ -597,7 +603,7 @@ def doargs():
   ls = args
   try: # limit the dependence on fileglob
     import fileglob
-    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", True, recur)
+    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", links, recur)
   except ImportError: pass
   return ls
 

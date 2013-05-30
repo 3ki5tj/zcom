@@ -6,12 +6,12 @@
 #define LP_H__
 typedef struct {
   int n; /* number of non-basic variables */
-  int m; /* number of connstraints, i.e., basic variables */
+  int m; /* number of constraints, i.e., basic variables */
   double *c;  /* c[1..n]: coefficients to objective function: -c[0]  + sum_i c[i] xi
                * array also the space holder for a[][] */
   double **a; /* a[1..m][0..n]: constraints */
-  int *nid; /* indicies for nonbasic varaibles */
-  int *mid; /* indicies for the basic variables */
+  int *nid; /* indices for nonbasic variables */
+  int *mid; /* indices for the basic variables */
 } lpcore_t;
 
 lpcore_t *lpcore_open(int n, int m);

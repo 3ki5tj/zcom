@@ -37,7 +37,7 @@ cfg_t *cfg_open(const char *fn)
       }
 
       /* replace successive CR/LF by spaces for efficiency
-         the size of the key-table == the number of nonblank lines */
+         the size of the key-table == the number of non-blank lines */
       for (j = i+1; j < size && cisspace(p[j]); j++) p[j] = ' ';
     }
   }
@@ -116,7 +116,7 @@ int cfg_add(cfg_t *cfg, const char *key, const char *fmt,
 
 /* match requested options with entries in cfg file
  * returns 0 if successful
- * if mandetory variables are not set, the return `ret' contains CFG_NOTSET
+ * if mandatory variables are not set, the return `ret' contains CFG_NOTSET
  * if `flags' has OPT_CHECKUSE, the return `ret' has CFG_UNUSED if
  * there are unused variables */
 int cfg_match(cfg_t *cfg, unsigned flags)

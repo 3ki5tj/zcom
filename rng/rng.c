@@ -2,7 +2,7 @@
 #define RNG_C__
 #include "rng.h"
 
-/* Mersenne Twister was developped by Makoto Matsumoto and Takuji Nishimura */
+/* Mersenne Twister was developed by Makoto Matsumoto and Takuji Nishimura */
 #define MT_N 624
 #define MT_M 397
 #define MT_UMASK 0x80000000UL /* most significant w-r bits */
@@ -12,15 +12,15 @@ int mtidx_ = -1; /* index in mt_, -1: uninitialized */
 uint32_t mt_[MT_N]; /* array for the mt state vector */
 
 /* save the current mt state to file */
-INLINE int mtsave(const char *fname)
+INLINE int mtsave(const char *fn)
 {
   FILE *fp;
   int k;
 
   if (mtidx_ < 0) return 1; /* RNG was never used, so it cannot be saved */
-  if (fname == NULL) fname = MTFILE;
-  if ((fp = fopen(fname, "w")) == NULL) {
-    fprintf(stderr, "cannot save to %s.\n", fname);
+  if (fn == NULL) fn = MTFILE;
+  if ((fp = fopen(fn, "w")) == NULL) {
+    fprintf(stderr, "cannot save to %s.\n", fn);
     return 1;
   }
   fprintf(fp, "MTSEED\n%d\n", mtidx_);
@@ -29,28 +29,28 @@ INLINE int mtsave(const char *fname)
   return 0;
 }
 
-/* load mt state from `fname', or if it fails, use `seed' to initialize mt  */
-INLINE int mtload(const char *fname, uint32_t seed)
+/* load mt state from `fn', or if it fails, use `seed' to initialize mt  */
+INLINE int mtload(const char *fn, uint32_t seed)
 {
   static char s[64];
   int k, z, err = 1;
   FILE *fp;
 
-  if (fname == NULL) fname = MTFILE;
-  if ((fp = fopen(fname, "r")) != NULL) { /* try to load from file */
+  if (fn == NULL) fn = MTFILE;
+  if ((fp = fopen(fn, "r")) != NULL) { /* try to load from file */
     if (fgets(s, sizeof s, fp) == NULL) {
-      fprintf(stderr, "%s is empty\n", fname);
+      fprintf(stderr, "%s is empty\n", fn);
     } else if (strncmp(s, "MTSEED", 6) != 0) { /* to check the first line */
       fprintf(stderr, "mtrand: corrupted file.\n");
     } else if (fscanf(fp, "%d", &mtidx_) != 1) {
-      fprintf(stderr, "no index in %s\n", fname);
+      fprintf(stderr, "no index in %s\n", fn);
     } else {
       if (mtidx_ < 0) mtidx_ = MT_N; /* request updating */
       for (z = 1, k = 0; k < MT_N; k++) {
         if (fscanf(fp, "%"PRIu32, &mt_[k]) != 1) break;
         if (mt_[k] != 0) z = 0; /* a non-zero number */
       }
-      if (k != MT_N) fprintf(stderr, "%s incomplete %d/%d\n", fname, k, MT_N);
+      if (k != MT_N) fprintf(stderr, "%s incomplete %d/%d\n", fn, k, MT_N);
       else err = z; /* clear error, if array is nonzero */
     }
     fclose(fp);
@@ -135,8 +135,8 @@ INLINE double randgam(int k)
   }
 
   /* generate gamma distribution by the rejection method */
-  for(;;) {
-    /* generate lorentz distribution, centered at k1, width is sqrt(2.0*k - 1)
+  for (;;) {
+    /* generate Lorentz distribution, centered at k1, width is sqrt(2.0*k - 1)
      p(y) = 1/pi/(1 + y^2), x = y*w + k1, w = sqrt(2.0*k - 1) */
     for (;;) { /* get a unit circle */
       v1 = 2.0*rnd0() - 1.0;

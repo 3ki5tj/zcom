@@ -16,7 +16,7 @@ Usage
 Example through zcom.h
 ~~~~~~~~~~~~~~~~~~~~~~
 A basic MD example, which uses this module through zcom.h is:
-  examle/go.c
+  example/go.c
 Go to the `example' directory, type `make', and play with it.
 
 Several example test code
@@ -61,7 +61,7 @@ Functions:
       or somewhere close the to the native
 
   cago_vv()
-      velocity verlet
+      velocity Verlet
 
   cago_vrescale()
       velocity rescaling

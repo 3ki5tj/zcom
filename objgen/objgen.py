@@ -61,7 +61,7 @@ Commands of an item:
               is first removed before applying $kprefix
   * $kargs:   printf arguments in constructing key
 
-  * $must:    a critial key that must present in configuration file
+  * $must:    a critical key that must present in configuration file
 
   * $prereq:    a general prerequisite that applies to accessing data
                 usually related to MPI rank.
@@ -96,7 +96,7 @@ Commands of an item:
               $usr:parent; declare the variable represents
                 a pointer to the parent object, the pointer is
                 function parameter of cfgopen()!
-              $usr:bin; correpsonding value from parameters
+              $usr:bin; corresponding value from parameters
                 but the variable is not declared in the struct
                 similar $usr:rb; $usr:wb; $usr:close;
               $usr:rbtmp; temporary variable to be used in readbin()
@@ -118,7 +118,7 @@ Commands of an item:
               $mpi:0; or no $mpi declaration: the pointer is set to NULL
                   for non-masters.
 
-  * $bcast:   declare a variable is to be regularly broadcasted, so it is
+  * $bcast:   declare a variable is to be regularly broadcast, so it is
               put in the bcast() function.
               Note: this is to be distinguished from the initial bcast() in
               initmpi(), which only happens once
@@ -218,7 +218,7 @@ class Object:
     self.add_dummies() # add dummy declarations for flags and alts
     self.get_gtype()   # generic type, needs cmds, must be after get_cmds
     self.get_prefix()  # determine fprefix, ptrname and parent
-    self.init_folds()  # initialize different folds, get prefices
+    self.init_folds()  # initialize different folds, get prefixes
     self.enrich_cmds() # assign default values, etc.
     return 0
 
@@ -354,7 +354,7 @@ class Object:
         if it.pre:
           cmds.addpre(it.pre.pif, it.pre.pelse, it.pre.pendif)
       #if "cnt" in p_cmds:
-      #  print "cnt is persistent when analysing %s in %s" % (it, self)
+      #  print "cnt is persistent when analyzing %s in %s" % (it, self)
       #  raw_input()
 
       # update global persistent commands
@@ -477,7 +477,7 @@ class Object:
     '''
     determine ptrname, variable name for a pointer to the object
     and fprefix, the name attached to functions of the object
-    also find variable's name is parent
+    also find variable name is parent
     '''
     cmds = self.cmds
     name = self.name

@@ -17,6 +17,7 @@ def fglob(pat, links = False, dir = None):
   ls = [ a for a in glob.glob(pat) if os.path.isfile(a) ]
   if not links: # exclude symbolic links
     ls = [ a for a in ls if not os.path.islink(a) ]
+  ls = [ os.path.realpath(a) for a in ls ]
   return ls
 
 
@@ -45,6 +46,7 @@ def fileglob(pats, links = False, recur = False):
   # remove dupliated files by convert the list to a set
   # then convert it back to a list
   ls = list( set(ls) )
+  ls.sort()
   return ls
 
 

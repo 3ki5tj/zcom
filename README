@@ -9,8 +9,8 @@ Individual module should have their separate directories, except
 Code should be concise and limited in size,
   module names should be short.
 
-Use symbolic links to define intermodular dependence,
-Use `_' to define the preceeding module.
+Use symbolic links to define inter-modular dependence,
+Use `_' to define the preceding module.
 
 
 Files
@@ -48,9 +48,9 @@ rv2:            real [2] vectors and 2x2 matrices
 rv3:            real [3] vectors and 3x3 matrices
 eig:            eigenvalues and eigenvectors
 lu:             LU decomposition
-svd:            single value decomposion
+svd:            single value decomposition
 rotfit:         fit two structures via rotation and translation
-savgol:         compute Savitzky-Golay coeffcients
+savgol:         compute Savitzky-Golay coefficients
 specfunc:       special functions
 opt:            options
 argopt:         command line arguments and options
@@ -76,7 +76,7 @@ modules with a leading underscore are experimental, and not added to zcom.h
 
 Notes:
 -------
-* Try to apply cspacer.py under cspacer to check the source here from time to time
+* Try to apply cspacer.py/reindent.py under cspacer to check the source here from time to time
 
 * zcom.h should not have a routine like zcom_finish()
   because in case of multiple inclusion, zcom_finish is defined in the first instance,

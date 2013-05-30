@@ -33,7 +33,7 @@ static void mkrotz(real m[3][3], real th)
 int main(void)
 {
   real u[3][3], v[3][3], amp = 0.5f, tol = 1e-5f;
-  real vx[3] = {2, 0, 0}, vy[3] = {0, -2.3, 0}, vz[3] = {0, 0, 1.5f}, vd[3] = {1,1,1}, a[3];
+  real vx[3] = {2, 0, 0}, vy[3] = {0, -2.3, 0}, vz[3] = {0, 0, 1.5f}, vd[3] = {1, 1, 1}, a[3];
 
   mkrotx(u, amp);
   rm3_mkrot(v, vx, amp);

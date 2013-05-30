@@ -60,7 +60,7 @@ INLINE int cfgget(cfg_t *cfg, void *var, const char *key, const char *fmt)
     cfgln_t *cln = cfg->lns + i;
     if (cln->key != NULL && strcmp(cln->key, key) == 0) {
       if (strcmp(fmt, "%s") == 0) { /* string */
-        sscpy( *(char **)var, cln->val); /* make a copy and return */
+        sscpy( *((char **) var), cln->val); /* make a copy and return */
         return 0;
       } else /* use sscanf for other cases, like int, float,... */
         return EOF == sscanf(cln->val, fmt, var) ? 2 : 0;

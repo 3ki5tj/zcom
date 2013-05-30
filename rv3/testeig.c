@@ -38,7 +38,7 @@ static void testsimp(void)
   /* general eigen system */
   printf("\n\nCHECKING using eigsys()...\n");
   memcpy(mat, a, sizeof(mat));
-  eigsym((real *)mat, v, (real *)vecs, 3);
+  eigsym((real *) mat, v, (real *) vecs, 3);
   printf("eigenvalues are %g, %g, %g\n", v[0], v[1], v[2]);
   for (j = 0; j < 3; j++)
     printf("eigenvector %d: %g, %g, %g\n", j, vecs[0][j], vecs[1][j], vecs[2][j]);
@@ -58,7 +58,7 @@ static void testspeed(int ntests)
 #else
     /* general eigen system */
     memcpy(mat, a, sizeof(mat));
-    eigsym((real *)mat, v, (real *)vecs, 3);
+    eigsym((real *) mat, v, (real *) vecs, 3);
 #endif
   }
 }

@@ -89,7 +89,7 @@ INLINE int is2_load(ising_t *is, const char *fname)
     return -1;
   }
   for (i = 0; i < n; i++) {
-    while ((c=fgetc(fp)) != EOF && c == '\n') ;
+    while ((c = fgetc(fp)) != EOF && c == '\n') ;
     if (c == EOF) break;
     is->s[i] = (c == ' ') ? -1 : 1;
   }
@@ -174,7 +174,7 @@ INLINE double is2_exact(ising_t *is, double beta, double *eav, double *cv)
     lnd = lnaddn(lnc, 6.);
     lnz = lnd + log2;
     if (eav) *eav = -8.*exp(lndif(x, -x) - lnd); /* -8*sinh(8*b)/(3+cosh(8*h)) */
-    if (cv) *cv = bsqr * 384. * exp(lnaddn(lnc,2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
+    if (cv) *cv = bsqr * 384. * exp(lnaddn(lnc, 2./3) - 2.0*lnd); /* 64*(1+3cosh(8*b))/(3+cosh(8*b))^2 */
     return lnz;
   } else if (fabs(beta) < 1e-6) { /* high T approx. normal branch unstable if beta < 1e-6 */
     lnz = n * (2.*lnadd(beta, -beta) - log2);

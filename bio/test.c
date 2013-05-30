@@ -24,7 +24,7 @@ static int bread(const char *fname)
   FILE *fp;
   int err, endn, size;
 
-  if ((fp=fopen(fname, "r")) == NULL) {
+  if ((fp = fopen(fname, "r")) == NULL) {
     fprintf(stderr, "cannot read file %s\n", fname);
     return 1;
   }
@@ -53,7 +53,7 @@ static int bwrite(const char *fname)
   FILE *fp;
   int size;
 
-  if ((fp=fopen(fname, "w")) == NULL) {
+  if ((fp = fopen(fname, "w")) == NULL) {
     fprintf(stderr, "cannot write file %s\n", fname);
     return 1;
   }

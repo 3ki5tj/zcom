@@ -30,7 +30,7 @@ typedef struct {
 } cago_t;
 
 #define CAGO_VERBOSE 0x1000
-#define CAGO_NCWCA   0x2000  /* use WCA-potential for noncontact pairs,
+#define CAGO_NCWCA   0x2000  /* use WCA-potential for non-contact pairs,
                               * otherwise, use r^12 repulsion */
 
 #define cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc) \
@@ -48,7 +48,7 @@ INLINE int cago_initmd(cago_t *go, double rndamp, double T0);
 INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f);
 INLINE int cago_vv(cago_t *go, real fscal, real dt);
 INLINE real cago_ekin(cago_t *go, rv3_t *v)
-  { return go->ekin = md_ekin((real *)v, go->n*3, go->dof, &go->tkin); }
+  { return go->ekin = md_ekin((real *) v, go->n*3, go->dof, &go->tkin); }
 INLINE void cago_vrescale(cago_t *go, real tp, real dt)
   { md_vrescale3d(go->v, go->n, go->dof, tp, dt, &go->ekin, &go->tkin); }
 INLINE int cago_mcvrescale(cago_t *go, real tp, real dt)
@@ -58,7 +58,7 @@ INLINE int cago_writepos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 
-/* convenient macro for computing rmsd from the reference structure */
+/* convenient macro for computing RMSD from the reference structure */
 #define cago_rmsd(go, x, xf) rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL)
 #define cago_rotfit(go, x, xf) { go->rmsd = cago_rmsd(go, x, xf); }
 

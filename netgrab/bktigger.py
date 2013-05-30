@@ -46,7 +46,7 @@ def backupdir(input, remove_after=False):
     cmd="rsync -avz "+afrom+":"+name+" ."
     ret=run_cmd(cmd,False,True)
     if 0 != ret[0]:
-      print "abort an error occured during rsync"
+      print "abort an error occurred during rsync"
       return ret[0]
 
     # we should not remove the file unless rsync is good

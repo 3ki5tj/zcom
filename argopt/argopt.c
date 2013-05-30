@@ -152,7 +152,7 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
 
       if (ol[k].flags & OPT_SWITCH) {
         ol[k].flags |= OPT_SET;
-        *(int *)ol[k].ptr = 1;
+        *((int *) ol[k].ptr) = 1;
         if (islong) break; /* go to the next argument argv[i+1] */
       } else { /* look for the additional argument for this */
         int hasv = 0;

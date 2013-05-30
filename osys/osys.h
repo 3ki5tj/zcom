@@ -54,7 +54,7 @@ INLINE char **fnglob(const char *pat, int *pn, const char *lscmd, unsigned flags
 
   /* construct a command first */
   cmd = ssnew(256);
-  if (lscmd == NULL) /* assuming linux */
+  if (lscmd == NULL) /* assuming Linux */
     lscmd = "ls --color=never ";
   sscpy(cmd, lscmd);
   sscat(cmd, pat);

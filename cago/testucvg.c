@@ -20,7 +20,7 @@ static void doargs(int argc, char **argv)
   argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
   argopt_reghelp(ao, "-h");
   argopt_regopt(ao, "-E", "%r", &epot_target, "target energy");
-  argopt_regopt(ao, "-p","%d", &epot_target, "number of passes");
+  argopt_regopt(ao, "-p", "%d", &epot_target, "number of passes");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
 }

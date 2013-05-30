@@ -247,7 +247,7 @@ INLINE double avn_getcor(const avn_t *a, int k, int l)
   return (a->s > 0) ? a->sx2[k*n+l] / sqrt(a->sx2[k*n+k] * a->sx2[l*n+l]) : 0;
 }
 
-/* get correlation coefficents among all quantities */
+/* get correlation coefficients among all quantities */
 INLINE double *avn_getcorn(const avn_t *a, double *val)
 {
   int k, l, n = a->n;

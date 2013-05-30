@@ -79,7 +79,7 @@ static void tridiag(real *m, real d[], real e[], int n)
 }
 
 
-/* diagonize the tridiagonal matrix by QR algorithm,
+/* diagonalize the tridiagonal matrix by QR algorithm,
    whose diagonal is d[0..n-1], off-diagonal is e[0..n-2];
  * reduce from the left-top to right-left */
 static void eigtriqr(real d[], real e[], int n, real *mat)
@@ -148,7 +148,7 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
   }/* end for each eigenvalue */
 }
 
-/* sort eigen values and vectors into ascending order */
+/* sort eigenvalues and eigenvectors in ascending order */
 static void eigsort(real *d, real *v, int n)
 {
   int i, j, im;

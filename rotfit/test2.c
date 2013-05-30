@@ -51,7 +51,8 @@ real foo(int n, int nt)
   return rmsd2;
 }
 
-int main(void) {
+int main(void)
+{
   int n, t;
 
   for (t = 1; t <= 1000000; t++) {

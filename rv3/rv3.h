@@ -71,7 +71,7 @@ INLINE void dv3_swap(double *x, double *y)
   { double z[3]; dv3_copy(z, x); dv3_copy(x, y); dv3_copy(y, z); }
 
 INLINE double dv3_sqr (const double *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
-INLINE double dv3_norm(const double *x) { return (double)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
+INLINE double dv3_norm(const double *x) { return (double) sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
 
 INLINE double dv3_dot(const double *x, const double *y)
 {
@@ -208,7 +208,7 @@ INLINE void rv3_swap(real *x, real *y)
   { real z[3]; rv3_copy(z, x); rv3_copy(x, y); rv3_copy(y, z); }
 
 INLINE real rv3_sqr (const real *x) { return x[0]*x[0]+x[1]*x[1]+x[2]*x[2]; }
-INLINE real rv3_norm(const real *x) { return (real)sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
+INLINE real rv3_norm(const real *x) { return (real) sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]); }
 
 /* if x == y, try to use sqr */
 INLINE real rv3_dot(const real *x, const real *y)
@@ -460,11 +460,11 @@ typedef struct {
   real g2;
   real g[4][3]; /* gradient for each particle */
 
-  real div; /* the divengence */
+  real div; /* the divergence */
   real d4ij, d4ik, d4jj, d4jk, d4jl, d4kk, d4kl;
 
   unsigned int flags; /* a copy of flags used */
-  int t1, t2, t3; /* gromacs shift indices */
+  int t1, t2, t3; /* GROMACS shift indices */
   const void *pbcdata; /* periodic boundary condition descriptor */
   int (*pbcdiff)(real *xij, const real *xi, const real *xj, const void *);
     /* function to handle pbc, use GROMACS convention: the last is the difference */
@@ -486,7 +486,7 @@ typedef struct {
 /* polymer convention, 0 == trans */
 #define DIH_POLYMER 0x1000
 
-/* compute the dihedral angle, gradient g and divegence
+/* compute the dihedral angle, gradient g and divergence
  * of the field v conjugate to gradient (v.g = 1)
  *
  * if dih is NULL and flags is 0, only the dihedral angle is computed
@@ -668,7 +668,7 @@ INLINE real rv3_calcdih(dihcalc_t *dih,
           if (dok && dol) tmp2 += dih->d4kl;
         }
         dih->div = -2.0f*(tmp1+2.0f*tmp2)*(invg2*invg2);
-      } /* do divengence */
+      } /* do divergence */
 
     } else { /* clear the gradients */
       int j;
@@ -794,7 +794,7 @@ INLINE real rv3_solidang2(const real *ri, const real *rip,
 
   /* avoid coplanar vectors */
   vol = rv3_dot(v0, rv3_cross(vc, v1, v2));
-  if(fabs(vol) < 1e-28) return 0;
+  if (fabs(vol) < 1e-28) return 0;
 
   /* calculate the denominator */
   tmp = r1*r2 + rv3_dot(v1, v2);
@@ -1269,7 +1269,7 @@ INLINE int dm3_eigvecs(double (*vecs)[3], double mat[3][3], double val, double t
 /* given the matrix 'mat' and its eigenvalues 'v' return eigenvalues 'vecs' */
 INLINE dv3_t *dm3_eigsys(double v[3], double vecs[3][3], double mat[3][3], int nt)
 {
-  double vs[5][3], sq, tol, nv; /* for safty, vs needs 5 rows */
+  double vs[5][3], sq, tol, nv; /* for safety, vs needs 5 rows */
   int n = 0, nn, i;
 
   dm3_eigval(v, mat);

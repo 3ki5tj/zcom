@@ -247,7 +247,7 @@ INLINE char *stripx(char *s, unsigned flags)
 #define strcat_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_CAT)
 /* safely copy/cat strings with case conversion
  * unlike strncpy(), s is always null-terminated on return: it copies at most
- * len nonblank characters, i.e., s[len] = '\0' for the longest output */
+ * len non-blank characters, i.e., s[len] = '\0' for the longest output */
 INLINE char *strcnv(char *s, const char *t, size_t len, unsigned flags)
 {
   size_t i = 0, j;

@@ -154,7 +154,7 @@ INLINE void lj_nhchaintp(lj_t *lj, real dt, real tp, real pext,
       Q, M, W, lj->vol, lj->vir, lj->p_tail, ensx, &lj->ekin, &lj->tkin);
 }
 
-/* velocity verlet with the scaling step in the Nose-Hoover barostat */
+/* velocity Verlet with the scaling step in the Nose-Hoover barostat */
 INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta);
 
 /* Berendsen barostat: as a backup for a constant pressure simulation */

@@ -36,11 +36,11 @@
   }
 
 /* initialize file endian state to variable 'endn'
- * endn = 1: a conversion is needed from file's endianess to system's
+ * endn = 1: a conversion is needed from file's endianness to system's
  * endn = 0: otherwise
  * read an int variable x,
  * determine endian by comparing the value of x with ref
- * quit if neither endians makes x == ref */
+ * quit if neither endian makes x == ref */
 #define BIO_INIT_ENDIAN(x, ref) {                                     \
   BIO_CHECKTP_(x, int)                                                \
   if ((endn = endn_rmatchi(&(x), ref, fp)) < 0) {                     \
@@ -75,14 +75,14 @@
 #define BIO_RD(x)         BIO_R1B_(x, double)
 #define BIO_RDARR(x, n)   BIO_RNB_(x, n, double)
 
-/* match a temperory int x with the reference var */
+/* match a temporary int x with the reference var */
 #define BIO_MI(x, var)                                                \
   if ((x) != (var)) {                                                 \
     fprintf(stderr, "%s mismatch, expect: %d, read: %d "              \
         BIO_FLFMT_ "\n", #var, (int) var, x, __FILE__, __LINE__);     \
     goto ERR; }
 
-/* match a temperory double x with the reference var */
+/* match a temporary double x with the reference var */
 #define BIO_MD(x, var, eps)                                           \
   if (fabs((x) - (var)) > eps) {                                      \
     fprintf(stderr, "%s mismatch, expect: %g, read: %g "              \

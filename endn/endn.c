@@ -57,7 +57,7 @@ int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
 #ifdef ENDN_DBG
   if (size == sizeof(int))
     printf("A: 0x%X vs. 0x%X size = %u, cmp = %d\n",
-      *(int *)src, *(int *)ref, (unsigned)size,
+      *(int *) src, *(int *) ref, (unsigned) size,
       memcmp(src, ref, size));
 #endif
   if (memcmp(src, ref,  size) == 0)
@@ -67,7 +67,7 @@ int endn_rmatch(void *src, const void *ref, size_t size, FILE *fp)
 #ifdef ENDN_DBG
   if (size == sizeof(int))
     printf("B: 0x%X vs. 0x%X size = %u, cmp = %d\n",
-      *(int *)src, *(int *)ref, (unsigned)size,
+      *(int *) src, *(int *) ref, (unsigned) size,
       memcmp(src, ref, size));
 #endif
   return (memcmp(src, ref, size) == 0) ? 1 : -1;
