@@ -4,7 +4,6 @@
     Copyright (c) 2013 Cheng Zhang '''
 
 import os, sys, getopt
-import fileglob
 
 verbose = 0
 bytessaved = 0
@@ -46,7 +45,7 @@ def usage():
   OPTIONS:
 
    -l: include symbolic links
-   -R: apply to subdirectories, if `input' is a wildcard pattern
+   -R: recursively apply to subdirectories, if `input' is a wildcard pattern
        like *.c, the pattern must be quoted as '*.c'
    -v: be verbose
   """
@@ -79,25 +78,20 @@ def doargs():
     elif o in ("-h", "--help",):
       usage()
 
-  # common text files
-  pats = '''*.c *.cpp *.h *.hpp *.java
-            *.py *.pl *.rb *.php *.js
-            *.f *.f90 *.f95 *.pas *.bas
-            *.m *.ma *.gp *.tcl
-            *.txt *.tex *.html *.htm
-            *.cfg *.mdp
-            *.sh *.csh
-            README* *akefile'''.split()
-  # add uppercase
-  pats += [ p.upper() for p in pats ]
-  pats = list( set( pats ) )
-  if len(args) > 0:
-    # parse the pattern in each argument
-    pats = [ a for pat in args for a in pat.split() ]
-
-  # compile a list of files
-  ls = fileglob.fileglob(pats, links, recur)
-  if len(ls) <= 0: print "no file for %s" % pats
+  ls = args
+  try: # limit the dependence on fileglob
+    import fileglob
+    # common text files
+    pats = """*.c *.cpp *.h *.hpp *.java
+              *.py *.pl *.rb *.php *.js
+              *.f *.f90 *.f95 *.pas *.bas
+              *.m *.ma *.gp *.tcl
+              *.txt *.tex *.html *.htm
+              *.cfg *.mdp
+              *.sh *.csh
+              README* *akefile"""
+    ls = fileglob.globargs(args, pats, links, recur)
+  except ImportError: pass
   return ls
 
 

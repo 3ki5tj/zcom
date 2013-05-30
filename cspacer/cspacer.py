@@ -5,9 +5,10 @@ import os, sys, shutil, getopt, re
 '''
 add spaces for C source code
 
-main function is addspace()
-
 Copyright (c) 2010-2013 Cheng Zhang
+
+main function is addspacef()
+
 
 Example 1:
      if(a>b&&a>3)c=d;
@@ -24,8 +25,7 @@ Example 2:
 '''
 
 # module attributes
-fninp     = ""
-verbose   = 2
+verbose   = 0
 overwrite = 0
 use_rule_add      = 0
 use_rule_comma    = 1
@@ -271,7 +271,7 @@ def backup_file(file, ext = "", verbose = 1):
       raw_input()
 
 
-def addspace0(ilines):
+def addspace(ilines):
   ''' add spaces to `ilines', an array of lines,
       return the output file '''
   nlines = len(ilines)
@@ -396,11 +396,12 @@ def addspace0(ilines):
         cstype = 0  # return to code mode
 
     # print out the change
-    if verbose >= 2 and oline.rstrip() != iline.rstrip():
+    if oline.rstrip() != iline.rstrip():
       nchanges += 1
-      print "%6d INPUT : %s" % (i+1, iline),
-      print "%6d OUTPUT: %s" % (i+1, oline.rstrip())
-      print "Rules:", ',  '.join(changed)
+      if verbose >= 2:
+        print "%6d INPUT : %s" % (i+1, iline),
+        print "%6d OUTPUT: %s" % (i+1, oline.rstrip())
+        print "Rules:", ',  '.join(changed)
       if verbose >= 3:
         raw_input()
 
@@ -414,7 +415,7 @@ def addspace0(ilines):
   return olines, nchanges
 
 
-def addspace(output = ""):
+def addspacef(fninp, fnout = ""):
   """ add space to file 'fninp' """
 
   try:
@@ -423,77 +424,88 @@ def addspace(output = ""):
     print "cannot open", fninp
     return
 
-  olines, nchanges = addspace0(ilines)
+  olines, nchanges = addspace(ilines)
 
   # print the number of changes
   if not nchanges:
-    print "Input", fninp, "is fine, I have nothing to change."
+    if verbose:
+      print "Input", fninp, "is fine, I have nothing to change."
     return
   else:
     nlines = len(ilines)
-    print ("about to make %d changes (%.2f%%) ... "
-        % (nchanges, 100.0*nchanges/(nlines + 1e-6)) )
-    if nchanges >= 20 or nchanges >= 0.1*nlines:
+    print ("about to make %d changes (%.2f%%) to %s"
+        % (nchanges, 100.0*nchanges/(nlines + 1e-6), fninp) )
+    if (nchanges >= 20 or nchanges >= 0.1*nlines) and verbose >= 1:
       print "the code looks nasty, did you write it?"
       raw_input()
 
   if overwrite:  # overwrite mode
     backup_file(fninp, ".orig")
-    output = fninp  # write on the original input
+    fnout = fninp  # write on the original input
   else:  #
-    if output == "":
-      output = fninp + ".spr"
+    if not fnout:
+      fnout = fninp + ".spr"
       if verbose > 0:
-        print "assume the output is", output
-  open(output, 'w').writelines(olines)
+        print "assume the output is", fnout
+  open(fnout, 'w').writelines(olines)
+
 
 
 def usage():
-  """ print usage and die """
-  print sys.argv[0], "[Options] input_file"
-  print "Options:"
-  print " -i, --input=            \t input file"
-  print " -w, --overwrite=        \t overwrite the original file"
-  print " -a, --add               \t add space around +, -, &, |"
-  print " --paren2                \t convert if(_ to if_(, and _){ to )_{"
-  print " --noknr                 \t allow { to hange after ) for functions"
-  print " --noparen0              \t don't convert if( to if ("
-  print " --noparen1              \t don't convert ){ to ) {"
-  print " --noelse                \t don't convert }else{ to } else {"
-  print " --noassign              \t don't add space around ="
-  print " --nocmp                 \t don't add spaces around == or <"
-  print " --nobitws               \t don't add space around ||"
-  print " --noter                 \t don't add spaces around ? :"
-  print " --nocomma               \t don't add space after ,"
-  print " --noscolon              \t don't add space after ; "
-  print " --nospb4quo             \t allow no space before the leading quote"
-  print " -c, --conservative      \t be conservative"
-  print " --cppcmt                \t convert C++ style comments // to /* */"
-  print " -v[0-9], --verbose=[0-9]\t verbose level"
+  ''' print usage and die '''
+
+  print sys.argv[0], "[OPTIONS] input"
+  print """
+  add spaces to C source code
+
+  OPTIONS:
+
+   -R, --recursive        recursively apply to subdirectories
+                          if `input' is a wildcard pattern like *.c
+                          the pattern must be quoted as '*.c'
+   -w, --overwrite=       overwrite the original file
+   -a, --add              add space around +, -, &, |
+   --paren2               convert if(_ to if_(, and _){ to )_{
+   --noknr                allow { to hange after ) for functions
+   --noparen0             don't convert if( to if (
+   --noparen1             don't convert ){ to ) {
+   --noelse               don't convert }else{ to } else {
+   --noassign             don't add space around =
+   --nocmp                don't add spaces around == or <
+   --nobitws              don't add space around ||
+   --noter                don't add spaces around ? :
+   --nocomma              don't add space after ,
+   --noscolon             don't add space after ;
+   --nospb4quo            allow no space before the leading quote
+   -c, --conservative     be conservative
+   --cppcmt               convert C++ style comments // to /* */
+   -v                     be verbose
+   --verbose=[0-9]        specify verbose level
+  """
   exit(1)
 
 
+
 def doargs():
-  '''
-  Handle common parameters from command line options
-  results saved to module attributes
-  '''
+  ''' Handle common parameters from command line options
+      results saved to module attributes '''
 
   try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "hv:i:bwac",
-         ["help", "input=", "verbose=", "backup", "overwrite",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "hvbwacR",
+         ["help", "verbose=", "backup", "overwrite",
           "add", "conservative", "nocomma", "noscolon",
           "noassign", "nocmp", "noter",
           "noparen0", "noparen1", "paren2",
           "noelse", "noknr", "nobitws",
           "nospb4quo",
-          "cppcmt"])
+          "cppcmt",
+          "--recursive"])
   except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
     usage()
 
-  global fninp, overwrite, verbose
+  global overwrite, verbose
   global use_rule_nocppcmt
   global use_rule_paren0
   global use_rule_paren1
@@ -509,13 +521,13 @@ def doargs():
   global use_rule_knr
   global use_rule_spb4quo
 
+  recur = False
+
   for o, a in opts:
-    if o in ("-v", "--verbose",):
-      verbose = int(a)
+    if o in ("-R", "--recursive",):
+      recur = True
     elif o in ("-b", "-w", "--backup", "--overwrite"):
       overwrite = 1
-    elif o in ("-i", "--input",):
-      fninp = a
     elif o in ("--cppcmt",):
       use_rule_nocppcmt = 1
       print "will convert C++ comments to C ones"
@@ -575,21 +587,24 @@ def doargs():
     elif o in ("--noknr",):
       use_rule_knr = 0
       print "disable the K&R rule"
+    elif o in ("-v",):
+      verbose = 1
+    elif o in ("--verbose",):
+      verbose = int(a)
     elif o in ("-h", "--help",):
       usage()
 
-  if fninp == "" and len(args) > 0:
-    fninp = args[0]
-
-  if (fninp == ""):
-    print "missing input file"
-    usage()
+  ls = args
+  try: # limit the dependence on fileglob
+    import fileglob
+    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", True, recur)
+  except ImportError: pass
+  return ls
 
 
 def main():
-  doargs()
-  print "verbose:", verbose
-  addspace()
+  ls = doargs()
+  for fn in ls: addspacef(fn)
 
 if __name__ == "__main__":
   main()

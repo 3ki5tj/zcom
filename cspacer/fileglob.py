@@ -47,3 +47,14 @@ def fileglob(pats, links = False, recur = False):
   ls = list( set(ls) )
   return ls
 
+
+
+def globargs(args, defpat = "*", links = False, recur = False):
+  ''' glob patterns in the command line arguments arguments '''
+
+  pats = defpat.split()
+  if len(args) > 0:
+    # parse the pattern in each argument
+    pats = [ a for pat in args for a in pat.split() ]
+  return fileglob(pats, True, recur)
+

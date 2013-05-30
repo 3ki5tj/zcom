@@ -9,14 +9,18 @@
       reindentf():      wrapper for reindent, accepts a file
     * guessindent():    guess the indent size
 
+    Helper class CParser
+      * switchpp():       switch the current preprocessor state
+      * switchcmt():      switch the current comment state
+
     Helper functions:
     * cleanline():      remove comments, then strip()
     * getindent():      get the leading indent of the line
     * gcd():            greatest common divisors
+    * endingcmt():      if a code line starts a block comment
 '''
 
 import os, sys, getopt, re
-import fileglob, cparser
 
 verbose = 0
 defindent = "  "
@@ -63,9 +67,105 @@ def gcd(a, b):
   else: return b % a
 
 
+
+def endingcmt(ln, incmt = False):
+  ''' check if this line ends with a block comment
+        a=b; /* hahaha */ b=3; /* comment
+      NOTE: it will fail if `/*' or '*/' is hidden in a string '''
+
+  if incmt: # finish the current comment
+    m = re.match(r".*?\*/(.*)", ln)
+    if m: ln = m.group(1)
+    else: return True # the block comment remains
+
+  while 1:
+    m = re.match(r".*?(/\*.*?\*/)(.*)", ln)
+    m1 = re.match(r".*?(/\*).*", ln)
+    m2 = re.match(r".*?(//).*", ln)
+
+    if m2: # has `//'
+      if not m1: return False
+      # both '//' and '/*' exist
+      if m2.start(1) < m1.start(1):
+        # `//' preceeds `/*'
+        #print "line comment:", ln[m2.start(1):]
+        return False
+      elif not m:
+        # `/*' preceeds `//', but no '*/'
+        return True
+      else: pass # closed `/* ... */', pass through
+
+    if not m: # no more completed `/* ... */'
+      return (m1 != None)
+    else:
+      ln = m.group(2)
+
 ''' ################## Helper functions ends ##################### '''
 
 
+
+''' ############## Helper class CParser begins ################### '''
+class CParser:
+  ppn = 0  # preprocessor level
+  inpp = False  # currently in a preprocessor
+  incmt = False
+
+  def __init__(self, ppn = 0, inpp = False, incmt = False):
+    self.ppn = ppn
+    self.inpp = inpp
+    self.incmt = incmt
+
+
+  def switchpp(self, ln):
+    ''' switch the current state for preprocessors
+        according to the input line `ln'
+        return if the current line is in a preprocessor block '''
+
+    ln = ln.strip()
+    # ignore the preprocessor, if it is in a comment
+    if not self.incmt:
+      if ln.startswith("#"):
+        self.inpp = True
+        if ln.startswith("#if"):
+          self.ppn += 1
+        elif ln.startswith("#endif"):
+          self.ppn = max(self.ppn - 1, 0)
+
+    inppthis = self.inpp
+
+    # compute the pp state of the next line
+    if self.inpp:
+      # end the processor, unless there's a line continuation
+      if not ln.endswith("\\"):
+        self.inpp = False
+    return inppthis
+
+
+  def switchcmt(self, ln):
+    ''' switch the current state for block comments
+        according to the input line `ln'
+        an embedded comment does not counts:
+          a = 3; /* assignment */ b = 4;
+        return if the current line is in a comment block '''
+
+    ln = ln.strip()
+    incmtthis = self.incmt
+    if not self.incmt and ln.startswith("/*"):
+      incmtthis = True
+    self.incmt = endingcmt(ln, self.incmt)
+    return incmtthis
+
+"""
+def printppcmt(s):
+  ''' test: print preprocessor or comment lines '''
+  cp = CParser()
+  for i in range(len(s)):
+    inpp = cp.switchpp(s[i])
+    incmt = cp.switchcmt(s[i])
+    if inpp or incmt: print "%5d:%d,%5s|%5s|%s" % (i+1, cp.ppn, cp.inpp, cp.incmt, s[i]),
+"""
+
+''' ############## Helper class CParser ends ################### '''
 
 
 
@@ -96,7 +196,7 @@ def guessindent(lines):
   # 3. try to guess the indent size
   lntab = 0 # number of lines that uses tabs
   lnsp = [0] * maxind # number of lines that uses spaces
-  cp = cparser.CParser()
+  cp = CParser()
   lnum = 0
   for line in lines:
     lnum += 1
@@ -105,16 +205,16 @@ def guessindent(lines):
     # skip preprocessor and comments
     if cp.switchpp(ln): continue
     if cp.switchcmt(ln): continue
-    
+
     ind = getindent(ln)
     if len(ind) == 0: continue
-    
+
     # update the # of lines that use Tab as indents
     l = ind.find("\t")
     if l >= 0:
       ind = ind[:l]
       lntab += 1
-    
+
     # compute the number of spaces in the indent
     ns = len(ind)
     if ns == 0: continue
@@ -157,7 +257,7 @@ def tab2sp(s0, tabsize = 4):
   s1 = [ln.rstrip() + '\n' for ln in s0]
   n = len(s0)
   iprev = 0
-  cp = cparser.CParser()
+  cp = CParser()
   for i in range(n):
     # skip preprocessor and comments
     if cp.switchpp(s0[i]): continue
@@ -192,7 +292,7 @@ def reindent(s0):
   ''' reformat the leading indents
       when `{' is encountered, an indent is added on the next line
       when `}' is encountered, the indent is removed
-      for other delibrate indents, 
+      for other delibrate indents,
       the algorithm looks for the incremental indent difference
       between the current line and previous line, and try to
       the mimic the difference in the output '''
@@ -212,7 +312,7 @@ def reindent(s0):
   indents = [ "" ] * 100
 
   iprev = 0
-  cp = cparser.CParser()
+  cp = CParser()
   n = len(s0)
 
   for i in range(n):
@@ -267,7 +367,7 @@ def reindent(s0):
       level = max(0, level - 1)
     levels[i] = level
 
-    # compute the indent for the current line 
+    # compute the indent for the current line
     if follow: # following the previous line's indent
       indent = getindent(s1[iprev])
     else:
@@ -329,11 +429,11 @@ def reindent(s0):
       print "DIFF: %s, prev-level %s, level %s, next-level %s, indent %s, [%s], incmt %s, iprev %s, iref %s\nold:%snew:%s" % (
           i+1, levels[iprev], levels[i], level, len(indent), indent, cp.incmt, iprev, iref,
           s0[i], s1[i]),
-    
+
     # register the last good code line
     iprev = i
   # end of the main loop
-  
+
   return s1
 
 
@@ -348,7 +448,7 @@ def reindentf(fn):
     return
 
   s1 = reindent(s0)
- 
+
   # be careful when rewritting the file
   if ''.join(s0) == ''.join(s1):
     print "keeping", fn
@@ -435,9 +535,12 @@ def doargs():
     # parse the pattern in each argument
     pats = [ a for pat in args for a in pat.split() ]
 
-  # compile a list of files
-  ls = fileglob.fileglob(pats, True, recur)
-  if len(ls) <= 0: print "no file for %s" % pats
+  ls = args
+  try: # limit the dependence on fileglob
+    import fileglob
+    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", True, recur)
+  except ImportError: pass
+  if len(ls) <= 0: print "no file for %s" % args
   return ls
 
 
