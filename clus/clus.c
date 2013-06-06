@@ -1,6 +1,6 @@
 #include "util.h"
 #include "rng.h"
-#include "mds.c"
+#include "mds.h"
 #ifndef CLUS_C__
 #define CLUS_C__
 /* abstract function for cluster analysis using Monte Carlo sampling

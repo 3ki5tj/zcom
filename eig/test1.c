@@ -1,4 +1,4 @@
-#include "eig.c"
+#include "eig.h"
 
 #define N  3
 

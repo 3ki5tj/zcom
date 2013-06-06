@@ -6,7 +6,7 @@ CX = icc -Wall -O3 -g -march=native -vec_report0 -wn1 $(incl)
 LMX =
 #CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops -lm
 
-deps = cago.c cago.h def.h rv3.h md.h pdb.h pdb.c util.h \
+deps = cago.c cago.h def.h rv3.h md.h pdb.h util.h \
        include/argopt.c include/argopt.h Makefile
 bin := $(patsubst %.c,%, $(wildcard test*.c))
 bin_d := $(patsubst %.c,%_d, $(wildcard test*.c))

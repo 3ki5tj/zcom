@@ -5,7 +5,7 @@
 typedef float real;
 
 #include "rv3.h"
-#include "include/eig.c"
+#include "include/eig.h"
 
 int simple = 1;   /* simple test of a single matrix a */
 int sptest = 0;   /* do speed test */

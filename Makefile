@@ -18,7 +18,7 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	$(CC) -c -DZCOM_XFUNCS $< -o $@ $(LM)
 	wc $@
 
-subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd rotfit savgol specfunc \
+subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd savgol specfunc \
 	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj \
 	  abpro cago objgen
 
@@ -42,7 +42,7 @@ usball::
 
 # add symbolic links of header files that are referenced elsewhere
 dodep::
-	git add [a-z0-9]*/*.h
+	git add [a-z0-9]*/_*.h
 	git add [a-z0-9]*/*/zcom.h
 
 # run the code beautifier

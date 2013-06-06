@@ -1,9 +1,9 @@
 #include "rv3.h"
 #include "util.h"
 #include "av.h"
-#include "pdb.c"
 #include "rng.h"
 #include "md.h"
+#include "pdb.h"
 #ifndef CAGO_H__
 #define CAGO_H__
 

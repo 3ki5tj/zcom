@@ -49,7 +49,6 @@ rv3:            real [3] vectors and 3x3 matrices
 eig:            eigenvalues and eigenvectors
 lu:             LU decomposition
 svd:            single value decomposition
-rotfit:         fit two structures via rotation and translation
 savgol:         compute Savitzky-Golay coefficients
 specfunc:       special functions
 opt:            options

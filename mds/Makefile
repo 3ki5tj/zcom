@@ -1,6 +1,6 @@
 CC=gcc -O0 -g3 -Wall -Wextra -pedantic
 LM=-lm
-deps=def.h util.h mds.c mds.h
+deps=def.h util.h mds.h
 
 bin=test1
 all: $(bin)

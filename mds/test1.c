@@ -1,4 +1,4 @@
-#include "mds.c"
+#include "mds.h"
 
 double *mkdismat0(void)
 {
