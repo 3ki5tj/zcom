@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <math.h>
 
+
+
 typedef struct {
   int aid; /* atom index */
   int rid; /* residue index */
@@ -24,8 +26,10 @@ typedef struct {
   int nres;
   pdbatom_t *atm; /* array of n or nalloc */
   real (*x)[3];  /* coordinate array of n or nalloc */
-  const char *file;
+  int unitnm; /* unit is nanometer instead of angstrom */
+  const char *file;  /* name of the source file */
 } pdbmodel_t; /* raw data in a pdb model */
+
 
 
 typedef struct {
@@ -33,7 +37,7 @@ typedef struct {
   int nat; /* number of atoms */
   int id[32]; /* indices to the coordinate array */
   unsigned long flags;
-  real *xca, *xn, *xc, *xo;
+  real *xca, *xn, *xc, *xo; /* pointers to pdbacc->x */
 } pdbaar_t; /* amino-acid residues */
 
 typedef struct {
@@ -41,8 +45,11 @@ typedef struct {
   int natm;
   pdbaar_t *res; /* array of nres */
   real (*x)[3]; /* array of natom */
+  int unitnm; /* unit is nanometer instead of angstrom */
   const char *file; /* input file */
 } pdbaac_t; /* amino-acid chain */
+
+
 
 /* generic pdb model */
 pdbmodel_t *pdbm_read(const char *fname, int verbose);
@@ -65,6 +72,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
 #define AA_H2   29
 #define AA_H3   30
 #define AA_OXT  31
+
+
 
 /* don't edit data in the structure, written by mkdb.py */
 struct tag_pdb_aadb {
@@ -95,6 +104,7 @@ struct tag_pdb_aadb {
 {"TRP", {"CA", "N", "C", "O", "CB", "HB1", "HB2", "CG", "CD1", "HD1", "NE1", "HE1", "CE2", "CZ2", "HZ2", "CH2", "HH2", "CZ3", "HZ3", "CE3", "HE3", "CD2", "HA", "H", NULL}, {"HB3", "HB1", NULL}, 0x2ab59ful}};
 
 
+
 INLINE int pdbaaidx(const char *res)
 {
   int i;
@@ -106,11 +116,15 @@ INLINE int pdbaaidx(const char *res)
   return -1;
 }
 
+
+
 INLINE const char *pdbaaname(int i)
 {
   die_if (i < 0 || i >= 20, "invalid amino acid id %d\n", i);
   return pdb_aadb[i].resnm;
 }
+
+
 
 /* return the index of an atom from */
 INLINE int pdbaagetaid(int aa, const char *atnm)
@@ -121,17 +135,26 @@ INLINE int pdbaagetaid(int aa, const char *atnm)
   return -1;
 }
 
+
+
 /* return the global atom index */
 INLINE int pdbaar_getaid(pdbaar_t *r, const char *atnm)
-  { int topid = pdbaagetaid(r->aa, atnm); return (topid < 0) ? -1 : r->id[topid]; }
+{ int topid = pdbaagetaid(r->aa, atnm); return (topid < 0) ? -1 : r->id[topid]; }
+
 INLINE int pdbaac_getaid(pdbaac_t *c, int i, const char *atnm)
-  { return pdbaar_getaid(c->res + i, atnm); }
+{ return pdbaar_getaid(c->res + i, atnm); }
+
 /* return coordinates */
 INLINE real *pdbaac_getx(pdbaac_t *c, int i, const char *atnm)
-  { int id = pdbaac_getaid(c, i, atnm); return (id < 0) ? NULL : c->x[id]; }
+{ int id = pdbaac_getaid(c, i, atnm); return (id < 0) ? NULL : c->x[id]; }
 
-/* format atom name, out could be equal to atnm
- * style 0: atom name first, e.g., "HE21", "CB", or style 1: "1HE2" or " CB " */
+
+
+/* format atom name, `out' can be same as `inp',
+ * `style' can be
+ * 0: atom name first:   "H",  "CB", "HE21"
+ * 1: atom name first:  " H", " CB", "HE21"
+ * 2: atom index first: " H", " CB", "1HE2" */
 INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
 {
   size_t n, i;
@@ -140,26 +163,33 @@ INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
 
   die_if (style > 2 || style < 0, "bad format style %d\n", style);
 
-  /* copy inp to a buffer without space */
-  for (p = inp; *p == ' '; p++) ;
-  for (n = 0; n < 4 && p[n] && p[n] != ' '; n++) atnm[n] = p[n];
+  /* copy `inp' to a buffer without space */
+  for (p = inp; *p == ' '; p++) ; /* skip the leading spaces */
+  for (n = 0; n < 4 && p[n] && p[n] != ' '; n++)
+    atnm[n] = p[n]; /* copy without trailing spaces */
   atnm[n] = '\0';
-  die_if (n == 4 && p[n] && p[n] != ' ', "bad input atom name [%s]\n", atnm);
+  die_if (n == 4 && p[n] && p[n] != ' ',
+      "bad input atom name [%s]\n", atnm);
 
-  if (style <= 1) { /* style 0: "H", "CA", "HE21", style 1: " H", " CA", "HE21" */
-    if (n == 4) {
+  if (style <= 1) { /* style 0:  "H",  "CA", "HE21"
+                       style 1: " H", " CA", "HE21" */
+    if (n == 4) { /* four characters */
       c = atnm[0];
-      if (isdigit(c)) { /* rotate the string, such that 1HE2 --> HE21; */
+      if (isdigit(c)) { /* rotate the string: 1HE2 --> HE21; */
         for (i = 1; i < n; i++) out[i-1] = atnm[i];
         out[n-1] = c;
         out[n] = '\0';
       } else strcpy(out, atnm);
-    } else { /* n <= 3 */
-      if (style == 0) strcpy(out, atnm);
-      else { out[0] = ' '; strcpy(out+1, atnm); }
+    } else { /* one to three characters */
+      if (style == 0) {
+        strcpy(out, atnm);
+      } else { /* leave the first character blank */
+        out[0] = ' ';
+        strcpy(out+1, atnm);
+      }
     }
   } else if (style == 2) { /* style 2: " H", " CA", "1HE2" */
-    if (n == 4) {
+    if (n == 4) { /* four characters */
       c = atnm[0];
       cn = atnm[n - 1];
       if (isalpha(c) && isdigit(cn)) { /* HE21 --> 1HE2 */
@@ -167,8 +197,9 @@ INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
         out[0] = cn;
         out[n] = '\0';
       } else strcpy(out, atnm);
-    } else { /* n <= 3 */
-      out[0] = ' '; strcpy(out+1, atnm);
+    } else { /* n <= 3, leave the first character blank */
+      out[0] = ' ';
+      strcpy(out+1, atnm);
     }
   }
   return out;

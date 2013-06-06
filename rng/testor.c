@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "rng.c"
+#include "rng.h"
 
 #define N 10000
 

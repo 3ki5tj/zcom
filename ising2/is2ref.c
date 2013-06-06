@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "rng.c"
+#include "rng.h"
 #define LB 5
 #define L  (1<<LB)
 #define IX(ix, iy) (((ix)%L) + (iy)*L)

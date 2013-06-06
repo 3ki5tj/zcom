@@ -1,6 +1,8 @@
 Overview
 ===========
+
 The module centers around two objects,
+
   pdbmodel_t: generic information of a .pdb file (not necessarily a protein)
       it is basically a line-by-line literal translation of atom in the .pdb file.
       The useful function is pdbm_contact() which returns a residue-residue contact matrix.

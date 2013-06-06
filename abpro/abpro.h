@@ -1,7 +1,7 @@
 #include "util.h"
 #include "rv3.h"
 #include "rv2.h"
-#include "rng.c"
+#include "rng.h"
 #include "md.c"
 #ifndef ABPRO_H__
 #define ABPRO_H__

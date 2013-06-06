@@ -1,6 +1,6 @@
 /* check if pick() and flip() correctly computes the energy */
 #include <stdio.h>
-#include "rng.c"
+#include "rng.h"
 
 #define L 32
 /*

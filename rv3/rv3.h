@@ -5,7 +5,7 @@
 #define RESTRICT __restrict
 #endif
 #include "def.h"
-#include "rng.c"
+#include "rng.h"
 #ifndef RV3_H__
 #define RV3_H__
 

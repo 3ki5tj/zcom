@@ -1,4 +1,4 @@
-#include "rng.c"
+#include "rng.h"
 #ifndef POTTS2_C__
 #define POTTS2_C__
 

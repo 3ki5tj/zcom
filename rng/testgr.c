@@ -1,11 +1,12 @@
-#include "rng.c"
+#include "rng.h"
 
 #define TMAX 100000000
 
 #define XMIN (-5.0)
 #define XMAX (5.0)
-#define XDEL  0.01
-#define XCNT (int)((XMAX-XMIN)/XDEL + 1)
+#define XCNT 1000
+#define XDEL ((XMAX - XMIN)/XCNT)
+
 double hist[XCNT];
 
 int main(void)

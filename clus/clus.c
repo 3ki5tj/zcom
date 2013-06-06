@@ -1,5 +1,5 @@
 #include "util.h"
-#include "rng.c"
+#include "rng.h"
 #include "mds.c"
 #ifndef CLUS_C__
 #define CLUS_C__

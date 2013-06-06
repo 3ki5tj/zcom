@@ -2,6 +2,25 @@
 #define PDB_C__
 #include "pdb.h"
 
+
+/* switch the unit between angstrom and nanometer */
+#define pdbm_a2nm(m) pdbm_switchunit(m, 0)
+#define pdbm_nm2a(m) pdbm_switchunit(m, 1)
+INLINE void pdbm_switchunit(pdbmodel_t *m, int nm2a)
+{
+  die_if (nm2a != m->unitnm,
+    "unit corruption, nm2a %d, unitnm %d\n", nm2a, m->unitnm);
+  if (m->x != NULL) {
+    real fac = (real)(nm2a ? 10.0 : 0.1);
+    int i;
+
+    for (i = 0; i < m->natm; i++) rv3_smul(m->x[i], fac);
+  }
+  m->unitnm = !m->unitnm; /* switch the unit */
+}
+
+
+
 /* read raw atom data from pdb */
 static pdbmodel_t *pdbm_readpdb(const char *fname)
 {
@@ -57,6 +76,7 @@ static pdbmodel_t *pdbm_readpdb(const char *fname)
     /* coordinates */
     sscanf(s+30, "%f%f%f", x, x+1, x+2);
     rv3_make(m->x[i], x[0], x[1], x[2]);
+    if (m->unitnm) rv3_smul(m->x[i], (real) 0.1);
     /* element name */
     atm->elem[0] = '\0';
     if (strlen(s) >= 78)
@@ -72,6 +92,8 @@ static pdbmodel_t *pdbm_readpdb(const char *fname)
   fclose(fp);
   return m;
 }
+
+
 
 /* read from GROMACS .gro format */
 static pdbmodel_t *pdbm_readgro(const char *fname)
@@ -125,7 +147,9 @@ static pdbmodel_t *pdbm_readgro(const char *fname)
     ir = atm->rid;
     /* coordinates */
     sscanf(s+20, "%f%f%f", x, x+1, x+2);
-    rv3_smul( rv3_make(m->x[i], x[0], x[1], x[2]), 10.0f); /* nm --> A */
+    rv3_make(m->x[i], x[0], x[1], x[2]);
+    if (!m->unitnm) /* x 10 if the unit is nm */
+      rv3_smul(m->x[i], (real) 10.);
     atm->x = m->x[i];
     /* guess element name */
     atm->elem[0] = atm->atnm[0];
@@ -138,6 +162,8 @@ ERR:
   fclose(fp);
   return NULL;
 }
+
+
 
 /* read pdb */
 pdbmodel_t *pdbm_read(const char *fname, int verbose)
@@ -171,7 +197,7 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   }
   m->nres = ir;
 
-  if (verbose >= 3)
+  if (verbose >= 3) /* dump the PDB */
     for (i = 0; i < m->natm; i++) {
       pdbatom_t *atm = m->atm + i;
       printf("%4d %4s %4d %4s %8.3f %8.3f %8.3f\n",
@@ -181,6 +207,8 @@ pdbmodel_t *pdbm_read(const char *fname, int verbose)
   return m;
 }
 
+
+
 /* write data to file fn */
 INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
 {
@@ -188,14 +216,15 @@ INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
   char atnm[8] = "";
   FILE *fp;
   pdbatom_t *atm;
-  real *x;
+  real x[3];
 
   if (m->natm <= 0) return 1;
   xfopen(fp, fn, "w", return 1);
   for (aid = 1, i = 0; i < m->natm; i++) {
     atm = m->atm + i;
     pdbm_fmtatom(atnm, atm->atnm, ATMFMT);
-    x = m->x[i];
+    rv3_copy(x, m->x[i]);
+    if (m->unitnm) rv3_smul(x, (real) 10.);
     fprintf(fp, "ATOM  %5d %-4s %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00          %2s  \n",
         aid++, atnm, atm->resnm, atm->rid+1, x[0], x[1], x[2], atm->elem);
   }
@@ -205,12 +234,16 @@ INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
   return 0;
 }
 
+
+
 INLINE int iscontactatom(int level, const char *atnm)
 {
   if (level == PDB_CONTACT_ALL) return 1;
   else if (level == PDB_CONTACT_HEAVY) return atnm[0] != 'H';
   else return strcmp(atnm, "CA") == 0; /* PDB_CONTACT_CA */
 }
+
+
 
 /* return a nres x nres matrix that defines if two residues are contacts
  * a pair is considered as a contact only if the distance of two
@@ -261,7 +294,11 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
   return iscont;
 }
 
-/* get amino acid chain by parsing pdbmodel_t m */
+
+
+/* build a `pdbacc_t' structure of amino-acid chain information
+ * by parsing `m', which is `pdbmodel_t'
+ * the coordinates are duplicated, and `m' can be freed afterwards */
 pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
 {
   pdbatom_t *atm;
@@ -275,7 +312,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
   c->natm = m->natm;
   xnew(c->res, c->nres);
   xnew(c->x, m->natm);
-  memcpy(c->x, m->x, sizeof(*(c->x))*m->natm); /* copy coordinates */
+  memcpy(c->x, m->x, sizeof(*(c->x)) * m->natm); /* copy coordinates */
+  c->unitnm = m->unitnm;
   c->file = m->file;
 
   for (i = 0; i < m->natm; i++) {
@@ -322,7 +360,8 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
       }
     }
     if (!match)
-      printf("unknown atom %s:%d res %s%d\n", atm->atnm, i+1, atm->resnm, atm->rid+1);
+      printf("unknown atom %s:%d res %s%d\n",
+          atm->atnm, i+1, atm->resnm, atm->rid+1);
   }
 
 #define pdbaac_pmiss_(xflags) { \
@@ -347,12 +386,14 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     r->xc  = pdbaac_x(c, i, C);
     r->xo  = pdbaac_x(c, i, O);
   }
+
   /* check bond-length, assume backbone are present */
   for (i = 0; i < c->nres; i++) {
-    real x;
+    double x;
     r = c->res + i;
     if (i > 0) {
       x = rv3_dist(pdbaac_x(c, i-1, C), r->xn);
+      if (c->unitnm) x *= 10.;
       if (x < .3 || x > 2.3) {
         if (verbose) {
           const char *aap = pdbaaname(c->res[i-1].aa), *aa = pdbaaname(r->aa);
@@ -363,6 +404,7 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
       }
     }
     x = rv3_dist(r->xn, r->xca);
+    if (c->unitnm) x *= 10.;
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: N-CA bond of residue %d (%s) is broken %g\n",
@@ -373,6 +415,7 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
       goto ERR;
     }
     x = rv3_dist(r->xca, r->xc);
+    if (c->unitnm) x *= 10.;
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: CA-C bond of residue %d (%s) is broken %g\n",
@@ -387,10 +430,11 @@ pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     for (i = 0; i < c->nres; i++)
       printf("%4d: %s\n", i+1, pdbaaname(c->res[i].aa));
   }
+
   return c;
 ERR:
-  if (c->res) free(c->res);
-  if (c->x) free(c->x);
+  free(c->res);
+  free(c->x);
   free(c);
   return NULL;
 }

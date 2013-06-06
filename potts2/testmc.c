@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "rng.c"
+#include "rng.h"
 #include "util.h"
 
 #define LB        5

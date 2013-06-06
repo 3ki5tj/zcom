@@ -1,4 +1,4 @@
-#include "rng.c"
+#include "rng.h"
 #include "util.h"
 
 #ifndef ISING2_C__

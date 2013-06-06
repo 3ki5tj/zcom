@@ -1,14 +1,9 @@
 Performance tips:
 
-1. include rng.c
-directly include "rng.c" 3.3s for 10^8 moves (icc)
-vs.
-include "rng.h" and compile with "rng.c" 3.8s (icc)
-
-2. It appears that the signed version (s = -1, 1) is
+1. It appears that the signed version (s = -1, 1) is
 about 10% faster than the unsigned version (s = 0, 1).
 
-3. Benchmark is2ref.c, for 10^9 moves, BETA = 0.4, all-spin-down
+2. Benchmark is2ref.c, for 10^9 moves, BETA = 0.4, all-spin-down
   24.0s (using double rnd0() < proba[h])
   22.0s (using unsigned rnd0() < proba[h])
   14.0s (using sequential move, balance vs. detailed balance)
