@@ -145,7 +145,7 @@ int main(int argc, char **argv)
   if (n1 != n2) {
     fprintf(stderr, "# of atoms mismatch %s %d != %s %d, use %d\n", fn1, n1, fn2, n2, n);
   }
-  rmsd = rotfit3(x2, NULL, x1, w2, n, rot, trans);
+  rmsd = rv3_rmsd(x2, NULL, x1, w2, n, rot, trans);
   printf("rmsd = %g A\n", rmsd);
   if (verbose) {
     rm3_print(rot, "Rotation", "%8.3f", 1);

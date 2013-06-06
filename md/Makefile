@@ -6,7 +6,7 @@ LMX =
 #CX = gcc -Wall -O3 -march=native -mfpmath=sse -funroll-all-loops
 #LMX = -lm
 prj = md
-src = $(prj).c
+src = $(prj).h
 deps = $(src) $(prj).h rv3.h rv2.h rng.c rng.h def.h Makefile
 bin = $(patsubst %.c,%,$(wildcard test*.c))
 bin_d = $(patsubst %.c,%_d,$(wildcard test*.c))

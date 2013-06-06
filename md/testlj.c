@@ -1,4 +1,4 @@
-#include "md.c"
+#include "md.h"
 #include "include/av.h"
 
 #define D        3

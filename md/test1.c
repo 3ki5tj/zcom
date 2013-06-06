@@ -1,4 +1,4 @@
-#include "md.c"
+#include "md.h"
 
 int main(void)
 {

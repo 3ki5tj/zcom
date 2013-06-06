@@ -1,5 +1,5 @@
 /* test on harmonic oscillator */
-#include "md.c"
+#include "md.h"
 #include "include/av.h"
 #include "include/hist.c"
 

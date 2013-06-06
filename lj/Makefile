@@ -6,7 +6,7 @@ LMX =
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm -Wstrict-aliasing -fstrict-aliasing
 #LMX = -lm
 
-deps = lj.c lj.h rv3.h rv2.h def.h util.h md.c md.h rng.h Makefile
+deps = lj.c lj.h rv3.h rv2.h def.h util.h md.h rng.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 

@@ -11,7 +11,7 @@ LMM =
 #CM = $(CX) -openmp-profile -D_OPENMP -openmp-report0
 #CM = $(CC) -fopenmp
 
-deps = abpro.c abpro.h rv3.h rv2.h util.h md.c md.h Makefile
+deps = abpro.c abpro.h rv3.h rv2.h util.h md.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 bins_m = $(patsubst %.c,%_m, $(wildcard test*.c))

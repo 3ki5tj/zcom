@@ -2,7 +2,7 @@
 #include "rv3.h"
 #include "rv2.h"
 #include "rng.h"
-#include "md.c"
+#include "md.h"
 #ifndef ABPRO_H__
 #define ABPRO_H__
 #ifdef _OPENMP

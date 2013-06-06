@@ -1,4 +1,4 @@
-#include "md.c"
+#include "md.h"
 #include "hist.c"
 #ifndef LJ_C__
 #define LJ_C__

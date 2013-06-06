@@ -1,4 +1,9 @@
 #include "rv3.h"
+#include "util.h"
+#include "av.h"
+#include "pdb.c"
+#include "rng.h"
+#include "md.h"
 #ifndef CAGO_H__
 #define CAGO_H__
 
@@ -59,7 +64,7 @@ INLINE int cago_readpos(cago_t *go, rv3_t *x, rv3_t *v, const char *fn);
 INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn);
 
 /* convenient macro for computing RMSD from the reference structure */
-#define cago_rmsd(go, x, xf) rotfit3(x, xf, go->xref, NULL, go->n, NULL, NULL)
+#define cago_rmsd(go, x, xf) rv3_rmsd(x, xf, go->xref, NULL, go->n, NULL, NULL)
 #define cago_rotfit(go, x, xf) { go->rmsd = cago_rmsd(go, x, xf); }
 
 /* compute the number of contacts from the current configuration */

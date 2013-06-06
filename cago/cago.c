@@ -1,9 +1,3 @@
-#include "util.h"
-#include "av.h"
-#include "pdb.c"
-#include "rng.h"
-#include "rotfit.c"
-#include "md.c"
 #ifndef CAGO_C__
 #define CAGO_C__
 #include "cago.h"

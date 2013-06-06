@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "rotfit.c"
+#include "rv3.h"
 
 #define N 5
 int main(void)
@@ -24,7 +24,7 @@ int main(void)
   }
 
   printf("\n\nPure rotation\n");
-  dev = rotfit3(x, NULL, y, NULL, N, r, t);
+  dev = rv3_rmsd(x, NULL, y, NULL, N, r, t);
   printf("dev = %g\n", dev);
   rm3_print(r, "R ", "%10.5f", 1);
   rm3_print(r0, "R0", "%10.5f", 1);
@@ -39,7 +39,7 @@ int main(void)
   }
 
   printf("\n\nWith reflection\n");
-  dev = rotfit3(x, NULL, y, NULL, N, r, t);
+  dev = rv3_rmsd(x, NULL, y, NULL, N, r, t);
   printf("dev = %g\n", dev);
   rm3_print(r, "R ", "%10.5f", 1);
   rm3_print(r0, "R0", "%10.5f", 1);

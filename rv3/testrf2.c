@@ -3,9 +3,10 @@
 #define HAVEREAL 1
 typedef float real;
 
-//#define RV3_DEBUG
-
-#include "rotfit.c"
+/*
+#define RV3_DEBUG
+*/
+#include "rv3.h"
 
 #define N 128
 real max;
