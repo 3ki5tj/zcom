@@ -15,11 +15,6 @@ lj.h        header file
 lj.0.c      source code
 lj.c        generate from lj.0.c by mklj2d.py, do not edit!
 mklj2d.py   generate a version lj.c with 2d support from lj.0.c
-            the script uses a generic add2d.py, which is located
-            in the $(ROOT)/python.  But python can automatically
-            locate add2d.py without symbolic links because of the
-            __init__.py, which treats the entire directory tree
-            as a python package.
 ljeos.gp    standard equation of states, gnuplot script
 
 
@@ -34,11 +29,29 @@ testsw.c    print out the switch potential
 
 Notes
 -------------------
+
 Monte Carlo pair version: old/ljpr.c
+
+
+mklj2d.py
+~~~~~~~~~~~
+
+The script uses a generic ccom.py, which is located in the $(ROOT)/python.
+But python can find ccom.py without symbolic links because of the
+special import statement in mklj2d.py
+
+  sys.path.insert(0, "..")
+  from python import ccom
+
+and the existence __init__.py, which treats the entire directory tree
+as a python package, such that `python' in the above import statement
+means "../python".
+
 
 
 An old speed test
 ~~~~~~~~~~~~~~~~~
+
 testmd.c is somehow slower than ../md/testlj.c
 because the array were allocated on the heap instead of the stack
 

@@ -9,6 +9,9 @@ all: $(bin)
 $(bin) : % : %.c def.h rv3.h Makefile
 	$(CC) -o $@ $< $(LM)
 
+rv3.h: rv3.0.h addfd.py
+	python addfd.py
+
 clean:
 	rm -f $(bin) *~ *.o a.out
 	$(MAKE) -C doc clean
