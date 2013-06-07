@@ -441,7 +441,7 @@ def usage():
   prog = sys.argv[0]
   print "%s [Options] module(s)\n" % (prog)
   print " Options:"
-  print "   -a:  --all,      all default modules"
+  print "   -a:  --all,      assemble all default modules"
   print "   -t:  --template, host file to absorb an addition"
   print "   -o:  --output,   output file"
   print "   -c:  --strcls,   storage class"

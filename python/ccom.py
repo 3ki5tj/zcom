@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-''' common routines '''
+''' common routines for manipulating C source code '''
 
 import re
 

@@ -19,7 +19,7 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	wc $@
 
 subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd savgol specfunc \
-	  argopt cfg log av hist mds pdb clus ising2 potts2 md lj \
+	  argopt cfg log av hist mds pdb ising2 potts2 md lj \
 	  abpro cago objgen
 
 clean:
@@ -42,7 +42,8 @@ usball::
 
 # add symbolic links of header files that are referenced elsewhere
 dodep::
-	git add [a-z0-9]*/_*.h
+	git add [a-z0-9]*/*.h
+	git rm --cached rv3/rv3.h
 	git add [a-z0-9]*/*/zcom.h
 
 # run the code beautifier

@@ -80,7 +80,7 @@ def doargs():
 
   ls = args
   try: # limit the dependence on fileglob
-    import fileglob
+    from zcom import argsglob
     # common text files
     pats = """*.c *.cpp *.h *.hpp *.java
               *.py *.pl *.rb *.php *.js
@@ -90,7 +90,7 @@ def doargs():
               *.cfg *.mdp
               *.sh *.csh
               README* *akefile"""
-    ls = fileglob.globargs(args, pats, links, recur)
+    ls = argsglob(args, pats, recur = recur, links = links)
   except ImportError: pass
   return ls
 

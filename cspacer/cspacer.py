@@ -601,9 +601,9 @@ def doargs():
       usage()
 
   ls = args
-  try: # limit the dependence on fileglob
-    import fileglob
-    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", links, recur)
+  try: # limit the dependence on argsglob
+    from zcom import argsglob
+    ls = argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
   return ls
 

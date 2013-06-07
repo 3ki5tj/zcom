@@ -143,7 +143,7 @@ int main(int argc, char **argv)
   x2 = load(fn2, &n2, &m2, &w2);
   n = (n1 < n2) ? n1 : n2;
   if (n1 != n2) {
-    fprintf(stderr, "# of atoms mismatch %s %d != %s %d, use %d\n", fn1, n1, fn2, n2, n);
+    fprintf(stderr, "Warning: # of atoms mismatch %s %d != %s %d, use %d\n", fn1, n1, fn2, n2, n);
   }
   rmsd = rv3_rmsd(x2, NULL, x1, w2, n, rot, trans);
   printf("rmsd = %g A\n", rmsd);
@@ -152,6 +152,7 @@ int main(int argc, char **argv)
     rv3_print(trans, "Translation", "%8.3f", 1);
   }
   pdbm_rottrans(m2, rot, trans);
+  printf("new %s --> %s\n", fn2, fnout);
   pdbm_write(m2, fnout);
 
   pdbm_free(m1);

@@ -1,5 +1,8 @@
 Monte Carlo clustering algorithm
 
+This module is deprecated.
+
+
 test1.c     clustering one-dimensional points
 test2.c     clustering random graph
 testload.c  testing loading previous clustering configuration

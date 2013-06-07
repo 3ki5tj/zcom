@@ -59,7 +59,6 @@ av:             simple mean/deviation
 hist:           simple histograms (1d/2d)
 mds:            multidimensional scaling
 pdb:            read/write pdb
-clus:           a Monte Carlo based clustering
 md:             common molecular dynamics routines
 hmc:            hybrid Monte Carlo/molecular dynamics
 ising2:         two dimensional ising model

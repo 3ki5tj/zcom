@@ -485,6 +485,7 @@ def usage():
    -R, --recursive:   apply to subdirectories, if `input' is
                       a wildcard pattern like `*.c',
                       the pattern must be quoted as '*.c'
+   -L, --nolinks:     skip symbolic links
    -o, --output:      output file
    --noemacs:         don't trust Emacs tag for the tab size
    -v:                be verbose
@@ -497,9 +498,10 @@ def usage():
 def doargs():
   ''' Handle common parameters from command line options '''
   try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "ts:fRo:hv",
-         ["spaces=", "force", "recursive", "output=",
-          "noemacs", "verbose=", "help",])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "ts:fRLo:hv",
+         [ "spaces=", "force", "recursive",
+           "nolinks", "output=",
+           "noemacs", "verbose=", "help", ] )
   except getopt.GetoptError, err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -508,6 +510,7 @@ def doargs():
   global verbose, defindent, forcedef, fnout, emacstag
 
   recur = False
+  links = True
 
   for o, a in opts:
     if o in ("-f", "--force",):
@@ -518,6 +521,8 @@ def doargs():
       defindent = "\t"
     elif o in ("-R", "--recursive",):
       recur = True
+    elif o in ("-L", "--nolinks",):
+      links = False
     elif o in ("-o", "--output",):
       fnout = a
     elif o in ("--noemacs",):
@@ -529,16 +534,10 @@ def doargs():
     elif o in ("-h", "--help",):
       usage()
 
-  # common C code
-  pats = '''*.c *.cpp *.h *.hpp *.java'''.split()
-  if len(args) > 0:
-    # parse the pattern in each argument
-    pats = [ a for pat in args for a in pat.split() ]
-
   ls = args
-  try: # limit the dependence on fileglob
-    import fileglob
-    ls = fileglob.globargs(args, "*.c *.cpp *.h *.hpp *.java", True, recur)
+  try: # limit the dependence on argsglob
+    from zcom import argsglob
+    ls = argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
   if len(ls) <= 0: print "no file for %s" % args
   return ls

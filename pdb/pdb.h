@@ -30,10 +30,10 @@ typedef struct {
   const char *file;  /* name of the source file */
 } pdbmodel_t; /* raw data in a pdb model */
 
-/* generic pdb model */
+/* major functions for generic pdb model */
+#define pdbm_open(fn, v) pdbm_read(fn, v)
 pdbmodel_t *pdbm_read(const char *fn, int verbose);
 INLINE int pdbm_write(pdbmodel_t *m, const char *fn);
-#define pdbm_free(m) { free(m->atm); free(m->x); free(m); }
 
 enum { PDB_CONTACT_CA, PDB_CONTACT_HEAVY, PDB_CONTACT_ALL }; /* ways of searching contacts */
 int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg);
@@ -60,8 +60,8 @@ typedef struct {
 
 
 /* protein pdb */
-pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
-#define pdbaac_free(c) { free(c->res); free(c->x); free(c); }
+INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose);
+INLINE pdbaac_t *pdbaac_open(const char *fn, int verbose);
 #define pdbaac_x(c, i, nm) pdbaac_getx(c, i, #nm)
 
 #define AA_CA         0x1
@@ -208,19 +208,22 @@ INLINE char *pdbm_fmtatom(char *out, const char *inp, int style)
 
 
 /* switch the unit between angstrom and nanometer */
-#define pdbm_a2nm(m) pdbm_switchunit(m, 0)
-#define pdbm_nm2a(m) pdbm_switchunit(m, 1)
-INLINE void pdbm_switchunit(pdbmodel_t *m, int nm2a)
+#define pdbm_a2nm(m)    pdbxswitchunit(m->x, m->natm, &m->unitnm, 0)
+#define pdbm_nm2a(m)    pdbxswitchunit(m->x, m->natm, &m->unitnm, 1)
+#define pdbaac_a2nm(c)  pdbxswitchunit(c->x, c->natm, &c->unitnm, 0)
+#define pdbaac_nm2a(c)  pdbxswitchunit(c->x, c->natm, &c->unitnm, 1)
+
+INLINE void pdbxswitchunit(rv3_t *x, int n, int *unitnm, int nm2a)
 {
-  die_if (nm2a != m->unitnm,
-    "unit corruption, nm2a %d, unitnm %d\n", nm2a, m->unitnm);
-  if (m->x != NULL) {
+  die_if (nm2a != *unitnm,
+    "unit corruption, nm2a %d, unitnm %d\n", nm2a, *unitnm);
+  if (x != NULL) {
     real fac = (real)(nm2a ? 10.0 : 0.1);
     int i;
 
-    for (i = 0; i < m->natm; i++) rv3_smul(m->x[i], fac);
+    for (i = 0; i < n; i++) rv3_smul(x[i], fac);
   }
-  m->unitnm = !m->unitnm; /* switch the unit */
+  *unitnm = !(*unitnm); /* switch the unit */
 }
 
 
@@ -412,6 +415,15 @@ pdbmodel_t *pdbm_read(const char *fn, int verbose)
 }
 
 
+#define pdbm_free(m) pdbm_close(m)
+
+void pdbm_close(pdbmodel_t *m)
+{
+  if (m->atm) free(m->atm);
+  if (m->x) free(m->x);
+  free(m);
+}
+
 
 /* write data to file fn */
 INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
@@ -503,7 +515,7 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
 /* build a `pdbacc_t' structure of amino-acid chain information
  * by parsing `m', which is `pdbmodel_t'
  * the coordinates are duplicated, and `m' can be freed afterwards */
-pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
+INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
 {
   pdbatom_t *atm;
   pdbaac_t *c;
@@ -643,6 +655,30 @@ ERR:
   return NULL;
 }
 
+
+
+/* create `pdbaac_t' from a PDB file */
+INLINE pdbaac_t *pdbaac_open(const char *fn, int verbose)
+{
+  pdbmodel_t *m;
+  pdbaac_t *c;
+
+  m = pdbm_read(fn, verbose);
+  c = pdbaac_parse(m, verbose);
+  pdbm_free(m);
+  return c;
+}
+
+
+
+#define pdbaac_free(c) pdbaac_close(c)
+
+INLINE void pdbaac_close(pdbaac_t *c)
+{
+  if (c->res) free(c->res);
+  if (c->x) free(c->x);
+  free(c);
+}
 
 
 /* parse helices, return the number of helices `nse'
