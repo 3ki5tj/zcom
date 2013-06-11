@@ -106,7 +106,7 @@ class Commands:
         #print "multiple %s]\ns=%s\nm0=%s\nself.raw=%s" % (args, s, m.group(0),repr(self.raw))
         #raw_input()
       else:
-        if s.find("$") < 0: break
+        if not "$" in s: break
         # print "look for a lazy command, $cmd with no ; s = [%s]" % s
         pattern = r"[^\$\\]*(\$)(\w+)\;?"
         m = re.search(pattern, s)

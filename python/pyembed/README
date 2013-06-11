@@ -1,0 +1,2 @@
+test
+./pyembed.py foo.py -a -o foo.sc.py

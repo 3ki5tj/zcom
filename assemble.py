@@ -36,8 +36,8 @@ def strip_def(src):
   n = len(src) # number of lines
   for i in range(n):
     lin = src[i].lstrip()
-    if lin.startswith("#ifndef") and (lin.find("INLINE") < 0
-        and lin.find("RESTRICT") < 0):
+    if lin.startswith("#ifndef") and (not "INLINE" in lin
+        and not "RESTRICT" in lin):
       start = i
       if verbose > 1:
         print "#ifndef found in line", start
@@ -131,11 +131,11 @@ def insert_module(src, name, module):
     if (plevel == 0 and
         bstart < 0 and
         src[i].startswith("#ifdef") and
-        src[i].find(name) >= 0 and
+        name in src[i] and
         src[i+1].startswith("#ifndef") and
-        src[i+1].find(namein) >= 0 and
+        namein in src[i+1] and
         src[i+2].startswith("#define") and
-        src[i+2].find(namein) >= 0):
+        namein in src[i+2]):
       bstart = i+3
       if verbose > 1:
         print "out loop starts from:", i, "line:", src[i].rstrip()
@@ -269,7 +269,7 @@ def mkanchors(shost, srclist):
 
   # 2. find the location of dependence
   for i in range(a0+1, len(shost)):
-    if shost[i].find("/* build dependencies */") >= 0:
+    if "/* build dependencies */" in shost[i]:
       a1 = i+1
       break
   else:
@@ -320,7 +320,7 @@ def integrate(srclist, host, fnout):
   modcnt = 0
 
   for fn_src, mod_name in srclist:
-    if fn_src.find(os.sep) < 0: # make long name abc --> abc/abc
+    if not os.sep in fn_src: # make long name abc --> abc/abc
       fnlsrc = os.path.join(fn_src, fn_src)
 
     # derive other file names
@@ -356,14 +356,14 @@ def integrate(srclist, host, fnout):
     pivot = -1
     for i in range(len(src)):
       if (src[i].startswith("#include") and
-          src[i].find('"' + fn_src_h + '"', 7) >= 0):
+          ('"' + fn_src_h + '"' in src[i][7:]) ):
         pivot = i
         break
     else:
       print "cannot find where to insert headers\n",
       raw_input("press Enter to see the current file")
       print ''.join( src )
-      return 1
+      raise Exception
     if verbose > 1:
       print "pivot is found at", pivot
     src = src[:pivot] + header + src[pivot + 1:]

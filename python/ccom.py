@@ -16,10 +16,10 @@ def getfunc(lines, funcname):
     s = lines[i0]
     # we only operate on static and inline functions
     if ( (s.startswith("static") or s.startswith("INLINE") )
-        and s.find(funcname + "(") >= 0):
+        and funcname + "(" in s:
       break
     if ( s.startswith("#define")
-        and s.find(funcname + "(") >= 0):
+        and funcname + "(" in s:
       ismacro = 1
       break
   else:

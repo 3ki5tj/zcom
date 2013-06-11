@@ -536,8 +536,8 @@ def doargs():
 
   ls = args
   try: # limit the dependence on argsglob
-    from zcom import argsglob
-    ls = argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
+    import zcom
+    ls = zcom.argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
   if len(ls) <= 0: print "no file for %s" % args
   return ls

@@ -8,6 +8,8 @@ import os, sys, getopt
 verbose = 0
 bytessaved = 0
 
+
+
 def rtrimf(fn):
   ''' remove trailing spaces of file `fn' '''
 
@@ -33,6 +35,7 @@ def rtrimf(fn):
       print "overwriting %s, len %s -> %s (save %s bytes)" % (
         fn, len(s0), len(s1), bsaved)
     open(fn, "w").writelines(s1)
+
 
 
 
@@ -80,7 +83,7 @@ def doargs():
 
   ls = args
   try: # limit the dependence on fileglob
-    from zcom import argsglob
+    import zcom
     # common text files
     pats = """*.c *.cpp *.h *.hpp *.java
               *.py *.pl *.rb *.php *.js
@@ -90,7 +93,7 @@ def doargs():
               *.cfg *.mdp
               *.sh *.csh
               README* *akefile"""
-    ls = argsglob(args, pats, recur = recur, links = links)
+    ls = zcom.argsglob(args, pats, recur = recur, links = links)
   except ImportError: pass
   return ls
 
@@ -100,6 +103,7 @@ def main():
   fns = doargs()
   for fn in fns: rtrimf(fn)
   print "saved %s bytes" % bytessaved
+
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ class CCodeWriter:
     if t.rstrip().endswith("{"): who.inc()
 
   def addlnraw(self, t):
-    if not t.find('\n'):
+    if not '\n' in t:
       self.addraw(t + '\n') # single line
     else:
       for line in t.splitlines():
@@ -488,8 +488,9 @@ class CCodeWriter:
 
     dcl = dcl.rstrip(";")
     if var == None: # make a cheap guess of variable
+      dcl0 = dcl
       pivot = dcl.find("=")
-      dcl0 = dcl[:pivot] if pivot >= 0 else dcl
+      if pivot >= 0: dcl0 = dcl[:pivot]
       arr = dcl0.split()
       var = arr[len(arr) - 1].strip("*()")
       if var == "" or var[0].isdigit() or not re.match("\w+$", var):
@@ -544,7 +545,7 @@ class CCodeWriter:
     self.addln("for (%s = 0; %s < %s; %s++) {", major, major, dim[0], major)
     self.addln("%s = %s + %s * %s;", pb, arr, major, dim[1])
     if trim:
-      self.addln("for (%s = %s; %s > 0 && %s[%s-1] <= 0.0; %s--) ;",
+      self.addln("for (%s = %s; %s > 0 && %s[%s - 1] <= 0.0; %s--) ;",
         jmax, dim[1], jmax, pb, jmax, jmax)
       self.addln("for (%s = 0; %s < %s && %s[%s] <= 0.0; %s++) ;",
         jmin, jmin, jmax, pb, jmin, jmin)
@@ -808,11 +809,11 @@ class CCodeWriter:
     elif tp in ("int", "unsigned", "long"):
       test = var + "[i]"
     elif isobj:
-      test = "*((char *)%s + i)" % var
-      cnt = "%s*sizeof(%s)" % (cnt, tp)
+      test = "*((char *) %s + i)" % var
+      cnt = "%s * sizeof(%s)" % (cnt, tp)
     else: return None
     self.declare_var("int i")
-    self.addln("for (i = %s-1; i >= 0; i--) if (%s) break;", cnt, test)
+    self.addln("for (i = %s - 1; i >= 0; i--) if (%s) break;", cnt, test)
     return "i >= 0"
 
   def mpibcast(self, mpirank, mpisize, var, cnt, tp, master, comm, onerr = "exit(1);"):

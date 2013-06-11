@@ -3,6 +3,8 @@
 
 import Gnuplot, os, sys, glob
 
+
+
 def main():
   # determine the script to plot
   if len(sys.argv) > 1:
@@ -21,9 +23,12 @@ def main():
     g.reset()
 
 
+
 def usage():
   ''' print usage and die '''
   print "%s your.gp" % sys.argv[0]
+
+
 
 def viewfile(fn):
   ''' search the output and call gnome-open to open it '''
@@ -35,6 +40,7 @@ def viewfile(fn):
       file = s[i+1:-1]
       print "output is %s" % file
       #os.system("gnome-open %s" % file)
+
 
 
 if __name__ == "__main__":

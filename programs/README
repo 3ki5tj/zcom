@@ -9,17 +9,18 @@ assemble.py                 assemble `zcom.h' from individual modules,
 zcompick.py                 make `zcom.h' smaller by selecting only a few modules
                             independent of `assemble.py'
 abpro/abemin.c              energy minimization program for AB protein model
-cspacer/rstrip.py           remove trailing white spaces
-cspacer/cspacer.py          add spaces to C code
-cspacer/cindent.py          reformat leading indent for C code
+python/cspacer/rstrip.py    remove trailing white spaces
+python/cspacer/cspacer.py   add spaces to C code
+python/cspacer/cindent.py   reformat leading indent for C code
+python/pyembed/pyembed.py   embed python modules
+python/gpload.py            load a gnuplot script
 og/og.py                    object code generator
 pdb/pdbalign/pdbalign.c     align two pdb structures
-netgrab/                    grab/backup files on a server
+programs/netgrab/           grab/backup files on a server
 
 
 Additional programs
 --------------------
-gpload.py                   load a gnuplot script
 mkclean                     clean up common backup files
 
 

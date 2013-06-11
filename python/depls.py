@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+
+
 ''' sort dependency list, used by assemble.py '''
+
+
 
 def depsort(deps):
   ''' returns a sorted list s.t. dependencies specified in 'deps' are satisfied
@@ -13,6 +17,7 @@ def depsort(deps):
   d = sort(deps)
   if d: return d, None
   else: return None, findcycl(deps)
+
 
 
 def sort(deps):
@@ -33,6 +38,8 @@ def sort(deps):
     else: return None
     if j != i: d[i], d[j] = d[j], d[i] # swap d[i] and d[j]
   return d
+
+
 
 def findcycl(deps):
   ''' find cyclic dependencies
@@ -74,6 +81,8 @@ def findcycl(deps):
         jt[top] = 0
   return 0
 
+
+
 def main():
   ''' test depsort() '''
   deps = [
@@ -88,6 +97,8 @@ def main():
     print d
   else:
     print '-->'.join( findcycl(deps) )
+
+
 
 if __name__ == "__main__":
   main()

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-"""
-remove debug code from ss.c
-"""
+""" remove debug code from ss.c """
 
 def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], verbose=2):
   """
@@ -33,7 +31,7 @@ def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], ver
         if lin1.startswith("#ifdef"):
           # try to scan over badkeys
           for key in badkeys:
-            if lin1.find(key) >= 0:
+            if key in lin1:
               ignore_at = plevel
               if verbose >= 2:
                 print "IGNOR +",plevel,"linenum=",linenum, ":", line.rstrip(), "key:", key

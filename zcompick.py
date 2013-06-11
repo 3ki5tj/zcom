@@ -68,7 +68,7 @@ def mksmall(input, output, goodkeys):
         if level == 1 and lin.startswith("#ifdef"):
           if hasbadkey(lin, badkeys) or not looksgood(lin, goodkeys):
             ignlev = level
-        elif lin.find("_LEGACY") >= 0 or lin.strip().endswith("DEBUG"):
+        elif "_LEGACY" in lin or lin.strip().endswith("DEBUG"):
           ignlev = level
 
     if ignlev < 0: newsrc += [line]
@@ -106,7 +106,7 @@ def getbadkeys(lines, excls):
       level += 1
 
     if lin.startswith("#ifndef"):
-      if level == 1 and (toclev < 0) and lin.find("ZCOM_PICK") >= 0:
+      if level == 1 and (toclev < 0) and "ZCOM_PICK" in lin:
         toclev = level
       elif toclev >= 0 and level == 2:
         key = lin.split()[1]

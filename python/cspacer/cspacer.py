@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import os, sys, shutil, getopt, re
-
 '''
 add spaces for C source code
 
@@ -23,6 +21,8 @@ Example 2:
         return (a > b) ? a : b;
      }
 '''
+
+import os, sys, shutil, getopt, re
 
 # module attributes
 verbose   = 0
@@ -602,8 +602,8 @@ def doargs():
 
   ls = args
   try: # limit the dependence on argsglob
-    from zcom import argsglob
-    ls = argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
+    import zcom
+    ls = zcom.argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
   return ls
 

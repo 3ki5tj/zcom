@@ -19,8 +19,7 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	wc $@
 
 subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd savgol specfunc \
-	  argopt cfg log av hist mds pdb ising2 potts2 md lj \
-	  abpro cago objgen
+	  argopt cfg log av hist mds pdb md ising2 potts2 lj abpro cago
 
 clean:
 	$(RM) -f *~ $(prj).o $(prj).zip */*~ */*/*~ */a.out *.tmp

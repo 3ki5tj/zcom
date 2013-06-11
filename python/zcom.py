@@ -113,7 +113,6 @@ def templrepl(s, d, bra = "{{", ket = "}}", rex = False):
 
 
 
-''' XXXXXXXXXXXXXXXXXXXXX DEPRECATED XXXXXXXXXXXXXXXXXX '''
 def mkpath(path, make = 0, force = False):
   ''' return a new path as prefix + path, expand $HOME
   create the path as a directory, if `make' is true '''
