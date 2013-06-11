@@ -1,2 +1,4 @@
-test
+Tests
 ./pyembed.py foo.py -a -o foo.sc.py
+
+./pyrmfunc.py foo.py -a -o foo.1.py

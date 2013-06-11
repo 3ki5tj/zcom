@@ -1,25 +1,13 @@
 #!/usr/bin/env python
 
-''' embed python '''
+''' embed source code of modules into a master python script
+    Copyright (c) 2013 Cheng Zhang '''
 
-import os, sys, re, getopt
-
+import os, sys, getopt, re
 
 
 verbose = 0
 doall = False
-
-
-
-def getfuncs(s):
-  ''' collect functions '''
-
-  ls = []
-  for i in range(len(s)):
-    ln = s[i].strip()
-    m = re.match(r"\s*def\s+(\w+?)\s*?\(.*", ln)
-    if m: ls += [ m.group(1), ]
-  return ls
 
 
 
@@ -48,19 +36,66 @@ def getmodls(s):
 
 
 
+def getcodestart(src):
+  ''' return the first line that the actual code starts '''
+
+  first = 0
+  if len(src) and src[0].startswith("#!"):
+    first = 1
+
+  # now skip over a blank block
+  while first < len(src):
+    if src[first].strip(): break
+    first += 1
+
+  # also skip a description block
+  bstr = None
+  if src[first].startswith("'''"): bstr = "'''"
+  if src[first].startswith('"""'): bstr = '"""'
+  if bstr:
+    if bstr in src[first][3:]:
+      # a single line description: ''' blah blah blah... '''
+      first += 1
+    else:
+      # a multiple line description
+      first += 1
+      while first < len(src):
+        if bstr in src[first]: break
+        first += 1
+      else: # retreat one line, for we have reach the end
+        first -= 1
+      first += 1
+  return first
+
+
+
+def trimsrc(src):
+  ''' remove the unnecessary parts of the python script '''
+
+  # remove the tag line
+  first = getcodestart(src)
+  src = src[first:]
+
+  # the main function
+  for i in range(len(src)):
+    if re.match(r"""if\s+__name__\s*==\s*["']__main__["']:.*""", src[i]):
+      src = src[:i]
+      break
+  else:
+    pass
+
+  # remove user-interface functions
+  try:
+    import pyrmfunc
+    pyrmfunc.verbose = verbose
+    src = pyrmfunc.rmfuncs(src, ["help", "usage", "doargs"] )
+  except ImportError: pass
+  return src
+
+
+
 def embed0(src, mod, imported):
   """ embed `mod' into src """
-
-  # prepare the module to be inserted
-  fnmod = mod + ".py"
-  if not os.path.exists(fnmod):
-    print "cannot import %s" % fnmod
-    return src
-  srcmod = open(fnmod).readlines()
-  if len(srcmod) and srcmod[0].startswith("#!"):
-    srcmod = srcmod[1:]
-  srcmod  = ["\n\n################### embedded module '%s' begins ####################\n" % mod, ] + srcmod
-  srcmod += ["################### embedded module '%s' ends ######################\n\n\n" % mod, ]
 
   first = -1
   # 1. remove all statements of importing `mod'
@@ -94,38 +129,17 @@ def embed0(src, mod, imported):
 
   # 2. insert the source module
   if not mod in imported:
+    # prepare the module to be inserted
+    fnmod = mod + ".py"
+    if not os.path.exists(fnmod):
+      print "cannot import %s" % fnmod
+      return src
+    srcmod = trimsrc( open(fnmod).readlines() )
+    srcmod  = ["\n\n#################### embedded module '%s' begins #####################\n" % mod, ] + srcmod
+    srcmod += ["#################### embedded module '%s' ends #######################\n\n\n" % mod, ]
+
     # try to find a suitable start point of insertion
-    if first < 0:
-      first = 0
-      while first < len(src): # use the first blank line
-        if not src[first].strip(): break
-        first += 1
-      while first < len(src): # now skip over a blank block
-        if src[first].strip(): break
-        first += 1
-      # also skip a description block
-      bstr = None
-      if src[first].startswith("'''"): bstr = "'''"
-      if src[first].startswith('"""'): bstr = '"""'
-      if bstr:
-        if bstr in src[first][3:]:
-          # a single line description: ''' blah blah blah... '''
-          first += 1
-        else:
-          # a multiple line description
-          first += 1
-          while first < len(src):
-            if bstr in src[first]: break
-            first += 1
-          else: # retreat one line, for we have reach the end
-            first -= 1
-          first += 1
-
-        # now skip over a blank block
-        while first < len(src):
-          if src[first].strip(): break
-          first += 1
-
+    first = getcodestart(src)
     if verbose:
       print "module '%s' is to be inserted before line %s" % (mod, first)
     src = src[:first] + srcmod + src[first:]
@@ -141,15 +155,16 @@ def embed0(src, mod, imported):
 
 def embed(src, modls):
   ''' embed a list of modules '''
+
   imported = {} # dictionary of imported modules
   # iterate the module-insertion process, because modules may import each other
   for i in range(len(modls) + 1):
-    if verbose: print "starting iteration %d" % i
+    if verbose: print "embed: starting iteration %d" % i
     src0 = src[:]
     for mod in modls:
       src = embed0(src, mod, imported)
     if ''.join(src0) == ''.join(src):
-      if verbose: print "finishing at iteration %d" % i
+      if verbose: print "embed: finishing at iteration %d" % i
       break
   return src
 
@@ -225,6 +240,12 @@ if __name__ == "__main__":
   print "embedding %s into %s" % (modls, fninp)
   s = open(fninp).readlines()
   s = embed(s, modls)
+  try:
+    import pyrmfunc
+    s = pyrmfunc.rmfuncs(s)
+  except ImportError:
+    print "Warning: cannot use `pyrmfunc'"
+    pass
   if fnout:
     print "writing", fnout
     open(fnout, "w").writelines(s)
