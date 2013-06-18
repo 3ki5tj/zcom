@@ -4,7 +4,7 @@
 typedef float real;
 */
 typedef double real;
-#include "abpro.c"
+#include "abpro.h"
 
 int doconstr = 1;
 int br = 0;
@@ -31,7 +31,7 @@ int main(void)
     } else {
       ab_vv(ab, 1.f, mddt, flags);
       ab_rmcom(ab, ab->x, ab->v);
-      ab_vrescale(ab, tp, thermdt);
+      ab_vrescale(ab, tp, thermdt, &ab->ekin, &ab->tkin);
     }
     if (it % 1000 == 0 && ab->lgcon && ab->lgact < ab->lgcnt)
       ab_updconstr(ab, 0);
@@ -44,8 +44,8 @@ int main(void)
     sme += ab->epot;
   }
   printf("tkin = %g, epot = %g\n", smt/itmax, sme/itmax);
-  //ab_writepos(ab, ab->x, br ? NULL : ab->v, "ab.pos");
-  //ab_close(ab);
+  ab_writepos(ab, ab->x, br ? NULL : ab->v, "ab.pos");
+  ab_close(ab);
   return 0;
 }
 

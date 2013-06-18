@@ -1,12 +1,9 @@
-#include <stdio.h>
-#include "rng.h"
-
 #define LB        5
 #define L         (1 << LB)
 #define DATAFILE  "is.dat"
 
 #define IS2_LB  LB
-#include "ising2.c"  /* swap with the #define LB line to test two different versions */
+#include "ising2.h"  /* swap with the #define LB line to test two different versions */
 
 /* randomly pick a site and flip it */
 static void mc(ising_t *is, double steps, double beta, int ncheck)

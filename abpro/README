@@ -15,15 +15,11 @@ Don't edit abpro.c, edit abpro.0.c (only 3d version).
 
 Files
 ---------
-abpro.h     head file
-abpro.0.c   source code
-abpro.c     generate from abpro.0.c by mkab2d.py, do not edit
-mkab2d.py   generate a version abpro.c with 2d support from abpro.0.c
-            the script uses a generic add2d.py, which is located
-            in the $(ROOT)/python.  But python can automatically
-            locate add2d.py without symbolic links because of the
-            __init__.py, which treats the entire directory tree
-            as a python package.
+abpro.0.h   source code
+abpro.h     generate from abpro.0.c by mkab2d.py, do not edit
+mkab2d.py   generate a version abpro.h with 2d support from abpro.0.h
+            The script uses a generic ccom.py, which is located
+            in the $(ROOT)/python.
 
 Test programs
 ~~~~~~~~~~~~~~

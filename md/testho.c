@@ -1,7 +1,7 @@
 /* test on harmonic oscillator */
 #include "md.h"
-#include "include/av.h"
-#include "include/hist.c"
+#include "av.h"
+#include "hist.h"
 
 int main(void)
 {

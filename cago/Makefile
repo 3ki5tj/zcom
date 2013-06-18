@@ -1,13 +1,13 @@
 incl = -I./include
-CC = gcc -Wall -Wextra -O0 -g3 -lm -pedantic $(incl)
+CC = gcc -Wall -Wextra -pedantic -O0 -g3 $(incl)
 LM = -lm
 # optimized compiling
 CX = icc -Wall -O3 -g -march=native -vec_report0 -wn1 $(incl)
 LMX =
 #CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops -lm
 
-deps = cago.c cago.h def.h rv3.h md.h pdb.h util.h \
-       include/argopt.c include/argopt.h Makefile
+deps = cago.h def.h rv3.h rm3.h md.h pdb.h util.h \
+       include/argopt.h Makefile
 bin := $(patsubst %.c,%, $(wildcard test*.c))
 bin_d := $(patsubst %.c,%_d, $(wildcard test*.c))
 

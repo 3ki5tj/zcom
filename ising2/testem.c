@@ -1,12 +1,9 @@
 /* check if pick() and flip() correctly computes the energy */
-#include <stdio.h>
-#include "rng.h"
-
 #define L 32
 /*
 #define IS2_LB 5
 */
-#include "ising2.c"
+#include "ising2.h"
 
 /* randomly pick a site and flip it */
 static void randflip(ising_t *is)

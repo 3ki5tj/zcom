@@ -2,12 +2,6 @@
 #include "util.h"
 #ifndef EIG_H__
 #define EIG_H__
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
-/* the main function */
-int eigsym(real *mat, real *eigval, real *eigvec, int n);
 
 /* To reduce a real symmetric matrix 'm' to tridiagonal by Householder transformations.
  * The diagonal elements are saved in vector 'd' and off-diagonal elements 'e'.  */
@@ -85,6 +79,7 @@ static void tridiag(real *m, real d[], real e[], int n)
 }
 
 
+
 /* diagonalize the tridiagonal matrix by QR algorithm,
    whose diagonal is d[0..n-1], off-diagonal is e[0..n-2];
  * reduce from the left-top to right-left */
@@ -154,6 +149,8 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
   }/* end for each eigenvalue */
 }
 
+
+
 /* sort eigenvalues and eigenvectors in ascending order */
 static void eigsort(real *d, real *v, int n)
 {
@@ -172,6 +169,8 @@ static void eigsort(real *d, real *v, int n)
     }
   }
 }
+
+
 
 /* solve eigensystem of a real symmetric matrix `mat',
  * eigenvalues saved to `d', eigenvectors to v */

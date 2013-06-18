@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include "rng.h"
-#include "util.h"
-
 #define LB        5
 #define L         (1 << LB)
 #define Q         10
@@ -9,7 +5,7 @@
 
 #define PT2_LB  LB
 #define PT2_Q   Q
-#include "potts2.c"  /* swap with the #define LB line to test two different versions */
+#include "potts2.h"  /* swap with the #define LB line to test two different versions */
 
 /* randomly pick a site and flip it */
 static void mc(potts_t *pt, double steps, double beta, int ncheck)
@@ -39,7 +35,7 @@ static void mc(potts_t *pt, double steps, double beta, int ncheck)
 
     /* heat bath */
 
-    //PT2_PSEQ(pt, id, nb);
+    /* PT2_PSEQ(pt, id, nb); */
     PT2_PICK(pt, id, nb);
     PT2_HEATBATH(pt, id, so, sn, nb);
     if (so != sn) {

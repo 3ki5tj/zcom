@@ -8,8 +8,11 @@ Overview
 
 Files
 ------
-rv3.h       source code
-rv3.c       empty, merely includes rv3.h
+rv3.0.h/rv3.h   routines for 3-vectors
+rv3calcdih.h    heavy-weight dihedral calculations
+rv3gi.h         solid angles and Gauss integrals
+rm3.0.h/rm3.h   routines for 3x3 matrices
+rv3.c           inclues rv3.h, etc
 
 
 Test programs

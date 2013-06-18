@@ -1,21 +1,36 @@
-CC=gcc -O0 -g3 -Wall -Wextra -pedantic
-LM=-lm
-deps=def.h util.h
+# generic make file for new modules
 
-bin=test1 testsqr testsvdsolve
-all: $(bin)
+CC = gcc -O0 -g3 -Wall -Wextra -pedantic
+LM = -lm
+# optimized compiling
+# -wd161: disable unknown #pragma
+CX = icc -Wall -O3 -march=native -vec_report0 -wd161
+LMX =
+#CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
+#LMX =-lm
 
-test1: test1.c $(deps)
+deps = util.h svd.h Makefile
+bins = $(patsubst %.c,%, $(wildcard test*.c))
+bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
+
+debug: $(bins_d)
+
+build: $(bins)
+
+all: $(bins) $(bins_d)
+
+$(bins_d) : %_d : %.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
-testsqr: testsqr.c $(deps)
-	$(CC) -o $@ $< $(LM)
+$(bins) : % : %.c $(deps)
+	$(CX) -o $@ $< $(LMX)
 
-testsvdsolve: testsvdsolve.c $(deps)
-	$(CC) -o $@ $< $(LM)
+subdirs =
 
 clean:
-	rm -f $(bin) *~ *.o
+	$(RM) -f *~ *.out MTSEED *.dat $(bins) $(bins_d)
+	-for d in $(subdirs); do (cd $$d; $(MAKE) clean ); done
+	rstrip.py -lRv
 
-.PHONY: all clean
+.PHONY: clean all debug build
 

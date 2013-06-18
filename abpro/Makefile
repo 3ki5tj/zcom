@@ -11,7 +11,7 @@ LMM =
 #CM = $(CX) -openmp-profile -D_OPENMP -openmp-report0
 #CM = $(CC) -fopenmp
 
-deps = abpro.c abpro.h rv3.h rv2.h util.h md.h Makefile
+deps = abpro.h rv2.h rv3.h rm3.h util.h md.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 bins_m = $(patsubst %.c,%_m, $(wildcard test*.c))
@@ -33,7 +33,7 @@ $(bins) : % : %.c $(deps)
 $(bins_m) : %_m : %.c $(deps)
 	$(CM) -o $@ $< $(LMM)
 
-abpro.c: abpro.0.c mkab2d.py
+abpro.h: abpro.0.h mkab2d.py
 	python mkab2d.py $@
 
 clean:

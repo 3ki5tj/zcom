@@ -1,4 +1,4 @@
 Tests
-./pyembed.py foo.py -a -o foo.sc.py
+./pyembed.py foo.py -a -o foo.m.py
 
 ./pyrmfunc.py foo.py -a -o foo.1.py

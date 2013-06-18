@@ -1,19 +1,138 @@
-#ifndef ABPRO_C__
-#define ABPRO_C__
-/* AB beads protein models */
+#include "util.h"
+#include "rv3.h"
+#include "rv2.h"
+#include "rng.h"
+#include "md.h"
+#ifndef ABPRO_H__
+#define ABPRO_H__
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <math.h>
-#include "abpro.h"
+typedef struct {
+  int i, j;
+  int on; /* constraint is active */
+  real dx0[3]; /* difference */
+  real r2ref; /* square of the reference distance */
+} lgconstr_t;
+
+typedef struct {
+  int i, j;
+  int tid; /* thread */
+  real c;
+} abpairid_t; /* pair index */
+
+typedef struct {
+  int d; /* dimension */
+  int model; /* 1 or 2 */
+  int seqid; /* model sequence id */
+  int n; /* number of atoms */
+  int dof, dof0; /* number of degrees of freedom */
+  real clj[2][2], sla, slb;
+  int *type; /* 0: A, 1: B */
+  real *x, *x1, *dx;
+  real *v;
+  real *f;
+  real *lmx, *xmin;
+  real emin, epot, ekin, tkin;
+  double t;
+
+  int lgcon; /* enable local constraints */
+  int lgcnt; /* total local constraints */
+  int lgact; /* active local constraints */
+  lgconstr_t *lgc;
+
+#define AB_XXCNT 6
+  real *xx[AB_XXCNT]; /* extra memory allocations, each of the size of x */
+
+#ifdef _OPENMP
+  int nthreads; /* number of threads */
+  real *f_l; /* local force */
+  int *homeid; /* [homeid[tid], homeid[tid + 1]): atoms belongs to thread id */
+  int paircnt; /* number of pairs */
+  abpairid_t *pair; /* the entire pair */
+  int *pairid; /* [pairid[tid], pairid[tid + 1]): pairs belong to thread tid */
+#endif
+} abpro_t;
+
+#define AB_VERBOSE    0x0001
+#define AB_SOFTFORCE  0x0010
+#define AB_MILCSHAKE  0x0020
+#define AB_LMREGISTER 0x0100
+#define AB_LMWRITE    0x0200
+
+
+#define ab_shiftcom(ab, v)      md_shiftcom(v, ab->n, ab->d)
+#define ab_shiftang(ab, x, v)   md_shiftang(x, v, ab->n, ab->d)
+/* shift center of x to the origin, remove center velocity and angular momentum */
+INLINE void ab_rmcom(abpro_t *ab, real *x, real *v)
+{
+  ab_shiftcom(ab, x);
+  ab_shiftcom(ab, v);
+  ab_shiftang(ab, x, v); /* remove angular momentum */
+}
+
+
+INLINE real ab_force(abpro_t *ab, const real *r, real *f, int soft);
+
 
 #ifdef _OPENMP
 /* compare pair by thread id */
 static int ab_prcmp(const void *a, const void *b)
 { return ((abpairid_t *) a)->tid - ((abpairid_t *) b)->tid; }
 #endif
+
+
+
+/* check connectivity */
+INLINE int ab_checkconn(abpro_t *ab, const real *x, double tol)
+{
+  int i, d = ab->d;
+  real r;
+
+  if (tol <= 0.) tol = 1e-3;
+  for (i = 0; i < ab->n-1; i++) {
+    if (d == 3) {
+      r = rv3_dist(x + i*3, x + (i+1)*3);
+    } else {
+      r = rv2_dist(x + i*2, x + (i+1)*2);
+    }
+    if (fabs(r-1) > tol) {
+      fprintf(stderr, "link (%d,%d) is broken, r = %g\n", i, i+1, r);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+
+/* initialize an almost straight chain,
+ * randomness given by del */
+INLINE int ab_initpos(abpro_t *ab, real *x, real del)
+{
+  int i, j;
+  real dx[3];
+
+  for (j = 0; j < ab->d; j++) ab->x[j] = 0;
+  for (i = 0; i < ab->n - 1; i++) {
+    for (j = 0; j < ab->d; j++) {
+      dx[j] = (2.f*rand()/RAND_MAX - 1)*del + ((j == 0) ? 1.f : 0.f);
+    }
+    if (ab->d == 3) {
+      rv3_normalize(dx);
+      rv3_add(x + (i+1)*ab->d, x + i*ab->d, dx);
+    } else {
+      rv2_normalize(dx);
+      rv2_add(x + (i+1)*ab->d, x + i*ab->d, dx);
+    }
+  }
+  ab_shiftcom(ab, x);
+  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed, with del = %g\n", del);
+  return 0;
+}
+
+
 
 /* initialization
  * seqid: 8: 34, 9: 55, 10: 89 */
@@ -142,30 +261,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
   return ab;
 }
 
-/* initialize an almost straight chain,
- * randomness given by del */
-int ab_initpos(abpro_t *ab, real *x, real del)
-{
-  int i, j;
-  real dx[3];
 
-  for (j = 0; j < ab->d; j++) ab->x[j] = 0;
-  for (i = 0; i < ab->n - 1; i++) {
-    for (j = 0; j < ab->d; j++) {
-      dx[j] = (2.f*rand()/RAND_MAX - 1)*del + ((j == 0) ? 1.f : 0.f);
-    }
-    if (ab->d == 3) {
-      rv3_normalize(dx);
-      rv3_add(x + (i+1)*ab->d, x + i*ab->d, dx);
-    } else {
-      rv2_normalize(dx);
-      rv2_add(x + (i+1)*ab->d, x + i*ab->d, dx);
-    }
-  }
-  ab_shiftcom(ab, x);
-  die_if (ab_checkconn(ab, x, 0) != 0, "initpos failed, with del = %g\n", del);
-  return 0;
-}
 
 /* close ab */
 void ab_close(abpro_t *ab)
@@ -186,29 +282,10 @@ void ab_close(abpro_t *ab)
   free(ab);
 }
 
-/* check connectivity */
-int ab_checkconn(abpro_t *ab, const real *x, double tol)
-{
-  int i, d = ab->d;
-  real r;
 
-  if (tol <= 0.) tol = 1e-3;
-  for (i = 0; i < ab->n-1; i++) {
-    if (d == 3) {
-      r = rv3_dist(x + i*3, x + (i+1)*3);
-    } else {
-      r = rv2_dist(x + i*2, x + (i+1)*2);
-    }
-    if (fabs(r-1) > tol) {
-      fprintf(stderr, "link (%d,%d) is broken, r = %g\n", i, i+1, r);
-      return 1;
-    }
-  }
-  return 0;
-}
 
 /* write position file (which may include velocity) */
-int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fn)
+INLINE int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fn)
 {
   FILE *fp;
   int i, j, d = ab->d, n = ab->n;
@@ -216,20 +293,22 @@ int ab_writepos(abpro_t *ab, const real *x, const real *v, const char *fn)
   if (fn == NULL) fn = "ab.pos";
   xfopen(fp, fn, "w", return -1);
 
-  fprintf(fp, "# %d %d %d %d %d\n", d, ab->model, ab->seqid, ab->n, (v != NULL));
+  fprintf(fp, "# %d %d %d %d %d\n",
+      d, ab->model, ab->seqid, n, (v != NULL));
   for (i = 0; i < n; i++) {
     for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", x[i*d+j]);
     if (v)
       for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", v[i*d+j]);
-    fprintf(fp, "%d ", ab->type[i]);
-    fprintf(fp, "\n");
+    fprintf(fp, "%d\n", ab->type[i]);
   }
   fclose(fp);
   return 0;
 }
 
+
+
 /* read position file (which may include velocity) */
-int ab_readpos(abpro_t *ab, real *x, real *v, const char *fn)
+INLINE int ab_readpos(abpro_t *ab, real *x, real *v, const char *fn)
 {
   char s[1024], *p;
   FILE *fp;
@@ -282,8 +361,10 @@ ERR:
   return 1;
 }
 
+
+
 /* 3D shake with additional constraints */
-static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
+INLINE int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
@@ -406,8 +487,9 @@ static int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 }
 
 
+
 /* shake x1 according to x0 */
-int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
+INLINE int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 3000;
@@ -417,7 +499,9 @@ int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     ab_shake2d(ab, (crv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
 }
 
-static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
+
+
+INLINE int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
     int itmax, double tol, int verbose)
 {
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
@@ -473,8 +557,10 @@ static int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
   return 0;
 }
 
+
+
 /* shake v according to x0 */
-int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int verbose)
+INLINE int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = 1e-4;
@@ -483,7 +569,9 @@ int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol, int v
     ab_rattle2d(ab, (crv2_t *) x0, (rv2_t *) v, itmax, tol, verbose);
 }
 
-static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
+
+
+INLINE int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
   int i, again, it, n = ab->n, nl;
@@ -559,10 +647,12 @@ static int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
   return 0;
 }
 
+
+
 /* MILC shake, make |dr| = 1
  * for a random config., about 30~40% faster than shake
  * but slower than shake for near-minimum config.  */
-int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
+INLINE int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 3000;
@@ -572,7 +662,9 @@ int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
     ab_milcshake2d(ab, (crv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
 }
 
-static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
+
+
+INLINE int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
 {
   int i, n = ab->n, nl;
   rv3_t *dx = (rv3_t *) ab->xx[0], *dv = (rv3_t *) ab->xx[1];
@@ -619,15 +711,19 @@ static int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
   return 0;
 }
 
+
+
 /* MILC rattle, make dr.v = 0 */
-int ab_milcrattle(abpro_t *ab, const real *x, real *v)
+INLINE int ab_milcrattle(abpro_t *ab, const real *x, real *v)
 {
   return (ab->d == 3) ?
     ab_milcrattle3d(ab, (crv3_t *) x, (rv3_t *) v) :
     ab_milcrattle2d(ab, (crv2_t *) x, (rv2_t *) v);
 }
 
-static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
+
+
+INLINE real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
   real ua = 0, ulj = 0;
@@ -659,7 +755,9 @@ static real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
   return ua * .25f  + ulj;
 }
 
-static real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
+
+
+INLINE real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
 {
   int i, j, n = ab->n;
   real ua = 0, ud = 0, ulj = 0;
@@ -693,7 +791,9 @@ static real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
   return ua + ud + ulj;
 }
 
-real ab_energy(abpro_t *ab, const real *r, int soft)
+
+
+INLINE real ab_energy(abpro_t *ab, const real *r, int soft)
 {
   if (ab->model == 2)
     return ab_energy3dm2(ab, (crv3_t *) r, soft);
@@ -703,7 +803,9 @@ real ab_energy(abpro_t *ab, const real *r, int soft)
     return ab_energy2dm1(ab, (crv2_t *) r, soft);
 }
 
-static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
+
+
+INLINE real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -785,7 +887,9 @@ static real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
   return ua * 0.25f + U;
 }
 
-static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
+
+
+INLINE real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -875,8 +979,10 @@ static real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
   return ua + ud + U;
 }
 
+
+
 /* compute force f */
-real ab_force(abpro_t *ab, const real *r, real *f, int soft)
+INLINE real ab_force(abpro_t *ab, const real *r, real *f, int soft)
 {
   if (ab->d == 2)
     return ab_force2dm1(ab, (crv2_t *) r, (rv2_t *) f, soft);
@@ -886,12 +992,14 @@ real ab_force(abpro_t *ab, const real *r, real *f, int soft)
     return ab_force3dm2(ab, (crv3_t *) r, (rv3_t *) f, soft);
 }
 
+
+
 /* minimizes the energy of a given configuration.
    The minimized configuration is saved in ab->lmx
    When a lowest energy configuration is found, the result is
    saved to global variable ab->xmin, with ab->emin updated. */
-real ab_localmin(abpro_t *ab, const real *r, int itmax, double tol,
-    int sh_itmax, double sh_tol, unsigned flags)
+INLINE real ab_localmin(abpro_t *ab, const real *r, int itmax,
+    double tol, int sh_itmax, double sh_tol, unsigned flags)
 {
   int t, i, j, id, n = ab->n, d = ab->d;
   real up, u = 0, step = 0.02, del, mem = 1;
@@ -945,7 +1053,15 @@ SHRINK:
   return u;
 }
 
-static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
+
+
+#define ab_ekin(ab, tk) md_ekin(ab->v, ab->n * ab->d, ab->dof, tk)
+
+#define ab_vrescale(ab, tp, dt, ek, tk) \
+    md_vrescale(ab->v, ab->n * ab->d, ab->dof, tp, dt, ek, tk)
+
+
+INLINE int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
 {
   int i, verbose = 1, n = ab->n;
   real dth = .5f*dt*fscal;
@@ -980,15 +1096,17 @@ static int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
     i = ab_rattle(ab, ab->x, ab->v, 0, 0., verbose);
   }
 
-  ab_ekin(ab);
+  ab->ekin = ab_ekin(ab, &ab->tkin);
 
   die_if (i != 0, "t=%g: failed rattle\n", ab->t);
   ab->t += dt;
   return 0;
 }
 
+
+
 /* one step of velocity verlet integrator */
-int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags)
+INLINE int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags)
 {
   int soft = (flags & AB_SOFTFORCE), milc = (flags & AB_MILCSHAKE);
   return (ab->d == 3) ?
@@ -996,8 +1114,10 @@ int ab_vv(abpro_t *ab, real fscal, real dt, unsigned flags)
     ab_vv2d(ab, fscal, dt, soft, milc);
 }
 
+
+
 /* Brownian dynamics */
-int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
+INLINE int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
 {
   int soft = (flags & AB_SOFTFORCE), milc = (flags & AB_MILCSHAKE);
   int i, nd = ab->n * ab->d, verbose = 1;
@@ -1018,6 +1138,8 @@ int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   ab->t += dt;
   return 0;
 }
+
+
 
 /* local geometric constraints (LGC) */
 
@@ -1052,6 +1174,8 @@ INLINE void ab_initconstr(abpro_t *ab, int level)
   ab->lgact = 0; /* no constraint is active yet */
 }
 
+
+
 /* update constraints if atoms are close enough*/
 INLINE void ab_updconstr(abpro_t *ab, double r2max)
 {
@@ -1072,5 +1196,5 @@ INLINE void ab_updconstr(abpro_t *ab, double r2max)
   }
   ab->dof = ab->dof0 - ab->lgact;
 }
-#endif
 
+#endif

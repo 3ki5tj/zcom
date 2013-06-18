@@ -6,73 +6,79 @@ debug code in target.c is removed first by calling rmdbg
 C++ compments are also removed
 '''
 
-import os, sys, inspect, shutil, getopt
+import os, sys, inspect, shutil, getopt, re
 
-# add the current path to the search path (unnecessary)
-#curdir = os.path.realpath(os.path.abspath(os.path.split(inspect.getfile( inspect.currentframe() ))[0]))
-#if curdir not in sys.path: sys.path.insert(0, curdir)
-
+# import functions from the subdirectory `python'
 from python import rmdbg, depls
 
 
-'''
-module attributes, set before use
-'''
-fn_host     = "zcom.h"
-fn_output   = None
+# module attributes, set before use
+fnhost      = "zcom.h"
+fnoutp      = None
 strcls      = "STRCLS"
-host_prefix = "ZCOM_"
+prefix      = "ZCOM_"
 verbose     = 1
 
 
-def strip_def(src):
-  '''
-  strip away the
+def strip_def(src, fn):
+  ''' strip away the
     #ifndef FILE__
     #define FILE__
     #endif
-  triplet, and everything outside
-  '''
-  n = len(src) # number of lines
+  triplet, and everything outside '''
+
+  # form an upper case `tag' from the file name
+  tag = fn.replace(".", "_").upper() + "__"
+
+  n = len(src)
+
+  # 1. find `#ifndef'
   for i in range(n):
-    lin = src[i].lstrip()
-    if lin.startswith("#ifndef") and (not "INLINE" in lin
-        and not "RESTRICT" in lin):
-      start = i
-      if verbose > 1:
-        print "#ifndef found in line", start
+    ln = src[i].strip()
+    if ln.startswith("#ifndef") and ln[7:].strip().startswith(tag):
+      if verbose > 1: print "#ifndef of %s found in line %s: %s" % (fn, i, ln)
       break
   else:
+    print "no #ifndef in %s" % fn
+    raise Exception
     return src # no "#ifdef" found
 
-  # look for the following "#define"
-  start += 1
+  # 2. look for the ensuing `#define'
+  start = i + 1
   if not src[start].lstrip().startswith("#define"):
     return src
   if verbose > 1:
     print "#define found in line", start
 
   start += 1  # beginning of the main code
-
-  # search for the final "#endif"
-  for i in range(n, start, -1):
-    if src[i-1].lstrip().startswith("#endif"):
-      finish = i - 1
+  # 3. search for the final "#endif"
+  for i in range(n - 1, start, -1):
+    if src[i].lstrip().startswith("#endif"):
+      end = i
       break
   else:
-    return src
+    print "no #endif in %s" % fn
+    raise Exception
 
-  if verbose > 1:
-    print "#endif found in line", finish
+  return src[start : end]
 
-  return src[start : finish]
+
+
+def get_includes(src):
+  ''' get a list of files included in src '''
+
+  src = [ln for ln in src if ln.strip().startswith("#include")]
+  fns = []
+  for ln in src:
+    m = re.search('\s*#include\s*"(.*?)"', ln)
+    if m: fns += [ m.group(1) ]
+  return fns
 
 
 
 def add_storage_class(hdr, prefix):
-  '''
-  add storage class, 'prefix', to global function and variables in the header
-  '''
+  ''' add storage class `prefix' to global functions and variables in the header '''
+
   for i in range(len(hdr)):
     line = hdr[i]
     arr = line.split()
@@ -86,9 +92,7 @@ def add_storage_class(hdr, prefix):
 
     #  NOTE: we cannot handle more complex cases
     if first_word in ("void", "char", "int", "unsigned", "long",
-        "real", "float", "double", "const",
-        "cfgdata_t", "logfile_t", "is_t", "hist_t",
-        ) or first_word.endswith("_t"):
+        "real", "float", "double", "const",) or first_word.endswith("_t"):
       hdr[i] = prefix + " " + hdr[i]
   return hdr
 
@@ -96,7 +100,8 @@ def add_storage_class(hdr, prefix):
 
 def remove_cpp_comments(src):
   ''' remove C++ style comments
-  only a line that starts with // is included '''
+      only a line that starts with // is included '''
+
   i = 0
   while i < len(src):
     s = src[i].strip()
@@ -110,17 +115,16 @@ def remove_cpp_comments(src):
 
 
 
-def insert_module(src, name, module):
-  '''
-  find the block specified by
-    #ifdef  name
-    #ifndef name__
-    #define name__
-    ...
-    #endif
-    #endif
-  in 'src' and insert 'module' into ...
-  '''
+def insert_module(src, name, smodule):
+  ''' find the block specified by
+        #ifdef  name
+        #ifndef name__
+        #define name__
+        ...
+        #endif
+        #endif
+      in `src' and insert `smodule' into `...'  '''
+
   n = len(src)
   namein = name + "__"
   plevel = 0
@@ -128,15 +132,14 @@ def insert_module(src, name, module):
   bend = -1
 
   for i in range(n):
-    if (plevel == 0 and
-        bstart < 0 and
+    if (plevel == 0 and bstart < 0 and
         src[i].startswith("#ifdef") and
-        name in src[i] and
+        src[i][6:].strip().startswith(name) and
         src[i+1].startswith("#ifndef") and
-        namein in src[i+1] and
+        src[i+1][7:].strip().startswith(namein) and
         src[i+2].startswith("#define") and
-        namein in src[i+2]):
-      bstart = i+3
+        src[i+2][7:].strip().startswith(namein) ):
+      bstart = i + 3
       if verbose > 1:
         print "out loop starts from:", i, "line:", src[i].rstrip()
 
@@ -149,47 +152,35 @@ def insert_module(src, name, module):
         print "out loop ends at:", i+1, "line:", src[i+1].rstrip()
       break
 
-    if src[i].startswith("#if"):
+    # update #if/#endif loops
+    if src[i].strip().startswith("#if"):
       plevel += 1
-    elif src[i].startswith("#endif"):
+    elif src[i].strip().startswith("#endif"):
       plevel -= 1
 
   if bstart > 0 and bend > 0:
-    return src[:bstart] + module + src[bend:]
+    return src[:bstart] + smodule + src[bend:]
   else:
     print "cannot find the desired module", name
     return src
 
 
 
-def strpbrk(s, char_set):
-  '''
-  return a position of s where the first occurance
-  of any characters in char_set is found
-  '''
-  try:
-    pos = next(i for i,x in enumerate(s) if x in char_set)
-    return pos
-  except:
-    return -1
-
-
-
-def builddeps(srclist):
+def builddeps(srcls):
   ''' build dependencies '''
-  n = len(srclist)
-  #for i in range(n): print "%d: %s" % (i, srclist[i][0])
+  n = len(srcls)
+  #for i in range(n): print "%d: %s" % (i, srcls[i][0])
 
   # 1. build dependencies
   deps = [""]*n
   depsX = [""]*n
   for i in range(n):
-    mod = srclist[i][0]
+    mod = srcls[i][0]
     deps[i] = []
     depsX[i] = []
     for j in range(n):
       if j == i: continue
-      d = srclist[j][0]
+      d = srcls[j][0]
       file_h = os.path.join(mod, d+'.h')
       if os.path.exists(file_h):
         deps[i] += [j,]
@@ -207,15 +198,15 @@ def builddeps(srclist):
   if cycl:
     print "cyclic dependency detected"
     for i in cycl:
-      print "%d (%s) -> " % (i, srclist[i][0]),
+      print "%d (%s) -> " % (i, srcls[i][0]),
     raise Exception
 
   # 3. build a new sorted src list and dependence list
-  newsrclist = [0]*n
+  newsrcls = [0]*n
   newdeps = [0]*n
   for i in range(n):
     id = d[i]
-    newsrclist[i] = srclist[id]
+    newsrcls[i] = srcls[id]
     newdeps[i] = sorted([d.index(j) for j in deps[id]])
 
   # 4. prune and minimize the dependence list
@@ -244,23 +235,23 @@ def builddeps(srclist):
   sdep = []
   for i in range(n-1, 0, -1):
     if len(mindeps[i]) > 0:
-      sdep += ["#ifdef %s\n" % newsrclist[i][1]]
+      sdep += ["#ifdef %s\n" % newsrcls[i][1]]
       for j in sorted(mindeps[i], reverse = True):
-         sdep += ["  #define %s\n" % newsrclist[j][1]]
+         sdep += ["  #define %s\n" % newsrcls[j][1]]
       sdep += ["#endif\n", "\n"]
-  return newsrclist, sdep
+  return newsrcls, sdep
 
 
 
-def mkanchors(shost, srclist):
-  ''' add anchor macros to host
-  srclist is an array of (mod, MACRO) '''
+def mkanchors(shost, srcls):
+  ''' add anchor macros to the template
+  srcls is an array of (mod, MACRO) '''
 
-  srclist, lsdeps = builddeps(srclist)
+  srcls, lsdeps = builddeps(srcls)
 
   # 1. find the location of ZCOM_PICK
   for i in range(len(shost)):
-    if shost[i].startswith("#ifndef " + host_prefix + "PICK"):
+    if shost[i].startswith("#ifndef " + prefix + "PICK"):
       a0 = i + 1
       break
   else:
@@ -278,7 +269,7 @@ def mkanchors(shost, srclist):
 
   ls1 = []
   ls2 = []
-  for mod, macro in srclist:
+  for mod, macro in srcls:
     # determine if a module is an ANSI one
     ansi = 1
     readme = os.path.join(mod, "README")
@@ -297,93 +288,91 @@ def mkanchors(shost, srclist):
     if ansi:
       ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]
     ls2 += ["#ifdef  %s\n" % macro, "#ifndef %s__\n" % macro, "#define %s__\n" %macro,
-        "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro, "\n"]
+        "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro,
+        ]  + ["\n", ] * 5
 
-  return shost[:a0] + ls1 + shost[a0:a1] + lsdeps + shost[a1:] + ls2, srclist
+  return shost[:a0] + ls1 + shost[a0:a1] + lsdeps + shost[a1:] + ls2, srcls
 
 
 
-def integrate(srclist, host, fnout):
-  ''' integrate source code to output according to host '''
+def integrate(srcls, lines):
+  ''' integrate a list `srcls' of source code into
+      the template `lines' '''
 
-  # 1a. load the template host0
-  fnr = os.path.splitext(host)
-  host0  = fnr[0] + ".0" + fnr[1]
-  if not fnout: fnout = host
-  if verbose > 0:
-    print "Output: %s, template: %s" % (fnout, host0)
-  host_src = open(host0, 'r').readlines()
-
-  # 1b. add anchors and dependencies
-  host_src, srclist = mkanchors(host_src, srclist)
+  # 1. add anchors and dependencies
+  lines, srcls = mkanchors(lines, srcls)
 
   modcnt = 0
-
-  for fn_src, mod_name in srclist:
-    if not os.sep in fn_src: # make long name abc --> abc/abc
-      fnlsrc = os.path.join(fn_src, fn_src)
-
-    # derive other file names
-    fnlsrc_c = fnlsrc + ".c"
-    fnlsrc_h = fnlsrc + ".h"
-    # short name
-    fn_src     = os.path.basename(fn_src)
-    fn_src_c   = fn_src + ".c"
-    fn_src_h   = fn_src + ".h"
-    if verbose > 1:
-      print "short names are %s and %s" % (fn_src_c, fn_src_h)
-
+  for modnm, modNM in srcls:
     if verbose > 0:
-      print ("add module %-8s %-13s to %s"
-        % (fn_src, mod_name, host0))
-    if verbose > 2:
-      raw_input("press Enter to continue...")
+      print "add module %-8s %-13s" % (modnm, modNM)
+      if verbose > 2:
+        raw_input("press Enter to continue...")
 
     # 2. read the source code
-    src = open(fnlsrc_c).readlines()
+    fnc = modnm + ".c"
+    src = open(os.path.join(modnm, fnc)).readlines()
     # call rmdbg.py to remove debug/legacy code
-    src = rmdbg.rmdbg(src, verbose=verbose - 1)
+    src = rmdbg.rmdbg(src, verbose = verbose - 1)
     # strip away the outmost #ifndef, #define, #endif triplet
-    src = strip_def(src)
+    src = strip_def(src, fnc)
 
-    # 3. read the header
-    header = open(fnlsrc_h, 'r').readlines()
-    header = rmdbg.rmdbg(header, verbose=verbose - 1)
-    header = strip_def(header)
-    header = add_storage_class(header, strcls)
+    # a list of files included in `src'
+    for fnh in get_includes(src):
+      if verbose > 1: print "%s included in %s" % (fnh, fnc)
 
-    # 4. insert the header to the source code
-    pivot = -1
-    for i in range(len(src)):
-      if (src[i].startswith("#include") and
-          ('"' + fn_src_h + '"' in src[i][7:]) ):
-        pivot = i
-        break
-    else:
-      print "cannot find where to insert headers\n",
-      raw_input("press Enter to see the current file")
-      print ''.join( src )
-      raise Exception
-    if verbose > 1:
-      print "pivot is found at", pivot
-    src = src[:pivot] + header + src[pivot + 1:]
+      # 3. read the header
+      hdr = open(os.path.join(modnm, fnh)).readlines()
+      hdr = rmdbg.rmdbg(hdr, verbose = verbose - 1)
+      hdr = strip_def(hdr, fnh)
+      hdr = add_storage_class(hdr, strcls)
+
+      # 4. insert the header to the source code
+      for pivot in range(len(src)):
+        if (src[pivot].startswith("#include") and
+            src[pivot][8:].strip().startswith('"' + fnh + '"') ):
+          break
+      else:
+        print "cannot find where to insert %s\n" % fnh,
+        raw_input("press Enter to see the current file")
+        print ''.join( src )
+        raise Exception
+      if verbose > 1: print "pivot is found at", pivot
+      src = src[:pivot] + hdr + src[pivot + 1:]
 
     # 5. remove C++ (debug) commments
     src = remove_cpp_comments(src)
 
     # 6. insert the source code into the host
-    host_src = insert_module(host_src, mod_name, src)
+    lines = insert_module(lines, modNM, src)
 
     modcnt += 1
+
+  if verbose > 0: print "%d modules, " % modcnt,
+
+  # strip away trailing spaces
+  return [ln.rstrip() + '\n' for ln in lines]
+
+
+
+def integratef(srcls, fnhost, fnout):
+  ''' integrate a list `srcls' of source code into `fnhost'
+      save the result to `fnout' '''
+
+  # 1. load the template host0
+  fnr = os.path.splitext(fnhost)
+  host0  = fnr[0] + ".0" + fnr[1]
+  if not fnout: fnout = fnhost
   if verbose > 0:
-    print "%d modules, " % modcnt,
+    print "Output: %s, template: %s" % (fnout, host0)
+  lines = open(host0, 'r').readlines()
 
-  for i in range(len(host_src)): # strip away trailing spaces
-    host_src[i] = host_src[i].rstrip() + '\n'
+  # 2. integrate
+  lines = integrate(srcls, lines)
 
-  # 6. save it back to output
+  # 3. save it back to output
   # overwrite the original only if necessary
-  newsrc = ''.join(host_src)
+  newsrc = ''.join(lines).strip() + "\n"
   oldsrc = ""
   if os.path.exists(fnout):
     oldsrc = open(fnout).read()
@@ -399,16 +388,17 @@ def integrate(srclist, host, fnout):
 
 def getmodname(name):
   ''' smodule name to macro name, e.g., util --> ZCOM_UTIL '''
+
   shortnm = os.path.basename(name).upper()
   pos = shortnm.find('.')
-  if pos >= 0:
-    shortnm = shortnm[:pos]
-  return host_prefix + shortnm
+  if pos >= 0: shortnm = shortnm[:pos]
+  return prefix + shortnm
 
 
 
-def dirs2modules(root):
+def getallmods(root):
   ''' get a list of modules from subdirectories of `root' '''
+
   # list all sub directories under defroot
   # skip modules starting with an underscore or a dot
   # also skip the test folder
@@ -454,9 +444,11 @@ def usage():
   print ""
   exit(1)
 
+
+
 def doargs():
   ''' handle arguments '''
-  global fn_host, fn_output, strcls, host_prefix, verbose
+  global fnhost, fnoutp, strcls, prefix, verbose
 
   try:
     opts, args = getopt.gnu_getopt(sys.argv[1:], "hv:t:o:c:p:i:m:a",
@@ -467,44 +459,44 @@ def doargs():
     print str(err) # will print something like "option -a not recognized"
     usage()
 
-  defmods = dirs2modules(".") # util, cfg, ...
+  defmods = getallmods(".") # util, cfg, ...
 
-  # for each directory, guess a module name 'modnm'
+  # for each directory, guess a module name 'modNM'
   # add the pair to deflist
   deflist = []
   for fn in defmods:
-    modnm = getmodname(fn) # util --> ZCOM_UTIL
-    deflist += [(fn, modnm)]
-
-  srclist = []
+    modNM = getmodname(fn) # util --> ZCOM_UTIL
+    deflist += [(fn, modNM)]
+  modls = []
 
   for o, a in opts:
     if o in ("-v", "--verbose"):
       verbose = int(a)
     elif o in ("-a", "--all"):
-      srclist += deflist
+      modls += deflist
     elif o in ("-t", "--template"):
       fn_host = a
     elif o in ("-o", "--output"):
-      fn_output = a
+      fn_outp = a
     elif o in ("-c", "--strcls"):
       strcls = a
     elif o in ("-p", "--prefix"):
-      host_prefix = a
+      prefix = a
     elif o in ("-h", "--help"):
       usage()
 
   for fn in args:
-    modnm = getmodname(fn)
-    srclist += [(fn, modnm)]
+    modNM = getmodname(fn)
+    modls += [(fn, modNM)]
 
-  if len(srclist) == 0:
-    usage()
+  if len(modls) == 0: usage()
 
-  return srclist
+  return modls
+
+
 
 if __name__ == "__main__":
-  srclist = doargs() # [ (util, ZCOM_UTIL), ..., ]
-  integrate(srclist, fn_host, fn_output)
+  modls = doargs() # [ (util, ZCOM_UTIL), ..., ]
+  integratef(modls, fnhost, fnoutp)
 
 

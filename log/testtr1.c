@@ -1,8 +1,6 @@
-#include <stdio.h>
-
 #define HAVEVAM
 #define NEED_WTRACE
-#include "log.c"
+#include "log.h"
 
 int main(void)
 {

@@ -1,11 +1,8 @@
 /* check if pick() and flip() correctly computes the energy */
-#include <stdio.h>
-
-
 #define PT2_LB 5
-//#define PT2_L 32
+/*#define PT2_L (1 << PT2_LB) */
 #define PT2_Q 10
-#include "potts2.c"
+#include "potts2.h"
 
 /* randomly pick a site and flip it */
 static void randflip(potts_t *pt)

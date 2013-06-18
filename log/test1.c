@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include "log.c"
+#include "log.h"
 
 int main(void)
 {

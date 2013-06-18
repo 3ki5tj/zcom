@@ -1,13 +1,9 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
+#include "util.h"
 #ifndef LOG_H__
 #define LOG_H__
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
 
 typedef struct {
   FILE *fp;

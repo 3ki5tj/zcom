@@ -1,4 +1,4 @@
-#include "svd.c"
+#include "svd.h"
 
 #define M 3
 #define N 2

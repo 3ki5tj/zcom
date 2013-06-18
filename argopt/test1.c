@@ -1,4 +1,4 @@
-#include "argopt.c"
+#include "argopt.h"
 
 int main(int argc, char **argv)
 {

@@ -5,6 +5,7 @@
 int N = 256;
 double rho = 0.8, rc = 2.5, L, *x, *v, *f, fs[900];
 
+
 /* initialize a fcc lattice */
 static void initfcc(void)
 {
@@ -23,6 +24,7 @@ static void initfcc(void)
         id++;
       }
 }
+
 
 /* compute force */
 static void myforce(double *f)
@@ -48,6 +50,7 @@ static void myforce(double *f)
     }
   }
 }
+
 
 #define xnew(a, n) a = calloc(n, sizeof(*(a)))
 int main(void)

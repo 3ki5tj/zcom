@@ -35,13 +35,10 @@ typedef struct {
 pdbmodel_t *pdbm_read(const char *fn, int verbose);
 INLINE int pdbm_write(pdbmodel_t *m, const char *fn);
 
-enum { PDB_CONTACT_CA, PDB_CONTACT_HEAVY, PDB_CONTACT_ALL }; /* ways of searching contacts */
-int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg);
-
 
 
 typedef struct {
-  int aa;  /* index of amino acid [0, 20) */
+  int iaa;  /* index of amino acid [0, 20) */
   int nat; /* number of atoms */
   int id[32]; /* indices to the coordinate array */
   unsigned long flags;
@@ -139,7 +136,7 @@ INLINE int pdbaagetaid(int aa, const char *atnm)
 
 /* return the global atom index */
 INLINE int pdbaar_getaid(pdbaar_t *r, const char *atnm)
-{ int topid = pdbaagetaid(r->aa, atnm); return (topid < 0) ? -1 : r->id[topid]; }
+{ int topid = pdbaagetaid(r->iaa, atnm); return (topid < 0) ? -1 : r->id[topid]; }
 
 INLINE int pdbaac_getaid(pdbaac_t *c, int i, const char *atnm)
 { return pdbaar_getaid(c->res + i, atnm); }
@@ -452,14 +449,14 @@ INLINE int pdbm_write(pdbmodel_t *m, const char *fn)
 
 
 
+enum { PDB_CONTACT_CA, PDB_CONTACT_HEAVY, PDB_CONTACT_ALL }; /* ways of searching contacts */
+
 INLINE int iscontactatom(int level, const char *atnm)
 {
   if (level == PDB_CONTACT_ALL) return 1;
   else if (level == PDB_CONTACT_HEAVY) return atnm[0] != 'H';
   else return strcmp(atnm, "CA") == 0; /* PDB_CONTACT_CA */
 }
-
-
 
 /* return a nres x nres matrix that defines if two residues are contacts
  * a pair is considered as a contact only if the distance of two
@@ -479,7 +476,7 @@ int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
 
   xnew(iscont, nres*nres);
   for (ir = 0; ir < nres; ir++) {
-    for (jr = ir + nearby + 1; jr < nres; jr++) {
+    for (jr = ir + nearby; jr < nres; jr++) {
       /* compute the minimal distance between atoms
        * in residues `ir' and `jr' of certain types */
       dmin = 1e9; dca = 0; im = jm = -1;
@@ -535,8 +532,8 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
   for (i = 0; i < m->natm; i++) {
     atm = m->atm + i;
     r = c->res + atm->rid;
-    r->aa = pdbaaidx(atm->resnm);
-    if (r->aa < 0) {
+    r->iaa = pdbaaidx(atm->resnm);
+    if (r->iaa < 0) {
       fprintf(stderr, "unknown amino acid residue %d/%d[%s]\n",
           atm->rid, m->nres, atm->resnm);
       goto ERR;
@@ -544,18 +541,29 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
 
     /* match index */
     match = 0;
-    for (k = 0; pdb_aadb[r->aa].atom[k] != NULL; k++)
-      if (strcmp(atm->atnm, pdb_aadb[r->aa].atom[k]) == 0) {
+    for (k = 0; pdb_aadb[r->iaa].atom[k] != NULL; k++) {
+      if (strcmp(atm->atnm, pdb_aadb[r->iaa].atom[k]) == 0) {
         r->id[k] = i;
         r->flags |= 1ul << k;
         match = 1;
         break;
       }
+    }
     if (!match) { /* check terminals */
-#define AAMAPIT_(lead, str, nm) lead (strcmp(atm->atnm, str) == 0) \
-    { int aid = pdbaagetaid(r->aa, #nm); r->id[aid] = i; r->flags |= 1ul << (unsigned long) aid; match = 1; }
-#define AAMATCH_(lead, str, nm) lead (strcmp(atm->atnm, str) == 0) \
-    { r->id[AA_ ## nm] = i; r->flags |= 1ul << AA_##nm; match = 1; }
+
+#define AAMAPIT_(myif, str, nm) \
+    myif (strcmp(atm->atnm, str) == 0) { \
+      int aid = pdbaagetaid(r->iaa, #nm); \
+      r->id[aid] = i; \
+      r->flags |= 1ul << (unsigned long) aid; \
+      match = 1; }
+
+#define AAMATCH_(myif, str, nm) \
+    myif (strcmp(atm->atnm, str) == 0) { \
+      r->id[AA_ ## nm] = i; \
+      r->flags |= 1ul << AA_##nm; \
+      match = 1; }
+
       AAMAPIT_(if, "H1", H)
       AAMATCH_(else if, "H2",   H2)
       AAMATCH_(else if, "H3",   H3)
@@ -565,9 +573,9 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
       AAMAPIT_(else if, "O1",   O)
       AAMATCH_(else if, "O2",   OXT)
       else { /* check substitutions */
-        for (k = 0; pdb_aadb[r->aa].sub[k] != NULL; k += 2)
-          if (strcmp(atm->atnm, pdb_aadb[r->aa].sub[k]) == 0) {
-            int aid = pdbaagetaid(r->aa, pdb_aadb[r->aa].sub[k+1]);
+        for (k = 0; pdb_aadb[r->iaa].sub[k] != NULL; k += 2)
+          if (strcmp(atm->atnm, pdb_aadb[r->iaa].sub[k]) == 0) {
+            int aid = pdbaagetaid(r->iaa, pdb_aadb[r->iaa].sub[k+1]);
             r->id[aid] = i;
             r->flags |= 1ul << (unsigned) aid;
             match = 1;
@@ -582,15 +590,17 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
 
 #define pdbaac_pmiss_(xflags) { \
   unsigned long miss = (r->flags ^ xflags) & xflags; \
-  fprintf(stderr, "file %s, residue %s%d misses atom(s): ", c->file, pdbaaname(r->aa), i+1); \
-  for (k = 0; pdb_aadb[r->aa].atom[k] != NULL; k++) { \
-    if (miss & (1ul << k)) fprintf(stderr, "%s ", pdb_aadb[r->aa].atom[k]); } \
+  fprintf(stderr, "file %s, residue %s%d misses atom(s): ", \
+          c->file, pdbaaname(r->iaa), i+1); \
+  for (k = 0; pdb_aadb[r->iaa].atom[k] != NULL; k++) { \
+    if (miss & (1ul << k)) \
+      fprintf(stderr, "%s ", pdb_aadb[r->iaa].atom[k]); } \
   fprintf(stderr, "\n"); }
 
   /* checking integrity */
   for (i = 0; i < c->nres; i++) {
     r = c->res + i;
-    hvflags = pdb_aadb[r->aa].hvflags;
+    hvflags = pdb_aadb[r->iaa].hvflags;
     if ((r->flags & AA_BACKBONE) != AA_BACKBONE) {
       pdbaac_pmiss_(AA_BACKBONE);
       goto ERR;
@@ -612,7 +622,8 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
       if (c->unitnm) x *= 10.;
       if (x < .3 || x > 2.3) {
         if (verbose) {
-          const char *aap = pdbaaname(c->res[i-1].aa), *aa = pdbaaname(r->aa);
+          const char *aap = pdbaaname(c->res[i - 1].iaa);
+          const char *aa = pdbaaname(r->iaa);
           fprintf(stderr, "%s: C-N bond between %d (%s) and %d (%s) is broken %g, insert break\n",
             c->file, i, aap, i+1, aa, x);
           goto ERR;
@@ -624,7 +635,7 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: N-CA bond of residue %d (%s) is broken %g\n",
-          c->file, i+1, pdbaaname(r->aa), x);
+          c->file, i+1, pdbaaname(r->iaa), x);
         fprintf(stderr, "N : %8.3f %8.3f %8.3f\n", r->xn[0], r->xn[1], r->xn[2]);
         fprintf(stderr, "CA: %8.3f %8.3f %8.3f\n", r->xca[0], r->xca[1], r->xca[2]);
       }
@@ -635,7 +646,7 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
     if (x < .4 || x > 3.0) {
       if (verbose) {
         fprintf(stderr, "%s: CA-C bond of residue %d (%s) is broken %g\n",
-          c->file, i+1, pdbaaname(r->aa), x);
+          c->file, i+1, pdbaaname(r->iaa), x);
         fprintf(stderr, "CA: %8.3f %8.3f %8.3f\n", r->xca[0], r->xca[1], r->xca[2]);
         fprintf(stderr, "C : %8.3f %8.3f %8.3f\n", r->xc[0], r->xc[1], r->xc[2]);
       }
@@ -644,7 +655,7 @@ INLINE pdbaac_t *pdbaac_parse(pdbmodel_t *m, int verbose)
   }
   if (verbose >= 3) {
     for (i = 0; i < c->nres; i++)
-      printf("%4d: %s\n", i+1, pdbaaname(c->res[i].aa));
+      printf("%4d: %s\n", i+1, pdbaaname(c->res[i].iaa));
   }
 
   return c;
@@ -687,21 +698,23 @@ INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
 {
   int i, nse = 0, is, it, nres = c->nres;
   int aa, aagly, aapro;
-  int *se, *ishx, quin[5];
+  int *se, *ishx, q[5];
   double phi, psi;
 
   /* A. make an array of nres, identify if each residue is helix */
   xnew(ishx, nres);
   ishx[0] = ishx[nres-1] = 0;
   for (i = 1; i < nres-1; i++) {
-    /* make local quintuple */
-    quin[0] = pdbaac_getaid(c, i-1, "C");  die_if(quin[0] < 0, "no C  of %d\n", i-1);
-    quin[1] = pdbaac_getaid(c, i,   "N");  die_if(quin[1] < 0, "no N  of %d\n", i);
-    quin[2] = pdbaac_getaid(c, i,   "CA"); die_if(quin[2] < 0, "no CA of %d\n", i);
-    quin[3] = pdbaac_getaid(c, i,   "C");  die_if(quin[3] < 0, "no C  of %d\n", i);
-    quin[4] = pdbaac_getaid(c, i+1, "N");  die_if(quin[4] < 0, "no N  of %d\n", i+1);
-    phi = rv3_calcdihv(NULL, c->x, quin, 0);
-    psi = rv3_calcdihv(NULL, c->x, quin+1, 0);
+    /* make a local 5-tuple */
+    die_if ((q[0] = pdbaac_getaid(c, i-1, "C"))  < 0, "no C  of %d\n", i-1);
+    die_if ((q[1] = pdbaac_getaid(c, i,   "N"))  < 0, "no N  of %d\n", i);
+    die_if ((q[2] = pdbaac_getaid(c, i,   "CA")) < 0, "no CA of %d\n", i);
+    die_if ((q[3] = pdbaac_getaid(c, i,   "C"))  < 0, "no C  of %d\n", i);
+    die_if ((q[4] = pdbaac_getaid(c, i+1, "N"))  < 0, "no N  of %d\n", i+1);
+    phi = rv3_dih(c->x[ q[0] ], c->x[ q[1] ], c->x[ q[2] ], c->x[ q[3] ],
+                  NULL, NULL, NULL, NULL);
+    psi = rv3_dih(c->x[ q[1] ], c->x[ q[2] ], c->x[ q[3] ], c->x[ q[4] ],
+                  NULL, NULL, NULL, NULL);
     ishx[i] = (phi < 0 && psi > -100*M_PI/180 && psi < 80*M_PI/180);
   }
 
@@ -718,11 +731,11 @@ INLINE int pdbaac_parsehelices(pdbaac_t *c, int **pse)
     while (ishx[i] && i < nres) i++;
     it = i;
     for (; is < it; is++) { /* skip terminal GLY and PRO */
-      aa = c->res[is].aa;
+      aa = c->res[is].iaa;
       if (aa != aagly && aa != aapro)  break;
     }
     for (; it > is; it--) {
-      aa = c->res[it - 1].aa;
+      aa = c->res[it - 1].iaa;
       if (aa != aagly && aa != aapro) break;
     }
     if (it - is >= 4) { /* successfully find a helical segment */

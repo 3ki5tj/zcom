@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include "ising2.c"
+#include "ising2.h"
 
 int main(void)
 {

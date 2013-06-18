@@ -8,8 +8,8 @@ real rcdef = 1000.0f; /* since we change volume, use half-box cutoff */
 real tp = 1.5f;
 real pressure = 1.0f;
 real amp = 0.3f;
-int nsteps = 20000000, nstrdf = 1000;
-int usesq = 1;
+int nsteps = 100000, nstrdf = 1000;
+int usesq = 0;
 int nstvmove = 10; /* number of steps volume move */
 real ra = 1.0f, rb = 1.5f;
 av_t avU, avp, avrho;
@@ -18,6 +18,7 @@ int main(void)
 {
   int t, acc = 0, vacc = 0, vtot = 0, isrun = 0;
   lj_t *lj;
+  ljrdf_t *ljrdf;
   real u, p, rho1;
   hist_t *hsvol;
 
@@ -29,7 +30,7 @@ int main(void)
     lj_initsq(lj, ra, rb);
     lj->vir = 0;
   }
-  lj_rdfopen(lj, 0.01, lj->l * 2.f);
+  ljrdf = ljrdf_open(lj, 0.01, 0);
 
   hsvol = hs_open(1, 0, 5.*lj->n/rho, 1.f);
 
@@ -55,21 +56,24 @@ int main(void)
       }
     }
 
+    if (t % 10000 == 0) printf("t %d\n", t);
+
     if (isrun) {
       av_add(&avU, lj->epot);
       av_add(&avp, lj_calcp(lj, tp));
-      if (t % nstrdf == 0) lj_rdfadd(lj);
+      if (t % nstrdf == 0) ljrdf_add(ljrdf, 0);
     }
   }
   u = av_getave(&avU)/lj->n;
   p = av_getave(&avp);
   rho1 = av_getave(&avrho);
   printf("erg %g, p %g, rho %g, acc %.2f%%, vacc %.2f%%, rdfnfr %d, dof/d %g\n",
-      u, p, rho1, 100.*acc/nsteps, 100.*vacc/(1e-6 + vtot), lj->rdfnfr,
+      u, p, rho1, 100.*acc/nsteps, 100.*vacc/(1e-6 + vtot), ljrdf->nfr,
       1.*lj->dof/lj->d);
   hs_save(hsvol, "volmc.his", HIST_NOZEROES);
   hs_close(hsvol);
-  lj_rdfsave(lj, "rdfmc.dat", HIST_NOZEROES);
+  ljrdf_save(ljrdf, "rdfmc.dat", HIST_ADDAHALF | HIST_KEEPHIST | HIST_NOZEROES);
+  ljrdf_close(ljrdf);
   lj_close(lj);
   return 0;
 }

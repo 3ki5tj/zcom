@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <string.h>
-#include "rv3.h"
+#include "rv3.c"
 
 #define N 20
 

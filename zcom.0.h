@@ -1,5 +1,5 @@
 /*
-  common routines
+  commonly-used routines
   Copyright (c) 2006-2013 Cheng Zhang
 
   This library is free software; you can redistribute it and/or

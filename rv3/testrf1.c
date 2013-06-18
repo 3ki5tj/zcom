@@ -1,5 +1,4 @@
-#include <stdlib.h>
-#include "rv3.h"
+#include "rv3.c"
 
 #define N 5
 int main(void)

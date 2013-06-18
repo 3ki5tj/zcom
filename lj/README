@@ -1,6 +1,7 @@
 Lennard Jones system
 ===========================
 
+
 Overview
 --------
 o supports 2d/3d versions, 2d functions are generated
@@ -11,11 +12,13 @@ o supports switched potential
 
 Files
 -------
-lj.h        header file
-lj.0.c      source code
-lj.c        generate from lj.0.c by mklj2d.py, do not edit!
-mklj2d.py   generate a version lj.c with 2d support from lj.0.c
-ljeos.gp    standard equation of states, gnuplot script
+lj.0.h/lj.h       main source code, latter generate from mklj2d.py
+ljmc.0.h/ljmc.h   Monte Carlo algorithms
+ljmd.h            molecular dynamics algorithms
+ljrdf.h           routines to compute RDF
+mklj2d.py         generate a version lj.h with 2d support from lj.0.h
+                  similarly ljmc.0.h --> ljmc.h
+ljeos.gp          standard equation of states, gnuplot script
 
 
 Test programs

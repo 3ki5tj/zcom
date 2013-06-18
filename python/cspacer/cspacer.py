@@ -25,8 +25,6 @@ Example 2:
 import os, sys, shutil, getopt, re
 
 # module attributes
-verbose   = 0
-overwrite = 0
 use_rule_add      = 0
 use_rule_comma    = 1
 use_rule_assign   = 1
@@ -54,7 +52,7 @@ op2    = r"([\w0-9\-\'\"\(])"
 op2b   = r"([\w0-9\-\(\{])"
 op2c   = r"([\*\&\!\+\-][\w0-9\-\(])"
 
-sp     = r"(\s)"
+spa    = r"(\s)"
 bitws  = r"(\|\||\&\&)"  # || or &&
 
 # Rules
@@ -86,12 +84,12 @@ rule_assign = [
 rule_cmp = [
     (op1     + cmps   + op2c,   r"\1 \2 \3",    "a<*b"),  # a<*b    --> a < *b
     (op1     + cmps   + op2,    r"\1 \2 \3",    "a<b"),   # a<b     --> a < b
-    (sp      + cmps   + op2,    r"\1\2 \3",     "a <b"),  # a <b    --> a < b
-    (op1     + cmps   + sp,     r"\1 \2\3",     "a> b"),  # a> b    --> a > b
+    (spa     + cmps   + op2,    r"\1\2 \3",     "a <b"),  # a <b    --> a < b
+    (op1     + cmps   + spa,    r"\1 \2\3",     "a> b"),  # a> b    --> a > b
     (op1     + cmp2   + op2c,   r"\1 \2 \3",    "a==*b"), # a==*b   --> a == *b
     (op1     + cmp2   + op2,    r"\1 \2 \3",    "a==b"),  # a==b    --> a == b
-    (sp      + cmp2   + op2,    r"\1\2 \3",     "a ==b"), # a <=b   --> a <= b
-    (op1     + cmp2   + sp,     r"\1 \2\3",     "a== b"), # a>= b   --> a >= b
+    (spa     + cmp2   + op2,    r"\1\2 \3",     "a ==b"), # a <=b   --> a <= b
+    (op1     + cmp2   + spa,    r"\1 \2\3",     "a== b"), # a>= b   --> a >= b
     ]
 
 rule_ter = [
@@ -104,8 +102,8 @@ rule_ter = [
 
 rule_bitws = [
     (op1b    + bitws  + op2b,   r"\1 \2 \3",    "a||b"),  # a||b    --> a || b
-    (sp      + bitws  + op2b,   r"\1 \2 \3",    "a ||b"), # a ||b   --> a || b
-    (op1b    + bitws  + sp,     r"\1 \2 \3",    "a|| b"), # a|| b   --> a || b
+    (spa     + bitws  + op2b,   r"\1 \2 \3",    "a ||b"), # a ||b   --> a || b
+    (op1b    + bitws  + spa,    r"\1 \2 \3",    "a|| b"), # a|| b   --> a || b
     ]
 
 rule_paren0 = [
@@ -142,9 +140,9 @@ bor =    r"(\|)"
 rule_add = [
     (op1d    + bandor + op2d,   r"\1 \2 \3",    "a&b"),   # a&b     --> a & b
     (op1e    + plsmin + op2d,   r"\1 \2 \3",    "a+b"),   # a+b     --> a + b
-    (sp      + bor    + op2d,   r"\1\2 \3",     "a +b"),  # a |b    --> a | b
-    (op1d    + bandor + sp,     r"\1 \2\3",     "a+ b"),  # a+ b    --> a + b
-    (op1d    + plsmin + sp,     r"\1 \2\3",     "a+ b"),  # a+ b    --> a + b
+    (spa     + bor    + op2d,   r"\1\2 \3",     "a |b"),  # a |b    --> a | b
+    (op1d    + bandor + spa,    r"\1 \2\3",     "a& b"),  # a+ b    --> a + b
+    (op1d    + plsmin + spa,    r"\1 \2\3",     "a+ b"),  # a+ b    --> a + b
     ]
 
 
@@ -164,6 +162,8 @@ strings = [
 cmtstr = [("BEGINTEXT", "ENDTEXT"), # dummy pair, unused
     ] + comments + strings
 
+
+
 def c_cs_start(s):
   ''' find the beginning of the first comment/string starter '''
   mtype = 0 # normal code
@@ -177,6 +177,7 @@ def c_cs_start(s):
       mtype = tp
       minpos = pos
   return (mtype, minpos)
+
 
 
 def c_cs_end(s, cstype):
@@ -208,6 +209,7 @@ def c_cs_end(s, cstype):
     return (0, pos1 + len(sym1))
   else:         # remain in this type
     return (cstype, -1)
+
 
 
 def c_parse_line(s, cstype = 0):
@@ -255,23 +257,8 @@ def c_parse_line(s, cstype = 0):
   return lst, cstype
 
 
-def backup_file(file, ext = "", verbose = 1):
-  ''' backup file to a nonexistent name '''
-  fn = file + ext
-  i = 1
-  if ext == "": fn += str(i)
-  while os.path.exists(fn):
-    fn = file + ext + str(i)
-    i += 1
-  shutil.copy2(file, fn)
-  if verbose > 0:
-    print file, "is backed up to", fn
-    if verbose >= 3:
-      print "press Enter to proceed ..."
-      raw_input()
 
-
-def addspace(ilines):
+def addspace(ilines, verbose = 0):
   ''' add spaces to `ilines', an array of lines,
       return the output file '''
   nlines = len(ilines)
@@ -415,7 +402,8 @@ def addspace(ilines):
   return olines, nchanges
 
 
-def addspacef(fninp, fnout = ""):
+
+def addspacef(fninp, fnout = "", overwrite = False, verbose = 0):
   """ add space to file 'fninp' """
 
   try:
@@ -425,7 +413,7 @@ def addspacef(fninp, fnout = ""):
     return
 
   if verbose >= 2: print "processing", fninp
-  olines, nchanges = addspace(ilines)
+  olines, nchanges = addspace(ilines, verbose)
 
   # print the number of changes
   if not nchanges:
@@ -441,8 +429,11 @@ def addspacef(fninp, fnout = ""):
       raw_input()
 
   if overwrite:  # overwrite mode
-    backup_file(fninp, ".orig")
-    fnout = fninp  # write on the original input
+    try: # backup
+      import zcom
+      zcom.safebackup(fninp, ".orig")
+      fnout = fninp  # write on the original input
+    except ImportError: pass
   else:  #
     if not fnout:
       fnout = fninp + ".spr"
@@ -508,7 +499,6 @@ def doargs():
     print str(err) # will print something like "option -a not recognized"
     usage()
 
-  global overwrite, verbose
   global use_rule_nocppcmt
   global use_rule_paren0
   global use_rule_paren1
@@ -524,6 +514,8 @@ def doargs():
   global use_rule_knr
   global use_rule_spb4quo
 
+  overwrite = False
+  verbose = 0
   recur = False
   links = True
 
@@ -533,7 +525,7 @@ def doargs():
     elif o in ("-L", "--nolinks",):
       links = False
     elif o in ("-b", "-w", "--backup", "--overwrite"):
-      overwrite = 1
+      overwrite = True
     elif o in ("--cppcmt",):
       use_rule_nocppcmt = 1
       print "will convert C++ comments to C ones"
@@ -594,7 +586,7 @@ def doargs():
       use_rule_knr = 0
       print "disable the K&R rule"
     elif o in ("-v",):
-      verbose = 1
+      verbose += 1
     elif o in ("--verbose",):
       verbose = int(a)
     elif o in ("-h", "--help",):
@@ -605,13 +597,12 @@ def doargs():
     import zcom
     ls = zcom.argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
-  return ls
+  return ls, overwrite, verbose
 
 
-def main():
-  ls = doargs()
-  for fn in ls: addspacef(fn)
 
 if __name__ == "__main__":
-  main()
+  ls, overwrite, verbose = doargs()
+  for fn in ls:
+    addspacef(fn, overwrite, verbose)
 

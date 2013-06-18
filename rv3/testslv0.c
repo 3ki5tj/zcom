@@ -1,5 +1,5 @@
 /* test rv3_solvezero */
-#include "rv3.h"
+#include "rv3.c"
 
 static void foo(real a00, real a01, real a02,
                 real a10, real a11, real a12,

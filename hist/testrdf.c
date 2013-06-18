@@ -14,6 +14,8 @@ typedef struct {
   double vol;
 } den_t;
 
+
+
 static void genhist(hist_t *hs, int nfr, double l, den_t *den)
 {
   int i, j, k, ifr;
@@ -42,6 +44,8 @@ static void genhist(hist_t *hs, int nfr, double l, den_t *den)
   den->vol = l*l*l;
 }
 
+
+
 static int fwheader(FILE *fp, void *pdata)
 {
   den_t *den = (den_t *) pdata;
@@ -49,12 +53,16 @@ static int fwheader(FILE *fp, void *pdata)
   return 0;
 }
 
+
+
 static int frheader(const char *s, void *pdata)
 {
   den_t *den = (den_t *) pdata;
   int ret = sscanf(s, " RDF %d%d%lf | ", &(den->nfr), &(den->n), &(den->vol));
   return (ret == 3) ? 0 : 1;
 }
+
+
 
 static double rdfnorm(int j, int i, double xmin, double dx, void *pdata)
 {
@@ -70,27 +78,28 @@ static double rdfnorm(int j, int i, double xmin, double dx, void *pdata)
   return fac;
 }
 
+
+
 int main(void)
 {
   den_t den[1];
   hist_t *hs;
+  const char *fnrdf = "rdf.dat", *fnfrdf = "frdf.dat";
 
-  hs = hs_openx(1, XMIN, XMAX, XDEL, fwheader, frheader, rdfnorm);
+  hs = hs_open(1, XMIN, XMAX, XDEL);
 
   /* generate histogram */
   genhist(hs, 17, 1., den);
 
-  hs_savex(hs, "RDF", den, HIST_ADDAHALF|HIST_KEEPHIST);
-  hs_savex(hs, "rdf.dat", den, HIST_ADDAHALF);
+  hs_savex(hs, fnfrdf, fwheader, rdfnorm, den, HIST_ADDAHALF|HIST_KEEPHIST);
+  hs_savex(hs, fnrdf,  fwheader, rdfnorm, den, HIST_ADDAHALF);
 
   /* now try to load histogram */
-  if (0 != hs_loadx(hs, "RDF", den, HIST_VERBOSE)) {
-    fprintf(stderr, "cannot load histogram\n");
-    return -1;
-  }
+  die_if (hs_loadx(hs, fnfrdf, frheader, rdfnorm, den, HIST_VERBOSE) != 0,
+    "cannot load histogram %s\n", fnfrdf);
   /* write again */
-  hs_savex(hs, "RDF2", den, HIST_ADDAHALF|HIST_KEEPHIST);
-  hs_savex(hs, "rdf2.dat", den, HIST_ADDAHALF);
+  hs_savex(hs, "frdf2.dat", fwheader, rdfnorm, den, HIST_ADDAHALF | HIST_KEEPHIST);
+  hs_savex(hs, "rdf2.dat",  fwheader, rdfnorm, den, HIST_ADDAHALF);
   hs_close(hs);
   return 0;
 }

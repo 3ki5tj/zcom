@@ -1,7 +1,7 @@
-#include "cago.c"
-#include "argopt.c"
+#include "argopt.h"
+#include "cago.h"
 
-const char *fnpdb = "pdb/1MBN.pdb";
+const char *fnpdb = "pdb/1VII.pdb";
 real kb = 200.f;
 real ka = 40.f;
 real kd1 = 1.f;
@@ -12,20 +12,24 @@ real rc = 5.f; /* cutoff distance of defining contacts */
 
 real tp = 1.0f;
 real mddt = 2e-3f;
-real thermdt = 2e-2f;
+real thermdt = 0.1f;
 
 int tfreq = 2000;
 int tmax = 20000;
 
+
+
 static void doargs(int argc, char **argv)
 {
   argopt_t *ao = argopt_open(0);
-  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
-  argopt_reghelp(ao, "-h");
-  argopt_regopt(ao, "-n", "%d", &tmax, "number of simulation steps");
+  argopt_add(ao, NULL, NULL, &fnpdb, "pdbfile");
+  argopt_addhelp(ao, "-h");
+  argopt_add(ao, "-n", "%d", &tmax, "number of simulation steps");
   argopt_parse(ao, argc, argv);
   argopt_close(ao);
 }
+
+
 
 /* test if energy and force matches with each other */
 static void eftest(cago_t *go, real del)
@@ -50,7 +54,8 @@ int main(int argc, char **argv)
   int t;
 
   doargs(argc, argv);
-  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rc)) == NULL) {
+  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rc,
+                      PDB_CONTACT_HEAVY, 4, CAGO_VERBOSE)) == NULL) {
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
@@ -61,7 +66,7 @@ int main(int argc, char **argv)
     tp = (2 - 1.9f*t/tmax); /* annealing */
     cago_vv(go, 1.f, mddt);
     cago_rmcom(go, go->x, go->v);
-    cago_vrescale(go, tp, thermdt);
+    cago_vrescale(go, tp, thermdt, &go->ekin, &go->tkin);
     if (t % tfreq == 0) {
       eftest(go, 0.1);
       go->rmsd = cago_rmsd(go, go->x, NULL);

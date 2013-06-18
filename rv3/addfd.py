@@ -14,6 +14,9 @@ from python import ccom
 def addfd(fnin, fnout, funcls):
   ''' add float and double versions '''
 
+  if fnin == None:
+    fnin = ".0".join( os.path.splitext(fnout) )
+
   r2f = {
     "rv3_" : "fv3_",
     "rv2_" : "fv2_",
@@ -32,7 +35,7 @@ def addfd(fnin, fnout, funcls):
 
 
 if __name__ == "__main__":
-  addfd("rv3.0.h", "rv3.h", [
+  addfd(None, "rv3.h", [
     "rv3_make", "rv3_zero",
     "rv3_copy", "rv3_ncopy", "rv3_swap",
     "rv3_sqr", "rv3_norm", "rv3_dot", "rv3_cross",
@@ -44,13 +47,18 @@ if __name__ == "__main__":
     "rv3_lincomb2",
     "rv3_cosang", "rv3_ang", "rv3_vdist", "rv3_vpdist",
     "rv3_dih",
+    "rv3_rnd", "rv3_rnd0", "rv3_grand",
+    ])
+
+  addfd(None, "rm3.h", [
     "rm3_copy", "rm3_trans", "rm3_vtv", "rm3_inc", "rm3_sinc",
     "rm3_mul", "rm3_mult", "rm3_tmul", "rm3_mulvec", "rm3_tmulvec",
     "rm3_det", "rm3_inv",
     "rm3_eigval", "rv3_sort3", "rm3_pivot_", "rm3_solvezero",
     "rm3_eigvecs", "rm3_eigsys", "rm3_svd",
     "rm3_mkrot", "rv3_rot",
-    "rv3_rnd", "rv3_rnd0", "rv3_grand", "rm3_rnduni",
     "rv3_rmsd",
+    "rm3_rnduni",
     ])
+
 

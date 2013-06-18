@@ -6,7 +6,8 @@ LMX =
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm -Wstrict-aliasing -fstrict-aliasing
 #LMX = -lm
 
-deps = lj.c lj.h rv3.h rv2.h def.h util.h md.h rng.h Makefile
+deps = lj.c lj.h ljmc.h ljmd.h ljrdf.h \
+       def.h rv2.h rv3.h util.h md.h rng.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 
@@ -22,8 +23,11 @@ $(bins) : %: %.c $(deps)
 $(bins_d) : %_d: %.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
-lj.c: lj.0.c mklj2d.py
-	python mklj2d.py $@
+lj.h: lj.0.h mklj2d.py
+	python mklj2d.py
+
+ljmc.h: ljmc.0.h mklj2d.py
+	python mklj2d.py
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bins) $(bins_d) shakefail* rattlefail* lj.pos *.his

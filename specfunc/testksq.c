@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "specfunc.c"
+#include "specfunc.h"
 
 static void test_ksq(double x)
 {

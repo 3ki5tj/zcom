@@ -4,7 +4,7 @@
 typedef float real;
 */
 typedef double real;
-#include "abpro.c"
+#include "abpro.h"
 
 int main(void)
 {

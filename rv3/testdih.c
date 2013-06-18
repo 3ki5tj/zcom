@@ -1,10 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-
 typedef float real;
 #define HAVEREAL 1
-
-#include "rv3.h"
+#include "rv3.c"
 
 
 

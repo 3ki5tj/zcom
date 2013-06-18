@@ -1,4 +1,4 @@
-#include "svd.c"
+#include "svd.h"
 
 #define N 3
 

@@ -1,4 +1,5 @@
-#include "lp.c"
+#include "lp.h"
+
 static void test1(void)
 {
   lpcore_t *lp = lpcore_open(3, 3);

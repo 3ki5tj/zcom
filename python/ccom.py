@@ -7,7 +7,7 @@ import re
 
 
 def getfunc(lines, funcname):
-  ''' return the begin and ending of a function '''
+  ''' return the beginning and ending line indices of a function '''
 
   ismacro = 0
 
@@ -16,10 +16,10 @@ def getfunc(lines, funcname):
     s = lines[i0]
     # we only operate on static and inline functions
     if ( (s.startswith("static") or s.startswith("INLINE") )
-        and funcname + "(" in s:
+        and funcname + "(" in s):
       break
-    if ( s.startswith("#define")
-        and funcname + "(" in s:
+    if (s.startswith("#define") and
+        s[7:].strip().startswith(funcname + "(") ):
       ismacro = 1
       break
   else:
@@ -68,7 +68,7 @@ def dictrepl(lines, d):
 
 def dupfunc(lines, funcname, d):
   ''' duplicate function `funcname' with modifications
-      given by the dictionary `d' '''
+      given by the dictionary `d' of replacements '''
 
   i0, i1 = getfunc(lines, funcname)
   func2 = dictrepl(lines[i0 : i1], d)

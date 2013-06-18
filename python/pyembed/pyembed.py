@@ -25,7 +25,8 @@ def getmodls(s):
       mod = a.strip()
       # exclude commonly used modules, which need no embedding
       if mod in ("os", "sys", "re", "string", "getopt", "shutil",
-          "subprocess", "glob", "Gnuplot",
+          "subprocess", "glob",
+          "Gnuplot", "psyco",
           "struct", "difflib", "datetime", "calendar", "heapq",
           "collections", "bisect", "array", "sets", "mutex",
           "numbers", "cmath", "math", "fractions", "random",
@@ -88,7 +89,7 @@ def trimsrc(src):
   try:
     import pyrmfunc
     pyrmfunc.verbose = verbose
-    src = pyrmfunc.rmfuncs(src, ["help", "usage", "doargs"] )
+    src = pyrmfunc.rmfuncs(src, ["main", "help", "usage", "doargs"] )
   except ImportError: pass
   return src
 
@@ -228,10 +229,15 @@ def doargs():
     print "%s does not exist" % fninp
     usage()
 
-  if not modls and doall:
-    modls = getmodls(open(fninp).readlines())
+  if doall:
+    modls += getmodls(open(fninp).readlines())
 
-  return fninp, fnout, modls
+  # remove duplicated modules, preserve the order
+  ls = []
+  for a in modls:
+    if not a in ls: ls += [a]
+
+  return fninp, fnout, ls
 
 
 

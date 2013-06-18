@@ -1,4 +1,4 @@
-#include "cfg.c"
+#include "cfg.h"
 
 int main(void)
 {

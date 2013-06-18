@@ -1,4 +1,4 @@
-#include "specfunc.c"
+#include "specfunc.h"
 int main(void)
 {
   double x, c, y20, y22;

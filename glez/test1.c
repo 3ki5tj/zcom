@@ -1,4 +1,4 @@
-#include "glez.c"
+#include "glez.h"
 
 static void display(void)
 {

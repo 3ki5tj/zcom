@@ -1,12 +1,8 @@
-#ifndef INLINE
-#define INLINE __inline static
-#endif
 #include "def.h"
 #include "util.h"
-#include "ss.c"
+#include "ss.h"
 #ifndef OPT_H__
 #define OPT_H__
-#include <stdio.h>
 
 /* option either from arguments or configuration */
 typedef struct {

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "ss.c"
+#include "ss.h"
 
 static int test_ssfgets(void)
 {

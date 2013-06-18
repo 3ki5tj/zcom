@@ -1,13 +1,10 @@
-#include <stdio.h>
 /*
 #define HAVEREAL 1
 typedef float real;
 */
-
 #define RV3_DEBUG
-
-#include "rv3.h"
-#include "svd.c"
+#include "rv3.c"
+#include "svd.h"
 
 /*
 //real a[3][3] = {{1, 2, 0},{2, 4, 0}, {0, 0, 5}};

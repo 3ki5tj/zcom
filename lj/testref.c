@@ -1,4 +1,4 @@
-#include "lj.c"
+#include "lj.h"
 
 int main(void)
 {

@@ -1,15 +1,11 @@
-#include <stdlib.h>
-
 #define HAVEREAL 1
 typedef float real;
-
-/*
-#define RV3_DEBUG
-*/
-#include "rv3.h"
+#include "rv3.c"
 
 #define N 128
 real max;
+
+
 
 /* compute RMSD of two random configurations */
 real foo(int n, int nt)
@@ -24,7 +20,7 @@ real foo(int n, int nt)
       x[i][j] = 1.*rand()/RAND_MAX;
     }
 
-  rmsd1 = rotfit3(x, NULL, y, NULL, n, r, t);
+  rmsd1 = rv3_rmsd(x, NULL, y, NULL, n, r, t);
 
   for (rmsd2 = 0, i = 0; i < n; i++) {
     real xs[3];

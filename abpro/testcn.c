@@ -4,7 +4,7 @@
 typedef float real;
 */
 typedef double real;
-#include "abpro.c"
+#include "abpro.h"
 
 /* check v is othogonal to x */
 static int ab_checkxv(abpro_t *ab, const real *x, const real *v, double tol)

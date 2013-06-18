@@ -3,6 +3,8 @@
 *.bak
 *.pyc
 *.clean.*
-abpro.c
-lj.c
-
+rv3.h
+rm3.h
+abpro.h
+lj.h
+ljmc.h

@@ -9,7 +9,7 @@ int main(int argc, char **argv)
   const char *fn;
   int *se, i, ng;
 
-  fn = (argc > 1) ? argv[1] : "test.pdb";
+  fn = (argc > 1) ? argv[1] : "pdb/2A3D.pdb";
   die_if ((m = pdbm_read(fn, 2)) == NULL, "cannot read %s\n", fn);
   pdbm_write(m, "out.pdb");
   c = pdbaac_parse(m, 1);

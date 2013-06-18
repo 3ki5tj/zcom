@@ -1,4 +1,4 @@
-#include "argopt.c"
+#include "argopt.h"
 
 #define ARGOPT_DELIM ':'
 

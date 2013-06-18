@@ -11,6 +11,7 @@ int nsteps = 100000;
 int usesw = 1;
 real rs = 1.5f; /* for switched potential */
 
+
 /* local move */
 static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
 {
@@ -34,6 +35,7 @@ static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
   hs_save(hs, "de_l.his", HIST_ADDAHALF);
   return betp;
 }
+
 
 static real tcr3d_g(lj_t *lj, int tmax, real amp, real umax, real udel)
 {
@@ -65,6 +67,7 @@ static real tcr3d_g(lj_t *lj, int tmax, real amp, real umax, real udel)
   free(x0);
   return betp;
 }
+
 
 int main(void)
 {

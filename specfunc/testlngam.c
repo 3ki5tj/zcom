@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "specfunc.c"
+#include "specfunc.h"
 
 int main(int argc, char **argv)
 {

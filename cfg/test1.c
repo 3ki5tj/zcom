@@ -1,4 +1,4 @@
-#include "cfg.c"
+#include "cfg.h"
 
 int main(void)
 {
@@ -6,20 +6,19 @@ int main(void)
   float tmin, tmax;
   char  *p = NULL;
   cfg_t *cfg;
+  const char *fncfg = "foo.cfg";
 
-  if ((cfg = cfgopen("foo.cfg")) == NULL) {
-    printf("error reading\n");
-    return 1;
-  }
-  cfgget(cfg, &nr,   "nrtemp", "%d");
-  cfgget(cfg, &tmin, "tmin",   "%f");
-  cfgget(cfg, &tmax, "tmax",   "%f");
-  cfgget(cfg, &p,    "mystr",  "%s");
-  cfgget(cfg, &cnt,  "arrcnt", "%d");
+  die_if ((cfg = cfg_open(fncfg)) == NULL,
+    "cannot read %s\n", fncfg);
+  cfg_get(cfg, &nr,   "nrtemp", "%d");
+  cfg_get(cfg, &tmin, "tmin",   "%f");
+  cfg_get(cfg, &tmax, "tmax",   "%f");
+  cfg_get(cfg, &p,    "mystr",  "%s");
+  cfg_get(cfg, &cnt,  "arrcnt", "%d");
 
   printf("nr=%d, (%g,%g), cnt=%d\n", nr, tmin, tmax, cnt);
   printf("mystr=\"%s\"\n", p);
-  cfgclose(cfg);
+  cfg_close(cfg);
   ssdelall();
   return 0;
 }

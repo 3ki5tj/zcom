@@ -1,13 +1,14 @@
-CC = gcc -Wall -Wextra -O0 -g3 -pedantic
+OPT = -Iinclude
+CC = gcc -Wall -Wextra -O0 -g3 -pedantic $(OPT)
 LM = -lm
 # optimized compiling
-CX = icc -Wall -O3 -march=native
+CX = icc -Wall -O3 -march=native $(OPT)
 LMX =
 #CX = gcc -Wall -O3 -march=native -mfpmath=sse -funroll-all-loops
 #LMX = -lm
 prj = md
 src = $(prj).h
-deps = $(src) $(prj).h rv3.h rv2.h rng.c rng.h def.h Makefile
+deps = $(src) $(prj).h rv3.h rv2.h rng.h def.h Makefile
 bin = $(patsubst %.c,%,$(wildcard test*.c))
 bin_d = $(patsubst %.c,%_d,$(wildcard test*.c))
 

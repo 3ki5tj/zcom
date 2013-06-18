@@ -1,5 +1,7 @@
-#include "cago.c"
-#include "argopt.c"
+#include "av.h"
+#include "argopt.h"
+#include "cago.h"
+
 
 const char *fnpdb = "pdb/1KIK.pdb";
 real kb = 200.f;
@@ -16,9 +18,9 @@ static void doargs(int argc, char **argv)
 {
   argopt_t *ao = argopt_open(0);
 
-  argopt_regarg(ao, NULL, &fnpdb, "pdbfile");
-  argopt_reghelp(ao, "-h");
-  argopt_regopt(ao, "-T", "%r", &tp, "Temperature");
+  argopt_add(ao, NULL, NULL, &fnpdb, "pdbfile");
+  argopt_addhelp(ao, "-h");
+  argopt_add(ao, "-T", "%r", &tp, "Temperature");
   argopt_parse(ao, argc, argv);
   if (argopt_set(ao, tp)) tps = tp;
   argopt_close(ao);
@@ -40,7 +42,7 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt,
   for (t = 1; tmax < 0 || t <= tmax; t++) {
     cago_vv(go, fs, mddt);
     cago_rmcom(go, go->x, go->v);
-    cago_vrescale(go, (real) tps, thermdt);
+    cago_vrescale(go, (real) tps, thermdt, &go->ekin, &go->tkin);
     go->rmsd = cago_rmsd(go, go->x, NULL);
     if (t > teql) {
       av_add(avep, go->epot);
@@ -63,7 +65,8 @@ int main(int argc, char **argv)
   av_t avep[1], avrmsd[1];
 
   doargs(argc, argv);
-  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc)) == NULL) {
+  if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc,
+                      PDB_CONTACT_HEAVY, 4, CAGO_VERBOSE)) == NULL) {
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
@@ -81,6 +84,7 @@ int main(int argc, char **argv)
   rddv = av_getdev(avrmsd);
   printf("tp %.3f, tps %.3f, epot %.2f(%.2f), rmsd %.4f(%.4f)\n",
       tp, tps, epav, epdv, rdav, rddv);
+  cago_writepos(go, go->x, go->v, "cago.pos");
   cago_close(go);
   return 0;
 }

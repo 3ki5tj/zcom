@@ -4,7 +4,7 @@
  * rv3_vpdist
  * */
 #include <stdio.h>
-#include "rv3.h"
+#include "rv3.c"
 
 
 static void testang(void)

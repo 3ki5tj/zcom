@@ -1,7 +1,5 @@
 /* test random matrix */
-#include <stdio.h>
-#include <stdlib.h>
-#include "rv3.h"
+#include "rv3.c"
 
 static void mkrotx(real m[3][3], real th)
 {

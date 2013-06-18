@@ -3,10 +3,8 @@
 """ remove debug code from ss.c """
 
 def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], verbose=2):
-  """
-  read lines from instr, remove badkeys,
-  return
-  """
+  """ read lines from instr, remove badkeys, """
+
   if verbose > 1:
     print "The debug code signatures are", badkeys
 
@@ -70,12 +68,10 @@ def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], ver
 
 
 def main(fninp, fnout):
-  """
-  read file 'fninp'
-  remove debug parts, as signified by badkeys,
-  save result to 'output'
-  also remove three or more successive blank lines
-  """
+  """ read file 'fninp'
+      remove debug parts, as signified by badkeys,
+      save result to 'output'
+      also remove three or more successive blank lines """
 
   # read fninp, call rmdbg, and write to output
   s = rmdbg(  open(fninp, 'r').readlines()  )

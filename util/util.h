@@ -1,6 +1,7 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
+#define RESTRICT __restrict
 #ifndef UTIL_H__
 #define UTIL_H__
 #include <stdio.h>

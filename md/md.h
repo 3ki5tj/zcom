@@ -1,18 +1,15 @@
-#ifndef RESTRICT
-#define RESTRICT __restrict
-#endif
-#ifndef INLINE
-#define INLINE __inline static
-#endif
 #include "rv2.h"
 #include "rv3.h"
+#include "rm3.h"
 #include "rng.h"
+#include "util.h"
 #ifndef MD_H__
 #define MD_H__
 
 #define md_shiftcom(x, n, d) md_shiftcomw(x, NULL, n, d)
 #define md_shiftcom3d(x, n) md_shiftcomw3d(x, NULL, n)
 #define md_shiftcom2d(x, n) md_shiftcomw2d(x, NULL, n)
+
 INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int d);
 /* these two are inline instead macros because they offer type checks */
 INLINE void md_shiftcomw2d(rv2_t * RESTRICT x, const real * RESTRICT w, int n)
@@ -28,11 +25,13 @@ INLINE void md_shiftang(real * RESTRICT x, real * RESTRICT v, int n, int d)
   else md_shiftang3d((rv3_t *) x, (rv3_t *) v, n);
 }
 
+
 INLINE real md_ekin(const real *v, int nd, int dof, real * RESTRICT tkin);
 INLINE real md_ekin2d(rv2_t * RESTRICT v, int n, int dof, real * RESTRICT tkin)
   { return md_ekin((const real *) v, n*2, dof, tkin); }
 INLINE real md_ekin3d(rv3_t * RESTRICT v, int n, int dof, real * RESTRICT tkin)
   { return md_ekin((const real *) v, n*3, dof, tkin); }
+
 
 INLINE void md_vscale(real * RESTRICT v, int nd, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vscale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin)
@@ -40,11 +39,13 @@ INLINE void md_vscale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real ekt, r
 INLINE void md_vscale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real ekt, real * RESTRICT ekin, real * RESTRICT tkin)
   { md_vscale((real *) v, n*3, dof, tp, ekt, ekin, tkin); }
 
+
 INLINE void md_vrescale(real * RESTRICT v, int nd, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vrescale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
   { md_vrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
 INLINE void md_vrescale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
   { md_vrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
+
 
 INLINE void md_vrescalex(real * RESTRICT v, int nd, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin);
 INLINE void md_vrescalex2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
@@ -70,6 +71,7 @@ INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int 
   }
 }
 
+
 /* annihilate angular momentum 2d */
 INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 {
@@ -90,6 +92,8 @@ INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
     v[i][1] +=  am*xi[0];
   }
 }
+
+
 
 /* annihilate angular momentum 3d
  * solve
@@ -137,6 +141,8 @@ INLINE void md_shiftang3d(rv3_t *x, rv3_t *v, int n)
   }
 }
 
+
+
 /* return kinetic energy */
 INLINE real md_ekin(const real *v, int nd, int dof, real *tkin)
 {
@@ -147,6 +153,8 @@ INLINE real md_ekin(const real *v, int nd, int dof, real *tkin)
   if (tkin) *tkin = ekin/dof;
   return ekin *= .5f;
 }
+
+
 
 /* compute the kinetic energy for the thermostats, if ekin != NULL */
 INLINE real md_getekin(real *ekin, const real *v, int nd)
@@ -163,6 +171,8 @@ INLINE real md_getekin(real *ekin, const real *v, int nd)
   return ek;
 }
 
+
+
 /* velocity scaling: for regular (no thermostat) MD during equilibration
  * `tp' is the target temperature
  * `ekt' is the observed average kinetic energy, may not be the current *ekin  */
@@ -177,6 +187,8 @@ INLINE void md_vscale(real *v, int nd, int dof, real tp, real ekt, real *ekin, r
   if (ekin) *ekin *= s*s;
   if (tkin) *tkin *= s*s;
 }
+
+
 
 /* velocity rescaling thermostat */
 INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
@@ -197,6 +209,7 @@ INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, 
 }
 
 
+
 /* Exact velocity rescaling thermostat */
 INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
@@ -215,6 +228,8 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
   if (ekin) *ekin = ek2;
   if (tkin) *tkin *= s*s;
 }
+
+
 
 /* backup thermostat: velocity-rescaling according to a Monte-Carlo move */
 INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
@@ -240,10 +255,14 @@ INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin,
   }
 }
 
+
+
 INLINE int md_mcvrescale2d(rv2_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
   { return md_mcvrescale((real *) v, n*2, dof, tp, dt, ekin, tkin); }
 INLINE int md_mcvrescale3d(rv3_t * RESTRICT v, int n, int dof, real tp, real dt, real * RESTRICT ekin, real * RESTRICT tkin)
   { return md_mcvrescale((real *) v, n*3, dof, tp, dt, ekin, tkin); }
+
+
 
 /* Nose-Hoover thermostat */
 INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
@@ -264,6 +283,8 @@ INLINE void md_hoover(real *v, int nd, int dof, real tp, real dt,
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
 }
 
+
+
 INLINE void md_hoover2d(rv2_t *v, int n, int dof, real tp, real dt,
     real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *) v, n*2, dof, tp, dt, zeta, Q, ekin, tkin); }
@@ -271,6 +292,8 @@ INLINE void md_hoover2d(rv2_t *v, int n, int dof, real tp, real dt,
 INLINE void md_hoover3d(rv3_t *v, int n, int dof, real tp, real dt,
     real *zeta, real Q, real *ekin, real *tkin)
   { md_hoover((real *) v, n*3, dof, tp, dt, zeta, Q, ekin, tkin); }
+
+
 
 /* Nose-Hoover chain thermostat */
 INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
@@ -333,6 +356,8 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   }
 }
 
+
+
 INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
     real *zeta, const real *Q, int M, real *ekin, real *tkin)
   { md_nhchain((real *) v, n*2, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
@@ -340,6 +365,8 @@ INLINE void md_nhchain2d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
 INLINE void md_nhchain3d(rv3_t *v, int n, int dof, real tp, real scl, real dt,
     real *zeta, const real *Q, int M, real *ekin, real *tkin)
   { md_nhchain((real *) v, n*3, dof, tp, scl, dt, zeta, Q, M, ekin, tkin); }
+
+
 
 /* velocity-scaling Langevin thermostat */
 INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
@@ -368,6 +395,8 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
   *zeta *= xp;
 }
 
+
+
 INLINE void md_vslang2d(rv2_t *v, int n, int dof, real tp, real dt,
     real *zeta, real zeta2, real Q, real *ekin, real *tkin)
   { md_vslang((real *) v, n*2, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
@@ -375,6 +404,7 @@ INLINE void md_vslang2d(rv2_t *v, int n, int dof, real tp, real dt,
 INLINE void md_vslang3d(rv3_t *v, int n, int dof, real tp, real dt,
     real *zeta, real zeta2, real Q, real *ekin, real *tkin)
   { md_vslang((real *) v, n*3, dof, tp, dt, zeta, zeta2, Q, ekin, tkin); }
+
 
 
 /* Anderson thermostat */
@@ -387,6 +417,8 @@ INLINE void md_andersen(real *v, int n, int d, real tp)
   for (j = 0; j < d; j++) v[i*d + j] = tp * grand0();
 }
 
+
+
 /* Langevin thermostat */
 INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
 {
@@ -397,6 +429,8 @@ INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
   for (i = 0; i < n*d; i++)
     v[i] = c*v[i] + amp*grand0();
 }
+
+
 
 /* Nose-Hoover thermostat/barostat
  * set cutoff to half of the box */
@@ -433,6 +467,8 @@ INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
   /* thermostat */
   *zeta += (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) * dt2/Q;
 }
+
+
 
 /* Nose-Hoover chain thermostat/barostat
  * set cutoff to half of the box */
@@ -510,6 +546,8 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
   }
 }
 
+
+
 /* Langevin barostat
  *   d eta / dt = -zeta * eta
  *      + [ (Pint - Pext) * V + (1 - ensx) T ] * d / W
@@ -550,6 +588,8 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
 }
 
+
+
 /* position Langevin barostat
  * limiting case, zeta -> inf., of the full Langevin barostat
  * barodt = dt/(W*zeta), and d * d(eta) = d lnv
@@ -579,6 +619,8 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
   *vol = vn;
 }
 
+
+
 /* position Langevin barostat, with coordinates only
  * NOTE: the first parameter is the degree of freedom
  * the scaling is r = r*s
@@ -594,6 +636,8 @@ INLINE void md_langp0(int dof, int d, real barodt,
   *vol *= exp( dlnv );
 }
 
+
+
 /* sinc(x) = (e^x - e^(-x))/(2 x) */
 INLINE double md_mysinc(double x)
 {
@@ -604,6 +648,8 @@ INLINE double md_mysinc(double x)
   else
     return .5 * (exp(x) - exp(-x))/x;
 }
+
+
 
 /* Nose-Hoover position update */
 INLINE void md_hoovertpdr(real *r, const real *v, int nd,
@@ -627,6 +673,8 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
     r[i] += v[i] * dtxp;
 }
 
+
+
 #define md_mutv2d(v, n, tp, r) md_mutv((real *)(rv2_t *)v, n * 2, tp, r)
 #define md_mutv3d(v, n, tp, r) md_mutv((real *)(rv3_t *)v, n * 3, tp, r)
 
@@ -642,6 +690,8 @@ INLINE int md_mutv(real *v, int nd, real tp, double r)
   return 0;
 }
 
+
+
 /* multiply velocities by a random unitary matrix */
 INLINE int md_unimatv3d(rv3_t *v, int n)
 {
@@ -654,6 +704,94 @@ INLINE int md_unimatv3d(rv3_t *v, int n)
     rv3_copy(v[i], v1);
   }
   return 0;
+}
+
+
+
+/* write a position file */
+INLINE int md_writepos(FILE *fp, const real *x, const real *v, int n,
+    int d, real scl)
+{
+  int i, j;
+
+  for (i = 0; i < n; i++) {
+    for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", x[i*d + j] * scl);
+    if (v)
+      for (j = 0; j < d; j++) fprintf(fp, "%16.14f ", v[i*d + j]);
+    fprintf(fp, "\n");
+  }
+  return 0;
+}
+
+INLINE int md_writepos2d(FILE *fp, rv2_t *x, rv2_t *v, int n, real scl)
+{
+  return md_writepos(fp, (const real *) x, (const real *) v, n, 2, scl);
+}
+
+INLINE int md_writepos3d(FILE *fp, rv3_t *x, rv3_t *v, int n, real scl)
+{
+  return md_writepos(fp, (const real *) x, (const real *) v, n, 3, scl);
+}
+
+
+
+
+/* read position */
+INLINE int md_readpos(FILE *fp, real *x, real *v, int n, int d, real scl)
+{
+  const char *fmt;
+  char s[128], *p;
+  int i, j, next;
+  real *x0, *v0, xtmp;
+
+  fmt = (sizeof(double) == sizeof(real)) ? "%lf%n" : "%f%n";
+  /* back up the current coordinates and velocities, in case of failure */
+  xnew(x0, n * d);
+  memcpy(x0, x, sizeof(real) * n * d);
+  if (v) {
+    xnew(v0, n * d);
+    memcpy(v0, v, sizeof(real) * n * d);
+  }
+  for (i = 0; i < n; i++) {
+    if (fgets(s, sizeof s, fp) == NULL) goto ERR;
+    for (p = s, j = 0; j < d; j++, p += next) {
+      if (1 != sscanf(p, fmt, &xtmp, &next)) {
+        fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
+        goto ERR;
+      }
+      x[i*d + j] = xtmp / scl;
+    }
+    if (v != NULL) {
+      for (j = 0; j < d; j++, p += next)
+        if (1 != sscanf(p, fmt, v + i*d + j, &next)) {
+          fprintf(stderr, "cannot read i = %d, j = %d\n", i, j);
+          goto ERR;
+        }
+    }
+  }
+  free(x0);
+  if (v) free(v0);
+  return 0;
+ERR:
+  fprintf(stderr, "pos file broken on line %d!\n%s\n", i, s);
+  /* recover the original coordinates and velocities */
+  memcpy(x, x0, n * d * sizeof(real));
+  free(x0);
+  if (v) {
+    memcpy(v, v0, n * d * sizeof(real));
+    free(v0);
+  }
+  return -1;
+}
+
+INLINE int md_readpos2d(FILE *fp, rv2_t *x, rv2_t *v, int n, real scl)
+{
+  return md_readpos(fp, (real *) x, (real *) v, n, 2, scl);
+}
+
+INLINE int md_readpos3d(FILE *fp, rv3_t *x, rv3_t *v, int n, real scl)
+{
+  return md_readpos(fp, (real *) x, (real *) v, n, 3, scl);
 }
 
 

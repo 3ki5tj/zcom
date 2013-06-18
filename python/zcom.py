@@ -142,8 +142,9 @@ def pglob(pat, files = True, dirs = False, links = False, dots = False):
     ls = [ a for a in ls if not os.path.islink(a) ]
   if not dots: # exclude hidden files
     ls = [ a for a in ls if not a.startswith(".") ]
-  # expand to real directires
-  ls = [ os.path.realpath(a) for a in ls ]
+  # don't expand to real paths, because there may be aliases
+  ## expand to real directires
+  #ls = [ os.path.realpath(a) for a in ls ]
   # remove duplicate
   return sorted( list( set( ls ) ) )
 

@@ -1,7 +1,7 @@
 /* test switched potential */
 #define HAVE_REAL 1
 typedef float real;
-#include "lj.c"
+#include "lj.h"
 
 int n = 256;
 int d = 3;

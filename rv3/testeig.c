@@ -1,10 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-
 #define HAVEREAL 1
 typedef float real;
-
-#include "rv3.h"
+#include "rv3.c"
 #include "include/eig.h"
 
 int simple = 1;   /* simple test of a single matrix a */

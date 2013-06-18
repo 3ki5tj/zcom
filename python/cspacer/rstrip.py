@@ -83,7 +83,6 @@ def doargs():
 
   ls = args
   try: # limit the dependence on fileglob
-    import zcom
     # common text files
     pats = """*.c *.cpp *.h *.hpp *.java
               *.py *.pl *.rb *.php *.js
@@ -93,18 +92,14 @@ def doargs():
               *.cfg *.mdp
               *.sh *.csh
               README* *akefile"""
+    import zcom
     ls = zcom.argsglob(args, pats, recur = recur, links = links)
   except ImportError: pass
   return ls
 
 
 
-def main():
+if __name__ == "__main__":
   fns = doargs()
   for fn in fns: rtrimf(fn)
   print "saved %s bytes" % bytessaved
-
-
-
-if __name__ == "__main__":
-  main()

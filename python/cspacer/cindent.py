@@ -16,23 +16,10 @@
     Helper functions:
     * cleanline():      remove comments, then strip()
     * getindent():      get the leading indent of the line
-    * gcd():            greatest common divisors
     * endingcmt():      if a code line starts a block comment
 '''
 
 import os, sys, getopt, re
-
-verbose = 0
-defindent = "  "
-forcedef = False
-backup = True
-fnout = None
-emacstag = True  # trust Emacs tag for tab size
-fmtcmt = True # treat comment lines as code
-
-strict = False
-maxind = 80 # maximial number of leading characters
-
 
 
 
@@ -57,14 +44,6 @@ def getindent(ln):
     if not ln[k].isspace(): return ln[:k]
   else:
     return ln
-
-
-
-def gcd(a, b):
-  ''' greatest common divisor '''
-  if a > b: a,b = b,a
-  if a == 0: return b
-  else: return b % a
 
 
 
@@ -170,19 +149,20 @@ def printppcmt(s):
 
 
 
-def guessindent(lines):
+def guessindent(lines, defind, method, verbose = 0):
   ''' guess the basic unit of leading tabs '''
-  unitind = defindent
+  unitind = defind
 
   # 1. if the user insist
-  if forcedef: return defindent
+  if method == -1:
+    return defind
 
   # 2. try to read the `tab-width' tag
-  if emacstag:
+  if method == 1:
     for i in range(len(lines)):
       if len(lines[i].strip()): break
     else:
-      return defindent
+      return defind
 
     ln = lines[i]
     if ln.startswith("/*"):
@@ -195,7 +175,7 @@ def guessindent(lines):
 
   # 3. try to guess the indent size
   lntab = 0 # number of lines that uses tabs
-  lnsp = [0] * maxind # number of lines that uses spaces
+  lnsp = [0] * 100 # lnsp[k] == number of lines that uses k-spaces
   cp = CParser()
   lnum = 0
   for line in lines:
@@ -221,7 +201,6 @@ def guessindent(lines):
     if ns % 2 != 0 and verbose >= 3:
       print "strange indents", ns, ":", lnum, ":", line.strip()
     if ns < len(lnsp): lnsp[ns] += 1
-
 
   nsp = lnsp.index( max(lnsp) )
   if nsp % 2 == 0: # use a heuristic formula
@@ -250,7 +229,7 @@ def lntab2sp(s, tab):
 
 
 
-def tab2sp(s0, tabsize = 4):
+def tab2sp(s0, tabsize = 4, verbose = 0):
   ''' remove leading tabs in the indent to spaces
       called in `reindent'  '''
 
@@ -288,7 +267,7 @@ def tab2sp(s0, tabsize = 4):
 
 
 
-def reindent(s0):
+def reindent(s0, defind = "  ", indmethod = 1, verbose = 0):
   ''' reformat the leading indents
       when `{' is encountered, an indent is added on the next line
       when `}' is encountered, the indent is removed
@@ -300,10 +279,10 @@ def reindent(s0):
 
   # remove trailing spaces
   s0 = [ln.rstrip() + '\n' for ln in s0]
-  unitind = guessindent(s0)
+  unitind = guessindent(s0, defind, indmethod, verbose)
   # change leading tabs to spaces
   if unitind != '\t':
-    s1 = tab2sp(s0, len(unitind))
+    s1 = tab2sp(s0, len(unitind), verbose)
   else:
     s1 = s0[:]
 
@@ -326,8 +305,7 @@ def reindent(s0):
 
     # control comments
     incmt = cp.switchcmt(lnstrip)
-    if not fmtcmt: # skip comments
-      if incmt: continue
+    # if incmt: continue  # do not format comment lines
 
     # start formating
     lnclean = cleanline(ln)
@@ -371,10 +349,8 @@ def reindent(s0):
     if follow: # following the previous line's indent
       indent = getindent(s1[iprev])
     else:
-      if strict:
-        indent = unitind * level
-      else:
-        indent = indents[level]
+      #  indent = unitind * level
+      indent = indents[level]
       # if this line shares the same level with the previous one
       # but it appears to have longer/shorter indent,
       # then try to mimic the source
@@ -438,7 +414,7 @@ def reindent(s0):
 
 
 
-def reindentf(fn):
+def reindentf(fn, fnout, defind, indmethod, verbose = 0):
   ''' reindent a file, wrapper '''
 
   try:
@@ -447,13 +423,12 @@ def reindentf(fn):
     print "cannot open %s" % fn
     return
 
-  s1 = reindent(s0)
+  s1 = reindent(s0, defind, indmethod, verbose)
 
   # be careful when rewritting the file
   if ''.join(s0) == ''.join(s1):
     print "keeping", fn
   else:
-    global fnout
     if not fnout:
       fnout = fn
       if verbose >= 1:
@@ -461,11 +436,11 @@ def reindentf(fn):
         if not yesno or not yesno[0] in "yYoO":
           print "abort"
           exit(1)
-      if backup:
-        for i in range(1, 100):
-          fnbak = fn + ".bak" + str(i)
-          if not os.path.exists(fnbak): break
-        open(fnbak, "w").writelines(s0)
+
+      try: # make a backup
+        import zcom
+        zcom.safebackup(fn, ".bak")
+      except ImportError: pass
     print "writing", fnout
     open(fnout, "w").writelines(s1)
 
@@ -507,18 +482,20 @@ def doargs():
     print str(err) # will print something like "option -a not recognized"
     usage()
 
-  global verbose, defindent, forcedef, fnout, emacstag
-
   recur = False
   links = True
+  fnout = None
+  defind = "  "
+  indmethod = 1  # 1: trust Emacs tag, 0: compute naturally, -1: always use `defind'
+  verbose = False
 
   for o, a in opts:
     if o in ("-f", "--force",):
-      forcedef = True
+      indmethod = -1
     elif o in ("-s", "--spaces",):
-      defindent = " " * int(a)
+      defind = " " * int(a)
     elif o in ("-t", "--tab",):
-      defindent = "\t"
+      defind = "\t"
     elif o in ("-R", "--recursive",):
       recur = True
     elif o in ("-L", "--nolinks",):
@@ -526,9 +503,10 @@ def doargs():
     elif o in ("-o", "--output",):
       fnout = a
     elif o in ("--noemacs",):
-      emacstag = False
+      if indmethod > 0: # no effect if `--force' is set
+        indmethod = 0
     elif o in ("-v",):
-      verbose = 1
+      verbose += 1
     elif o in ("--verbose",):
       verbose = int(a)
     elif o in ("-h", "--help",):
@@ -540,15 +518,12 @@ def doargs():
     ls = zcom.argsglob(args, "*.c *.cpp *.h *.hpp *.java", recur = recur, links = links)
   except ImportError: pass
   if len(ls) <= 0: print "no file for %s" % args
-  return ls
+  return ls, fnout, defind, indmethod, verbose
 
-
-
-def main():
-  fns = doargs()
-  for fn in fns: reindentf(fn)
 
 
 if __name__ == "__main__":
-  main()
+  fns, fnout, defind, indmethod, verbose = doargs()
+  for fn in fns:
+    reindentf(fn, fnout, defind, indmethod, verbose)
 
