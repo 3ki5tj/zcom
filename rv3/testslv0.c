@@ -5,10 +5,8 @@ static void foo(real a00, real a01, real a02,
                 real a10, real a11, real a12,
                 real a20, real a21, real a22)
 {
-  real a[3][3], as[3][3], x[3][3], y[3][3], tol, res[3];
+  real a[3][3], as[3][3], x[3][3], y[3][3], res[3];
   int i, n;
-
-  tol = 10.0 * ((sizeof(real) == sizeof(double)) ? DBL_EPSILON : FLT_EPSILON);
 
   rv3_make(a[0], a00, a01, a02);
   rv3_make(a[1], a10, a11, a12);
@@ -16,7 +14,7 @@ static void foo(real a00, real a01, real a02,
   rm3_copy(as, a);
   rm3_print(a, "A", "%10.6f", 1);
 
-  n = rm3_solvezero(a, x, tol);
+  n = rm3_solvezero(a, x);
 
   printf("%d solutions\n", n);
   for (i = 0; i < n; i++) {

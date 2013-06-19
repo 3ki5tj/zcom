@@ -36,8 +36,10 @@ def rmdbg(in_lines, badkeys=['SSDBG_', 'CFGDBG_', 'ENDIAN_DBG_', '_LEGACY'], ver
               break
           else:
             pass # do nothing
+          if lin1.strip().endswith("DEBUG") or lin1.strip().endswith("_DBG"):
+            ignore_at = plevel
 
-    if verbose>=3:
+    if verbose >= 3:
       print "#", linenum, "plevel:", plevel, "ignore_at:",ignore_at,lin1.rstrip()
 
     if ignore_at<0:

@@ -2,11 +2,8 @@
 
 '''
 add spaces for C source code
-
 Copyright (c) 2010-2013 Cheng Zhang
-
-main function is addspacef()
-
+the main function is addspacef()
 
 Example 1:
      if(a>b&&a>3)c=d;
@@ -456,7 +453,7 @@ def usage():
                           if `input' is a wildcard pattern like *.c
                           the pattern must be quoted as '*.c'
    -L, --nolinks          skip symbolic links
-   -w, --overwrite=       overwrite the original file
+   -w, --overwrite        overwrite the original file
    -a, --add              add space around +, -, &, |
    --paren2               convert if(_ to if_(, and _){ to )_{
    --noknr                allow { to hang after ) for functions
@@ -604,5 +601,5 @@ def doargs():
 if __name__ == "__main__":
   ls, overwrite, verbose = doargs()
   for fn in ls:
-    addspacef(fn, overwrite, verbose)
+    addspacef(fn, None, overwrite, verbose)
 

@@ -4,6 +4,7 @@ usbdir = /media/C3/code
 prj = zcom
 
 $(prj).h::
+	$(MAKE) -C rv2 rv2.h
 	$(MAKE) -C rv3 rv3.h rm3.h
 	$(MAKE) -C lj lj.h ljmc.h
 	$(MAKE) -C abpro abpro.h

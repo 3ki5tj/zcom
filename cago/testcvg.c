@@ -38,25 +38,25 @@ static void doargs(int argc, char **argv)
  * a target RMSD
  * return 0 if successful
  *
- * temperature is updated according to epot
+ * temperature is updated according to the target potential energy `epotc'
  * several stages of updating are used, each with a fixed tpdt
  * after a stage, the updating magnitude amp is multiplied by ampf
  * iterations finish when the temperature difference is less than
  * a given tolerance 'tptol'
- * a pass is defined every time the potential energy crosses 'epot'
+ * a pass is defined every time the potential energy crosses 'epotc'
  * in every stage, npass passes are required to determine convergence
  * */
 INLINE int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
-    int dormsd, real epot, real rmsd, int npass,
+    int dormsd, real epotc, real rmsdc, int npass,
     real amp, real ampf, real tptol, av_t *avtp, av_t *avep, av_t *avrmsd,
     real tp, real tpmin, real tpmax, int tmax, int trep)
 {
   int i, t, stg, sgp, sgn, ipass;
-  real tpp = 0, tp1, tpav, epav, rdav, tmp;
+  real tpp = 0, tp1, tpav, epav, rdav, tmp, rmsd;
 
-  go->rmsd = cago_rmsd(go, go->x, NULL);
-  if (dormsd) sgp = (go->rmsd > rmsd) ? 1 : - 1;
-  else sgp = (go->epot > epot) ? 1 : -1;
+  rmsd = cago_rmsd(go, go->x, NULL);
+  if (dormsd) sgp = (rmsd > rmsdc) ? 1 : - 1;
+  else sgp = (go->epot > epotc) ? 1 : -1;
   for (stg = 0; ; stg++, amp *= ampf) { /* stages with different dpdt */
     if (avtp) av_clear(avtp);
     if (avep) av_clear(avep);
@@ -65,9 +65,9 @@ INLINE int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
       cago_vv(go, 1, mddt);
       if (t % nstcom == 0) cago_rmcom(go, go->x, go->v);
       cago_vrescalex(go, (real) tp, thermdt, &go->ekin, &go->tkin);
-      go->rmsd = cago_rmsd(go, go->x, NULL);
-      if (dormsd) sgn = (go->rmsd > rmsd) ? 1 : -1;
-      else sgn = (go->epot > epot) ? 1 : -1;
+      rmsd = cago_rmsd(go, go->x, NULL);
+      if (dormsd) sgn = (rmsd > rmsdc) ? 1 : -1;
+      else sgn = (go->epot > epotc) ? 1 : -1;
       if (sgn * sgp < 0) {
         ipass++;
         sgp = sgn;
@@ -83,22 +83,22 @@ INLINE int cago_cvgmdrun(cago_t *go, real mddt, real thermdt, int nstcom,
       tp = tp1;
       if (avtp) av_add(avtp, tp);
       if (avep) av_add(avep, go->epot);
-      if (avrmsd) av_add(avrmsd, go->rmsd);
+      if (avrmsd) av_add(avrmsd, rmsd);
       if (trep >= 0 && t % trep == 0) {
         printf("%s %d|%9d: U %.2f - %.2f, R %.1f - %.1f, "
             "tp %.4f, K %.2f, pass: %d/%d\n",
-            dormsd ? "R" : "U", stg, t, go->epot, epot,
-            go->rmsd, rmsd, tp, go->ekin, ipass, npass);
+            dormsd ? "R" : "U", stg, t, go->epot, epotc,
+            rmsd, rmsdc, tp, go->ekin, ipass, npass);
       }
     }
     /* end of a stage */
     if (ipass < npass) { /* not enough passes over rmsd */
       const char fnfail[] = "fail.pos";
-      go->rmsd = cago_rmsd(go, go->x, go->x1);
+      rmsdc = cago_rmsd(go, go->x, go->x1);
       cago_writepos(go, go->x1, NULL, fnfail);
       fprintf(stderr, "%d: failed to converge, epot: %g - %g, %g - %g, "
           "%d passes, %s\n",
-          stg, epot, go->epot, rmsd, go->rmsd, ipass, fnfail);
+          stg, epotc, go->epot, rmsdc, rmsd, ipass, fnfail);
       return 1;
     }
     tpav = av_getave(avtp);
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
   real mddt = 0.002f, thermdt = 0.02f;
   real tp0 = 1.0, tpmin = 0.1, tpmax = 10.0;
   av_t avtp[1], avep[1], avrmsd[1];
-  real tpav, tpdv, epav, epdv, rdav, rddv;
+  real tpav, tpdv, epav, epdv, rdav, rddv, rmsd;
 
   doargs(argc, argv);
   if ((go = cago_open(fnpdb, kb, ka, kd1, kd3, nbe, nbc, rcc,
@@ -132,8 +132,9 @@ int main(int argc, char **argv)
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
-  cago_initmd(go, 0.1, 0.0);
-  printf("%s n %d, epot = %g, %g, rmsd = %g\n", fnpdb, go->n, go->epot, go->epotref, go->rmsd);
+  cago_initmd(go, 0, 0.1, 0.0);
+  rmsd = cago_rmsd(go, go->x, NULL);
+  printf("%s n %d, epot = %g, %g, rmsd = %g\n", fnpdb, go->n, go->epot, go->epotref, rmsd);
   if (epottarget < go->epotref) {
     fprintf(stderr, "target energy %g must be greater than %g\n", epottarget, go->epotref);
     return 0;

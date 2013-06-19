@@ -467,7 +467,7 @@ INLINE int iscontactatom(int level, const char *atnm)
  *           PDB_CONTACT_ALL:     include hydrogen atoms
  * 'nearby': # of adjacent resdiues to be excluded from the list
  * */
-int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
+INLINE int *pdbm_contact(pdbmodel_t *pm, double rc, int level, int nearby, int dbg)
 {
   int ir, jr, i, j, im, jm, ica, jca, n = pm->natm, nres = pm->nres, ct, cnt = 0;
   pdbatom_t *atm = pm->atm;

@@ -51,7 +51,7 @@ int main(void)
   mkhelix(x, N);
   calcmmt(mat, xc, x, N);
   rm3_eigval(v, mat);
-  rm3_eigvecs(vecs, mat, v[0], 2e-7);
+  rm3_eigvecs(vecs, mat, v[0]);
   printf("val: %g, %g, %g; vec = {%g, %g, %g}\n",
       v[0], v[1], v[2], vecs[0][0], vecs[0][1], vecs[0][2]);
   printf("xc = %g, %g, %g\n", xc[0], xc[1], xc[2]);

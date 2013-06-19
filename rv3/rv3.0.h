@@ -36,42 +36,36 @@
 #include <math.h>
 #include <float.h>
 
-#define rv3_fprint_(fp, r, nm, fmt, nl) { int i_; \
-  if (nm) fprintf(fp, "%s: ", nm); \
-  for (i_ = 0; i_ < 3; i_++) fprintf(fp, fmt, r[i_]); \
-  fprintf(fp, "%c", (nl ? '\n' : ';')); }
 
-#define rm3_fprint_(fp, m, nm, fmt, nl) { int i_, j_; \
-  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' ')); \
-  for (i_ = 0; i_ < 3; i_++) { \
-    for (j_ = 0; j_ < 3; j_++) \
-      fprintf(fp, fmt, m[i_][j_]); \
-    fprintf(fp, "%s", (nl ? "\n" : "; ")); } }
-
-#define fv3_print(r, nm, fmt, nl) fv3_fprint(stdout, r, nm, fmt, nl)
-INLINE void fv3_fprint(FILE *fp, float *r, const char *nm, const char *fmt, int nl)
-  rv3_fprint_(fp, r, nm, fmt, nl)
-
-#define fm3_print(m, nm, fmt, nl) fm3_fprint(stdout, m, nm, fmt, nl)
-INLINE void fm3_fprint(FILE *fp, float (*m)[3], const char *nm, const char *fmt, int nl)
-  rm3_fprint_(fp, m, nm, fmt, nl)
-
-
-#define dv3_print(r, nm, fmt, nl) dv3_fprint(stdout, r, nm, fmt, nl)
-INLINE void dv3_fprint(FILE *fp, double *r, const char *nm, const char *fmt, int nl)
-  rv3_fprint_(fp, r, nm, fmt, nl)
-
-#define dm3_print(m, nm, fmt, nl) dm3_fprint(stdout, m, nm, fmt, nl)
-INLINE void dm3_fprint(FILE *fp, double (*m)[3], const char *nm, const char *fmt, int nl)
-  rm3_fprint_(fp, m, nm, fmt, nl)
 
 #define rv3_print(r, nm, fmt, nl) rv3_fprint(stdout, r, nm, fmt, nl)
+
 INLINE void rv3_fprint(FILE *fp, real *r, const char *nm, const char *fmt, int nl)
-  rv3_fprint_(fp, r, nm, fmt, nl)
+{
+  int i;
+
+  if (nm) fprintf(fp, "%s: ", nm);
+  for (i = 0; i < 3; i++) fprintf(fp, fmt, r[i]);
+  fprintf(fp, "%c", nl ? '\n' : ';');
+}
+
+
 
 #define rm3_print(m, nm, fmt, nl) rm3_fprint(stdout, m, nm, fmt, nl)
+
 INLINE void rm3_fprint(FILE *fp, real (*m)[3], const char *nm, const char *fmt, int nl)
-  rm3_fprint_(fp, m, nm, fmt, nl)
+{
+  int i, j;
+
+  if (nm) fprintf(fp, "%s:%c", nm, nl ? '\n' : ' ');
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++)
+      fprintf(fp, fmt, m[i][j]);
+    fprintf(fp, "%s", nl ? "\n" : "; ");
+  }
+}
+
+
 
 /* due to possible pointer overlap, 'const' are not add to some parameters */
 
@@ -83,22 +77,22 @@ INLINE real *rv3_make(real *x, real a, real b, real c)
   return x;
 }
 
-INLINE real *rv3_fromfv3(real *x, const float *dx)
+INLINE real *rv3_fromfv3(real * RESTRICT x, const float *dx)
 {
   return rv3_make(x, (real) dx[0], (real) dx[1], (real) dx[2]);
 }
 
-INLINE float *fv3_fromrv3(float *x, const real *rx)
+INLINE float *fv3_fromrv3(float * RESTRICT x, const real *rx)
 {
   return fv3_make(x, rx[0], rx[1], rx[2]);
 }
 
-INLINE real *rv3_fromdv3(real *x, const double *dx)
+INLINE real *rv3_fromdv3(real * RESTRICT x, const double *dx)
 {
   return rv3_make(x, (real) dx[0], (real) dx[1], (real) dx[2]);
 }
 
-INLINE double *dv3_fromrv3(double *x, const real *rx)
+INLINE double *dv3_fromrv3(double * RESTRICT x, const real *rx)
 {
   return dv3_make(x, rx[0], rx[1], rx[2]);
 }
@@ -108,7 +102,7 @@ INLINE real *rv3_zero(real *x)
   return rv3_make(x, 0, 0, 0);
 }
 
-INLINE real *rv3_copy(real *x, const real *src)
+INLINE real *rv3_copy(real * RESTRICT x, const real *src)
 {
   x[0] = src[0];
   x[1] = src[1];
@@ -116,10 +110,14 @@ INLINE real *rv3_copy(real *x, const real *src)
   return x;
 }
 
+
+
 /* use macro to avoid const qualifier of src */
 #define rv3_ncopy(x, src, n) memcpy(x, src, 3*n*sizeof(real))
 
-INLINE void rv3_swap(real *x, real *y)
+
+
+INLINE void rv3_swap(real * RESTRICT x, real * RESTRICT y)
 {
   real z[3];
   rv3_copy(z, x);
@@ -127,14 +125,18 @@ INLINE void rv3_swap(real *x, real *y)
   rv3_copy(y, z);
 }
 
+
+
 INLINE real rv3_sqr(const real *x)
 {
-  return x[0]*x[0]+x[1]*x[1]+x[2]*x[2];
+  return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
 }
+
+
 
 INLINE real rv3_norm(const real *x)
 {
-  return (real) sqrt(x[0]*x[0]+x[1]*x[1]+x[2]*x[2]);
+  return (real) sqrt( rv3_sqr(x) );
 }
 
 /* if x == y, try to use sqr */
@@ -143,7 +145,7 @@ INLINE real rv3_dot(const real *x, const real *y)
   return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
 }
 
-INLINE real *rv3_cross(real *RESTRICT z, const real *x, const real *y)
+INLINE real *rv3_cross(real * RESTRICT z, const real *x, const real *y)
 {
   z[0] = x[1]*y[2] - x[2]*y[1];
   z[1] = x[2]*y[0] - x[0]*y[2];
@@ -159,7 +161,7 @@ INLINE real *rv3_neg(real *x)
   return x;
 }
 
-INLINE real *rv3_neg2(real *nx, const real *x)
+INLINE real *rv3_neg2(real * RESTRICT nx, const real *x)
 {
   nx[0] = -x[0];
   nx[1] = -x[1];
@@ -185,9 +187,9 @@ INLINE real *rv3_dec(real *x, const real *dx)
 
 INLINE real *rv3_sinc(real * RESTRICT x, const real *dx, real s)
 {
-  x[0] += dx[0]*s;
-  x[1] += dx[1]*s;
-  x[2] += dx[2]*s;
+  x[0] += dx[0] * s;
+  x[1] += dx[1] * s;
+  x[2] += dx[2] * s;
   return x;
 }
 
@@ -202,11 +204,13 @@ INLINE real *rv3_smul(real *x, real s)
 /* if y == x, just use smul */
 INLINE real *rv3_smul2(real * RESTRICT y, const real *x, real s)
 {
-  y[0] = x[0]*s;
-  y[1] = x[1]*s;
-  y[2] = x[2]*s;
+  y[0] = x[0] * s;
+  y[1] = x[1] * s;
+  y[2] = x[2] * s;
   return y;
 }
+
+
 
 INLINE real *rv3_normalize(real *x)
 {
@@ -215,19 +219,25 @@ INLINE real *rv3_normalize(real *x)
   return x;
 }
 
+
+
 INLINE real *rv3_makenorm(real *v, real x, real y, real z)
 {
   return rv3_normalize( rv3_make(v, x, y, z) );
 }
 
+
+
 /* for in-place difference use rv3_dec */
-INLINE real *rv3_diff(real * RESTRICT diff, const real *a, const real *b)
+INLINE real *rv3_diff(real * RESTRICT c, const real *a, const real *b)
 {
-  diff[0] = a[0]-b[0];
-  diff[1] = a[1]-b[1];
-  diff[2] = a[2]-b[2];
-  return diff;
+  c[0] = a[0] - b[0];
+  c[1] = a[1] - b[1];
+  c[2] = a[2] - b[2];
+  return c;
 }
+
+
 
 /* distance^2 between a and b */
 INLINE real rv3_dist2(const real *a, const real *b)
@@ -236,11 +246,15 @@ INLINE real rv3_dist2(const real *a, const real *b)
   return rv3_sqr(rv3_diff(d, a, b));
 }
 
+
+
 /* distance between a and b */
 INLINE real rv3_dist(const real *a, const real *b)
 {
   return (real) sqrt(rv3_dist2(a, b));
 }
+
+
 
 /* c = a + b, for in-place addition use rv3_inc */
 INLINE real *rv3_add(real * RESTRICT c, const real *a, const real *b)
@@ -251,17 +265,32 @@ INLINE real *rv3_add(real * RESTRICT c, const real *a, const real *b)
   return c;
 }
 
-/* c = -a - b */
-INLINE real *rv3_nadd(real *c, const real *a, const real *b)
+
+
+/* c = - a - b */
+INLINE real *rv3_nadd(real * RESTRICT c, const real *a, const real *b)
 {
-  c[0] = -a[0] - b[0];
-  c[1] = -a[1] - b[1];
-  c[2] = -a[2] - b[2];
+  c[0] = - a[0] - b[0];
+  c[1] = - a[1] - b[1];
+  c[2] = - a[2] - b[2];
   return c;
 }
 
+
+
+/* c = a + b * s */
+INLINE real *rv3_sadd(real * RESTRICT c, const real *a, const real *b, real s)
+{
+  c[0] = a[0] + b[0] * s;
+  c[1] = a[1] + b[1] * s;
+  c[2] = a[2] + b[2] * s;
+  return c;
+}
+
+
+
 /* c = a * s1 + b * s2 */
-INLINE real *rv3_lincomb2(real *c, const real *a, const real *b,
+INLINE real *rv3_lincomb2(real * RESTRICT c, const real *a, const real *b,
     real s1, real s2)
 {
   c[0] = a[0] * s1 + b[0] * s2;
@@ -270,9 +299,11 @@ INLINE real *rv3_lincomb2(real *c, const real *a, const real *b,
   return c;
 }
 
+
+
 /* angle and gradients of cos(x1-x2-x3) */
 INLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
-    real *g1, real *g2, real *g3)
+    real * RESTRICT g1, real * RESTRICT g2, real * RESTRICT g3)
 {
   real a[3], b[3], ra, rb, dot;
 
@@ -290,9 +321,11 @@ INLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
   return dot;
 }
 
+
+
 /* angle and gradients of x1-x2-x3 */
 INLINE real rv3_ang(const real *x1, const real *x2, const real *x3,
-    real *g1, real *g2, real *g3)
+    real * RESTRICT g1, real * RESTRICT g2, real * RESTRICT g3)
 {
   real dot, sn;
 
@@ -337,8 +370,8 @@ INLINE real rv3_vpdist(const real *x, const real *a, const real *b, const real *
 
 
 /* light weight dihedral */
-INLINE real rv3_dih(const real xi[], const real xj[], const real xk[], const real xl[],
-    real gi[], real gj[], real gk[], real gl[])
+INLINE real rv3_dih(const real *xi, const real *xj, const real *xk, const real *xl,
+    real * RESTRICT gi, real * RESTRICT gj, real * RESTRICT gk, real * RESTRICT gl)
 {
   real tol, phi, cosphi = 1.f;
   real nxkj, nxkj2, m2, n2;
@@ -389,7 +422,7 @@ INLINE real rv3_dih(const real xi[], const real xj[], const real xk[], const rea
 #define rv3_rnd0(v) rv3_rnd(v, 0, 1)
 
 /* uniformly distributed random vector [a, a + b) */
-INLINE real *rv3_rnd(rv3_t v, real a, real b)
+INLINE real *rv3_rnd(real *v, real a, real b)
 {
   v[0] = (real) (a + b * rnd0());
   v[1] = (real) (a + b * rnd0());
@@ -401,7 +434,7 @@ INLINE real *rv3_rnd(rv3_t v, real a, real b)
 
 /* normally distributed random vector */
 #define rv3_grand0(v) rv3_grand(v, 0, 1)
-INLINE real *rv3_grand(rv3_t v, real c, real r)
+INLINE real *rv3_grand(real *v, real c, real r)
 {
   v[0] = (real) (c + r * grand0());
   v[1] = (real) (c + r * grand0());

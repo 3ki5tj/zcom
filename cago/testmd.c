@@ -34,7 +34,7 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt,
     int teql, int tmax, int trep)
 {
   int t;
-  real fs = tps/tp;
+  real fs = tps/tp, rmsd;
 
   tmax = (tmax < 0) ? -1 : (tmax + teql);
   av_clear(avep);
@@ -43,14 +43,14 @@ INLINE int cago_mdrun(cago_t *go, real mddt, real thermdt,
     cago_vv(go, fs, mddt);
     cago_rmcom(go, go->x, go->v);
     cago_vrescale(go, (real) tps, thermdt, &go->ekin, &go->tkin);
-    go->rmsd = cago_rmsd(go, go->x, NULL);
+    rmsd = cago_rmsd(go, go->x, NULL);
     if (t > teql) {
       av_add(avep, go->epot);
-      av_add(avrmsd, go->rmsd);
+      av_add(avrmsd, rmsd);
     }
     if (trep > 0 && t % trep == 0) {
       printf("%9d: tp %.4f, tps %.4f, rmsd %7.4f, K %.2f, U %.2f\n",
-          t, tp, tps, go->rmsd, go->ekin, go->epot);
+          t, tp, tps, rmsd, go->ekin, go->epot);
     }
   }
   return 0;
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
   cago_t *go;
   int teql = 100000, tmax = 500000, trep = 10000, ncont;
   real mddt = 0.002f, thermdt = 0.02f;
-  real epav, epdv, rdav, rddv;
+  real epav, epdv, rdav, rddv, rmsd;
   av_t avep[1], avrmsd[1];
 
   doargs(argc, argv);
@@ -70,11 +70,12 @@ int main(int argc, char **argv)
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
-  cago_initmd(go, -0.1, 0.0);
+  cago_initmd(go, 1, 0.1, 0.0);
+  rmsd = cago_rmsd(go, go->x, NULL);
   ncont = cago_ncontacts(go, go->x, 1.2, NULL, NULL);
   printf("%s n %d, tp %.3f, tps %.3f, epot %g, %g (ref), rmsd %g, cont %d/%d\n",
       fnpdb, go->n, tp, tps, go->epot, go->epotref,
-      go->rmsd, ncont, go->ncont);
+      rmsd, ncont, go->ncont);
 
   cago_mdrun(go, mddt, thermdt, tps, tp, avep, avrmsd,
      teql, tmax, trep);

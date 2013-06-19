@@ -25,8 +25,8 @@
 /* velocity Verlet */
 INLINE void lj_vvx(lj_t *lj, real fscal, real dt)
 {
-  int i, nd = lj->n*lj->d;
-  real dtl = dt/lj->l, dthf = dt * .5f * fscal;
+  int i, nd = lj->n * lj->d;
+  real dtl = dt / lj->l, dthf = dt * .5f * fscal;
 
   for (i = 0; i < nd; i++) { /* VV part 1 */
     lj->v[i] += lj->f[i] * dthf;
@@ -37,7 +37,6 @@ INLINE void lj_vvx(lj_t *lj, real fscal, real dt)
     lj->v[i] += lj->f[i] * dthf;
 
   lj->ekin = md_ekin(lj->v, nd, lj->dof, &lj->tkin);
-  lj->t += dt;
 }
 
 
@@ -108,7 +107,6 @@ INLINE void lj_vv_hoovertp(lj_t *lj, real dt, real eta)
     lj->v[i] += lj->f[i] * dt2;
 
   lj->ekin = md_ekin(lj->v, nd, lj->dof, &lj->tkin);
-  lj->t += dt;
 }
 
 

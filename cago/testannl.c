@@ -1,3 +1,7 @@
+
+#define HAVEREAL
+typedef float real;
+
 #include "argopt.h"
 #include "cago.h"
 
@@ -48,9 +52,11 @@ static void eftest(cago_t *go, real del)
   printf("ep %g, %g, %g, rat %g\n", ep0, ep1, dep, dep/del);
 }
 
+
 int main(int argc, char **argv)
 {
   cago_t *go;
+  real rmsd;
   int t;
 
   doargs(argc, argv);
@@ -59,8 +65,11 @@ int main(int argc, char **argv)
     fprintf(stderr, "cannot initialize from %s\n", fnpdb);
     return 1;
   }
-  cago_initmd(go, -0.1, 0.0);
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
+  cago_initmd(go, 1, 0.1, 0.0);
+
+  rmsd = cago_rmsd(go, go->x, NULL);
+  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, rmsd);
+
   cago_writepos(go, go->x, go->v, "a.pos");
   for (t = 1; t <= tmax; t++) {
     tp = (2 - 1.9f*t/tmax); /* annealing */
@@ -69,19 +78,19 @@ int main(int argc, char **argv)
     cago_vrescale(go, tp, thermdt, &go->ekin, &go->tkin);
     if (t % tfreq == 0) {
       eftest(go, 0.1);
-      go->rmsd = cago_rmsd(go, go->x, NULL);
+      rmsd = cago_rmsd(go, go->x, NULL);
       printf("t %d, tp = %g, ene = %g+%g = %g, %g\n",
-    	  t, tp, go->epot, go->ekin, go->epot + go->ekin, go->rmsd);
+    	  t, tp, go->epot, go->ekin, go->epot + go->ekin, rmsd);
     }
   }
 
-  go->rmsd = cago_rmsd(go, go->x, go->f);
+  rmsd = cago_rmsd(go, go->x, NULL);
   cago_writepos(go, go->x, NULL, "b.pos");
   cago_writepos(go, go->f, NULL, "c.pos");
   cago_writepos(go, go->xref, NULL, "0.pos");
   cago_writepdb(go, go->f, "final.pdb");
   cago_writepdb(go, go->xref, "ref.pdb");
-  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, go->rmsd);
+  printf("ene = %g, %g, rmsd = %g\n", go->epot, go->ekin, rmsd);
   cago_close(go);
   return 0;
 }

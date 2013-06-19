@@ -36,15 +36,16 @@ def addfd(fnin, fnout, funcls):
 
 if __name__ == "__main__":
   addfd(None, "rv3.h", [
+    "rv3_fprint", "rv3_print",
+    "rm3_fprint", "rm3_print",
     "rv3_make", "rv3_zero",
     "rv3_copy", "rv3_ncopy", "rv3_swap",
     "rv3_sqr", "rv3_norm", "rv3_dot", "rv3_cross",
     "rv3_neg", "rv3_neg2",
     "rv3_inc", "rv3_dec", "rv3_sinc", "rv3_smul", "rv3_smul2",
-    "rv3_normalize",
-    "rv3_makenorm",
+    "rv3_normalize", "rv3_makenorm",
     "rv3_diff", "rv3_dist2", "rv3_dist", "rv3_add", "rv3_nadd",
-    "rv3_lincomb2",
+    "rv3_sadd", "rv3_lincomb2",
     "rv3_cosang", "rv3_ang", "rv3_vdist", "rv3_vpdist",
     "rv3_dih",
     "rv3_rnd", "rv3_rnd0", "rv3_grand",

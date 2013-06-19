@@ -1,5 +1,6 @@
 Overview
 =========
+
 This is a module for C-alpha Go model.
 The key reference is
   Cecilia Clementi, Hugh Nymeyer and Jose Nelson Onuchic
@@ -11,7 +12,7 @@ The key reference is
 
 
 Usage
-=======
+-------
 
 Example through zcom.h
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -31,7 +32,7 @@ Notes:
 
 
 Code
-=============
+----------
 
 cago_t;
   Object of C-alpha Go model
@@ -79,7 +80,7 @@ Functions:
 
 
 Reference data
-==================
+------------------
 
 Below we list the transition temperature (where the folded and unfolded
   peaks are of equal heights) of a few proteins

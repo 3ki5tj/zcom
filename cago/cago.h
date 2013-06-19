@@ -11,11 +11,12 @@
 typedef struct {
   int n; /* number of residues */
   int dof; /* degree of freedom */
+  unsigned flags; /* input flags */
+
   real kb; /* .5 kb (b - b0)^2, ~ 200 */
   real ka; /* .5 ka (a - a0)^2, ~ 40 */
   real kd1, kd3; /* kd1 (1 - cos(d - d0)) + kd3 (1 - cos(3*(d-d0))), ~ 1 & 0.5 */
   real nbe, nbc; /* nbc ~ 4 A */
-  unsigned flags; /* input flags */
 
   rv3_t *xref;
   real epotref; /* energy of the reference structure */
@@ -24,13 +25,13 @@ typedef struct {
   real *aref; /* angle */
   real *dref; /* dihedral */
   real *r2ref; /* pair distance */
+
   int ncont; /* number of defined contacts */
-  int *iscont;
+  int *iscont; /* if the pair i-j is a contact */
 
   /* variables for MD simulations */
   rv3_t *x, *v, *f, *x1;
-  real ekin, tkin, epot, etot, t;
-  real rmsd; /* root-mean-square deviation, result from a rotfit call  */
+  real ekin, tkin, epot;
 } cago_t;
 
 #define CAGO_VERBOSE 0x1000
@@ -49,7 +50,7 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f);
   md_mcvrescale3d(go->v, go->n, go->dof, tp, dt, ek, tk)
 
 /* convenient macro for computing RMSD from the reference structure */
-#define cago_rmsd(go, x, xf) rv3_rmsd(x, xf, go->xref, NULL, go->n, NULL, NULL)
+#define cago_rmsd(go, x, xf) rv3_rmsd(x, xf, go->xref, NULL, go->n, 0, NULL, NULL)
 
 /* compute the reference bond lengths, angles, dihedrals and pair distances */
 INLINE int cago_refgeo(cago_t *go)
@@ -114,8 +115,7 @@ INLINE cago_t *cago_open1(const char *fnpdb, real rcc, int ctype, int nsexcl, un
   xnew(go->iaa, go->n);
   /* extract the coordinates of alpha carbon atoms */
   for (i = 0; i < go->n; i++) {
-    for (j = 0; j < 3; j++)
-      go->xref[i][j] = (real) c->res[i].xca[j];
+    rv3_copy(go->xref[i], c->res[i].xca);
     go->iaa[i] = c->res[i].iaa; /* integer amino-acid type */
   }
   pdbaac_free(c); /* throw away pdbaac */
@@ -196,16 +196,15 @@ INLINE void cago_rmcom(cago_t *go, rv3_t *x, rv3_t *v)
 
 /* initialize molecular dynamics
  *  o create an initial structure
- *    if rndamp >= 0, start from the reference structure,
- *      with a random disturbance of rndamp
- *    if rndamp < 0, start from a nearly-straight chain,
- *      with a disturbance of rndamp in the x, y directions
+ *    if `open', start from a nearly-straight chain,
+ *      with a disturbance of `rndamp' in the x, y directions
+ *    otherwise start from the reference structure,
+ *      with a random disturbance of `rndamp'
  *  o initialize the velocity with the center of mass motion removed
- *  o compute the initial force and energy
- * */
-INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
+ *  o compute the initial force and energy */
+INLINE int cago_initmd(cago_t *go, int open, double rndamp, double T0)
 {
-  int i, j, n = go->n;
+  int i, n = go->n;
   real s, dx[3];
 
   xnew(go->f, n);
@@ -214,39 +213,30 @@ INLINE int cago_initmd(cago_t *go, double rndamp, double T0)
   xnew(go->x1, n);
 
   /* initialize position */
-  if (rndamp < 0) { /* open chain */
-    rndamp *= -1;
+  if (open) { /* open chain */
     for (i = 0; i < n-1; i++) {
-      for (j = 0; j < 3; j++)
-        dx[j] = (j == 0) ? 1.f : rndamp*(2.f*rnd0() - 1);
-      rv3_normalize(dx);
-      rv3_smul(dx, go->bref[i]);
-      rv3_add(go->x[i+1], go->x[i], dx);
+      rv3_normalize(rv3_make(dx, 1,
+            (real) (rndamp * (2 * rnd0() - 1)),
+            (real) (rndamp * (2 * rnd0() - 1)) ));
+      /* x_{i+1} = x_i + dx * bref[i] */
+      rv3_sadd(go->x[i+1], go->x[i], dx, go->bref[i]);
     }
   } else { /* copy from xref, slightly disturb it */
-    for (i = 0; i < n; i++) {
-      rv3_copy(go->x[i], go->xref[i]);
-      for (j = 0; j < 3; j++)
-        go->x[i][j] += rndamp*(2.f*rnd0() - 1);
-    }
+    for (i = 0; i < n; i++)
+      rv3_sadd(go->x[i], go->xref[i], rv3_rnd(dx, -1, 2), rndamp);
   }
   go->epotref = cago_force(go, go->xref, go->f);
 
   /* initialize velocities */
-  for (j = 0; j < 3; j++)
-    for (i = 0; i < n; i++)
-      go->v[i][j] = rnd0() - .5;
+  for (i = 0; i < n; i++)
+    rv3_rnd(go->v[i], -0.5f, 1);
   cago_rmcom(go, go->x, go->v); /* remove center of mass motion */
   for (s = 0, i = 0; i < n; i++)
     s += rv3_sqr(go->v[i]);
-  s = sqrt( (3*n*T0)/s );
-  for (i = 0; i < n; i++) {
+  s = sqrt(3 * n * T0 / s);
+  for (i = 0; i < n; i++)
     rv3_smul(go->v[i], s);
-  }
-  go->epot = cago_force(go, go->x, go->f);
   go->ekin = cago_ekin(go, go->v, &go->tkin);
-  go->rmsd = cago_rmsd(go, go->x, NULL);
-  go->t = 0;
   return 0;
 }
 
@@ -413,7 +403,6 @@ INLINE int cago_vv(cago_t *go, real fscal, real dt)
     rv3_sinc(v[i], f[i], dth*fscal);
   }
   go->ekin = cago_ekin(go, go->v, &go->tkin);
-  go->t += dt;
   return 0;
 }
 
@@ -584,7 +573,7 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
   xfopen(fp, fn, "w", return -1);
   for (i = 0; i < n; i++)
     fprintf(fp, "ATOM  %5d  CA  %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           C  \n",
-        i+1, pdbaaname(go->iaa[i]), i+1, x[i][0], x[i][1], x[i][2]);
+        i + 1, pdbaaname(go->iaa[i]), i+1, x[i][0], x[i][1], x[i][2]);
   fprintf(fp, "END%77s\n", " ");
   fclose(fp);
   return 0;

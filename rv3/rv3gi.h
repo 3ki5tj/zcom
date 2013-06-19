@@ -9,8 +9,8 @@
  * where
  * den = r1 (r2.r3) + r2 (r1.r3) + r3 (r1.r2) + r1 r2 r3
  */
-INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
-  real g1[], real g2[], real g3[])
+INLINE real rv3_solidang(const real *v1, const real *v2, const real *v3,
+  real * RESTRICT g1, real * RESTRICT g2, real * RESTRICT g3)
 {
   real vc[3];
   real r1, r2, r3;
@@ -76,8 +76,10 @@ INLINE real rv3_solidang(const real v1[], const real v2[], const real v3[],
  * over two line segments rip - ri, rjp - rj, and rij = ri - rj
  * (-2 pi, 2 pi)
  * Note the sign is opposite to that of the dihedral */
-INLINE real rv3_solidang2g(const real ri[], const real rip[], const real rj[],
-  const real rjp[], real gi[], real gip[], real gj[], real gjp[])
+INLINE real rv3_solidang2g(const real *ri, const real *rip,
+    const real *rj, const real *rjp,
+    real * RESTRICT gi, real * RESTRICT gip,
+    real * RESTRICT gj, real * RESTRICT gjp)
 {
   rv3_t v0, v1, v2, v3, g0, g1, g2, g3, g4, g5;
   real ang1, ang2;

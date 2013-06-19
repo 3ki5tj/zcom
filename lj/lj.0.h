@@ -17,6 +17,7 @@ typedef struct {
   int d; /* dimension = 3 */
   int n; /* number of particles */
   int dof; /* degrees of freedom */
+
   real rho;
   real l, vol; /* side length and volume */
   real rc2, rc, rcdef; /* real / preferred rc */
@@ -28,7 +29,6 @@ typedef struct {
   real ekin, tkin, etot;
   real vir; /* virial */
   real epot_shift, epot_tail, p_tail;
-  double t;
 
   int usesw; /* switched potential */
   real rs, a4, a5, a6, a7; /* parameters */

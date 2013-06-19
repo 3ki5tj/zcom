@@ -364,7 +364,7 @@ ERR:
 
 
 /* 3D shake with additional constraints */
-INLINE int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
+INLINE int ab_shake3d(abpro_t *ab, rv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
@@ -408,14 +408,14 @@ INLINE int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 #endif
 
     for (i = imin; i < imax; i++) { /* standard constraints */
-      r2 = rv3_sqr(rv3_diff(dxi, x1[i+1], x1[i]));
+      r2 = rv3_sqr(rv3_diff(dxi, x1[i + 1], x1[i]));
       if (r2 > r2max) { /* too large, impossible to correct */
         if (verbose)
           fprintf(stderr, "shake: r(%d, %d) = %g\n", i, i+1, sqrt(r2));
         r2 = r2max;
       }
 
-      if (fabs(r2-1) > tol) {
+      if (fabs(r2 - 1) > tol) {
         if (!again) { again = 1; r2bad = r2; }
 
         g = rv3_dot(dxi, dx0[i]);
@@ -427,17 +427,18 @@ INLINE int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
         g = (1 - r2) / (4 * g);
         rv3_sinc(x1[i],   dx0[i], -g);
         if (v) rv3_sinc(v[i], dx0[i], -g/dt);
-        if (i == imax - 1) {
+        /* be careful as i + 1 == imax belongs to the next block */
+        if (i == imax - 1)
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-          {
-          rv3_sinc(x1[i+1], dx0[i],  g);
-          if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
-          }
-        } else {
-          rv3_sinc(x1[i+1], dx0[i],  g);
-          if (v) rv3_sinc(v[i+1], dx0[i],  g/dt);
+        {
+          rv3_sinc(x1[i + 1], dx0[i], g);
+          if (v) rv3_sinc(v[i + 1], dx0[i], g/dt);
+        }
+        else {
+          rv3_sinc(x1[i + 1], dx0[i], g);
+          if (v) rv3_sinc(v[i + 1], dx0[i], g/dt);
         }
       }
     }
@@ -489,14 +490,14 @@ INLINE int ab_shake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 
 
 /* shake x1 according to x0 */
-INLINE int ab_shake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
-    int itmax, double tol, int verbose)
+INLINE int ab_shake(abpro_t *ab, real * RESTRICT x0, real * RESTRICT x1,
+    real * RESTRICT v, real dt, int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-4;
   return (ab->d == 3) ?
-    ab_shake3d(ab, (crv3_t *) x0, (rv3_t *) x1, (rv3_t *) v, dt, itmax, tol, verbose) :
-    ab_shake2d(ab, (crv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
+    ab_shake3d(ab, (rv3_t *) x0, (rv3_t *) x1, (rv3_t *) v, dt, itmax, tol, verbose) :
+    ab_shake2d(ab, (rv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
 }
 
 
@@ -571,7 +572,7 @@ INLINE int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol
 
 
 
-INLINE int ab_milcshake3d(abpro_t *ab, crv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
+INLINE int ab_milcshake3d(abpro_t *ab, rv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
     int itmax, double tol, int verbose)
 {
   int i, again, it, n = ab->n, nl;
@@ -658,8 +659,8 @@ INLINE int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = (sizeof(real) == sizeof(double)) ? 1e-6 : 1e-4;
   return (ab->d == 3) ?
-    ab_milcshake3d(ab, (crv3_t *) x0, (rv3_t *) x1, (rv3_t *) v, dt, itmax, tol, verbose) :
-    ab_milcshake2d(ab, (crv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
+    ab_milcshake3d(ab, (rv3_t *) x0, (rv3_t *) x1, (rv3_t *) v, dt, itmax, tol, verbose) :
+    ab_milcshake2d(ab, (rv2_t *) x0, (rv2_t *) x1, (rv2_t *) v, dt, itmax, tol, verbose);
 }
 
 
@@ -1071,8 +1072,8 @@ INLINE int ab_vv3d(abpro_t *ab, real fscal, real dt, int soft, int milc)
 #pragma omp parallel for schedule(static)
 #endif
   for (i = 0; i < n; i++) { /* vv part 1 */
-    rv3_sinc(v[i], f[i], dth);
-    rv3_lincomb2(x1[i], x[i], v[i], 1, dt);
+    rv3_sinc(v[i], f[i], dth); /* v += f * dth */
+    rv3_sadd(x1[i], x[i], v[i], dt); /* x1 = x + v * dt */
   }
   if (milc) {
     i = ab_milcshake(ab, ab->x, ab->x1, ab->v, dt, 0, 0., verbose);
