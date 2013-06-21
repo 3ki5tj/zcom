@@ -5,18 +5,18 @@ Lennard Jones system
 Overview
 --------
 o supports 2d/3d versions, 2d functions are generated
-  from the 3d ones by the script mklj2d.py
+  from the 3d ones by the script add2d.py
 o supports square-well and hard-sphere potential
 o supports switched potential
 
 
 Files
 -------
-lj.0.h/lj.h       main source code, latter generate from mklj2d.py
+lj.0.h/lj.h       main source code, latter generate from add2d.py
 ljmc.0.h/ljmc.h   Monte Carlo algorithms
 ljmd.h            molecular dynamics algorithms
 ljrdf.h           routines to compute RDF
-mklj2d.py         generate a version lj.h with 2d support from lj.0.h
+add2d.py         generate a version lj.h with 2d support from lj.0.h
                   similarly ljmc.0.h --> ljmc.h
 ljeos.gp          standard equation of states, gnuplot script
 
@@ -36,12 +36,12 @@ Notes
 Monte Carlo pair version: old/ljpr.c
 
 
-mklj2d.py
+add2d.py
 ~~~~~~~~~~~
 
 The script uses a generic ccom.py, which is located in the $(ROOT)/python.
 But python can find ccom.py without symbolic links because of the
-special import statement in mklj2d.py
+special import statement in add2d.py
 
   sys.path.insert(0, "..")
   from python import ccom

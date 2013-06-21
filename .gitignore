@@ -3,6 +3,9 @@
 *.bak
 *.pyc
 *.clean.*
+rc.h
+rv2.h
+rm2.h
 rv3.h
 rm3.h
 abpro.h

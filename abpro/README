@@ -16,8 +16,8 @@ Don't edit abpro.c, edit abpro.0.c (only 3d version).
 Files
 ---------
 abpro.0.h   source code
-abpro.h     generate from abpro.0.c by mkab2d.py, do not edit
-mkab2d.py   generate a version abpro.h with 2d support from abpro.0.h
+abpro.h     generate from abpro.0.c by add2d.py, do not edit
+add2d.py    generate a version abpro.h with 2d support from abpro.0.h
             The script uses a generic ccom.py, which is located
             in the $(ROOT)/python.
 

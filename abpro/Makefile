@@ -11,7 +11,8 @@ LMM =
 #CM = $(CX) -openmp-profile -D_OPENMP -openmp-report0
 #CM = $(CC) -fopenmp
 
-deps = abpro.h rv2.h rv3.h rm3.h util.h md.h Makefile
+autosrc = abpro.h
+deps = $(autosrc) rv2.h rv3.h rm3.h util.h md.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 bins_m = $(patsubst %.c,%_m, $(wildcard test*.c))
@@ -33,8 +34,10 @@ $(bins) : % : %.c $(deps)
 $(bins_m) : %_m : %.c $(deps)
 	$(CM) -o $@ $< $(LMM)
 
-abpro.h: abpro.0.h mkab2d.py
-	python mkab2d.py $@
+genhdr: $(autosrc)
+
+$(autosrc) : %.h : %.0.h add2d.py
+	python add2d.py
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bins) $(bins_d) $(bins_m) \

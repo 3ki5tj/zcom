@@ -8,17 +8,41 @@
 #include "rng.h"
 #ifndef RV2_H__
 #define RV2_H__
-
-#ifndef RV2_T
-#define RV2_T rv2_t
-  typedef real rv2_t[2];
-  typedef const real crv2_t[2];
-  typedef real rm2_t[2][2];
-#endif
-
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+
+
+#ifndef FV2_T
+#define FV2_T fv2_t
+typedef float fv2_t[2];
+#endif
+
+#ifndef DV2_T
+#define DV2_T dv2_t
+typedef double dv2_t[2];
+#endif
+
+#ifndef RV2_T
+#define RV2_T rv2_t
+typedef real rv2_t[2];
+#endif
+
+
+
+#define rv2_print(r, nm, fmt, nl) rv2_fprint(stdout, r, nm, fmt, nl)
+
+INLINE void rv2_fprint(FILE *fp, const real *r, const char *nm,
+    const char *fmt, int nl)
+{
+  int i;
+  if (nm) fprintf(fp, "%s: ", nm);
+  for (i = 0; i < 2; i++)
+    fprintf(fp, fmt, r[i], nl);
+  fprintf(fp, "%c", (nl ? '\n' : ';'));
+}
+
 
 
 
@@ -33,10 +57,11 @@ INLINE real *rv2_make(real *x, real a, real b)
 
 
 
-INLINE real *rv2_zero(real *x)
-{
-  return rv2_make(x, 0, 0);
-}
+#define rv2_makev(rx, x) rv2_make(rx, (real) x[0], (real) x[1])
+
+
+
+#define rv2_zero(x) rv2_make(x, 0, 0)
 
 
 
@@ -309,42 +334,14 @@ INLINE void rm2_inv(real b[2][2], real a[2][2])
 
 
 
-#define rv2_print(r, nm, fmt, nl) rv2_fprint(stdout, r, nm, fmt, nl)
-INLINE void rv2_fprint(FILE *fp, const real *r, const char *nm,
-    const char *fmt, int nl)
-{
-  int i;
-  if (nm) fprintf(fp, "%s: ", nm);
-  for (i = 0; i < 2; i++)
-    fprintf(fp, fmt, r[i], nl);
-  fprintf(fp, "%c", (nl ? '\n' : ';'));
-}
-
-
-
-#define rm2_print(r, nm, fmt, nl) rm2_fprint(stdout, r, nm, fmt, nl)
-INLINE void rm2_fprint(FILE *fp, real r[2][2], const char *nm,
-    const char *fmt, int nl)
-{
-  int i, j;
-  if (nm) fprintf(fp, "%s:%c", nm, (nl ? '\n' : ' '));
-  for (i = 0; i < 2; i++) {
-    for (j = 0; j < 2; j++) {
-      fprintf(fp, fmt, r[i][j], nl);
-    }
-    fprintf(fp, "%s", (nl ? "\n" : "; "));
-  }
-}
-
-
-
 #define rv2_rnd0() rv2_rnd(v, 0, 1)
 
 /* uniformly distributed random vector [a, a + b) */
 INLINE real *rv2_rnd(real *v, real a, real b)
 {
-  v[0] = (real) (a + b * rnd0());
-  v[1] = (real) (a + b * rnd0());
+  b -= a;
+  v[0] = a + b * (real) rnd0();
+  v[1] = a + b * (real) rnd0();
   return v;
 }
 
@@ -353,24 +350,38 @@ INLINE real *rv2_rnd(real *v, real a, real b)
 #define rv2_grand0(v) rv2_grand(v, 0, 1)
 INLINE real *rv2_grand(real *v, real c, real r)
 {
-  v[0] = (real) (c + r * grand0());
-  v[1] = (real) (c + r * grand0());
+  v[0] = c + r * (real) grand0();
+  v[1] = c + r * (real) grand0();
   return v;
 }
 
 
 
-/* generate a random orthonormal (unitary) 2x2 matrix */
-INLINE rv2_t *rm2_rnduni(real a[2][2])
-{
-  rv2_rnd(a[0], -.5f, 1.f);
-  rv2_normalize(a[0]);
+/* randomly oriented vector on the sphere of radius r */
+#define rv2_rnddir(v, r) rv2_smul(rv2_rnddir0(v), r)
 
-  a[1][0] = a[0][1];
-  a[1][1] = -a[0][0];
-  if (rnd0() > 0.5) rv2_neg(a[1]);
-  return a;
+/* randomly oriented vector on the unit sphere */
+INLINE real *rv2_rnddir0(real *v)
+{
+  return rv2_normalize( rv2_rnd(v, -1, 1) );
 }
+
+
+
+
+/* randomly orientied vector within the sphere of radius `r' */
+#define rv2_rnddisk(v, r) rv2_smul(rv2_rnddisk0(v), r)
+
+/* randomly vector within the unit sphere */
+INLINE real *rv2_rnddisk0(real *v)
+{
+  do {
+    rv2_rnd(v, -1, 1);
+  } while (rv2_sqr(v) >= 1);
+  return v;
+}
+
+
 
 #endif /* RV2_H__ */
 

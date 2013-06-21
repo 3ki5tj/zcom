@@ -740,7 +740,7 @@ INLINE int md_writepos3d(FILE *fp, rv3_t *x, rv3_t *v, int n, real scl)
 INLINE int md_readpos(FILE *fp, real *x, real *v, int n, int d, real scl)
 {
   const char *fmt;
-  char s[128], *p;
+  char s[256], *p;
   int i, j, next;
   real *x0, *v0, xtmp;
 

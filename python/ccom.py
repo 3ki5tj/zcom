@@ -2,7 +2,7 @@
 
 ''' common routines for manipulating C source code '''
 
-import re
+import re, os, sys
 
 
 
@@ -99,6 +99,9 @@ def dupfuncs(fnin, fnout, funcls, dls):
 def add2d(fnin, fnout, funcls):
   ''' add 2D versions '''
 
+  if fnin == None:
+    fnin = ".0".join( os.path.splitext(fnout) )
+
   dupfuncs(fnin, fnout, funcls, {
       "rv3_" : "rv2_",
       "rm3_" : "rm2_",
@@ -115,4 +118,34 @@ def add2d(fnin, fnout, funcls):
       r"3D" : "2D",
       r"3d" : "2d",
     })
+
+
+
+def addfd(fnin, fnout, funcls):
+  ''' write `float' and `double' versions according to the `real' version'''
+
+  if fnin == None:
+    fnin = ".0".join( os.path.splitext(fnout) )
+
+  r2f = {
+    "rv3_" : "fv3_",
+    "rv2_" : "fv2_",
+    "rm3_" : "fm3_",
+    "rm2_" : "fm2_",
+    "real" : "float",
+    "rc_" : "fc_",
+    "rcomplex" : "fcomplex",
+    }
+  r2d = {
+    "rv3_" : "dv3_",
+    "rv2_" : "dv2_",
+    "rm3_" : "dm3_",
+    "rm2_" : "dm2_",
+    "real" : "double",
+    "rc_" : "dc_",
+    "rcomplex" : "dcomplex",
+    }
+  dupfuncs(fnin, fnout, funcls, [r2f, r2d])
+
+
 

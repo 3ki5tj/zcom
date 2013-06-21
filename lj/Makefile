@@ -10,6 +10,7 @@ deps = lj.c lj.h ljmc.h ljmd.h ljrdf.h \
        def.h rv2.h rv3.h util.h md.h rng.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
+autosrc = lj.h ljmc.h
 
 debug: $(bins_d)
 
@@ -23,11 +24,10 @@ $(bins) : %: %.c $(deps)
 $(bins_d) : %_d: %.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
-lj.h: lj.0.h mklj2d.py
-	python mklj2d.py
+genhdr : $(autosrc)
 
-ljmc.h: ljmc.0.h mklj2d.py
-	python mklj2d.py
+$(autosrc) : %.h : %.0.h add2d.py
+	python add2d.py
 
 clean:
 	rm -f *~ *.out MTSEED *.dat $(bins) $(bins_d) shakefail* rattlefail* lj.pos *.his

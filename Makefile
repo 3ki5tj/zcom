@@ -3,11 +3,10 @@ LM = -lm
 usbdir = /media/C3/code
 prj = zcom
 
+genhdrdirs = rc rv2 rv3 lj abpro
+
 $(prj).h::
-	$(MAKE) -C rv2 rv2.h
-	$(MAKE) -C rv3 rv3.h rm3.h
-	$(MAKE) -C lj lj.h ljmc.h
-	$(MAKE) -C abpro abpro.h
+	for d in $(genhdrdirs); do ( $(MAKE) -C $$d genhdr ); done
 	python assemble.py -a -v 1
 
 zip: $(prj).zip

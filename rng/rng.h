@@ -109,6 +109,7 @@ INLINE int mtload(const char *fn, uint32_t seed)
 
 #define rand32()  mtrand()
 #define rnd0()    ((1.0/4294967296.0) * rand32()) /* double, [0, 1) */
+#define rnd(a, b) ((a) + ((b) - (a)) * rnd0()) /* double, [a, b) */
 
 /* return an unsigned random number */
 INLINE uint32_t mtrand(void)
@@ -167,7 +168,7 @@ INLINE double grand0(void)
 
 
 /* return a random number that satisfies a gamma distribution
-   p(x) = x^(k - 1) e^(-x) / (k - 1)!. */
+   p(x) = x^(k - 1) e^(-x) / (k - 1)! */
 INLINE double randgam(int k)
 {
   int i;
@@ -198,7 +199,7 @@ INLINE double randgam(int k)
     }
     /* compare with the gamma distribution
        r peaks at x = k1, where, y = 0 and r = 1 */
-    r = (1.0 + y*y)*exp(k1*log(x/k1) - x + k1);
+    r = (1.0 + y*y) * exp(k1 * log(x/k1) - x + k1);
     if (rnd0() <= r) break;
   }
 
@@ -212,33 +213,9 @@ INLINE double randgausssum(int n)
 {
   double x, r;
   if (n <= 0) return 0.0;
-  x = 2.0*randgam(n/2);
+  x = 2.0 * randgam(n/2);
   if (n % 2) { r = grand0(); x += r*r; }
   return x;
-}
-
-
-
-/* return randomly oriented vector on a uniform sphere */
-INLINE double *randor3d(double *v)
-{
-  double a, b, sq, s;
-
-  do { /* projection on the x-y plane */
-    a = 2 * rnd0() - 1;
-    b = 2 * rnd0() - 1;
-    sq = a * a + b * b;
-  } while (sq > 1);
-
-  s = 2.0 * sqrt(1 - sq);
-
-  /* x^2 + y^2 = 4 [1 - (a^2 + b^2)] (a^2 + b^2)
-   * z^2 = 1 - 2 (a^2 + b^2), so x^2 + y^2 + z^2 = 1 */
-  v[0] = a * s;
-  v[1] = b * s;
-  v[2] = 1 - 2*sq;
-
-  return v;
 }
 
 

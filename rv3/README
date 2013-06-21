@@ -17,7 +17,13 @@ rv3.c           inclues rv3.h, etc
 
 Test programs
 ~~~~~~~~~~~~~
-All testxxx.c are test programs.
+Order of testing eig(), svd(), rmsd()
+  testslv0.c
+  testeig.c
+  testsvd.c
+  testrmsd1.c
+  testrmsd2.c
+
 
 
 Notes

@@ -4,34 +4,64 @@
 /* routines for 3x3 matrices */
 
 
-INLINE dv3_t *dm3_fromrm3(double a[3][3], real ra[3][3])
+
+#ifndef FM3_T
+#define FM3_T fm3_t
+typedef float fm3_t[3][3];
+#endif
+
+#ifndef DM3_T
+#define DM3_T dm3_t
+typedef double dm3_t[3][3];
+#endif
+
+#ifndef RM3_T
+#define RM3_T rm3_t
+typedef real rm3_t[3][3];
+#endif
+
+
+#define rm3_print(m, nm, fmt, nl) rm3_fprint(stdout, m, nm, fmt, nl)
+
+INLINE void rm3_fprint(FILE *fp, real (*m)[3], const char *nm, const char *fmt, int nl)
 {
-  a[0][0] = ra[0][0];
-  a[0][1] = ra[0][1];
-  a[0][2] = ra[0][2];
-  a[1][0] = ra[1][0];
-  a[1][1] = ra[1][1];
-  a[1][2] = ra[1][2];
-  a[2][0] = ra[2][0];
-  a[2][1] = ra[2][1];
-  a[2][2] = ra[2][2];
-  return a;
+  int i, j;
+
+  if (nm) fprintf(fp, "%s:%c", nm, nl ? '\n' : ' ');
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++)
+      fprintf(fp, fmt, m[i][j]);
+    fprintf(fp, "%s", nl ? "\n" : "; ");
+  }
 }
 
 
-INLINE rv3_t *rm3_fromdm3(real a[3][3], double da[3][3])
+
+INLINE rv3_t *rm3_make(real rx[3][3], real a00, real a01, real a02,
+    real a10, real a11, real a12, real a20, real a21, real a22)
 {
-  a[0][0] = (real) da[0][0];
-  a[0][1] = (real) da[0][1];
-  a[0][2] = (real) da[0][2];
-  a[1][0] = (real) da[1][0];
-  a[1][1] = (real) da[1][1];
-  a[1][2] = (real) da[1][2];
-  a[2][0] = (real) da[2][0];
-  a[2][1] = (real) da[2][1];
-  a[2][2] = (real) da[2][2];
-  return a;
+  rv3_make(rx[0], a00, a01, a02);
+  rv3_make(rx[1], a10, a11, a12);
+  rv3_make(rx[2], a20, a21, a22);
+  return rx;
 }
+
+
+
+#define rm3_makem(rx, x) rm3_make(rx, \
+    (real) x[0][0], (real) x[0][1], (real) x[0][2], \
+    (real) x[1][0], (real) x[1][1], (real) x[1][2], \
+    (real) x[2][0], (real) x[2][1], (real) x[2][2])
+
+
+
+/* zero matrix */
+#define rm3_zero(x) rm3_makem(x, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+
+
+/* identity matrix */
+#define rm3_one(x) rm3_makem(x, 1, 0, 0, 0, 1, 0, 0, 0, 1)
 
 
 
@@ -62,15 +92,9 @@ INLINE rv3_t *rm3_trans(real a[3][3])
 /* a = u^T v */
 INLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
 {
-  a[0][0] = u[0] * v[0];
-  a[0][1] = u[0] * v[1];
-  a[0][2] = u[0] * v[2];
-  a[1][0] = u[1] * v[0];
-  a[1][1] = u[1] * v[1];
-  a[1][2] = u[1] * v[2];
-  a[2][0] = u[2] * v[0];
-  a[2][1] = u[2] * v[1];
-  a[2][2] = u[2] * v[2];
+  rv3_smul2(a[0], v, u[0]);
+  rv3_smul2(a[1], v, u[1]);
+  rv3_smul2(a[2], v, u[2]);
   return a;
 }
 
@@ -79,15 +103,9 @@ INLINE rv3_t *rm3_vtv(real a[3][3], const real *u, const real *v)
 /* a += b */
 INLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
 {
-  a[0][0] += b[0][0];
-  a[0][1] += b[0][1];
-  a[0][2] += b[0][2];
-  a[1][0] += b[1][0];
-  a[1][1] += b[1][1];
-  a[1][2] += b[1][2];
-  a[2][0] += b[2][0];
-  a[2][1] += b[2][1];
-  a[2][2] += b[2][2];
+  rv3_inc(a[0], b[0]);
+  rv3_inc(a[1], b[1]);
+  rv3_inc(a[2], b[2]);
   return a;
 }
 
@@ -96,15 +114,9 @@ INLINE rv3_t *rm3_inc(real a[3][3], real b[3][3])
 /* a += b*s */
 INLINE rv3_t *rm3_sinc(real a[3][3], real b[3][3], real s)
 {
-  a[0][0] += b[0][0] * s;
-  a[0][1] += b[0][1] * s;
-  a[0][2] += b[0][2] * s;
-  a[1][0] += b[1][0] * s;
-  a[1][1] += b[1][1] * s;
-  a[1][2] += b[1][2] * s;
-  a[2][0] += b[2][0] * s;
-  a[2][1] += b[2][1] * s;
-  a[2][2] += b[2][2] * s;
+  rv3_sinc(a[0], b[0], s);
+  rv3_sinc(a[1], b[1], s);
+  rv3_sinc(a[2], b[2], s);
   return a;
 }
 
@@ -149,9 +161,9 @@ INLINE rv3_t *rm3_tmul(real c[3][3], real a[3][3], real b[3][3])
 /* c = a v */
 INLINE real *rm3_mulvec(real * RESTRICT c, real a[3][3], const real *v)
 {
-  c[0] = a[0][0]*v[0] + a[0][1]*v[1] + a[0][2]*v[2];
-  c[1] = a[1][0]*v[0] + a[1][1]*v[1] + a[1][2]*v[2];
-  c[2] = a[2][0]*v[0] + a[2][1]*v[1] + a[2][2]*v[2];
+  c[0] = rv3_dot(a[0], v);
+  c[1] = rv3_dot(a[1], v);
+  c[2] = rv3_dot(a[2], v);
   return c;
 }
 
@@ -439,7 +451,7 @@ INLINE int rm3_eigvecs(real (*vecs)[3], real mat[3][3], real val)
   m[1][1] -= val;
   m[2][2] -= val;
 #ifdef RV3_DEBUG
-  printf("\nsolving eigenvalue %g\n", val);
+  printf("\n\nsolving eigenvector(s) for the eigenvalue %g\n", val);
 #endif
   return rm3_solvezero(m, vecs);
 }
@@ -469,7 +481,7 @@ INLINE rv3_t *rm3_eigsys(real v[3], real vecs[3][3], real mat[3][3], int nt)
     if ((nn += n) >= 3) break;
   }
 #ifdef RV3_DEBUG
-  /* NOTE: the following code to ensure orthogonality 
+  /* NOTE: the following code to ensure orthogonality
    * is currently disabled, however, if the error `tol'
    * in rv3_solvezero() is too small, which still can be,
    * then the degenerated eigenvalues may need the step */
@@ -699,14 +711,12 @@ INLINE rv3_t *rm3_rnduni(real a[3][3])
 {
   real dot;
 
-  rv3_rnd(a[0], -.5f, 1.f);
-  rv3_normalize(a[0]);
+  rv3_rnddir0(a[0]);
 
-  rv3_rnd(a[1], -.5f, 1.f);
-  /* normalize a[1] against a[0] */
+  rv3_rnd(a[1], -1, 1);
+  /* component of a[1] normal to a[0] */
   dot = rv3_dot(a[0], a[1]);
-  rv3_sinc(a[1], a[0], -dot);
-  rv3_normalize(a[1]);
+  rv3_normalize( rv3_sinc(a[1], a[0], -dot) );
 
   rv3_cross(a[2], a[0], a[1]);
   return a;

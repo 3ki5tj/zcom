@@ -11,23 +11,17 @@
 
 #ifndef FV3_T
 #define FV3_T fv3_t
-  typedef float fv3_t[3];
-  typedef const float cfv3_t[3];
-  typedef float fm3_t[3][3];
+typedef float fv3_t[3];
 #endif
 
 #ifndef DV3_T
 #define DV3_T dv3_t
-  typedef double dv3_t[3];
-  typedef const double cdv3_t[3];
-  typedef double dm3_t[3][3];
+typedef double dv3_t[3];
 #endif
 
 #ifndef RV3_T
 #define RV3_T rv3_t
-  typedef real rv3_t[3];
-  typedef const real crv3_t[3];
-  typedef real rm3_t[3][3];
+typedef real rv3_t[3];
 #endif
 
 #include <stdio.h>
@@ -51,22 +45,6 @@ INLINE void rv3_fprint(FILE *fp, real *r, const char *nm, const char *fmt, int n
 
 
 
-#define rm3_print(m, nm, fmt, nl) rm3_fprint(stdout, m, nm, fmt, nl)
-
-INLINE void rm3_fprint(FILE *fp, real (*m)[3], const char *nm, const char *fmt, int nl)
-{
-  int i, j;
-
-  if (nm) fprintf(fp, "%s:%c", nm, nl ? '\n' : ' ');
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++)
-      fprintf(fp, fmt, m[i][j]);
-    fprintf(fp, "%s", nl ? "\n" : "; ");
-  }
-}
-
-
-
 /* due to possible pointer overlap, 'const' are not add to some parameters */
 
 INLINE real *rv3_make(real *x, real a, real b, real c)
@@ -77,30 +55,15 @@ INLINE real *rv3_make(real *x, real a, real b, real c)
   return x;
 }
 
-INLINE real *rv3_fromfv3(real * RESTRICT x, const float *dx)
-{
-  return rv3_make(x, (real) dx[0], (real) dx[1], (real) dx[2]);
-}
 
-INLINE float *fv3_fromrv3(float * RESTRICT x, const real *rx)
-{
-  return fv3_make(x, rx[0], rx[1], rx[2]);
-}
 
-INLINE real *rv3_fromdv3(real * RESTRICT x, const double *dx)
-{
-  return rv3_make(x, (real) dx[0], (real) dx[1], (real) dx[2]);
-}
+#define rv3_makev(rv, v) rv3_make(rv, (real) v[0], (real) v[1], (real) v[2])
 
-INLINE double *dv3_fromrv3(double * RESTRICT x, const real *rx)
-{
-  return dv3_make(x, rx[0], rx[1], rx[2]);
-}
 
-INLINE real *rv3_zero(real *x)
-{
-  return rv3_make(x, 0, 0, 0);
-}
+
+#define rv3_zero(x) rv3_make(x, 0, 0, 0)
+
+
 
 INLINE real *rv3_copy(real * RESTRICT x, const real *src)
 {
@@ -139,11 +102,15 @@ INLINE real rv3_norm(const real *x)
   return (real) sqrt( rv3_sqr(x) );
 }
 
+
+
 /* if x == y, try to use sqr */
 INLINE real rv3_dot(const real *x, const real *y)
 {
   return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
 }
+
+
 
 INLINE real *rv3_cross(real * RESTRICT z, const real *x, const real *y)
 {
@@ -153,6 +120,8 @@ INLINE real *rv3_cross(real * RESTRICT z, const real *x, const real *y)
   return z;
 }
 
+
+
 INLINE real *rv3_neg(real *x)
 {
   x[0] = -x[0];
@@ -160,6 +129,8 @@ INLINE real *rv3_neg(real *x)
   x[2] = -x[2];
   return x;
 }
+
+
 
 INLINE real *rv3_neg2(real * RESTRICT nx, const real *x)
 {
@@ -169,6 +140,8 @@ INLINE real *rv3_neg2(real * RESTRICT nx, const real *x)
   return nx;
 }
 
+
+
 INLINE real *rv3_inc(real * RESTRICT x, const real *dx)
 {
   x[0] += dx[0];
@@ -176,6 +149,8 @@ INLINE real *rv3_inc(real * RESTRICT x, const real *dx)
   x[2] += dx[2];
   return x;
 }
+
+
 
 INLINE real *rv3_dec(real *x, const real *dx)
 {
@@ -185,6 +160,8 @@ INLINE real *rv3_dec(real *x, const real *dx)
   return x;
 }
 
+
+
 INLINE real *rv3_sinc(real * RESTRICT x, const real *dx, real s)
 {
   x[0] += dx[0] * s;
@@ -193,6 +170,8 @@ INLINE real *rv3_sinc(real * RESTRICT x, const real *dx, real s)
   return x;
 }
 
+
+
 INLINE real *rv3_smul(real *x, real s)
 {
   x[0] *= s;
@@ -200,6 +179,9 @@ INLINE real *rv3_smul(real *x, real s)
   x[2] *= s;
   return x;
 }
+
+
+
 
 /* if y == x, just use smul */
 INLINE real *rv3_smul2(real * RESTRICT y, const real *x, real s)
@@ -419,14 +401,16 @@ INLINE real rv3_dih(const real *xi, const real *xj, const real *xk, const real *
 }
 
 
+
 #define rv3_rnd0(v) rv3_rnd(v, 0, 1)
 
-/* uniformly distributed random vector [a, a + b) */
+/* uniformly distributed random vector [a, b) */
 INLINE real *rv3_rnd(real *v, real a, real b)
 {
-  v[0] = (real) (a + b * rnd0());
-  v[1] = (real) (a + b * rnd0());
-  v[2] = (real) (a + b * rnd0());
+  b -= a;
+  v[0] = a + b * (real) rnd0();
+  v[1] = a + b * (real) rnd0();
+  v[2] = a + b * (real) rnd0();
   return v;
 }
 
@@ -436,9 +420,44 @@ INLINE real *rv3_rnd(real *v, real a, real b)
 #define rv3_grand0(v) rv3_grand(v, 0, 1)
 INLINE real *rv3_grand(real *v, real c, real r)
 {
-  v[0] = (real) (c + r * grand0());
-  v[1] = (real) (c + r * grand0());
-  v[2] = (real) (c + r * grand0());
+  v[0] = c + r * (real) grand0();
+  v[1] = c + r * (real) grand0();
+  v[2] = c + r * (real) grand0();
+  return v;
+}
+
+
+
+/* randomly oriented vector on the sphere of radius r */
+#define rv3_rnddir(v, r) rv3_smul(rv3_rnddir0(v), r)
+
+/* randomly oriented vector on the unit sphere */
+INLINE real *rv3_rnddir0(real *v)
+{
+  double a, b, sq, s;
+
+  do { /* projection on the x-y plane */
+    a = 2 * rnd0() - 1;
+    b = 2 * rnd0() - 1;
+    sq = a * a + b * b;
+  } while (sq >= 1); /* avoid sin() and cos() */
+
+  s = 2. * sqrt(1 - sq);
+  return rv3_make(v, (real) (a * s), (real) (b * s), (real) (1 - 2 * sq));
+}
+
+
+
+
+/* randomly orientied vector within the sphere of radius `r' */
+#define rv3_rndball(v, r) rv3_smul(rv3_rndball0(v), r)
+
+/* randomly orientied vector within the unit sphere */
+INLINE real *rv3_rndball0(real *v)
+{
+  do {
+    rv3_rnd(v, -1, 1);
+  } while (rv3_sqr(v) >= 1);
   return v;
 }
 
