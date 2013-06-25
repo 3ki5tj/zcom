@@ -3,7 +3,7 @@ LM = -lm
 usbdir = /media/C3/code
 prj = zcom
 
-genhdrdirs = rc rv2 rv3 lj abpro
+genhdrdirs = rc rv2 rv3 rvn lj abpro
 
 $(prj).h::
 	for d in $(genhdrdirs); do ( $(MAKE) -C $$d genhdr ); done

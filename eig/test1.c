@@ -20,8 +20,8 @@ int main(void)
   int i, j;
 
   for (i = 0; i < N; i++) {
-    for (j = 0; j < N; j++) mat[i*N+j] = 1.;
-    mat[i*N+i] = i + 1.;
+    for (j = 0; j < N; j++) mat[i*N + j] = 1.;
+    mat[i*N + i] = i + 1.;
   }
 
   eigsym(mat, eig, vec, N);
@@ -30,7 +30,7 @@ int main(void)
     printf("%d: %8.4f; ", i, eig[i]);
     /* print eigenvector i */
     for (j = 0; j < N; j++)
-      printf("%8.4f ", vec[j*N+i]);
+      printf("%8.4f ", vec[j*N + i]);
     printf("; ");
     /* verify eigenvectors */
     matmul(b, mat, vec, N, i);

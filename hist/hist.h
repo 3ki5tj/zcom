@@ -384,7 +384,7 @@ INLINE hist_t *hs_open(int rows, double xmin, double xmax, double dx)
   hs->xmin = xmin;
   hs->dx   = dx;
   hs->n = (int)((xmax - xmin)/dx + 0.99999999);
-  xnew(hs->arr, hs->n*hs->rows);
+  xnew(hs->arr, hs->n * hs->rows);
   return hs;
 }
 

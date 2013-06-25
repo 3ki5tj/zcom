@@ -128,8 +128,10 @@ def addfd(fnin, fnout, funcls):
     fnin = ".0".join( os.path.splitext(fnout) )
 
   r2f = {
+    "rvn_" : "fvn_",
     "rv3_" : "fv3_",
     "rv2_" : "fv2_",
+    "rmn_" : "fmn_",
     "rm3_" : "fm3_",
     "rm2_" : "fm2_",
     "real" : "float",
@@ -137,8 +139,10 @@ def addfd(fnin, fnout, funcls):
     "rcomplex" : "fcomplex",
     }
   r2d = {
+    "rvn_" : "dvn_",
     "rv3_" : "dv3_",
     "rv2_" : "dv2_",
+    "rmn_" : "dmn_",
     "rm3_" : "dm3_",
     "rm2_" : "dm2_",
     "real" : "double",

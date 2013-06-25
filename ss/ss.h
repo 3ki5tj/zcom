@@ -36,7 +36,7 @@ struct ssheader {
 INLINE size_t sshashval_(const char *p)
 {
   size_t val = (size_t) p * 1664525u + 1013904223u;
-  return (val >> (sizeof(size_t)*8-SSHASHBITS)) & ((1<<SSHASHBITS)-1);
+  return (val >> (sizeof(size_t)*8 - SSHASHBITS)) & ((1<<SSHASHBITS) - 1);
 }
 
 
@@ -67,7 +67,7 @@ INLINE struct ssheader *sslistadd_(struct ssheader *h)
 {
   struct ssheader *head;
 
-  head = ssbase_ + sshashval_( (char *)(h+1) );
+  head = ssbase_ + sshashval_( (char *)(h + 1) );
   if (head->next == NULL) /* initialize the base */
     head->next = head;
   h->next = head->next;
@@ -133,7 +133,7 @@ INLINE void ssmanage_low_(struct ssheader *hp, unsigned opt)
   if (opt == SSDELETE)
     sslistremove_(hp, 1);
   else if (opt == SSSHRINK)
-    ssresize_(&hp, strlen((char *)(hp->next+1)), 0);
+    ssresize_(&hp, strlen((char *)(hp->next + 1)), 0);
 }
 
 
@@ -159,7 +159,7 @@ INLINE int ssmanage(char *s, unsigned flags)
     ssmanage_low_(hp, opt);
   } else {
     for (i = 0; i < SSHASHSIZ; i++)
-      for (hp = head = ssbase_+i; hp->next && hp->next != head; hp = hp->next)
+      for (hp = head = ssbase_ + i; hp->next && hp->next != head; hp = hp->next)
         /* we must not operate on h itself, which renders the iterator h invalid */
         ssmanage_low_(hp, opt);
   }
@@ -247,8 +247,8 @@ INLINE char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
   }
   max = hp->next->size-1;
   for (n = 0; (c = fgetc(fp)) != EOF; ) {
-    if (n+1 > max) { /* request space for n+1 nonblank characters */
-      if ((*ps = s = ssresize_(&hp, n+1, SSOVERALLOC)) == NULL)
+    if (n + 1 > max) { /* request space for n+1 nonblank characters */
+      if ((*ps = s = ssresize_(&hp, n + 1, SSOVERALLOC)) == NULL)
         return NULL;
       max = hp->next->size - 1;
     }

@@ -92,17 +92,17 @@ INLINE int fexists(const char *fn)
 }
 
 /* swap two variables */
-#ifndef xtpswap
 #define xtpswap(tp, x, y) { tp dum_; dum_ = (x); (x) = (y); (y) = dum_; }
-#endif
 
-#ifndef intswap
 #define intswap(x, y) xtpswap(int, x, y)
+
+#define dblswap(x, y) xtpswap(double, x, y)
+
+#ifdef HAVEREAL
+#define realswap(x, y) xtpswap(real, x, y)
 #endif
 
-#ifndef dblswap
-#define dblswap(x, y) xtpswap(double, x, y)
-#endif
+
 
 INLINE int intmax(int x, int y) { return x > y ? x : y; }
 INLINE int intmin(int x, int y) { return x < y ? x : y; }
@@ -136,11 +136,13 @@ INLINE int parsepairindex(int id, int n, int *i, int *j)
   return 1;
 }
 
+
+
 INLINE double dblmax(double x, double y) { return x > y ? x : y; }
 INLINE double dblmin(double x, double y) { return x < y ? x : y; }
 /* confine x within [xmin, xmax] */
 INLINE double dblconfine(double x, double xmin, double xmax)
-  { return x < xmin ? xmin : x > xmax ? xmax : x; }
+{ return x < xmin ? xmin : x > xmax ? xmax : x; }
 
 INLINE double dblsqr(double x) { return x * x; }
 
@@ -154,7 +156,7 @@ INLINE double dblhypot(double x, double y)
   else if (y <= 0.) return x;
   if (x < y) t = x, x = y, y = t;
   t = y/x;
-  return x*sqrt(1+t*t);
+  return x*sqrt(1 + t*t);
 }
 
 /* round x to a multiple dx  */
@@ -165,7 +167,21 @@ INLINE double dblround(double x, double dx)
 }
 
 INLINE void dblcleararr(double *x, int n)
-  { int i; for (i = 0; i < n; i++) x[i] = 0.0; }
+{
+  int i; for (i = 0; i < n; i++) x[i] = 0.0; 
+}
+
+
+
+#ifdef HAVEREAL
+INLINE real realmax(real x, real y) { return x > y ? x : y; }
+INLINE real realmin(real x, real y) { return x < y ? x : y; }
+/* confine x within [xmin, xmax] */
+INLINE real realconfine(real x, real xmin, real xmax)
+{ return x < xmin ? xmin : x > xmax ? xmax : x; }
+#endif
+
+
 
 #ifndef LNADD_DEFINED
 #define LNADD_DEFINED
@@ -176,7 +192,7 @@ INLINE double lnadd(double a, double b)
 {
   double c;
   if (a < b) { c = a; a = b; b = c; } /* ensure a >= b */
-  return ((c = a-b) > LN_BIG) ? a : a + log(1 + exp(-c));
+  return ((c = a - b) > LN_BIG) ? a : a + log(1 + exp(-c));
 }
 
 /* log(exp(a) - exp(b)), only works for a > b */
@@ -184,7 +200,7 @@ INLINE double lndif(double a, double b)
 {
   double c;
   die_if (a < b, "lndif: %g < %g\n", a, b);
-  return ((c = a-b) > LN_BIG) ? a : a + log(1 - exp(-c));
+  return ((c = a - b) > LN_BIG) ? a : a + log(1 - exp(-c));
 }
 
 /* log(exp(a)+b) */
@@ -195,6 +211,8 @@ INLINE double lnaddn(double a, double b)
 
 #undef LN_BIG
 #endif  /* LNADD_DEFINED */
+
+
 
 #define cisalnum(c)   isalnum((unsigned char)(c))
 #define cisalpha(c)   isalpha((unsigned char)(c))
@@ -207,6 +225,8 @@ INLINE double lnaddn(double a, double b)
 #define ctolower(c)   (char) tolower((unsigned char)(c))
 #define ctoupper(c)   (char) toupper((unsigned char)(c))
 
+
+
 /* string manipulation */
 #define ZSTR_XSPACEL  0x0001
 #define ZSTR_XSPACER  0x0002
@@ -217,6 +237,8 @@ INLINE double lnaddn(double a, double b)
 #define ZSTR_UPPER_   0x0200
 #define ZSTR_UPPER    (ZSTR_CASE|ZSTR_UPPER_)
 #define ZSTR_LOWER    ZSTR_CASE
+
+
 
 /* remove leading and trailing spaces */
 #define strip(s)  stripx(s, ZSTR_XSPACE)
@@ -229,13 +251,15 @@ INLINE char *stripx(char *s, unsigned flags)
   if (flags & ZSTR_XSPACEL) { /* remove leading spaces */
     for (p = s; cisspace(*p); p++) ;
     if (*p == '\0') *s = '\0';
-    else memmove(s, p, strlen(p)+1);
+    else memmove(s, p, strlen(p) + 1);
   }
   if (flags & ZSTR_XSPACER) /* remove trailing spaces */
     for (p = s + strlen(s) - 1; p >= s && cisspace(*p); p--)
       *p = '\0';
   return s;
 }
+
+
 
 /* in the follows, size_s means the buffer size of s, i.e., sizeof(s) for static strings */
 /* copy the string and convert it to upper/lower case */
@@ -246,6 +270,9 @@ INLINE char *stripx(char *s, unsigned flags)
 /* concatenate strings, the last parameter is the buffer size of s,
  * unlike strncat(), in which it's the number of characters from *t* to be copied.  */
 #define strcat_sf(s, t, size_s) strcnv(s, t, size_s - 1, ZSTR_CAT)
+
+
+
 /* safely copy/cat strings with case conversion
  * unlike strncpy(), s is always null-terminated on return: it copies at most
  * len non-blank characters, i.e., s[len] = '\0' for the longest output */
@@ -268,6 +295,8 @@ INLINE char *strcnv(char *s, const char *t, size_t len, unsigned flags)
   return s;
 }
 
+
+
 /* compare strings without case */
 #define strcmpnc(s, t) strncmpnc(s, t, -1)
 INLINE int strncmpnc(const char *s, const char *t, int n)
@@ -284,7 +313,7 @@ INLINE int strncmpnc(const char *s, const char *t, int n)
     ct = toupper( (unsigned char) ct );
     if (cs != ct) break;
   }
-  return cs-ct;
+  return cs - ct;
 }
 
 #endif

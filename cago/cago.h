@@ -60,17 +60,17 @@ INLINE int cago_refgeo(cago_t *go)
   /* calculate reference bond lengths, angles, dihedrals */
   xnew(go->bref, n - 1); /* bonds */
   for (i = 0; i < n - 1; i++)
-    go->bref[i] = rv3_dist(go->xref[i], go->xref[i+1]);
+    go->bref[i] = rv3_dist(go->xref[i], go->xref[i + 1]);
 
   xnew(go->aref, n - 2); /* angles */
   for (i = 1; i < n - 1; i++)
-    go->aref[i-1]  = rv3_ang(go->xref[i-1], go->xref[i], go->xref[i+1],
+    go->aref[i - 1]  = rv3_ang(go->xref[i - 1], go->xref[i], go->xref[i + 1],
       NULL, NULL, NULL);
 
   xnew(go->dref, n - 3); /* dihedrals */
   for (i = 0; i < n - 3; i++)
-    go->dref[i] = rv3_dih(go->xref[i], go->xref[i+1],
-        go->xref[i+2], go->xref[i+3], NULL, NULL, NULL, NULL);
+    go->dref[i] = rv3_dih(go->xref[i], go->xref[i + 1],
+        go->xref[i + 2], go->xref[i + 3], NULL, NULL, NULL, NULL);
 
   /* reference pair distances */
   xnew(go->r2ref, n*n);
@@ -214,12 +214,12 @@ INLINE int cago_initmd(cago_t *go, int open, double rndamp, double T0)
 
   /* initialize position */
   if (open) { /* open chain */
-    for (i = 0; i < n-1; i++) {
+    for (i = 0; i < n - 1; i++) {
       rv3_normalize(rv3_make(dx, 1,
             (real) (rndamp * (2 * rnd0() - 1)),
             (real) (rndamp * (2 * rnd0() - 1)) ));
       /* x_{i+1} = x_i + dx * bref[i] */
-      rv3_sadd(go->x[i+1], go->x[i], dx, go->bref[i]);
+      rv3_sadd(go->x[i + 1], go->x[i], dx, go->bref[i]);
     }
   } else { /* copy from xref, slightly disturb it */
     for (i = 0; i < n; i++)
@@ -354,18 +354,18 @@ INLINE real cago_force(cago_t *go, rv3_t *x, rv3_t *f)
   }
 
   /* bonds */
-  for (i = 0; i < n-1; i++)
-    ene += potbond(x[i], x[i+1], go->bref[i], kb, f[i], f[i+1]);
+  for (i = 0; i < n - 1; i++)
+    ene += potbond(x[i], x[i + 1], go->bref[i], kb, f[i], f[i + 1]);
 
   /* angles */
-  for (i = 1; i < n-1; i++)
-    ene += potang(x[i-1], x[i], x[i+1], go->aref[i-1],
-              ka, f[i-1], f[i], f[i+1]);
+  for (i = 0; i < n - 2; i++)
+    ene += potang(x[i], x[i + 1], x[i + 2], go->aref[i],
+              ka, f[i], f[i + 1], f[i + 2]);
 
   /* dihedrals */
   for (i = 0; i < n - 3; i++)
-    ene += potdih13(x[i], x[i+1], x[i+2], x[i+3], go->dref[i],
-          kd1, kd3, f[i], f[i+1], f[i+2], f[i+3]);
+    ene += potdih13(x[i], x[i + 1], x[i + 2], x[i + 3], go->dref[i],
+          kd1, kd3, f[i], f[i + 1], f[i + 2], f[i + 3]);
 
   /* non-bonded */
   for (i = 0; i < n - 4; i++)
@@ -426,25 +426,25 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
   /* bonds */
   for (j = i - 1; j <= i; j++) {
     if (j < 0 || j >= n - 1) continue;
-    ene -= potbond(x[j], x[j+1], go->bref[j], kb, NULL, NULL);
-    ene += potbond(xn[j], xn[j+1], go->bref[j], kb, NULL, NULL);
+    ene -= potbond(x[j], x[j + 1], go->bref[j], kb, NULL, NULL);
+    ene += potbond(xn[j], xn[j + 1], go->bref[j], kb, NULL, NULL);
   }
 
   /* angles */
   for (j = i - 1; j <= i + 1; j++) {
     if (j < 1 || j >= n - 1) continue;
-    ene -= potang(x[j-1], x[j], x[j+1], go->aref[j-1], ka,
+    ene -= potang(x[j - 1], x[j], x[j + 1], go->aref[j - 1], ka,
         NULL, NULL, NULL);
-    ene += potang(xn[j-1], xn[j], xn[j+1], go->aref[j-1], ka,
+    ene += potang(xn[j - 1], xn[j], xn[j + 1], go->aref[j - 1], ka,
         NULL, NULL, NULL);
   }
 
   /* dihedrals */
   for (j = i - 3; j <= i; j++) {
     if (j < 0 || j >= n - 3) continue;
-    ene -= potdih13(x[j], x[j+1], x[j+2], x[j+3], go->dref[j],
+    ene -= potdih13(x[j], x[j + 1], x[j + 2], x[j + 3], go->dref[j],
         kd1, kd3, NULL, NULL, NULL, NULL);
-    ene += potdih13(xn[j], xn[j+1], xn[j+2], xn[j+3], go->dref[j],
+    ene += potdih13(xn[j], xn[j + 1], xn[j + 2], xn[j + 3], go->dref[j],
         kd1, kd3, NULL, NULL, NULL, NULL);
   }
 
@@ -508,7 +508,7 @@ INLINE int cago_ncontacts(cago_t *go, rv3_t *x, real gam, real *Q, int *mat)
   if (mat) for (id = 0; id < n * n; id++) mat[id] = 0;
 
   for (i = 0; i < n - 1; i++)
-    for (j = i+1; j < n; j++) {
+    for (j = i + 1; j < n; j++) {
       id = i * n + j;
       if ( !go->iscont[id] ) continue;
       if (rv3_dist(x[i], x[j]) < sqrt(go->r2ref[id]) * gam) {
@@ -573,7 +573,7 @@ INLINE int cago_writepdb(cago_t *go, rv3_t *x, const char *fn)
   xfopen(fp, fn, "w", return -1);
   for (i = 0; i < n; i++)
     fprintf(fp, "ATOM  %5d  CA  %-4sA%4d    %8.3f%8.3f%8.3f  1.00  0.00           C  \n",
-        i + 1, pdbaaname(go->iaa[i]), i+1, x[i][0], x[i][1], x[i][2]);
+        i + 1, pdbaaname(go->iaa[i]), i + 1, x[i][0], x[i][1], x[i][2]);
   fprintf(fp, "END%77s\n", " ");
   fclose(fp);
   return 0;

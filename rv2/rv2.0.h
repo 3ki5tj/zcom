@@ -369,6 +369,10 @@ INLINE real *rv2_rnddir0(real *v)
 
 
 
+#define rv2_rndball rv2_rnddisk
+
+#define rv2_rndball0 rv2_rnddisk0
+
 /* randomly orientied vector within the sphere of radius `r' */
 #define rv2_rnddisk(v, r) rv2_smul(rv2_rnddisk0(v), r)
 

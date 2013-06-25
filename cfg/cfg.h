@@ -75,10 +75,10 @@ cfg_t *cfg_open(const char *fn)
   /* count the number of lines (before allocating the key-table) */
   for (p = cfg->buf, i = 0, n = 0; i < size; i++) {
     if (p[i] == '\n' || p[i] == '\r') {
-      if (i > 0 && p[i-1] == '\\') {
+      if (i > 0 && p[i - 1] == '\\') {
         /* splice multiple lines: replace CR/LF with spaces
            the parser should be insensitive to the extra spaces */
-        p[i-1] = p[i] = ' ';
+        p[i - 1] = p[i] = ' ';
       } else { /* mark the end the current line */
         p[i] = '\0';
         n++;
@@ -86,7 +86,7 @@ cfg_t *cfg_open(const char *fn)
 
       /* replace successive CR/LF by spaces for efficiency
          the size of the key-table == the number of non-blank lines */
-      for (j = i+1; j < size && cisspace(p[j]); j++) p[j] = ' ';
+      for (j = i + 1; j < size && cisspace(p[j]); j++) p[j] = ' ';
     }
   }
 
@@ -225,7 +225,7 @@ INLINE void cfg_dump(const cfg_t *cfg)
 
   /* print values of all options */
   for (i = 0; i < cfg->nopt; i++) {
-    fprintf(stderr, "%*s: ", len+1, ol[i].key);
+    fprintf(stderr, "%*s: ", len + 1, ol[i].key);
     opt_fprintptr(stderr, ol + i);
     fprintf(stderr, ",  %s\n", ol[i].desc);
   }

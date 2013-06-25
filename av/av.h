@@ -244,7 +244,7 @@ INLINE double avn_getcor(const avn_t *a, int k, int l)
   die_if (k < 0 || k >= n || l < 0 || l >= n,
       "avn index %d, %d out of range %d\n", k, l, n);
   if (k > l) intswap(k, l);
-  return (a->s > 0) ? a->sx2[k*n+l] / sqrt(a->sx2[k*n+k] * a->sx2[l*n+l]) : 0;
+  return (a->s > 0) ? a->sx2[k*n + l] / sqrt(a->sx2[k*n + k] * a->sx2[l*n + l]) : 0;
 }
 
 /* get correlation coefficients among all quantities */

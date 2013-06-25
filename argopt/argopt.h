@@ -214,13 +214,13 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
 
         if (!hasv) { /* --version 11 or -n 8 */
           if (++i >= argc) {
-            fprintf(stderr, "%s(%s) requires an argument!\n", ol[k].sflag, argv[i-1]);
+            fprintf(stderr, "%s(%s) requires an argument!\n", ol[k].sflag, argv[i - 1]);
             argopt_help(ao);
           }
           ol[k].val = argv[i];
         }
         ol[k].flags |= OPT_SET;
-        if (0 != opt_getval(ol+k)) argopt_help(ao);
+        if (0 != opt_getval(ol + k)) argopt_help(ao);
         break; /* go to the next argument argv[i+1] */
       }
     } /* end of short option loop */
@@ -250,7 +250,7 @@ INLINE void argopt_dump(const argopt_t *ao)
   for (i = 0; i < ao->nopt; i++) {
     const char *sflag = ol[i].sflag;
     if (sflag == NULL) sflag = "arg";
-    fprintf(stderr, "%*s: ", len+1, sflag);
+    fprintf(stderr, "%*s: ", len + 1, sflag);
     opt_fprintptr(stderr, ol + i);
     fprintf(stderr, ",  %s\n", ol[i].desc);
   }
