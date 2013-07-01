@@ -5,7 +5,7 @@ CX = icc -Wall -O3
 LMX =
 #CX = gcc -Wall -O3 -march=native -mfpmath=sse -funroll-all-loops
 #LMX = -lm
-deps = hmc.h rv3.h rv2.h rng.h def.h util.h Makefile
+deps = hmc.h rv3.h rv2.h rng.h util.h Makefile
 bin = $(patsubst %.c,%,$(wildcard test*.c))
 bin_d = $(patsubst %.c,%_d,$(wildcard test*.c))
 

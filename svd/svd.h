@@ -1,4 +1,3 @@
-#include "def.h"
 #include "util.h"
 #ifndef SVD_H__
 #define SVD_H__

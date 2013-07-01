@@ -44,8 +44,9 @@ bio:            macros for read/write binary files
 osys:           operating system related
 rng:            random number generator
 rc:             real complex number
-rv2:            real [2] vectors and 2x2 matrices
-rv3:            real [3] vectors and 3x3 matrices
+rv2:            real 2-vectors and 2x2 matrices
+rv3:            real 3-vectors and 3x3 matrices
+rvn:            real D-vectors and DxD matrices
 eig:            eigenvalues and eigenvectors
 lu:             LU decomposition
 svd:            single value decomposition

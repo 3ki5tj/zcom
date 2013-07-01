@@ -5,17 +5,17 @@
 
 #ifndef FMN_T
 #define FMN_T fmn_t
-typedef float fmn_t[D];
+typedef float fmn_t[D][D];
 #endif
 
 #ifndef DMN_T
 #define DMN_T dmn_t
-typedef double dmn_t[D];
+typedef double dmn_t[D][D];
 #endif
 
 #ifndef RMN_T
 #define RMN_T rmn_t
-typedef real rmn_t[D];
+typedef real rmn_t[D][D];
 #endif
 
 
@@ -37,7 +37,7 @@ INLINE void rmn_fprint(FILE *fp, real r[D][D], const char *nm,
 
 
 
-INLINE real *rmn_make(real x[D][D], ...)
+INLINE rvn_t *rmn_make(real x[D][D], ...)
 {
   int i, j;
   va_list vl;
@@ -45,7 +45,7 @@ INLINE real *rmn_make(real x[D][D], ...)
   va_start(vl, x);
   for (i = 0; i < D; i++)
     for (j = 0; j < D; j++)
-      x[i][j] = va_arg(vl, real);
+      x[i][j] = (real) va_arg(vl, double);
   va_end(vl);
   return x;
 }
@@ -55,18 +55,24 @@ INLINE real *rmn_make(real x[D][D], ...)
 
 INLINE rvn_t *rmn_zero(real x[D][D])
 {
+  int i, j;
+
   for (i = 0; i < D; i++)
     for (j = 0; j < D; j++)
       x[i][j] = 0;
+  return x;
 }
 
 
 
 INLINE rvn_t *rmn_one(real x[D][D])
 {
+  int i, j;
+
   for (i = 0; i < D; i++)
     for (j = 0; j < D; j++)
       x[i][j] = (i == j);
+  return x;
 }
 
 

@@ -8,7 +8,7 @@ LMX =
 #LMX = -lm
 prj = md
 src = $(prj).h
-deps = $(src) $(prj).h rv3.h rv2.h rng.h def.h Makefile
+deps = $(src) $(prj).h rv3.h rv2.h rng.h util.h Makefile
 bin = $(patsubst %.c,%,$(wildcard test*.c))
 bin_d = $(patsubst %.c,%_d,$(wildcard test*.c))
 

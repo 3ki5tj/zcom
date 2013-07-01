@@ -1,4 +1,3 @@
-#include "def.h"
 #include "util.h"
 #ifndef HMC_H__
 #define HMC_H__

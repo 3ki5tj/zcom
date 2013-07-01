@@ -7,7 +7,7 @@ LMX =
 #LMX = -lm
 
 deps = lj.c lj.h ljmc.h ljmd.h ljrdf.h \
-       def.h rv2.h rv3.h util.h md.h rng.h Makefile
+       rv2.h rv3.h util.h md.h rng.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 autosrc = lj.h ljmc.h

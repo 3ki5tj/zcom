@@ -5,7 +5,7 @@ CX = icc -O3 -Wall -Wextra $(INCLUDE)
 LMX =
 
 autosrc = rc.h
-deps = def.h $(autosrc) Makefile
+deps = util.h $(autosrc) Makefile
 bin_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 bin = $(patsubst %.c,%, $(wildcard test*.c))
 

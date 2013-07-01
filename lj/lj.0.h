@@ -1,4 +1,3 @@
-#include "def.h"
 #include "util.h"
 #include "hist.h"
 #include "md.h"

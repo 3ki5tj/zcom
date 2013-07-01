@@ -1,7 +1,9 @@
 #ifndef INLINE
 #define INLINE __inline static
 #endif
+#ifndef RESTRICT
 #define RESTRICT __restrict
+#endif
 #ifndef UTIL_H__
 #define UTIL_H__
 #include <stdio.h>
@@ -11,6 +13,22 @@
 #include <stdarg.h>
 #include <math.h>
 #include <float.h>
+
+
+
+/* define a real type */
+#ifdef HAVE_REAL
+  #ifndef HAVEREAL
+  #define HAVEREAL HAVE_REAL
+  #endif
+#endif
+
+#ifndef HAVEREAL
+  #define HAVEREAL 1
+  typedef double real;
+#endif
+
+
 
 #ifndef xnew
 #define xnew(x, n) \
@@ -98,9 +116,7 @@ INLINE int fexists(const char *fn)
 
 #define dblswap(x, y) xtpswap(double, x, y)
 
-#ifdef HAVEREAL
 #define realswap(x, y) xtpswap(real, x, y)
-#endif
 
 
 
@@ -168,7 +184,7 @@ INLINE double dblround(double x, double dx)
 
 INLINE void dblcleararr(double *x, int n)
 {
-  int i; for (i = 0; i < n; i++) x[i] = 0.0; 
+  int i; for (i = 0; i < n; i++) x[i] = 0.0;
 }
 
 

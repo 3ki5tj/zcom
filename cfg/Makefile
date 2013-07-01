@@ -8,7 +8,7 @@ LMX =
 #CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
 #LMX =-lm
 
-deps = cfg.h ss.h opt.h def.h util.h Makefile
+deps = cfg.h ss.h opt.h util.h Makefile
 bins = $(patsubst %.c,%, $(wildcard test*.c))
 bins_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 

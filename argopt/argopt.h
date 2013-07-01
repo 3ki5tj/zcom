@@ -1,6 +1,5 @@
-#include "def.h"
-#include "opt.h"
 #include "util.h"
+#include "opt.h"
 #ifndef ARGOPT_H__
 #define ARGOPT_H__
 #include <stdio.h>

@@ -2,7 +2,6 @@
 #include "rv3.h"
 #include "rm3.h"
 #include "rng.h"
-#include "util.h"
 #ifndef MD_H__
 #define MD_H__
 

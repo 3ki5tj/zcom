@@ -1,7 +1,4 @@
-#include "def.h"
-#ifndef INLINE
-#define INLINE __inline static
-#endif
+#include "util.h"
 #ifndef RC_H__
 #define RC_H__
 /* routines for complex numbers

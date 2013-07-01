@@ -1,4 +1,3 @@
-#include "def.h"
 #include "util.h"
 #ifndef EIG_H__
 #define EIG_H__

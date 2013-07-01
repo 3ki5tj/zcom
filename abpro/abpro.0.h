@@ -73,7 +73,7 @@ INLINE void ab_rmcom(abpro_t *ab, real *x, real *v)
 }
 
 
-INLINE real ab_force(abpro_t *ab, const real *r, real *f, int soft);
+INLINE real ab_force(abpro_t *ab, real *r, real *f, int soft);
 
 
 #ifdef _OPENMP
@@ -502,7 +502,7 @@ INLINE int ab_shake(abpro_t *ab, real * RESTRICT x0, real * RESTRICT x1,
 
 
 
-INLINE int ab_rattle3d(abpro_t *ab, crv3_t *x0, rv3_t *v,
+INLINE int ab_rattle3d(abpro_t *ab, rv3_t *x0, rv3_t *v,
     int itmax, double tol, int verbose)
 {
   int i, j, k, again, it, n = ab->n, lgcon = ab->lgcon, lgcnt = ab->lgcnt;
@@ -566,8 +566,8 @@ INLINE int ab_rattle(abpro_t *ab, const real *x0, real *v, int itmax, double tol
   if (itmax <= 0) itmax = 3000;
   if (tol <= 0.) tol = 1e-4;
   return (ab->d == 3) ?
-    ab_rattle3d(ab, (crv3_t *) x0, (rv3_t *) v, itmax, tol, verbose) :
-    ab_rattle2d(ab, (crv2_t *) x0, (rv2_t *) v, itmax, tol, verbose);
+    ab_rattle3d(ab, (rv3_t *) x0, (rv3_t *) v, itmax, tol, verbose) :
+    ab_rattle2d(ab, (rv2_t *) x0, (rv2_t *) v, itmax, tol, verbose);
 }
 
 
@@ -653,7 +653,7 @@ INLINE int ab_milcshake3d(abpro_t *ab, rv3_t *x0, rv3_t *x1, rv3_t *v, real dt,
 /* MILC shake, make |dr| = 1
  * for a random config., about 30~40% faster than shake
  * but slower than shake for near-minimum config.  */
-INLINE int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
+INLINE int ab_milcshake(abpro_t *ab, real *x0, real *x1, real *v, real dt,
     int itmax, double tol, int verbose)
 {
   if (itmax <= 0) itmax = 3000;
@@ -665,7 +665,7 @@ INLINE int ab_milcshake(abpro_t *ab, const real *x0, real *x1, real *v, real dt,
 
 
 
-INLINE int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
+INLINE int ab_milcrattle3d(abpro_t *ab, rv3_t *x, rv3_t *v)
 {
   int i, n = ab->n, nl;
   rv3_t *dx = (rv3_t *) ab->xx[0], *dv = (rv3_t *) ab->xx[1];
@@ -715,16 +715,16 @@ INLINE int ab_milcrattle3d(abpro_t *ab, crv3_t *x, rv3_t *v)
 
 
 /* MILC rattle, make dr.v = 0 */
-INLINE int ab_milcrattle(abpro_t *ab, const real *x, real *v)
+INLINE int ab_milcrattle(abpro_t *ab, real *x, real *v)
 {
   return (ab->d == 3) ?
-    ab_milcrattle3d(ab, (crv3_t *) x, (rv3_t *) v) :
-    ab_milcrattle2d(ab, (crv2_t *) x, (rv2_t *) v);
+    ab_milcrattle3d(ab, (rv3_t *) x, (rv3_t *) v) :
+    ab_milcrattle2d(ab, (rv2_t *) x, (rv2_t *) v);
 }
 
 
 
-INLINE real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
+INLINE real ab_energy3dm1(abpro_t *ab, rv3_t *r, int soft)
 {
   int i, j, n = ab->n;
   real ua = 0, ulj = 0;
@@ -758,7 +758,7 @@ INLINE real ab_energy3dm1(abpro_t *ab, crv3_t *r, int soft)
 
 
 
-INLINE real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
+INLINE real ab_energy3dm2(abpro_t *ab, rv3_t *r, int soft)
 {
   int i, j, n = ab->n;
   real ua = 0, ud = 0, ulj = 0;
@@ -794,19 +794,19 @@ INLINE real ab_energy3dm2(abpro_t *ab, crv3_t *r, int soft)
 
 
 
-INLINE real ab_energy(abpro_t *ab, const real *r, int soft)
+INLINE real ab_energy(abpro_t *ab, real *r, int soft)
 {
   if (ab->model == 2)
-    return ab_energy3dm2(ab, (crv3_t *) r, soft);
+    return ab_energy3dm2(ab, (rv3_t *) r, soft);
   else if (ab->d == 3)
-    return ab_energy3dm1(ab, (crv3_t *) r, soft);
+    return ab_energy3dm1(ab, (rv3_t *) r, soft);
   else
-    return ab_energy2dm1(ab, (crv2_t *) r, soft);
+    return ab_energy2dm1(ab, (rv2_t *) r, soft);
 }
 
 
 
-INLINE real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
+INLINE real ab_force3dm1(abpro_t *ab, rv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -890,7 +890,7 @@ INLINE real ab_force3dm1(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 
 
 
-INLINE real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
+INLINE real ab_force3dm2(abpro_t *ab, rv3_t *r, rv3_t *f_g, int soft)
 {
   int i, j, n = ab->n;
   rv3_t *dx = (rv3_t *) ab->dx;
@@ -983,14 +983,14 @@ INLINE real ab_force3dm2(abpro_t *ab, crv3_t *r, rv3_t *f_g, int soft)
 
 
 /* compute force f */
-INLINE real ab_force(abpro_t *ab, const real *r, real *f, int soft)
+INLINE real ab_force(abpro_t *ab, real *r, real *f, int soft)
 {
   if (ab->d == 2)
-    return ab_force2dm1(ab, (crv2_t *) r, (rv2_t *) f, soft);
+    return ab_force2dm1(ab, (rv2_t *) r, (rv2_t *) f, soft);
   else if (ab->model == 1)
-    return ab_force3dm1(ab, (crv3_t *) r, (rv3_t *) f, soft);
+    return ab_force3dm1(ab, (rv3_t *) r, (rv3_t *) f, soft);
   else
-    return ab_force3dm2(ab, (crv3_t *) r, (rv3_t *) f, soft);
+    return ab_force3dm2(ab, (rv3_t *) r, (rv3_t *) f, soft);
 }
 
 

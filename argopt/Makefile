@@ -5,7 +5,7 @@ bin=$(patsubst %.c,%, $(wildcard test*.c))
 
 all: $(bin)
 
-$(bin) : % : %.c def.h argopt.h argopt.c opt.h Makefile
+$(bin) : % : %.c util.h argopt.h argopt.c opt.h Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:

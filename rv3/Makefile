@@ -5,7 +5,7 @@ CX = icc -O3 -Wall $(INCLUDE)
 LMX =
 
 autosrc = rv3.h rm3.h
-deps = def.h $(autosrc) rv3calcdih.h rv3gi.h Makefile
+deps = util.h $(autosrc) rv3calcdih.h rv3gi.h Makefile
 bin_d = $(patsubst %.c,%_d, $(wildcard test*.c))
 bin = $(patsubst %.c,%, $(wildcard test*.c))
 

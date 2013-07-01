@@ -1,10 +1,4 @@
-#ifndef INLINE
-#define INLINE __inline static
-#endif
-#ifndef RESTRICT
-#define RESTRICT __restrict
-#endif
-#include "def.h"
+#include "util.h"
 #include "rng.h"
 #ifndef RVN_H__
 #define RVN_H__
@@ -56,7 +50,7 @@ INLINE real *rvn_make(real *x, ...)
 
   va_start(vl, x);
   for (i = 0; i < D; i++)
-    x[i] = va_arg(vl, real);
+    x[i] = (real) va_arg(vl, double);
   va_end(vl);
   return x;
 }
@@ -66,7 +60,7 @@ INLINE real *rvn_make(real *x, ...)
 INLINE real *rvn_zero(real *x)
 {
   int i;
-  
+
   for (i = 0; i < D; i++) x[i] = 0;
   return x;
 }
@@ -76,8 +70,8 @@ INLINE real *rvn_zero(real *x)
 INLINE real *rvn_copy(real *x, const real *src)
 {
   int i;
-  
-  for (i = 0; i < D; i++) 
+
+  for (i = 0; i < D; i++)
     x[i] = src[i];
   return x;
 }
@@ -107,6 +101,7 @@ INLINE real rvn_sqr(const real *x)
   for (i = 0; i < D; i++) dot += x[i] * x[i];
   return dot;
 }
+
 
 
 INLINE real rvn_norm(const real *x)
@@ -206,9 +201,16 @@ INLINE real *rvn_normalize(real *x)
 
 
 
-INLINE real *rvn_makenorm(real *v, real x, real y)
+INLINE real *rvn_makenorm(real *v, ...)
 {
-  return rvn_normalize( rvn_make(v, x, y) );
+  int i;
+  va_list vl;
+
+  va_start(vl, v);
+  for (i = 0; i < D; i++)
+    v[i] = (real) va_arg(vl, double);
+  va_end(vl);
+  return rvn_normalize( v );
 }
 
 
@@ -221,6 +223,8 @@ INLINE real *rvn_diff(real * RESTRICT c, const real *a, const real *b)
   for (i = 0; i < D; i++) c[i] = a[i] - b[i];
   return c;
 }
+
+
 
 /* distance^2 between a and b */
 INLINE real rvn_dist2(const real *a, const real *b)
@@ -277,7 +281,7 @@ INLINE real *rvn_sadd(real * RESTRICT c, const real *a, const real *b, real s)
 INLINE real *rvn_lincomb2(real * RESTRICT c, const real *a, const real *b, real s1, real s2)
 {
   int i;
-  
+
   for (i = 0; i < D; i++)
     c[i] = a[i] * s1 + b[i] * s2;
   return c;
@@ -350,6 +354,19 @@ INLINE real *rvn_rnd(real *v, real a, real b)
     v[i] = a + b * (real) rnd0();
   return v;
 }
+
+
+
+/* displace `x0' by a random vector in [-a, a)^D */
+INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
+{
+  int i;
+
+  for (i = 0; i < D; i++)
+    x[i] = x0[i] + (real) rnd(-a, a);
+  return x;
+}
+
 
 
 /* normally distributed random vector */

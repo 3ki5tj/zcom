@@ -1,4 +1,4 @@
-#include "def.h"
+#include "util.h"
 #include "eig.h"
 #ifndef MDS_H__
 #define MDS_H__

@@ -1,4 +1,3 @@
-#include "def.h"
 #include "util.h"
 #include "ss.h"
 #ifndef OPT_H__

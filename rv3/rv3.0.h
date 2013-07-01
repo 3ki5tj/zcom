@@ -1,10 +1,4 @@
-#ifndef INLINE
-#define INLINE __inline static
-#endif
-#ifndef RESTRICT
-#define RESTRICT __restrict
-#endif
-#include "def.h"
+#include "util.h"
 #include "rng.h"
 #ifndef RV3_H__
 #define RV3_H__
@@ -412,6 +406,16 @@ INLINE real *rv3_rnd(real *v, real a, real b)
   v[1] = a + b * (real) rnd0();
   v[2] = a + b * (real) rnd0();
   return v;
+}
+
+
+/* displace `x0' by a random vector in [-a, a)^3 */
+INLINE real *rv3_rnddisp(real * RESTRICT x, const real *x0, real a)
+{
+  x[0] = x0[0] + (real) rnd(-a, a);
+  x[1] = x0[1] + (real) rnd(-a, a);
+  x[2] = x0[2] + (real) rnd(-a, a);
+  return x;
 }
 
 

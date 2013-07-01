@@ -19,7 +19,7 @@ $(prj).o: $(prj).c $(prj).h Makefile
 	$(CC) -c -DZCOM_XFUNCS $< -o $@ $(LM)
 	wc $@
 
-subdirs = def util ss endn bio rng rc rv2 rv3 eig lu svd savgol specfunc \
+subdirs = util ss endn bio rng rc rv2 rv3 rvn eig lu svd savgol specfunc \
 	  argopt cfg log av hist mds pdb md ising2 potts2 lj abpro cago
 
 clean:
