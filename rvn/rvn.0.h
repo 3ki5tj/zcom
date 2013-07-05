@@ -1,15 +1,17 @@
 #include "util.h"
 #include "rng.h"
+#include "rv2.h"
+#include "rv3.h"
 #ifndef RVN_H__
 #define RVN_H__
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-#include <math.h>
+/* D-dimensional real vector */
+
+
 
 #ifndef D
 #define D 3
 #endif
+
 
 
 #ifndef FVN_T
@@ -370,7 +372,18 @@ INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
 
 
 /* normally distributed random vector */
-#define rvn_grand0(v) rvn_grand(v, 0, 1)
+INLINE real *rvn_grand0(real *v)
+{
+  int i;
+
+  for (i = 0; i < D; i++)
+    v[i] = (real) grand0();
+  return v;
+}
+
+
+
+/* normally distributed random vector */
 INLINE real *rvn_grand(real *v, real c, real r)
 {
   int i;
@@ -388,9 +401,16 @@ INLINE real *rvn_grand(real *v, real c, real r)
 /* randomly oriented vector on the unit sphere */
 INLINE real *rvn_rnddir0(real *v)
 {
-  return rvn_normalize( rvn_rnd(v, -1, 1) );
+#if D == 3
+  return rv3_rnddir0(v);
+#elif D < 5
+  while ( rvn_sqr(rvn_rnd(v, -1, 1)) >= 1 ) ;
+  return rvn_normalize(v);
+#else
+  /* if D >= 5, normal distribution is faster */
+  return rvn_normalize( rvn_grand0(v) );
+#endif
 }
-
 
 
 
@@ -400,13 +420,17 @@ INLINE real *rvn_rnddir0(real *v)
 /* randomly vector within the unit sphere */
 INLINE real *rvn_rndball0(real *v)
 {
-  do {
-    rvn_rnd(v, -1, 1);
-  } while (rvn_sqr(v) >= 1);
+#if D < 5
+  while ( rvn_sqr( rvn_rnd(v, -1, 1) ) >= 1 ) ;
   return v;
+#else
+  real r = pow(rnd0(), 1.0/D), nm;
+  while ( (nm = rvn_norm(rvn_grand0(v))) <= 1e-6 ) ;
+  return rvn_smul(v, r/nm);
+#endif
 }
 
 
 
-#endif /* RV2_H__ */
+#endif /* RVN_H__ */
 

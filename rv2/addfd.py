@@ -18,7 +18,7 @@ ccom.addfd(None, "rv2.h", [
   "rv2_diff", "rv2_dist2", "rv2_dist", "rv2_add", "rv2_nadd",
   "rv2_sadd", "rv2_lincomb2",
   "rv2_cosang", "rv2_ang",
-  "rv2_rnd", "rv2_rnd0", "rv2_grand",
+  "rv2_rnd", "rv2_rnd0", "rv2_grand", "rv2_grand0",
   "rv2_rnddir0", "rv2_rnddir", "rv2_rnddisk0", "rv2_rnddisk",
   ])
 

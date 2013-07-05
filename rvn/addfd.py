@@ -19,7 +19,7 @@ ccom.addfd(None, "rvn.h", [
   "rvn_diff", "rvn_dist2", "rvn_dist", "rvn_add", "rvn_nadd",
   "rvn_sadd", "rvn_lincomb2",
   "rvn_cosang", "rvn_ang",
-  "rvn_rnd", "rvn_rnd0", "rvn_grand",
+  "rvn_rnd", "rvn_rnd0", "rvn_grand", "rvn_grand0",
   "rvn_rnddir0", "rvn_rnddir", "rvn_rndball0", "rvn_rndball",
   ])
 

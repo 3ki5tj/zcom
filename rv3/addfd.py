@@ -19,7 +19,7 @@ ccom.addfd(None, "rv3.h", [
   "rv3_sadd", "rv3_lincomb2",
   "rv3_cosang", "rv3_ang", "rv3_vdist", "rv3_vpdist",
   "rv3_dih",
-  "rv3_rnd", "rv3_rnd0", "rv3_grand",
+  "rv3_rnd", "rv3_rnd0", "rv3_grand", "rv3_grand0",
   "rv3_rnddir0", "rv3_rnddir", "rv3_rndball0", "rv3_rndball",
   ])
 

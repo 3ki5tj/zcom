@@ -421,7 +421,17 @@ INLINE real *rv3_rnddisp(real * RESTRICT x, const real *x0, real a)
 
 
 /* normally distributed random vector */
-#define rv3_grand0(v) rv3_grand(v, 0, 1)
+INLINE real *rv3_grand0(real *v)
+{
+  v[0] = (real) grand0();
+  v[1] = (real) grand0();
+  v[2] = (real) grand0();
+  return v;
+}
+
+
+
+/* normally distributed random vector */
 INLINE real *rv3_grand(real *v, real c, real r)
 {
   v[0] = c + r * (real) grand0();

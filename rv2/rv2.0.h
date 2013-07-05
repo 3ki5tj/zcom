@@ -352,7 +352,16 @@ INLINE real *rv2_rnddisp(real * RESTRICT x, const real *x0, real a)
 
 
 /* normally distributed random vector */
-#define rv2_grand0(v) rv2_grand(v, 0, 1)
+INLINE real *rv2_grand0(real *v)
+{
+  v[0] = (real) grand0();
+  v[1] = (real) grand0();
+  return v;
+}
+
+
+
+/* normally distributed random vector */
 INLINE real *rv2_grand(real *v, real c, real r)
 {
   v[0] = c + r * (real) grand0();
@@ -368,7 +377,10 @@ INLINE real *rv2_grand(real *v, real c, real r)
 /* randomly oriented vector on the unit sphere */
 INLINE real *rv2_rnddir0(real *v)
 {
-  return rv2_normalize( rv2_rnd(v, -1, 1) );
+  do {
+    rv2_rnd(v, -1, 1);
+  } while (rv2_sqr(v) >= 1);
+  return rv2_normalize(v);
 }
 
 
