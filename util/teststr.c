@@ -1,5 +1,7 @@
 #include "util.h"
 
+
+
 static void test_substr(void)
 {
   const char *s = "Hello, world";
@@ -16,6 +18,8 @@ static void test_substr(void)
       start, len, t);
 }
 
+
+
 static void test_strcmpnc(void)
 {
   const char *s = "Hello", *t = "HELLo";
@@ -31,6 +35,8 @@ static void test_strcmpnc(void)
   printf("\n");
 }
 
+
+
 static void test_strip(void)
 {
   char s[128];
@@ -44,8 +50,16 @@ static void test_strip(void)
   printf("\n");
 }
 
+
+
 int main(void)
 {
+#ifdef __unix__
+  printf("unix operating system\n");
+#endif
+#ifdef __WIN32__
+  printf("unix operating system\n");
+#endif
   test_strcmpnc();
   test_strip();
   test_substr();

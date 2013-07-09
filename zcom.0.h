@@ -138,6 +138,5 @@
 #endif
 
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
- * in order to avoid multiple inclusions.
- * A single ZCOM_ABC__ won't do because different module-set may be selected */
+ * to allow multiple inclusions. */
 

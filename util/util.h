@@ -30,24 +30,133 @@
 
 
 
+/* define int16_t/int32_t/int64_t, etc. */
+#if (  (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)) \
+     || defined(__GNUC__) || defined(__INTEL_COMPILER) )
+  /* C99 compatible compilers support int64_t etc.
+   * but GCC and other compilers has the header even in C89/C90 mode
+   * So we need to include more compilers here, see the list on
+   * http://sourceforge.net/p/predef/wiki/Compilers/ */
+  #include <inttypes.h>
+#elif (defined(_MSC_VER) \
+      || (defined(__BORLANDC__) && (__BORLANDC__ >= 0x520)))
+  /* tested for Visual C++ 6.0 and Borland C++ 5.5 */
+  typedef __int8              int8_t;
+  typedef __int16             int16_t;
+  typedef __int32             int32_t;
+  typedef __int64             int64_t;
+  typedef unsigned __int8     uint8_t;
+  typedef unsigned __int16    uint16_t;
+  typedef unsigned __int32    uint32_t;
+  typedef unsigned __int64    uint64_t;
+#elif defined(__unix__)
+  /* a unix compiler is likely to have inttypes.h  */
+  #include <inttypes.h>
+#else
+  /* note the following is a guess, long long is not supported
+   * until a later version of visual C++ */
+  typedef char                int8_t;
+  typedef short               int16_t;
+  typedef int                 int32_t;
+  typedef long long           int64_t;
+  typedef unsigned char       uint8_t;
+  typedef unsigned short      uint16_t;
+  typedef unsigned            uint32_t;
+  typedef unsigned long long  uint64_t;
+#endif
+
+
+
+/* printf() format strings for integers
+ * the macros PRId32, PRIu64, etc are defined by C99
+ * we write the macros below just in case they are not defined */
+#if defined(_MSC_VER) || defined(__BORLANDC__)
+  #ifndef PRId32
+  #define PRId32 "I32d"
+  #endif
+  #ifndef PRIi32
+  #define PRIi32 "I32i"
+  #endif
+  #ifndef PRIu32
+  #define PRIu32 "I32u"
+  #endif
+  #ifndef PRIo32
+  #define PRIo32 "I32o"
+  #endif
+  #ifndef PRIx32
+  #define PRIx32 "I32x"
+  #endif
+  #ifndef PRId64
+  #define PRId64 "I64d"
+  #endif
+  #ifndef PRIi64
+  #define PRIi64 "I64i"
+  #endif
+  #ifndef PRIu64
+  #define PRIu64 "I64u"
+  #endif
+  #ifndef PRIo64
+  #define PRIo64 "I64o"
+  #endif
+  #ifndef PRIx64
+  #define PRIx64 "I64x"
+  #endif
+#else
+  #ifndef PRId32
+  #define PRId32 "d"
+  #endif
+  #ifndef PRIi32
+  #define PRIi32 "i"
+  #endif
+  #ifndef PRIu32
+  #define PRIu32 "u"
+  #endif
+  #ifndef PRIo32
+  #define PRIo32 "o"
+  #endif
+  #ifndef PRIx32
+  #define PRIx32 "x"
+  #endif
+  #ifndef PRId64
+  #define PRId64 "lld"
+  #endif
+  #ifndef PRIi64
+  #define PRIi64 "lli"
+  #endif
+  #ifndef PRIu64
+  #define PRIu64 "llu"
+  #endif
+  #ifndef PRIo64
+  #define PRIo64 "llo"
+  #endif
+  #ifndef PRIx64
+  #define PRIx64 "llx"
+  #endif
+#endif
+
+
+
+
 #ifndef xnew
-#define xnew(x, n) \
-  if (#n[0] != '1' && (n) <= 0) { \
-    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) (n), #x); \
+#define xnew(x, n) { \
+  size_t num_ = (size_t) (n); \
+  if (num_ <= 0) { \
+    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) num_, #x); \
     exit(1); \
-  } else if ((x = calloc(n, sizeof(*(x)))) == NULL) { \
-    fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
-    exit(1); }
+  } else if ((x = calloc(num_, sizeof(*(x)))) == NULL) { \
+    fprintf(stderr, "no memory for %s x %d\n", #x, (int) num_); \
+    exit(1); } }
 #endif
 
 #ifndef xrenew
-#define xrenew(x, n) \
-  if ((n) <= 0) { \
-    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) (n), #x); \
+#define xrenew(x, n) { \
+  size_t num_ = (size_t) (n); \
+  if (num_ <= 0) { \
+    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) num_, #x); \
     exit(1); \
-  } else if ((x = realloc(x, (n)*sizeof(*(x)))) == NULL) { \
-    fprintf(stderr, "no memory for %s x %u\n", #x, (unsigned) (n)); \
-    exit(1); }
+  } else if ((x = realloc(x, (num_)*sizeof(*(x)))) == NULL) { \
+    fprintf(stderr, "no memory for %s x %d\n", #x, (int) num_); \
+    exit(1); } }
 #endif
 
 /* print an error message */
