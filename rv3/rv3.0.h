@@ -409,6 +409,7 @@ INLINE real *rv3_rnd(real *v, real a, real b)
 }
 
 
+
 /* displace `x0' by a random vector in [-a, a)^3 */
 INLINE real *rv3_rnddisp(real * RESTRICT x, const real *x0, real a)
 {
@@ -438,6 +439,17 @@ INLINE real *rv3_grand(real *v, real c, real r)
   v[1] = c + r * (real) grand0();
   v[2] = c + r * (real) grand0();
   return v;
+}
+
+
+
+/* displace `x0' by a normally-distributed random vector */
+INLINE real *rv3_granddisp(real * RESTRICT x, const real *x0, real a)
+{
+  x[0] = x0[0] + (real) grand0() * a;
+  x[1] = x0[1] + (real) grand0() * a;
+  x[2] = x0[2] + (real) grand0() * a;
+  return x;
 }
 
 

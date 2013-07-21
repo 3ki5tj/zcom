@@ -371,6 +371,16 @@ INLINE real *rv2_grand(real *v, real c, real r)
 
 
 
+/* displace `x0' by a normally-distributed random vector */
+INLINE real *rv2_granddisp(real * RESTRICT x, const real *x0, real a)
+{
+  x[0] = x0[0] + (real) grand0() * a;
+  x[1] = x0[1] + (real) grand0() * a;
+  return x;
+}
+
+
+
 /* randomly oriented vector on the sphere of radius r */
 #define rv2_rnddir(v, r) rv2_smul(rv2_rnddir0(v), r)
 

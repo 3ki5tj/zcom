@@ -81,7 +81,7 @@ INLINE real *rvn_copy(real *x, const real *src)
 
 
 /* use macro to avoid const qualifier of src */
-#define rvn_ncopy(x, src, n) memcpy(x, src, 2*n*sizeof(real))
+#define rvn_ncopy(x, src, n) memcpy(x, src, D*n*sizeof(real))
 
 
 
@@ -391,6 +391,18 @@ INLINE real *rvn_grand(real *v, real c, real r)
   for (i = 0; i < D; i++)
     v[i] = c + r * (real) grand0();
   return v;
+}
+
+
+
+/* displace `x0' by a normally-distributed random vector */
+INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
+{
+  int i;
+
+  for (i = 0; i < D; i++)
+    x[i] = x0[i] + (real) grand0() * a;
+  return x;
 }
 
 
