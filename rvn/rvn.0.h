@@ -71,11 +71,17 @@ INLINE real *rvn_zero(real *x)
 
 INLINE real *rvn_copy(real *x, const real *src)
 {
+#if D == 2
+  return rv2_copy(x, src);
+#elif D == 3
+  return rv3_copy(x, src);
+#else
   int i;
 
   for (i = 0; i < D; i++)
     x[i] = src[i];
   return x;
+#endif
 }
 
 
@@ -231,8 +237,14 @@ INLINE real *rvn_diff(real * RESTRICT c, const real *a, const real *b)
 /* distance^2 between a and b */
 INLINE real rvn_dist2(const real *a, const real *b)
 {
+#if D == 2
+  return rv2_dist2(a, b);
+#elif D == 3
+  return rv3_dist2(a, b);
+#else
   real d[D];
   return rvn_sqr(rvn_diff(d, a, b));
+#endif
 }
 
 
@@ -362,11 +374,17 @@ INLINE real *rvn_rnd(real *v, real a, real b)
 /* displace `x0' by a random vector in [-a, a)^D */
 INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
 {
+#if D == 2
+  return rv2_rnddisp(x, x0, a);
+#elif D == 3
+  return rv3_rnddisp(x, x0, a);
+#else
   int i;
 
   for (i = 0; i < D; i++)
     x[i] = x0[i] + (real) rnd(-a, a);
   return x;
+#endif
 }
 
 
@@ -398,11 +416,17 @@ INLINE real *rvn_grand(real *v, real c, real r)
 /* displace `x0' by a normally-distributed random vector */
 INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 {
+#if D == 2
+  return rv2_granddisp(x, x0, a);
+#elif D == 3
+  return rv3_granddisp(x, x0, a);
+#else
   int i;
 
   for (i = 0; i < D; i++)
     x[i] = x0[i] + (real) grand0() * a;
   return x;
+#endif
 }
 
 
@@ -413,7 +437,9 @@ INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 /* randomly oriented vector on the unit sphere */
 INLINE real *rvn_rnddir0(real *v)
 {
-#if D == 3
+#if D == 2
+  return rv2_rnddir0(v);
+#elif D == 3
   return rv3_rnddir0(v);
 #elif D < 5
   while ( rvn_sqr(rvn_rnd(v, -1, 1)) >= 1 ) ;
@@ -426,7 +452,7 @@ INLINE real *rvn_rnddir0(real *v)
 
 
 
-/* randomly orientied vector within the sphere of radius `r' */
+/* randomly oriented vector within the sphere of radius `r' */
 #define rvn_rndball(v, r) rvn_smul(rvn_rndball0(v), r)
 
 /* randomly vector within the unit sphere */
@@ -437,7 +463,10 @@ INLINE real *rvn_rndball0(real *v)
   return v;
 #else
   real r = pow(rnd0(), 1.0/D), nm;
-  while ( (nm = rvn_norm(rvn_grand0(v))) <= 1e-6 ) ;
+  /* first obtain a orientation */
+  while ( (nm = rvn_norm(rvn_grand0(v))) <= 1e-8 ) ;
+  /* the probability density rho(r) ~ r^(D - 1), so the cumulative
+   * distribution P(r) = r^D, and r is obtained from P(r)^(1/D) */
   return rvn_smul(v, r/nm);
 #endif
 }

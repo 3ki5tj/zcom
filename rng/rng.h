@@ -80,7 +80,8 @@ INLINE int mtload(const char *fn, uint32_t seed)
 
 
 #define rand32()  mtrand()
-#define rnd0()    ((1.0/4294967296.0) * rand32()) /* double, [0, 1) */
+/* must be double to avoid the round-off error that gives >= 1 result */
+#define rnd0() (rand32() * (1./4294967296.0)) /* double, [0, 1) */
 #define rnd(a, b) ((a) + ((b) - (a)) * rnd0()) /* double, [a, b) */
 
 /* return an unsigned random number */
