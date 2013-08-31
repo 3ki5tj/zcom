@@ -31,7 +31,7 @@ typedef struct {
 
 /* major functions for generic pdb model */
 #define pdbm_open(fn, v) pdbm_read(fn, v)
-pdbmodel_t *pdbm_read(const char *fn, int verbose);
+INLINE pdbmodel_t *pdbm_read(const char *fn, int verbose);
 INLINE int pdbm_write(pdbmodel_t *m, const char *fn);
 
 
@@ -369,7 +369,7 @@ ERR:
 
 
 /* read pdb */
-pdbmodel_t *pdbm_read(const char *fn, int verbose)
+INLINE pdbmodel_t *pdbm_read(const char *fn, int verbose)
 {
   int i, j, ir, iro;
   pdbmodel_t *m;
@@ -413,7 +413,7 @@ pdbmodel_t *pdbm_read(const char *fn, int verbose)
 
 #define pdbm_free(m) pdbm_close(m)
 
-void pdbm_close(pdbmodel_t *m)
+INLINE void pdbm_close(pdbmodel_t *m)
 {
   if (m->atm) free(m->atm);
   if (m->x) free(m->x);

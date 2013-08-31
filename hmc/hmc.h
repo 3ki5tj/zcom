@@ -1,4 +1,5 @@
 #include "util.h"
+#include "rng.h"
 #ifndef HMC_H__
 #define HMC_H__
 
@@ -48,7 +49,7 @@ INLINE void hmc_pop_(hmc_t *h, real *x, real *v, real *f, unsigned flags)
 
 
 /* open a hmc object from the start point */
-hmc_t *hmc_open_(int nd, real *x, real *v, real *f)
+INLINE hmc_t *hmc_open_(int nd, real *x, real *v, real *f)
 {
   hmc_t *h;
 
@@ -61,7 +62,9 @@ hmc_t *hmc_open_(int nd, real *x, real *v, real *f)
   return h;
 }
 
-void hmc_close(hmc_t *h)
+
+
+INLINE void hmc_close(hmc_t *h)
 {
   free(h->x);
   free(h->v);
@@ -69,13 +72,17 @@ void hmc_close(hmc_t *h)
   free(h);
 }
 
+
+
 /* compute the reduce-momentum-flipping rate
  * J. Sohl-Dickstein, arXiv 1205.1939
  * the Metropolis probability of accepting x => x+ is min{1, exp(-dep)}
  * that of accepting x~ => x-~ is min{1, exp(-dem)}
  * where `~' means the momentum reversal operation */
-int hmcgetredvflipr(double dem, double dep)
+INLINE int hmcgetredvflipr(double dem, double dep)
 {
+  double xp1, xp2;
+
   die_if (dep <= 0, "the forward move must be rejected, dep %g\n", dep);
   /* 1. If the state x-, hence x-~, has higher energy than x+
    * dem >= dep, then x-~ is more likely rejected, and x~ should
@@ -84,10 +91,11 @@ int hmcgetredvflipr(double dem, double dep)
    * has been rejected. If dem <= 0, x~ => x-~ is definitely accepted,
    * then x should compensate the probability outflow of x~ and be flipped
    * 3. The only case left is 0 < dem < dep */
-  if ( (dem >= dep)
-    || (dem >= 0 && rnd0() >= (exp(dep-dem) - 1)/(exp(dep) - 1)) )
-    return 0;
-  return 1;
+  if ( dem >= dep ) return 0;
+  if ( dem <= 0 ) return 1;
+  xp1 = exp(dep - dem);
+  xp2 = exp(dep);
+  return rnd0() < (xp1 - 1)/(xp2 - 1);
 }
 
 #endif

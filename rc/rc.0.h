@@ -104,7 +104,8 @@ INLINE rcomplex_t rc_mul(rcomplex_t a, rcomplex_t b)
 /* a / b */
 INLINE rcomplex_t rc_div(rcomplex_t a, rcomplex_t b)
 {
-  return rc_sdiv( rc_mul(a, rc_conj(b)), rc_norm2(b) );
+  real nm2 = rc_norm2(b);
+  return rc_sdiv( rc_mul(a, rc_conj(b)), nm2 );
 }
 
 #endif

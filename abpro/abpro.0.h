@@ -136,7 +136,7 @@ INLINE int ab_initpos(abpro_t *ab, real *x, real del)
 
 /* initialization
  * seqid: 8: 34, 9: 55, 10: 89 */
-abpro_t *ab_open(int seqid, int d, int model, real randdev)
+INLINE abpro_t *ab_open(int seqid, int d, int model, real randdev)
 {
   abpro_t *ab;
   int i, j, nd;
@@ -264,7 +264,7 @@ abpro_t *ab_open(int seqid, int d, int model, real randdev)
 
 
 /* close ab */
-void ab_close(abpro_t *ab)
+INLINE void ab_close(abpro_t *ab)
 {
   if (!ab) return;
   free(ab->type);

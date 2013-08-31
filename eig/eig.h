@@ -95,7 +95,8 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
     for (iter = 0; iter < itermax; iter++) {
       /* Look for a single small subdiagonal element to split the matrix */
       for (m = i; m < n - 1; m++) {
-        if (fabs(e[m]) < (fabs(d[m + 1]) + fabs(d[m]))*tol)
+        double d1 = fabs(d[m + 1]), d2 = fabs(d[m]);
+        if (fabs(e[m]) < (d1 + d2) * tol)
           break;
       }
 
@@ -173,7 +174,7 @@ static void eigsort(real *d, real *v, int n)
 
 /* solve eigensystem of a real symmetric matrix `mat',
  * eigenvalues saved to `d', eigenvectors to v */
-int eigsym(real *mat, real *d, real *v, int n)
+INLINE int eigsym(real *mat, real *d, real *v, int n)
 {
   real *e;
   int i;

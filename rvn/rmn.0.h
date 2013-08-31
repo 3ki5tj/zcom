@@ -5,24 +5,25 @@
 
 #ifndef FMN_T
 #define FMN_T fmn_t
-typedef float fmn_t[D][D];
+typedef float fmn_t[D][DM];
 #endif
 
 #ifndef DMN_T
 #define DMN_T dmn_t
-typedef double dmn_t[D][D];
+typedef double dmn_t[D][DM];
 #endif
 
 #ifndef RMN_T
 #define RMN_T rmn_t
-typedef real rmn_t[D][D];
+/* only the second dimension needs to be DM, the first can be D */
+typedef real rmn_t[D][DM];
 #endif
 
 
 
 #define rmn_print(r, nm, fmt, nl) rmn_fprint(stdout, r, nm, fmt, nl)
 
-INLINE void rmn_fprint(FILE *fp, real r[D][D], const char *nm,
+INLINE void rmn_fprint(FILE *fp, real r[][DM], const char *nm,
     const char *fmt, int nl)
 {
   int i, j;
@@ -37,7 +38,7 @@ INLINE void rmn_fprint(FILE *fp, real r[D][D], const char *nm,
 
 
 
-INLINE rvn_t *rmn_make(real x[D][D], ...)
+INLINE rvn_t *rmn_make(real x[][DM], ...)
 {
   int i, j;
   va_list vl;
@@ -53,32 +54,31 @@ INLINE rvn_t *rmn_make(real x[D][D], ...)
 
 
 
-INLINE rvn_t *rmn_zero(real x[D][D])
+INLINE rvn_t *rmn_zero(real x[][DM])
 {
-  int i, j;
+  int i;
 
-  for (i = 0; i < D; i++)
-    for (j = 0; j < D; j++)
-      x[i][j] = 0;
+  for (i = 0; i < D; i++) rvn_zero(x[i]);
   return x;
 }
 
 
 
-INLINE rvn_t *rmn_one(real x[D][D])
+INLINE rvn_t *rmn_one(real x[][DM])
 {
-  int i, j;
+  int i;
 
-  for (i = 0; i < D; i++)
-    for (j = 0; j < D; j++)
-      x[i][j] = (i == j);
+  for (i = 0; i < D; i++) {
+    rvn_zero(x[i]);
+    x[i][i] = (real) 1;
+  }
   return x;
 }
 
 
 
-/* generate a random orthonormal (unitary) 2x2 matrix */
-INLINE rvn_t *rmn_rnduni(real a[D][D])
+/* generate a random orthonormal (unitary) DxD matrix */
+INLINE rvn_t *rmn_rnduni(real a[][DM])
 {
   int i, j;
   real dot;
@@ -94,8 +94,6 @@ INLINE rvn_t *rmn_rnduni(real a[D][D])
   }
   return a;
 }
-
-
 
 
 

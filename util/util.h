@@ -137,28 +137,6 @@
 
 
 
-#ifndef xnew
-#define xnew(x, n) { \
-  size_t num_ = (size_t) (n); \
-  if (num_ <= 0) { \
-    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) num_, #x); \
-    exit(1); \
-  } else if ((x = calloc(num_, sizeof(*(x)))) == NULL) { \
-    fprintf(stderr, "no memory for %s x %d\n", #x, (int) num_); \
-    exit(1); } }
-#endif
-
-#ifndef xrenew
-#define xrenew(x, n) { \
-  size_t num_ = (size_t) (n); \
-  if (num_ <= 0) { \
-    fprintf(stderr, "cannot allocate %d objects for %s\n", (int) num_, #x); \
-    exit(1); \
-  } else if ((x = realloc(x, (num_)*sizeof(*(x)))) == NULL) { \
-    fprintf(stderr, "no memory for %s x %d\n", #x, (int) num_); \
-    exit(1); } }
-#endif
-
 /* print an error message */
 INLINE void perrmsg__(const char *file, int line, const char *why,
     const char *fmt, va_list args)
@@ -172,6 +150,8 @@ INLINE void perrmsg__(const char *file, int line, const char *why,
   if (why != NULL && strcmp(why, "1") != 0)
     fprintf(stderr, "cond: %s\n", why);
 }
+
+
 
 #ifdef HAVEVAM
 
@@ -207,6 +187,30 @@ INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
 
 #endif /* HAVEVAM */
 
+
+
+#ifndef xnew
+#define xnew(x, n) { \
+  size_t num_ = (size_t) (n); \
+  die_if (num_ <= 0, \
+    "cannot allocate %d objects for %s\n", (int) num_, #x); \
+  die_if ((x = calloc(num_, sizeof(*(x)))) == NULL, \
+    "no memory for %s x %d\n", #x, (int) num_); }
+#endif
+
+
+
+#ifndef xrenew
+#define xrenew(x, n) { \
+  size_t num_ = (size_t) (n); \
+  die_if (num_ <= 0, \
+    "cannot allocate %d objects for %s\n", (int) num_, #x); \
+  die_if ((x = realloc(x, (num_)*sizeof(*(x)))) == NULL, \
+    "no memory for %s x %d\n", #x, (int) num_); }
+#endif
+
+
+
 #define xfopen(fp, fn, fmt, err) \
   if ((fp = fopen(fn, fmt)) == NULL) { \
     fprintf(stderr, "cannot open file %s\n", fn); err; }
@@ -231,11 +235,18 @@ INLINE int fexists(const char *fn)
 
 INLINE int intmax(int x, int y) { return x > y ? x : y; }
 INLINE int intmin(int x, int y) { return x < y ? x : y; }
+
+
+
 /* confine x within [xmin, xmax] */
 INLINE int intconfine(int x, int xmin, int xmax)
   { return x < xmin ? xmin : x > xmax ? xmax : x; }
 
+
+
 INLINE int intsqr(int x) { return x * x; }
+
+
 
 /* get the pair index from 0 to n*(n - 1)/2 - 1 */
 INLINE int getpairindex(int i, int j, int n)
@@ -265,11 +276,18 @@ INLINE int parsepairindex(int id, int n, int *i, int *j)
 
 INLINE double dblmax(double x, double y) { return x > y ? x : y; }
 INLINE double dblmin(double x, double y) { return x < y ? x : y; }
+
+
+
 /* confine x within [xmin, xmax] */
 INLINE double dblconfine(double x, double xmin, double xmax)
 { return x < xmin ? xmin : x > xmax ? xmax : x; }
 
+
+
 INLINE double dblsqr(double x) { return x * x; }
+
+
 
 /* sqrt(x*x + y*y) */
 INLINE double dblhypot(double x, double y)
@@ -284,12 +302,24 @@ INLINE double dblhypot(double x, double y)
   return x*sqrt(1 + t*t);
 }
 
+
+
 /* round x to a multiple dx  */
 INLINE double dblround(double x, double dx)
 {
   if (x*dx > 0) return dx * (int)(x/dx + (.5 - DBL_EPSILON));
   else return -dx * (int)(-x/dx + (.5 - DBL_EPSILON));
 }
+
+
+
+/* convert to double to integer */
+INLINE int dbl2int(double x)
+{
+  return (int) ((x < 0) ? (x - .5) : (x + .5));
+}
+
+
 
 INLINE void dblcleararr(double *x, int n)
 {

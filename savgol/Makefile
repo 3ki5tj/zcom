@@ -4,7 +4,7 @@ CC = gcc -O0 -g3 -Wall -Wextra -pedantic
 LM = -lm
 # optimized compiling
 # -wd161: disable unknown #pragma
-CX = icc -Wall -O3 -march=native -vec_report0 -wd161
+CX = icc -Wall -Wremarks -Wcheck -O3 -march=native -vec_report0 -wd161
 LMX =
 #CX = gcc -Wall -O3 -g -march=native -mfpmath=sse -funroll-all-loops
 #LMX =-lm

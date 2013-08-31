@@ -3,7 +3,8 @@
 
 static int test_ssfgets(void)
 {
-  char *s = NULL, *fname = "ss.c";
+  char *s = NULL;
+  const char *fname = "ss.c";
   FILE *fp;
   int i;
   size_t n = 0;
@@ -22,10 +23,12 @@ static int test_ssfgets(void)
   return 0;
 }
 
+
+
 int main(void)
 {
   int i;
-  char *sa="A", *sb="B";
+  const char *sa="A", *sb="B";
   char *s = NULL, *t = NULL, *r = NULL;
 
   r = ssnew(512);

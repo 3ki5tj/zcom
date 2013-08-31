@@ -1,12 +1,25 @@
-#ifndef INLINE
-#define INLINE __inline static
-#endif
 #include "util.h"
 #ifndef AV_H__
 #define AV_H__
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+
+
+
+typedef struct {
+  double s, sx;
+} av0_t; /* simplest averager without variance */
+
+
+
+INLINE void av0_clear(av0_t *av) { av->s = 1e-20; av->sx = 0; }
+INLINE double av0_getave(const av0_t *av) { return av->sx / av->s; }
+INLINE void av0_add(av0_t *av, double x) { av->s += 1; av->sx += x; }
+INLINE void av0_addw(av0_t *av, double x, double w) { av->s += w; av->sx += x * w; }
+
+
+
 
 typedef struct {
   double s, sx, sx2; /* sum, sum x, variance */

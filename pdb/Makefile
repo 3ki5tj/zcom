@@ -6,6 +6,7 @@ dep=$(src) $(hdr) Makefile
 all: $(bin)
 
 CC = gcc -O0 -g3 -Wall -pedantic -Wextra
+#CC = icc -O3 -Wall -Wremarks -Wcheck
 
 test1: test1.c $(dep)
 	$(CC) -o $@ $< -lm

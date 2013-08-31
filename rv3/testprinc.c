@@ -60,8 +60,8 @@ int main(void)
   printf("val: %g, %g, %g; vec = {%g, %g, %g}\n",
       v[0], v[1], v[2], vecs[0][0], vecs[0][1], vecs[0][2]);
   printf("xc = %g, %g, %g\n", xc[0], xc[1], xc[2]);
-  rv3_sadd(x0, xc, vecs[0], -sqrt(v[0]) * sqrt(3));
-  rv3_sadd(x1, xc, vecs[0], +sqrt(v[0]) * sqrt(3));
+  rv3_sadd(x0, xc, vecs[0], -sqrt(3 * v[0]));
+  rv3_sadd(x1, xc, vecs[0], +sqrt(3 * v[0]));
   printf("%g, %g, %g;   %g, %g, %g\n", x0[0], x0[1], x0[2], x1[0], x1[1], x1[2]);
   return 0;
 }

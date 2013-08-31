@@ -1,4 +1,5 @@
-CC=gcc -std=c99 -O0 -g3 -Wall -Wextra -pedantic
+#CC=gcc -std=c99 -O0 -g3 -Wall -Wextra -pedantic
+CC=icc -std=c99 -O0 -g -Wall -Wremarks -Wcheck
 LM=-lm
 
 bin=$(patsubst %.c,%, $(wildcard test*.c))

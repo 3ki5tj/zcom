@@ -13,20 +13,32 @@
 #endif
 
 
+#ifndef DM /* aligned array dimension */
+#ifdef RVN_ALIGN
+/* double arrays of multiples of 4 can use -xhost options in Intel C
+ * and avoid possible compiler optimization mistakes */
+#define DM ((D + (RVN_ALIGN) - 1) / (RVN_ALIGN) * (RVN_ALIGN))
+#else
+/* by default, we set D == DM */
+#define DM D
+#endif
+#endif
+
+
 
 #ifndef FVN_T
 #define FVN_T fvn_t
-typedef float fvn_t[D];
+typedef float fvn_t[DM];
 #endif
 
 #ifndef DVN_T
 #define DVN_T dvn_t
-typedef double dvn_t[D];
+typedef double dvn_t[DM];
 #endif
 
 #ifndef RVN_T
 #define RVN_T rvn_t
-typedef real rvn_t[D];
+typedef real rvn_t[DM];
 #endif
 
 
@@ -53,6 +65,9 @@ INLINE real *rvn_make(real *x, ...)
   va_start(vl, x);
   for (i = 0; i < D; i++)
     x[i] = (real) va_arg(vl, double);
+#if D < DM
+  for (i = D; i < DM; i++) x[i] = (real) 0;
+#endif
   va_end(vl);
   return x;
 }
@@ -63,7 +78,8 @@ INLINE real *rvn_zero(real *x)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] = 0;
+  /* clear all the way up to DM */
+  for (i = 0; i < DM; i++) x[i] = 0;
   return x;
 }
 
@@ -71,17 +87,11 @@ INLINE real *rvn_zero(real *x)
 
 INLINE real *rvn_copy(real *x, const real *src)
 {
-#if D == 2
-  return rv2_copy(x, src);
-#elif D == 3
-  return rv3_copy(x, src);
-#else
   int i;
 
-  for (i = 0; i < D; i++)
+  for (i = 0; i < DM; i++)
     x[i] = src[i];
   return x;
-#endif
 }
 
 
@@ -93,38 +103,23 @@ INLINE real *rvn_copy(real *x, const real *src)
 
 INLINE void rvn_swap(real * RESTRICT x, real * RESTRICT y)
 {
-  real z[D];
+  rvn_t z;
   rvn_copy(z, x);
   rvn_copy(x, y);
   rvn_copy(y, z);
 }
 
 
-
-INLINE real rvn_sqr(const real *x)
-{
-  int i;
-  real dot = 0;
-
-  for (i = 0; i < D; i++) dot += x[i] * x[i];
-  return dot;
-}
-
-
-
-INLINE real rvn_norm(const real *x)
-{
-  return (real) sqrt(rvn_sqr(x));
-}
-
-
+#define rvn_sqr(x) rvn_dot(x, x)
+#define rvn_norm(x) (real) sqrt(rvn_sqr(x))
 
 INLINE real rvn_dot(const real *x, const real *y)
 {
   int i;
   real dot = 0;
 
-  for (i = 0; i < D; i++) dot += x[i] * y[i];
+  /* assuming x[i], y[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) dot += x[i] * y[i];
   return dot;
 }
 
@@ -134,7 +129,8 @@ INLINE real *rvn_neg(real * RESTRICT x)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] -= x[i];
+  /* assuming x[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) x[i] = -x[i];
   return x;
 }
 
@@ -144,7 +140,8 @@ INLINE real *rvn_neg2(real * RESTRICT nx, const real *x)
 {
   int i;
 
-  for (i = 0; i < D; i++) nx[i] -= x[i];
+  /* assuming x[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) nx[i] = -x[i];
   return nx;
 }
 
@@ -154,7 +151,8 @@ INLINE real *rvn_inc(real * RESTRICT x, const real *dx)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] += dx[i];
+  /* assuming dx[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) x[i] += dx[i];
   return x;
 }
 
@@ -164,7 +162,8 @@ INLINE real *rvn_dec(real * RESTRICT x, const real *dx)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] -= dx[i];
+  /* assuming dx[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) x[i] -= dx[i];
   return x;
 }
 
@@ -174,7 +173,8 @@ INLINE real *rvn_sinc(real * RESTRICT x, const real *dx, real s)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] += s * dx[i];
+  /* assuming dx[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) x[i] += s * dx[i];
   return x;
 }
 
@@ -184,7 +184,7 @@ INLINE real *rvn_smul(real *x, real s)
 {
   int i;
 
-  for (i = 0; i < D; i++) x[i] *= s;
+  for (i = 0; i < DM; i++) x[i] *= s;
   return x;
 }
 
@@ -194,7 +194,8 @@ INLINE real *rvn_smul2(real * RESTRICT y, const real *x, real s)
 {
   int i;
 
-  for (i = 0; i < D; i++) y[i] = x[i] * s;
+  /* assuming x[i] == 0 for i >= D */
+  for (i = 0; i < DM; i++) y[i] = x[i] * s;
   return y;
 }
 
@@ -203,7 +204,7 @@ INLINE real *rvn_smul2(real * RESTRICT y, const real *x, real s)
 INLINE real *rvn_normalize(real *x)
 {
   real r = rvn_norm(x);
-  if (r > 0.f) rvn_smul(x, 1.f/r);
+  if (r > (real) 0) rvn_smul(x, (real) 1./r);
   return x;
 }
 
@@ -218,6 +219,9 @@ INLINE real *rvn_makenorm(real *v, ...)
   for (i = 0; i < D; i++)
     v[i] = (real) va_arg(vl, double);
   va_end(vl);
+#if D < DM
+  for (i = D; i < DM; i++) v[i] = (real) 0;
+#endif
   return rvn_normalize( v );
 }
 
@@ -228,7 +232,8 @@ INLINE real *rvn_diff(real * RESTRICT c, const real *a, const real *b)
 {
   int i;
 
-  for (i = 0; i < D; i++) c[i] = a[i] - b[i];
+  /* assuming a[i] = b[i] = 0 for i >= D */
+  for (i = 0; i < DM; i++) c[i] = a[i] - b[i];
   return c;
 }
 
@@ -237,12 +242,12 @@ INLINE real *rvn_diff(real * RESTRICT c, const real *a, const real *b)
 /* distance^2 between a and b */
 INLINE real rvn_dist2(const real *a, const real *b)
 {
-#if D == 2
+#if DM == 2
   return rv2_dist2(a, b);
-#elif D == 3
+#elif DM == 3
   return rv3_dist2(a, b);
 #else
-  real d[D];
+  rvn_t d;
   return rvn_sqr(rvn_diff(d, a, b));
 #endif
 }
@@ -262,7 +267,8 @@ INLINE real *rvn_add(real * RESTRICT c, const real *a, const real *b)
 {
   int i;
 
-  for (i = 0; i < D; i++) c[i] = a[i] + b[i];
+  /* assuming a[i] = b[i] = 0 for i >= D */
+  for (i = 0; i < DM; i++) c[i] = a[i] + b[i];
   return c;
 }
 
@@ -273,7 +279,8 @@ INLINE real *rvn_nadd(real * RESTRICT c, const real *a, const real *b)
 {
   int i;
 
-  for (i = 0; i < D; i++) c[i] = - a[i] - b[i];
+  /* assuming a[i] = b[i] = 0 for i >= D */
+  for (i = 0; i < DM; i++) c[i] = - a[i] - b[i];
   return c;
 }
 
@@ -284,8 +291,8 @@ INLINE real *rvn_sadd(real * RESTRICT c, const real *a, const real *b, real s)
 {
   int i;
 
-  for (i = 0; i < D; i++)
-    c[i] = a[i] + b[i] * s;
+  /* assuming a[i] = b[i] = 0 for i >= D */
+  for (i = 0; i < DM; i++) c[i] = a[i] + b[i] * s;
   return c;
 }
 
@@ -296,8 +303,8 @@ INLINE real *rvn_lincomb2(real * RESTRICT c, const real *a, const real *b, real 
 {
   int i;
 
-  for (i = 0; i < D; i++)
-    c[i] = a[i] * s1 + b[i] * s2;
+  /* assuming a[i] = b[i] = 0 for i >= D */
+  for (i = 0; i < DM; i++) c[i] = a[i] * s1 + b[i] * s2;
   return c;
 }
 
@@ -307,7 +314,8 @@ INLINE real *rvn_lincomb2(real * RESTRICT c, const real *a, const real *b, real 
 INLINE real rvn_cosang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
 {
-  real a[D], b[D], ra, rb, dot;
+  rvn_t a, b;
+  real ra, rb, dot;
 
   ra = rvn_norm(rvn_diff(a, x1, x2));
   rvn_smul(a, 1.f/ra);
@@ -346,7 +354,8 @@ INLINE real rvn_ang(const real *x1, const real *x2, const real *x3,
 /* vertical distance from x to line a-b */
 INLINE real rvn_vdist(const real *x, const real *a, const real *b)
 {
-  real nm[D], d[D], dot;
+  rvn_t nm, d;
+  real dot;
 
   rvn_diff(d, x, a);
   rvn_normalize(rvn_diff(nm, a, b));
@@ -366,6 +375,9 @@ INLINE real *rvn_rnd(real *v, real a, real b)
   b -= a;
   for (i = 0; i < D; i++)
     v[i] = a + b * (real) rnd0();
+#if D < DM
+  for (i = D; i < DM; i++) v[i] = (real) 0;
+#endif
   return v;
 }
 
@@ -374,15 +386,18 @@ INLINE real *rvn_rnd(real *v, real a, real b)
 /* displace `x0' by a random vector in [-a, a)^D */
 INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
 {
-#if D == 2
+#if DM == 2
   return rv2_rnddisp(x, x0, a);
-#elif D == 3
+#elif DM == 3
   return rv3_rnddisp(x, x0, a);
 #else
   int i;
 
   for (i = 0; i < D; i++)
     x[i] = x0[i] + (real) rnd(-a, a);
+#if D < DM
+  for (i = D; i < DM; i++) x[i] = (real) 0;
+#endif
   return x;
 #endif
 }
@@ -396,6 +411,9 @@ INLINE real *rvn_grand0(real *v)
 
   for (i = 0; i < D; i++)
     v[i] = (real) grand0();
+#if D < DM
+  for (i = D; i < DM; i++) v[i] = (real) 0;
+#endif
   return v;
 }
 
@@ -408,6 +426,9 @@ INLINE real *rvn_grand(real *v, real c, real r)
 
   for (i = 0; i < D; i++)
     v[i] = c + r * (real) grand0();
+#if D < DM
+  for (i = D; i < DM; i++) v[i] = (real) 0;
+#endif
   return v;
 }
 
@@ -416,15 +437,18 @@ INLINE real *rvn_grand(real *v, real c, real r)
 /* displace `x0' by a normally-distributed random vector */
 INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 {
-#if D == 2
+#if DM == 2
   return rv2_granddisp(x, x0, a);
-#elif D == 3
+#elif DM == 3
   return rv3_granddisp(x, x0, a);
 #else
   int i;
 
   for (i = 0; i < D; i++)
     x[i] = x0[i] + (real) grand0() * a;
+#if D < DM
+  for (i = D; i < DM; i++) x[i] = (real) 0;
+#endif
   return x;
 #endif
 }
@@ -437,11 +461,7 @@ INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 /* randomly oriented vector on the unit sphere */
 INLINE real *rvn_rnddir0(real *v)
 {
-#if D == 2
-  return rv2_rnddir0(v);
-#elif D == 3
-  return rv3_rnddir0(v);
-#elif D < 5
+#if D < 5
   while ( rvn_sqr(rvn_rnd(v, -1, 1)) >= 1 ) ;
   return rvn_normalize(v);
 #else
@@ -462,7 +482,7 @@ INLINE real *rvn_rndball0(real *v)
   while ( rvn_sqr( rvn_rnd(v, -1, 1) ) >= 1 ) ;
   return v;
 #else
-  real r = pow(rnd0(), 1.0/D), nm;
+  real r = (real) pow(rnd0(), 1.0/D), nm;
   /* first obtain a orientation */
   while ( (nm = rvn_norm(rvn_grand0(v))) <= 1e-8 ) ;
   /* the probability density rho(r) ~ r^(D - 1), so the cumulative

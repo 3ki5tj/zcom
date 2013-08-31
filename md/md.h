@@ -213,13 +213,14 @@ INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, 
 INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
   int i;
-  real ekav = .5f*tp*dof, ek1, ek2, s, c = 0., r;
+  real ekav = .5f*tp*dof, ek1, ek2, s, c = 0, r, r2;
 
-  if (dt < 10.0) c = exp(-dt);
-  r = (real) grand0();
+  if (dt < 10) c = (real) exp(-dt);
   ek1 = md_getekin(ekin, v, nd);
-  ek2 = (real)( ek1 + (1.f-c)*(ekav*(randgausssum(dof-1) + r*r)/dof - ek1)
-    + 2.0f*r*sqrt(c*(1.f-c)*ekav/dof*ek1) );
+  r = (real) grand0();
+  r2 = (real) randgausssum(dof - 1);
+  ek2 = (real)( ek1 + (1 - c) * (ekav*(r2 + r*r)/dof - ek1)
+    + 2 * r * sqrt(c*(1 - c) * ekav/dof*ek1) );
   if (ek2 < 0) ek2 = 0;
   s = (real) sqrt(ek2/ek1);
   for (i = 0; i < nd; i++)
@@ -233,25 +234,29 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
 /* backup thermostat: velocity-rescaling according to a Monte-Carlo move */
 INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, real *tkin)
 {
-  int i;
+  int i, acc;
   real ek1, ek2, s;
-  double logek1, logek2, r;
+  double logek1, logek2, r, r0;
 
   ek1 = md_getekin(ekin, v, nd);
   logek1 = log(ek1);
   logek2 = logek1 + dt*(2.f*rnd0() - 1);
-  ek2 = exp(logek2);
-  r = (ek2-ek1)/tp - .5*dof*(logek2 - logek1);
-  if (r <= 0 || rnd0() < exp(-r)) {
+  ek2 = (real) exp(logek2);
+  r = (ek2 - ek1)/tp - .5*dof*(logek2 - logek1);
+  if (r <= 0) {
+    acc = 1;
+  } else {
+    r0 = rnd0();
+    acc = (r0 < exp(-r));
+  }
+  if ( acc ) {
     s = (real) sqrt(ek2/ek1);
     for (i = 0; i < nd; i++)
       v[i] *= s;
     if (ekin) *ekin = ek2;
     if (tkin) *tkin *= s*s;
-    return 1;
-  } else { /* do nothing otherwise */
-    return 0;
   }
+  return acc;
 }
 
 
@@ -306,7 +311,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
   /* propagate the chain */
   for (j = M-1; j > 0; j--) {
     if (j < M-1) {
-      xp = (real) exp(-dt4*zeta[j+1]);
+      xp = (real) exp(-dt4 * zeta[j+1]);
       zeta[j] *= xp;
     }
     G = (Q[j-1]*zeta[j-1]*zeta[j-1] - tp)/Q[j];
@@ -317,7 +322,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
 
   /* the first thermostat variable */
   if (M >= 2) {
-    xp = exp(-dt4*zeta[1]);
+    xp = (real) exp(-dt4 * zeta[1]);
     zeta[0] *= xp;
   }
   G = (scl * 2.f * ek1 - dof * tp)/Q[0];
@@ -334,7 +339,7 @@ INLINE void md_nhchain(real *v, int nd, int dof, real tp, real scl, real dt,
 
   /* the first thermostat variable */
   if (M >= 2) {
-    xp = exp(-dt4*zeta[1]);
+    xp = (real) exp(-dt4*zeta[1]);
     zeta[0] *= xp;
   }
   G = (scl * 2.f * ek1 - dof * tp)/Q[0];
@@ -379,7 +384,7 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
   amp = (real) sqrt(2*zeta2/Q*dt2);
   *zeta *= xp;
   *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
-  *zeta += amp * grand0(); /* white noise */
+  *zeta += amp * (real) grand0(); /* white noise */
   *zeta *= xp;
 
   s = (real) exp(-(*zeta)*dt);
@@ -390,7 +395,7 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
 
   *zeta *= xp;
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
-  *zeta += amp * grand0(); /* white noise */
+  *zeta += amp * (real) grand0(); /* white noise */
   *zeta *= xp;
 }
 
@@ -411,9 +416,10 @@ INLINE void md_andersen(real *v, int n, int d, real tp)
 {
   int i, j;
 
-  tp = sqrt(tp);
+  tp = (real) sqrt(tp);
   i = (int)(rnd0() * n);
-  for (j = 0; j < d; j++) v[i*d + j] = tp * grand0();
+  for (j = 0; j < d; j++)
+    v[i*d + j] = tp * (real) grand0();
 }
 
 
@@ -424,9 +430,9 @@ INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
   int i;
   real c = (real) exp(-dt), amp;
 
-  amp = sqrt((1 - c*c) * tp);
+  amp = (real) sqrt((1 - c*c) * tp);
   for (i = 0; i < n*d; i++)
-    v[i] = c*v[i] + amp*grand0();
+    v[i] = c*v[i] + amp * (real) grand0();
 }
 
 
@@ -452,7 +458,7 @@ INLINE void md_hoovertp(real *v, int n, int d, int dof, real dt,
   *eta *= xp;
 
   /* scaling velocity */
-  s = exp( -dt * (*zeta + *eta) );
+  s = (real) exp( -dt * (*zeta + *eta) );
   for (i = 0; i < d * n; i++) v[i] *= s;
   *ekin *= s*s;
   *tkin *= s*s;
@@ -494,7 +500,7 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
 
   /* 1.B the first thermostat variable */
   if (M >= 2) {
-    xp = exp(-dt4*zeta[1]);
+    xp = (real) exp(-dt4*zeta[1]);
     zeta[0] *= xp;
   }
   G = (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) / Q[0];
@@ -510,7 +516,7 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
   *eta *= xpz;
 
   /* 3. scaling velocity */
-  s = exp( -dt * (zeta[0] + *eta) );
+  s = (real) exp( -dt * (zeta[0] + *eta) );
   for (i = 0; i < d * n; i++) v[i] *= s;
   *ekin *= s*s;
   *tkin *= s*s;
@@ -524,7 +530,7 @@ INLINE void md_nhchaintp(real *v, int n, int d, int dof, real dt,
   /* 5. thermostat */
   /* 5.A the first thermostat variable */
   if (M >= 2) {
-    xp = exp(-dt4*zeta[1]);
+    xp = (real) exp(-dt4*zeta[1]);
     zeta[0] *= xp;
   }
   G = (2.f * (*ekin) + W * (*eta) * (*eta) - (dof + 1) * tp) / Q[0];
@@ -570,11 +576,11 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
-  *eta += amp*grand0(); /* random noise */
+  *eta += amp * (real) grand0(); /* random noise */
   *eta *= xp;
 
   /* scaling velocity */
-  s = exp( -dt * (*eta) );
+  s = (real) exp( -dt * (*eta) );
   for (i = 0; i < d * n; i++) v[i] *= s;
   *ekin *= s*s;
   *tkin *= s*s;
@@ -583,7 +589,7 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
-  *eta += amp*grand0(); /* random noise */
+  *eta += amp * (real) grand0(); /* random noise */
   *eta *= xp;
 }
 
@@ -607,8 +613,9 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
   pint = (vir + 2.f * (*ekin))/ (d * (*vol)) + ptail;
 
   amp = (real) sqrt(2.f * barodt);
-  dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt + amp*grand0();
-  vn = *vol * exp( dlnv );
+  dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt
+       + amp * (real) grand0();
+  vn = *vol * (real) exp( dlnv );
 
   s = (real) exp( dlnv/d );
   for (i = 0; i < d * n; i++) v[i] *= s;
@@ -630,9 +637,10 @@ INLINE void md_langp0(int dof, int d, real barodt,
   real pintv, amp, dlnv;
 
   pintv = (vir + dof * tp)/d + ptail * (*vol);
-  amp = (real) sqrt(2.f * barodt);
-  dlnv = ((pintv - pext * (*vol))/tp + 1 - ensx)*barodt + amp*grand0();
-  *vol *= exp( dlnv );
+  amp = (real) sqrt(2 * barodt);
+  dlnv = ((pintv - pext * (*vol))/tp + 1 - ensx)*barodt
+       + amp * (real) grand0();
+  *vol *= (real) exp( dlnv );
 }
 
 
@@ -640,12 +648,14 @@ INLINE void md_langp0(int dof, int d, real barodt,
 /* sinc(x) = (e^x - e^(-x))/(2 x) */
 INLINE double md_mysinc(double x)
 {
-  double x2 = x*x;
+  double x2, y;
 
-  if (fabs(x) < 1e-2) /* series expansion */
+  if (fabs(x) < 1e-2) { /* series expansion */
+    x2 = x * x;
     return 1 + (1 + (1 + x2/42.0)*x2/20.0)*x2/6.0;
-  else
-    return .5 * (exp(x) - exp(-x))/x;
+  }
+  y = exp(x);
+  return .5 * (y - 1./y)/x;
 }
 
 
@@ -664,7 +674,7 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
   etadt2 = eta * dt * .5f;
   xph = (real) exp(etadt2);
   *xp = xph * xph;
-  dtxp = 1.f/xph * dt * md_mysinc(etadt2) / l;
+  dtxp = 1.f/xph * dt * (real) md_mysinc(etadt2) / l;
 /*
   dtxp = (1 - 1/(*xp))/eta/l;
 */
@@ -681,11 +691,11 @@ INLINE void md_hoovertpdr(real *r, const real *v, int nd,
 INLINE int md_mutv(real *v, int nd, real tp, double r)
 {
   int i;
-  real vamp = sqrt(tp);
+  real vamp = (real) sqrt(tp);
 
   for (i = 0; i < nd; i++)
     if (rnd0() < r)
-      v[i] = vamp * grand0();
+      v[i] = vamp * (real) grand0();
   return 0;
 }
 

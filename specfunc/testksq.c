@@ -12,7 +12,7 @@ static void test_ksq(double x)
   if ((fp = fopen("ksdist", "w")) != NULL) {
     for (x = 0.0; x < 2.0; x += 0.001) {
       double y = ksq(x);
-      fprintf(fp, "%g %g %g\n", x, 1-y, y);
+      fprintf(fp, "%g %g %g\n", x, 1 - y, y);
     }
     fclose(fp);
   }

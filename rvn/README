@@ -1,0 +1,3 @@
+For odd dimensions, define RVN_ALIGN 2 or 4 before including rvn.h
+or zcom.h, will help intel compiler to use -xHost option.
+Be very very careful, about the possible side effects.

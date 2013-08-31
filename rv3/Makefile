@@ -1,7 +1,7 @@
 INCLUDE = -I./include
 CC = gcc -O0 -g3 -Wall -Wextra -pedantic -DRV3_DEBUG $(INCLUDE)
 LM = -lm
-CX = icc -O3 -Wall $(INCLUDE)
+CX = icc -O3 -Wall -Wremarks -Wcheck $(INCLUDE)
 LMX =
 
 autosrc = rv3.h rm3.h

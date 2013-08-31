@@ -235,7 +235,7 @@ INLINE int pt2_save(const potts_t *pt, const char *fname)
 
 
 /* initialize an lxl q-state Potts model */
-potts_t *pt2_open(int l, int q)
+INLINE potts_t *pt2_open(int l, int q)
 {
   int i, n;
   potts_t *pt;

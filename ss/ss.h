@@ -263,6 +263,7 @@ INLINE char *ssfgetx(char **ps, size_t *pn, int delim, FILE *fp)
 }
 
 
+
 /* parse `s' into a string array
  * delimiters are removed */
 INLINE char **ssparse(char *s, int *pn, const char *delim)

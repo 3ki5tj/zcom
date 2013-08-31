@@ -144,7 +144,7 @@ INLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real l)
 
 
 /* create an open structure */
-lj_t *lj_open(int n, int d, real rho, real rcdef)
+INLINE lj_t *lj_open(int n, int d, real rho, real rcdef)
 {
   lj_t *lj;
   int i;
@@ -244,7 +244,7 @@ INLINE lj_t *lj_clone(const lj_t *src, unsigned flags)
 
 
 
-void lj_close(lj_t *lj)
+INLINE void lj_close(lj_t *lj)
 {
   if ( !(lj->isclone & LJ_CPX) ) free(lj->x);
   if ( !(lj->isclone & LJ_CPV) ) free(lj->v);

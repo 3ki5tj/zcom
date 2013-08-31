@@ -9,7 +9,7 @@
 /* solve A x = b by L U decomposition
  * the matrix `a' will be destroyed
  * the vector `b' will be `x' on return */
-int lusolve(real * RESTRICT a, real * RESTRICT b, int n)
+INLINE int lusolve(real * RESTRICT a, real * RESTRICT b, int n)
 {
   int i, j, k, imax = 0;
   real x, max;

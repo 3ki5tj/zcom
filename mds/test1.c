@@ -1,6 +1,6 @@
 #include "mds.h"
 
-double *mkdismat0(void)
+static double *mkdismat0(void)
 {
   double *dm;
   int i, n = 3;

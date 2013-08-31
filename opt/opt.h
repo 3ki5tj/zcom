@@ -3,6 +3,8 @@
 #ifndef OPT_H__
 #define OPT_H__
 
+
+
 /* option either from arguments or configuration */
 typedef struct {
   int isopt; /* is option (1) or argument (0) or cfg file entry (2) */
@@ -17,6 +19,8 @@ typedef struct {
   void *ptr; /* address to the target variable */
   unsigned flags;
 } opt_t;
+
+
 
 #define OPT_MUST     0x0001  /* a mandatory argument or option */
 #define OPT_SWITCH   0x0002  /* an option is a switch */
@@ -43,6 +47,8 @@ INLINE int opt_getval(opt_t *o)
   }
   return 0;
 }
+
+
 
 /* register an option
  *
@@ -91,6 +97,8 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
   o->desc = desc;
 }
 
+
+
 /* print the value of o->ptr */
 #define opt_printptr(o) opt_fprintptr(stderr, o)
 INLINE void opt_fprintptr(FILE *fp, opt_t *o)
@@ -123,6 +131,8 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
 #undef ELIF_PF_
 }
 
+
+
 /* search an option list, return an option whose variable address is p */
 INLINE opt_t *opt_find(opt_t *ls, int n, const void *p)
 {
@@ -132,6 +142,8 @@ INLINE opt_t *opt_find(opt_t *ls, int n, const void *p)
   return NULL;
 }
 
+
+
 /* search an option list to see if an option is explicitly set */
 INLINE int opt_isset(opt_t *ls, int n, const void *p, const char *var)
 {
@@ -139,4 +151,7 @@ INLINE int opt_isset(opt_t *ls, int n, const void *p, const char *var)
   die_if (!o, "cannot find var %s, ptr %p\n", var, p);
   return o->flags & OPT_SET ? 1 : 0;
 }
+
+
+
 #endif

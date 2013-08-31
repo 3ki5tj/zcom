@@ -10,7 +10,7 @@
 INLINE double lngam(double a)
 {
   int i;
-  double xp, ahg;
+  double xp, ahg, y;
   static const double gh = 671./128, sqrt2pi = 2.506628274631000242,
     c[15] = {0.999999999999997092,      57.1562356658629235,      -59.5979603554754912,
             14.1360979747417471,        -0.491913816097620199,       .339946499848118887e-4,
@@ -22,7 +22,8 @@ INLINE double lngam(double a)
   for (xp = c[0], i = 1; i < 15; i++)
     xp += c[i]/(a + i);
   ahg = a + gh;
-  return (a+.5)*log(ahg) - ahg + log(sqrt2pi*xp/a); /* gamma(a) = gamma(a+1)/a */
+  y = (a + .5) * log(ahg) - ahg;
+  return y + log( sqrt2pi * xp / a); /* gamma(a) = gamma(a+1)/a */
 }
 
 
@@ -34,17 +35,19 @@ INLINE double lngam(double a)
 INLINE double lnincgam0(double a, double x)
 {
   int i;
-  double del, sum;
+  double del, sum, y;
 
   die_if (x < 0., "neg. arg. for lnincgam0(%g)\n", x);
   if (x <= 0) return -1e30; /* log(0+) */
-  sum = del = 1.0/a;
+  sum = del = 1 / a;
   for (i = 1; i <= 1000; i++) {
     del *= x/(a + i);
     sum += del;
-    if (fabs(del) < fabs(sum)*5e-16) break;
+    y = fabs(sum);
+    if (fabs(del) < y * 5e-16) break;
   }
-  return -x + a * log(x) + log(sum);
+  y = log(sum);
+  return -x + a * log(x) + y;
 }
 
 
@@ -76,7 +79,8 @@ INLINE double lnincgam1(double a, double x)
     h *= del;
     if (fabs(del - 1) < 5e-16) break;
   }
-  return -x + a * log(x) + log(h);
+  h = log(h);
+  return -x + a * log(x) + h;
 }
 
 
@@ -85,7 +89,12 @@ INLINE double lnincgam1(double a, double x)
  * where gamma(a, x) = \int_0^x e^(-t) t^(a-1) dt */
 INLINE double lnincgam(double a, double x)
 {
-  return (x < a + 1) ? lnincgam0(a, x) : lndif(lngam(a), lnincgam1(a, x));
+  if (x < a + 1) {
+    return lnincgam0(a, x);
+  } else {
+    double u = lngam(a), v = lnincgam1(a, x);
+    return lndif(u, v);
+  }
 }
 
 
@@ -94,7 +103,12 @@ INLINE double lnincgam(double a, double x)
  * where Gamma(a, x) = \int_x^\infty e^(-t) t^(a-1) dt */
 INLINE double lnincgamup(double a, double x)
 {
-  return (x < a + 1) ? lndif(lngam(a), lnincgam0(a, x)) : lnincgam1(a, x);
+  if (x < a + 1) {
+    double u = lngam(a), v = lnincgam0(a, x);
+    return lndif(u, v);
+  } else {
+    return lnincgam1(a, x);
+  }
 }
 
 
@@ -102,17 +116,23 @@ INLINE double lnincgamup(double a, double x)
 /* return the p-value, or 1 - cdf(x), for KS distribution */
 INLINE double ksq(double x)
 {
-  double y;
+  double y, y4, y8, y24, y48;
+
   die_if (x < 0, "neg. arg. for ksq(x = %g)\n", x);
   if (x < 1e-15) {
     return 1.;
   } else if (x < 1.18) {
     x = 1.110720734539591525 / x;
-    y = exp(-x*x);
-    return 1. - 2.25675833419102515 * x * (y + pow(y, 9) + pow(y, 25) + pow(y, 49));
+    y = exp(-x * x);
+    y8 = pow(y, 8);
+    y24 = y8 * y8 * y8;
+    y48 = y24 * y24;
+    return 1. - 2.25675833419102515 * x * y * (1 + y8 + y24 + y48);
   } else {
-    y = exp(-x*x*2.);
-    return 2.*(y - pow(y, 4) + pow(y, 9));
+    y = exp(-2 * x * x);
+    y4 = y * y * y * y;
+    y8 = y4 * y4;
+    return 2. * (y * (1 + y8) - y4);
   }
 }
 

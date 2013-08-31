@@ -1,7 +1,7 @@
 INCLUDE =
 CC = gcc -O0 -g3 -Wall -Wextra -pedantic -DRV2_DEBUG $(INCLUDE)
 LM = -lm
-CX = icc -O3 -Wall -Wextra $(INCLUDE)
+CX = icc -O3 -Wall -Wremarks -Wcheck $(INCLUDE)
 LMX =
 
 autosrc = rc.h

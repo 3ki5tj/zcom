@@ -1,5 +1,6 @@
-CC=gcc -O0 -g3 -Wall -Wextra -pedantic
+#CC=gcc -O0 -g3 -Wall -Wextra -pedantic
 LM=-lm
+CC=icc -Wall -Wremarks -Wcheck
 
 bin=$(patsubst %.c,%, $(wildcard test*.c))
 

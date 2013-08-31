@@ -40,6 +40,23 @@ INLINE int mtsave(const char *fn)
 
 
 
+/* randomize the array `mt_' */
+INLINE void mtscramble(uint32_t seed)
+{
+  int k;
+
+  if (seed == 0) seed = MTSEED;
+  mt_[0] = seed & 0xfffffffful;
+  for (k = 1; k < MT_N; k++) { /* the final mask is for 64-bit machines */
+    mt_[k] = 1812433253ul * (mt_[k - 1] ^ (mt_[k - 1] >> 30)) + k;
+    /* mt_[k] = (mt_[k] + seed) * 22695477ul + 1ul; */
+    mt_[k] = ((mt_[k] + seed) * 1664525ul + 1013904223ul) & 0xfffffffful;
+  }
+  mtidx_ = MT_N; /* request updating */
+}
+
+
+
 /* load mt state from `fn', or if it fails, use `seed' to initialize mt  */
 INLINE int mtload(const char *fn, uint32_t seed)
 {
@@ -67,13 +84,7 @@ INLINE int mtload(const char *fn, uint32_t seed)
     fclose(fp);
   }
 
-  if (err) { /* initialize from seed */
-    if (seed == 0) seed = MTSEED;
-    mt_[0] = seed & 0xffffffffUL;
-    for (k = 1; k < MT_N; k++) /* the final mask is for 64-bit machines */
-      mt_[k] = (1812433253UL * (mt_[k-1] ^ (mt_[k-1]>>30)) + k) & 0xffffffffUL;
-    mtidx_ = MT_N; /* request updating */
-  }
+  if (err) mtscramble(seed);
   return (mtidx_ < 0);
 }
 
@@ -114,6 +125,8 @@ INLINE uint32_t mtrand(void)
   return x;
 }
 
+
+
 #undef MT_N
 #undef MT_M
 #undef MT_UMASK
@@ -136,7 +149,6 @@ INLINE double grand0(void)
   } while (q > 0.27846 || v*v > -4*u*u*log(u));
   return v/u;
 }
-
 
 
 
@@ -193,7 +205,19 @@ INLINE double randgausssum(int n)
 
 
 
-/* metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
+/* random pair index (i, j) */
+INLINE int randpair(int n, int *j)
+{
+  int pid = (int) (rnd0() * n * (n - 1)), i;
+  i = pid / (n - 1);
+  *j = pid - i * (n - 1);
+  if (*j >= i) (*j)++;
+  return i;
+}
+
+
+
+/* Metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
 INLINE int metroacc0(double r) { r = exp(r); return rnd0() < r; }
 
 /* metropolis acceptance probability rnd0() < exp(- bet * de), assuming bet > 0

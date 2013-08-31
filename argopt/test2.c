@@ -21,6 +21,8 @@ static int argopt_reg(argopt_t *ao, const char *str, void *ptr)
   }
 }
 
+
+
 int main(int argc, char **argv)
 {
   argopt_t *ao;
@@ -28,6 +30,7 @@ int main(int argc, char **argv)
   int n = 0, freq = -1, verbose = 0;
   double x = 1e-31;
   real y = 0;
+  int nset, xset, yset, fset;
 
   ao = argopt_open(0);
   argopt_reg(ao, "!:inputfile", &fn);
@@ -40,9 +43,12 @@ int main(int argc, char **argv)
   argopt_reg(ao, "-x:%lf:a double x", &x);
   argopt_reg(ao, "-y:%r:a real y", &y);
   argopt_parse(ao, argc, argv);
+  nset = argopt_isset(ao, n);
+  xset = argopt_isset(ao, x);
+  yset = argopt_isset(ao, y);
+  fset = argopt_isset(ao, freq);
   printf("fn %s, fn2 %s, verbose %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d\n",
-      fn, fn2, verbose, argopt_set(ao, n),  n, argopt_set(ao, x), x, argopt_set(ao, y), y,
-      argopt_set(ao, freq), freq);
+      fn, fn2, verbose, nset,  n, xset, x, yset, y, fset, freq);
   argopt_close(ao);
   return 0;
 }

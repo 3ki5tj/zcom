@@ -121,13 +121,16 @@ static void vv(void)
 int main(void)
 {
   int i, nmax = 20000;
+  double u, k;
 
   initmd();
   for (i = 0; i < nmax; i++) {
     vv();
     if (i > nmax/2) { av_add(&avU, U); av_add(&avK, K); av_add(&avp, p); }
   }
-  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f\n", av_getave(&avU)/N, av_getave(&avK)/N, av_getave(&avp));
+  u = av_getave(&avU)/N;
+  k = av_getave(&avK)/N;
+  printf("U/N = %6.3f, K/N = %6.3f, p = %6.3f\n", u, k, av_getave(&avp));
   return 0;
 }
 

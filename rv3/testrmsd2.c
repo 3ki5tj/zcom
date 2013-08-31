@@ -9,7 +9,7 @@ real max;
 
 
 /* compute RMSD of two random configurations */
-real foo(int n, int nt)
+static real foo(int n, int nt)
 {
   int i;
   real x[N][3], xf[N][3], y[N][3], r[3][3], t[3], rmsd1, rmsd2, tmp;

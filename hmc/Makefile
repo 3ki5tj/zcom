@@ -1,7 +1,7 @@
 CC = gcc -Wall -Wextra -O0 -g3 -pedantic
 LM = -lm
 # optimized compiling
-CX = icc -Wall -O3
+CX = icc -Wall -Wremarks -Wcheck -O3
 LMX =
 #CX = gcc -Wall -O3 -march=native -mfpmath=sse -funroll-all-loops
 #LMX = -lm

@@ -1,9 +1,8 @@
-#ifndef INLINE
-#define INLINE __inline static
-#endif
 #include "util.h"
 #ifndef LOG_H__
 #define LOG_H__
+
+
 
 typedef struct {
   FILE *fp;
@@ -16,6 +15,8 @@ typedef struct {
 #define LOG_NOWRITEFILE  0x10
 #define LOG_APPEND       0x80
 
+
+
 INLINE logfile_t *log_open(const char *fn)
 {
   logfile_t *log;
@@ -26,6 +27,8 @@ INLINE logfile_t *log_open(const char *fn)
   log->flags = 0;
   return log;
 }
+
+
 
 INLINE int log_printf(logfile_t *log, char *fmt, ...)
 {
@@ -51,12 +54,15 @@ INLINE int log_printf(logfile_t *log, char *fmt, ...)
   return 0;
 }
 
+
+
 INLINE void log_close(logfile_t *log)
 {
   if (log == NULL) return;
   if (log->fp != NULL) { fclose(log->fp); log->fp = NULL; }
   free(log);
 }
+
 
 
 /* close & reopen log file to make sure that stuff is written to disk */

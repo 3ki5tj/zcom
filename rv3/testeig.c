@@ -14,7 +14,7 @@ int rndtest = 1;  /* random matrix test */
 real a[3][3] = {{3.f, 0.f, 0.f}, {0.f, 1.f, 1.f}, {0.f, 1.f, 1.f}};
 
 
-void rm3_rndsym0(real m[3][3])
+static void rm3_rndsym0(real m[3][3])
 {
   int i, j;
 
@@ -92,7 +92,7 @@ static void testrnd(int nrands)
 
     /* compute the determinant of the matrix of eigenvectors */
     det = rm3_det(vecs);
-    del = fabs(fabs(det) - 1);
+    del = (real) fabs(fabs(det) - 1);
     if (del > maxdet) maxdet = del;
     if (del > tol) {
       fprintf(stderr, "fatal: det %g\n", det);
@@ -105,7 +105,7 @@ static void testrnd(int nrands)
 
       /* check the magnitude of vs */
       vn = rv3_norm(vs[i]);
-      del = fabs(vn - fabs(vals[i]));
+      del = (real) fabs(vn - fabs(vals[i]));
       if (del > maxnorm) maxnorm = del;
       if (del > tol) {
         fprintf(stderr, "fatal: eigenvalue %d: norm(vs) = %g vs %g\n", i, vn, vals[i]);
@@ -114,7 +114,7 @@ static void testrnd(int nrands)
 
       /* check if vs[i] is parallel to vecs[i] */
       vn = rv3_dot(vs[i], vecs[i]);
-      del = fabs(vn - vals[i]);
+      del = (real) fabs(vn - vals[i]);
       if (del > maxeig) maxeig = del;
       if (del > tol) {
         fprintf(stderr, "fatal: eigenvalue %d: vs.vec %g vs. %g\n", i, vn, vals[i]);

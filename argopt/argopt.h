@@ -7,6 +7,8 @@
 #include <string.h>
 #include <time.h>
 
+
+
 typedef struct {
   int nopt;
   opt_t *opts;
@@ -24,16 +26,18 @@ typedef struct {
 #define ARGOPT_SET      OPT_SET
 #define ARGOPT_LONGOPT  0x0010  /* always assume long format, e.g., -maxh */
 
+
+
 #define argopt_getopt(ao, p) opt_find(ao->opts, ao->nopt, p)
 #define argopt_getarg argopt_getopt
 
 /* test if argument/option is explicitly set */
-#define argopt_set(ao, var) opt_isset(ao->opts, ao->nopt, &var, #var)
+#define argopt_isset(ao, var) opt_isset(ao->opts, ao->nopt, &var, #var)
 
 
 
 /* initialize the argument structure */
-argopt_t *argopt_open(unsigned flags)
+INLINE argopt_t *argopt_open(unsigned flags)
 {
   argopt_t *ao;
   time_t tmcmpl;
@@ -50,7 +54,7 @@ argopt_t *argopt_open(unsigned flags)
 
 
 
-void argopt_close(argopt_t *ao)
+INLINE void argopt_close(argopt_t *ao)
 {
   if (ao->opts) { free(ao->opts); ao->opts = NULL; }
   free(ao);
@@ -134,7 +138,7 @@ static void argopt_help(argopt_t *ao)
  * sflag: string flag, or NULL for an argument
  * fmt: sscanf() format string, "%b" for a switch, "%r" for real
  * return the index */
-int argopt_add(argopt_t *ao, const char *sflag,
+INLINE int argopt_add(argopt_t *ao, const char *sflag,
     const char *fmt, void *ptr, const char *desc)
 {
   opt_t *o;
@@ -147,8 +151,10 @@ int argopt_add(argopt_t *ao, const char *sflag,
   return n;
 }
 
+
+
 /* main parser of arguments */
-void argopt_parse(argopt_t *ao, int argc, char **argv)
+INLINE void argopt_parse(argopt_t *ao, int argc, char **argv)
 {
   int i, j, k, ch, acnt = 0;
   opt_t *ol = ao->opts;
@@ -233,6 +239,8 @@ void argopt_parse(argopt_t *ao, int argc, char **argv)
     }
   }
 }
+
+
 
 /* dump the current values */
 INLINE void argopt_dump(const argopt_t *ao)

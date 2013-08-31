@@ -180,8 +180,10 @@ INLINE int is2_save(const ising_t *is, const char *fname)
   return 0;
 }
 
+
+
 /* initialize an lxl Ising model */
-ising_t *is2_open(int l)
+INLINE ising_t *is2_open(int l)
 {
   int i, n;
   ising_t *is;
@@ -202,7 +204,7 @@ ising_t *is2_open(int l)
 
 
 
-void is2_close(ising_t *is)
+INLINE void is2_close(ising_t *is)
 {
   if (is != NULL) {
     free(is->s);

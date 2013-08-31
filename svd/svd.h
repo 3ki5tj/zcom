@@ -10,7 +10,7 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
 {
   int flag, i, it, j, jj, k, l, nm;
   real c, f, h, s, x, y, z;
-  real anorm = 0.0, g, scl;
+  real anorm = 0, g, scl;
   real *rv1;
 
   die_if (m < n, "ERROR: m %d < n %d\n", m, n);
@@ -24,14 +24,14 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
     g = s = scl = 0.0;
     if (i < m) {
       for (k = i; k < m; k++)
-        scl += fabs(a[k*n+i]);
+        scl += (real) fabs(a[k*n+i]);
       if (scl > 0.) {
         for (k = i; k < m; k++) {
           a[k*n+i] = x = a[k*n+i]/scl;
           s += x*x;
         }
         f = a[i*n+i];
-        g = (f > 0.) ? -sqrt(s) : sqrt(s);
+        g = (real) ((f > 0.) ? -sqrt(s) : sqrt(s));
         h = f * g - s;
         a[i*n+i] = f - g;
         if (i != n - 1) {
@@ -53,14 +53,14 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
     g = s = scl = 0.0;
     if (i < m && i != n - 1) {
       for (k = l; k < n; k++)
-        scl += fabs(a[i*n+k]);
+        scl += (real) fabs(a[i*n+k]);
       if (scl > 0.) {
         for (k = l; k < n; k++) {
           a[i*n+k] = x = a[i*n+k]/scl;
           s += x*x;
         }
         f = a[i*n+l];
-        g = (f > 0.) ? -sqrt(s) : sqrt(s);
+        g = (real) ((f > 0) ? -sqrt(s) : sqrt(s));
         h = f * g - s;
         a[i*n+l] = f - g;
         for (k = l; k < n; k++)
@@ -77,14 +77,15 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
           a[i*n+k] *= scl;
       }
     }
-    x = fabs(w[i]) + fabs(rv1[i]);
+    x = (real) fabs(w[i]);
+    x += (real) fabs(rv1[i]);
     if (x > anorm) anorm = x;
   }
 
   /* accumulate the right-hand transformation */
   for (i = n - 1; i >= 0; i--) {
     if (i < n - 1) {
-      if (g != 0.) {
+      if (g != 0) {
         for (j = l; j < n; j++)
           v[j*n+i] = ((a[i*n+j] / a[i*n+l]) / g);
         /* real division to avoid underflow */
@@ -108,9 +109,9 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
     l = i + 1;
     g = w[i];
     if (i < n - 1)
-      for (j = l; j < n; j++) a[i*n+j] = 0.0;
-    if (g != 0.) {
-      g = 1.0 / g;
+      for (j = l; j < n; j++) a[i*n+j] = 0;
+    if (g != 0) {
+      g = 1 / g;
       if (i != n - 1) {
         for (j = l; j < n; j++) {
           for (s = 0.0, k = l; k < m; k++)
@@ -148,9 +149,9 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
           f = s * rv1[i];
           if (fabs(f) + anorm == anorm) continue;
           g = w[i];
-          h = dblhypot(f, g);
+          h = (real) dblhypot(f, g);
           w[i] = h;
-          h = 1.0 / h;
+          h = 1 / h;
           c = g * h;
           s = (- f * h);
           for (j = 0; j < m; j++) {
@@ -182,8 +183,8 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
       y = w[nm];
       g = rv1[nm];
       h = rv1[k];
-      f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-      g = dblhypot(f, 1.0);
+      f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2 * h * y);
+      g = (real) dblhypot(f, 1.0);
       if (f < 0.) g = -g;
       f = ((x - z) * (x + z) + h * (y/(f + g) - h)) / x;
 
@@ -195,7 +196,7 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
         y = w[i];
         h = s * g;
         g = c * g;
-        z = dblhypot(f, h);
+        z = (real) dblhypot(f, h);
         rv1[j] = z;
         c = f / z;
         s = h / z;
@@ -209,7 +210,7 @@ INLINE int svd(real *a, real *w, real *v, int m, int n)
           v[jj*n+j] = x * c + z * s;
           v[jj*n+i] = z * c - x * s;
         }
-        w[j] = z = dblhypot(f, h);
+        w[j] = z = (real) dblhypot(f, h);
         if (z > 0.) { c = f/z; s = h/z; }
         f = c * g + s * y;
         x = c * y - s * g;

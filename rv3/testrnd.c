@@ -43,8 +43,10 @@ static void speed_ball(int n)
   printf("rndball0() used %gs\n", (double)(clock() - t)/CLOCKS_PER_SEC);
 
   t = clock();
-  for (i = 0; i < n; i++)
-    rv3_rnddir(v, pow(rnd0(), 1./3));
+  for (i = 0; i < n; i++) {
+    real r = (real) pow(rnd0(), 1./3);
+    rv3_rnddir(v, r);
+  }
   printf("rndball0b() used %gs\n", (double)(clock() - t)/CLOCKS_PER_SEC);
 }
 
@@ -65,7 +67,8 @@ static void print(int n)
 
   fp = fopen("b.dat", "w");
   for (i = 0; i < n; i++) {
-    rv3_rnddir(v, pow(rnd0(), 1./3));
+    real r = (real) pow(rnd0(), 1./3);
+    rv3_rnddir(v, r);
     fprintf(fp, "%g %g %g\n", v[0], v[1], v[2]);
   }
   fclose(fp);

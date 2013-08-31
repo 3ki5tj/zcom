@@ -557,7 +557,7 @@ INLINE void rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
     for (i = 0; i < 3; i++) {
       rv3_copy(us[i], u[i]); /* save a copy of V^T A^T before normalizing it */
       s[i] = rv3_norm(u[i]);
-      if (s[i] > 0.0) rv3_smul(u[i], 1.0/s[i]);
+      if (s[i] > 0) rv3_smul(u[i], 1/s[i]);
     }
     rank = 1;
     rank += (fabs(rv3_dot(u[0], u[1])) < tol && s[1] > tol);
@@ -574,9 +574,9 @@ INLINE void rm3_svd(real a[3][3], real u[3][3], real s[3], real v[3][3])
       if (rank == 1) {
         real z[3] = {0, 0, 0}, w, tmp;
 
-        w = fabs(u[0][i = 0]);
-        if ((tmp = fabs(u[0][1])) < w) w = tmp, i = 1;
-        if ((tmp = fabs(u[0][2])) < w) i = 2;
+        w = (real) fabs(u[0][i = 0]);
+        if ((tmp = (real) fabs(u[0][1])) < w) w = tmp, i = 1;
+        if ((tmp = (real) fabs(u[0][2])) < w) i = 2;
         z[i] = 1.0f; /* select the smallest element in u[0] as z */
         rv3_normalize( rv3_cross(u[1], z, u[0]) );
         s[1] = rv3_dot(u[1], us[1]); /* S = U^T (V^T A^T)^T is more accurate than sqrt(A^T A) */

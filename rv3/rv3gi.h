@@ -15,7 +15,7 @@ INLINE real rv3_solidang(const real *v1, const real *v2, const real *v3,
   real vc[3];
   real r1, r2, r3;
   real ang, vol, den, v2d2, scnum, scden;
-  const real eps = 1e-10;
+  const real eps = (real) 1e-10;
 
   r1 = rv3_norm(v1);
   r2 = rv3_norm(v2);
@@ -31,8 +31,9 @@ INLINE real rv3_solidang(const real *v1, const real *v2, const real *v3,
   vol = rv3_dot(v3, rv3_cross(vc, v1, v2));
 
   /* the denominator */
-  den = r1*rv3_dot(v3, v2) + r2*rv3_dot(v3, v1)
-      + r3*(r1*r2 + rv3_dot(v1, v2));
+  den  = r1 * rv3_dot(v3, v2);
+  den += r2 * rv3_dot(v3, v1);
+  den += r3 * (r1*r2 + rv3_dot(v1, v2));
 
   v2d2 = vol*vol + den*den;
 
@@ -65,7 +66,7 @@ INLINE real rv3_solidang(const real *v1, const real *v2, const real *v3,
   }
 
   /* calculate tan(omega/2) */
-  ang = atan2(vol, den); /* 0 to pi */
+  ang = (real) atan2(vol, den); /* 0 to pi */
   return 2*ang;
 }
 
@@ -129,8 +130,10 @@ INLINE real rv3_solidang2(const real *ri, const real *rip,
    * where
    * den = r1 (r2.r3) + r2 (r1.r3) + r3 (r1.r2) + r1 r2 r3
    * */
-  dn1 = r1*rv3_dot(v0, v2) + r2*rv3_dot(v0, v1) + r0*tmp;
-  dn2 = r1*rv3_dot(v3, v2) + r2*rv3_dot(v3, v1) + r3*tmp;
+  dn1  = r1 * rv3_dot(v0, v2);
+  dn1 += r2 * rv3_dot(v0, v1) + r0 * tmp;
+  dn2  = r1 * rv3_dot(v3, v2);
+  dn2 += r2 * rv3_dot(v3, v1) + r3 * tmp;
 
   /* calculate tan(omega1/2 + omega2/2) */
   dn = (dn1 + dn2)/(dn1*dn2 - vol*vol);
