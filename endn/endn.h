@@ -22,7 +22,7 @@ INLINE int endn_system(void)
 
 
 /* change endianness in-place for n items of size in ptr */
-static void endn_flip(void *ptr, size_t size, size_t n)
+INLINE void endn_flip(void *ptr, size_t size, size_t n)
 {
   unsigned char *p = (unsigned char *) ptr, ch;
   size_t i, r, half = size/2;
@@ -45,7 +45,12 @@ INLINE size_t endn_fwrite(void *ptr, size_t size, size_t n, FILE *fp, int endn)
   static int endsys = -1;
 
   /* initial determine the machine's endianess */
-  if (endsys < 0) endsys = endn_system();
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+  {
+    if (endsys < 0) endsys = endn_system();
+  }
   if (endn == endsys) return fwrite(ptr, size, n, fp);
 
   endn_flip(ptr, size, n);

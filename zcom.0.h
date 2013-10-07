@@ -116,7 +116,8 @@
 #endif
 
 #ifdef __INTEL_COMPILER
-  #pragma warning(disable:981) /* unspecified order warning */
+  #pragma warning push
+  #pragma warning(disable:981) /* unspecified order of operands */
   #pragma warning(disable:177) /* unreferenced function */
   #pragma warning(disable:161) /* unrecognized #pragma, for omp */
 #elif defined(__GNUC__) && (__GNUC__ >= 4 && __GNUC_MINOR__ >= 2)
@@ -125,12 +126,17 @@
 #endif
 
 #ifdef _MSC_VER
+  #pragma warning(push)
   #pragma warning(disable:4127) /* conditional expression constant */
   #pragma warning(disable:4505) /* unreferenced function */
   #pragma warning(disable:4514) /* unreferenced inline */
   #pragma warning(disable:4710) /* not inlined */
   #define _CRT_SECURE_NO_DEPRECATE /* suppress CRT safety warnings */
   #include <stdio.h>
+#endif
+
+#ifdef _OPENMP
+#include <omp.h>
 #endif
 
 #ifndef M_PI
@@ -140,3 +146,12 @@
 /* In addition to ZCOM_ABC, we have to define another macro ZCOM_ABC__
  * to allow multiple inclusions. */
 
+
+/* finishing up */
+#ifdef __INTEL_COMPILER
+  #pragma warning pop
+#endif
+
+#ifdef _MSC_VER
+  #pragma warning(pop)
+#endif

@@ -2,9 +2,15 @@
 #ifndef EIG_H__
 #define EIG_H__
 
+#ifdef __INTEL_COMPILER
+#pragma warning push
+#pragma warning(disable:1572) /* float-point comparison */
+#endif
+
+
 /* To reduce a real symmetric matrix 'm' to tridiagonal by Householder transformations.
  * The diagonal elements are saved in vector 'd' and off-diagonal elements 'e'.  */
-static void tridiag(real *m, real d[], real e[], int n)
+INLINE void tridiag(real *m, real d[], real e[], int n)
 {
   int i, j, k;
   real H, sigma, p, K, *x;
@@ -82,7 +88,7 @@ static void tridiag(real *m, real d[], real e[], int n)
 /* diagonalize the tridiagonal matrix by QR algorithm,
    whose diagonal is d[0..n-1], off-diagonal is e[0..n-2];
  * reduce from the left-top to right-left */
-static void eigtriqr(real d[], real e[], int n, real *mat)
+INLINE void eigtriqr(real d[], real e[], int n, real *mat)
 {
   const int itermax = 1000;
   int i, j, k, m, iter, sgn;
@@ -152,7 +158,7 @@ static void eigtriqr(real d[], real e[], int n, real *mat)
 
 
 /* sort eigenvalues and eigenvectors in ascending order */
-static void eigsort(real *d, real *v, int n)
+INLINE void eigsort(real *d, real *v, int n)
 {
   int i, j, im;
   real max, tmp;
@@ -187,6 +193,11 @@ INLINE int eigsym(real *mat, real *d, real *v, int n)
   free(e);
   return 0;
 }
+
+
+#ifdef __INTEL_COMPILER
+#pragma warning pop
+#endif
 
 
 #endif /* EIG_H__ */

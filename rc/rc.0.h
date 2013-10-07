@@ -15,7 +15,7 @@ typedef struct { real re, im; } rcomplex_t;
 
 #if 0
 /* complex zero */
-static rcomplex_t rc_zero = {0.f, 0.f};
+static const rcomplex_t rc_zero = {0.f, 0.f};
 #endif
 
 

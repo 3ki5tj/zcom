@@ -6,7 +6,7 @@ CC = gcc -Wall -Wextra -O0 -g3 -pedantic -lm
 CX = icc -Wall -Wremarks -Wcheck -O3 -g -vec_report0 -fno-alias -fargument-noalias
 #CX = gcc -Wall -O3 -g -march=pentium4 -mfpmath=sse -funroll-all-loops -lm -Wstrict-aliasing -fstrict-aliasing
 
-deps = Makefile
+deps = Makefile rng.h util.h
 bin = $(patsubst %.c,%, $(wildcard test*.c)) \
       $(patsubst %.c,%_d, $(wildcard test*.c))
 

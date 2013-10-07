@@ -4,6 +4,10 @@
 #ifndef RESTRICT
 #define RESTRICT __restrict
 #endif
+#ifdef __INTEL_COMPILER
+/* operands evaluated in unspecified order */
+#pragma warning(disable:981)
+#endif
 #ifndef UTIL_H__
 #define UTIL_H__
 #include <stdio.h>
@@ -63,6 +67,15 @@
   typedef unsigned short      uint16_t;
   typedef unsigned            uint32_t;
   typedef unsigned long long  uint64_t;
+#endif
+
+
+
+/* constant 64-bit integer */
+#ifdef _MSC_VER
+#define CI64(x) (x ## i64)
+#else
+#define CI64(x) (x ## ll)
 #endif
 
 

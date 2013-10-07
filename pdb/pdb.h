@@ -225,7 +225,7 @@ INLINE void pdbxswitchunit(rv3_t *x, int n, int *unitnm, int nm2a)
 
 
 /* read raw atom data from pdb */
-static pdbmodel_t *pdbm_readpdb(const char *fn)
+INLINE pdbmodel_t *pdbm_readpdb(const char *fn)
 {
   const int BSIZ = 256;
   FILE *fp;
@@ -299,7 +299,7 @@ static pdbmodel_t *pdbm_readpdb(const char *fn)
 
 
 /* read from GROMACS .gro format */
-static pdbmodel_t *pdbm_readgro(const char *fn)
+INLINE pdbmodel_t *pdbm_readgro(const char *fn)
 {
   FILE *fp;
   pdbmodel_t *m;

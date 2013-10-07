@@ -211,8 +211,12 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
     double (*fnorm)(int r, int ix, double xmin, double dx, void *data),
     void *pdata, unsigned flags)
 {
+  static char s[40960] = "";
+#ifdef _OPENMP
+#pragma omp threadprivate(s)
+#endif
   FILE *fp;
-  static char s[40960] = "", *p;
+  char *p;
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;

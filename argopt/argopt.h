@@ -63,7 +63,7 @@ INLINE void argopt_close(argopt_t *ao)
 
 
 /* print version and die */
-static void argopt_version(argopt_t *ao)
+INLINE void argopt_version(argopt_t *ao)
 {
   fprintf(stderr, "%s: %s, version %d\n",
       ao->prog, ao->desc ? ao->desc : "", ao->version);
@@ -73,8 +73,10 @@ static void argopt_version(argopt_t *ao)
   exit(1);
 }
 
+
+
 /* print help message and die */
-static void argopt_help(argopt_t *ao)
+INLINE void argopt_help(argopt_t *ao)
 {
   int i, len, maxlen;
   opt_t *o;

@@ -3,7 +3,7 @@
 #define N  3
 
 /* b = m * a */
-void matmul(double *b, const double *m, const double *a, int n, int c)
+static void matmul(double *b, const double *m, const double *a, int n, int c)
 {
   int i, j;
   for (i = 0; i < n; i++) {

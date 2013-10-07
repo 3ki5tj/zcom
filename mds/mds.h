@@ -11,7 +11,7 @@
 real mds_min0(real *x, real *dm, int n, int dim, double tol);
 
 /* compute force and energy */
-static real mds_force(real *x, real *f, real *dm, int n, int dim)
+INLINE real mds_force(real *x, real *f, real *dm, int n, int dim)
 {
   const real dmin = 1e-6f;
   int i, j, k;
@@ -51,7 +51,7 @@ static real mds_force(real *x, real *f, real *dm, int n, int dim)
 /* make coordinates neat
  * center coordinates
  * rotate to principle coordinates */
-static void mds_trim(real *x, int n, int dim)
+INLINE void mds_trim(real *x, int n, int dim)
 {
   real *av, *mmt, *eig, *vec, *xi, *b;
   int i, d, d2;

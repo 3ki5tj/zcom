@@ -8,6 +8,8 @@
 #include <GL/glut.h>
 #endif
 
+
+
 static int glez_x, glez_y; /* current position */
 static int glez_msdown; /* mouse state */
 
@@ -74,11 +76,25 @@ static void (*glez_user_motionfunc)(int w, int h) = NULL;
 
 
 
+#ifdef _OPENMP
+#pragma omp threadprivate(glez_x, glez_y, glez_msdown)
+#pragma omp threadprivate(glez_user_menukey)
+#pragma omp threadprivate(glez_user_reshapefunc)
+#pragma omp threadprivate(glez_user_menufunc)
+#pragma omp threadprivate(glez_user_keyboardfunc)
+#pragma omp threadprivate(glez_user_mousefunc)
+#pragma omp threadprivate(glez_user_motionfunc)
+#endif
+
+
 
 /* toggle full screen state */
 INLINE void glez_fullscreen(void)
 {
   static int full = 0, x, y, w, h;
+#ifdef _OPENMP
+#pragma omp threadprivate(full, x, y, w, h)
+#endif
 
   full = !full;
   if (full) {
@@ -97,7 +113,7 @@ INLINE void glez_fullscreen(void)
 
 /* standard reshape function for GLUT
  * x: (-1, 1), y: (-1, 1), z: (-10, 10) */
-static void glez_reshapefunc(int w, int h)
+INLINE void glez_reshapefunc(int w, int h)
 {
   double xs = 1, ys = 1, zs = 10;
 
@@ -115,7 +131,7 @@ static void glez_reshapefunc(int w, int h)
 
 
 /* menu function */
-static void glez_menufunc(int id)
+INLINE void glez_menufunc(int id)
 {
   GLfloat mat[4][4], amp;
 
@@ -148,7 +164,7 @@ static void glez_menufunc(int id)
 
 
 /* recursively match short-cut keys */
-static int glez_keylow(unsigned char c, glez_menukey_t *mk)
+INLINE int glez_keylow(unsigned char c, glez_menukey_t *mk)
 {
   int i;
 
@@ -170,7 +186,7 @@ static int glez_keylow(unsigned char c, glez_menukey_t *mk)
 
 
 /* system keyboard function */
-static void glez_keyboardfunc(unsigned char c, int x, int y)
+INLINE void glez_keyboardfunc(unsigned char c, int x, int y)
 {
   if (glez_keylow(c, glez_menukey)) return;
   if (glez_keylow(c, glez_user_menukey)) return;
@@ -181,7 +197,7 @@ static void glez_keyboardfunc(unsigned char c, int x, int y)
 
 
 /* create a menu hierarchy as specified by mk */
-static void glez_addmenu(glez_menukey_t *mk)
+INLINE void glez_addmenu(glez_menukey_t *mk)
 {
   int i, menuid, subid;
   char s[64];
@@ -221,7 +237,7 @@ void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
 
 
 
-static void glez_mousefunc(int button, int state, int x, int y)
+INLINE void glez_mousefunc(int button, int state, int x, int y)
 {
   if (state == GLUT_DOWN) {
     glez_msdown++;
@@ -240,7 +256,7 @@ static void glez_mousefunc(int button, int state, int x, int y)
 
 
 /* mouse motion function for GLUT */
-static void glez_motionfunc(int x, int y)
+INLINE void glez_motionfunc(int x, int y)
 {
   if (x == glez_x && y == glez_y) return;
   if (glez_msdown) {

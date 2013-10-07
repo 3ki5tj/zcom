@@ -249,8 +249,12 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     int m, double ymin, double dy, unsigned flags, const char *fn)
 {
+  static char s[40960] = "";
+#ifdef _OPENMP
+#pragma omp threaprivate(s)
+#endif
   FILE *fp;
-  static char s[40960] = "", *p;
+  char *p;
   int verbose = (flags & HIST_VERBOSE);
   int add = (flags & HIST_ADDITION);
   int ver, next, hashist;

@@ -4,7 +4,7 @@
 
 /* register an option/argument in the shortcut formt
  * maybe not so intuitive */
-static int argopt_reg(argopt_t *ao, const char *str, void *ptr)
+INLINE int argopt_reg(argopt_t *ao, const char *str, void *ptr)
 {
   char *fmt, *desc, *opt;
 

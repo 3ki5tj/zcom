@@ -267,10 +267,20 @@ def mkanchors(shost, srcls):
     print "cannot find dependencies"
     raise Exception
 
+  # 3. find the ending mark
+  for i in range(a1+1, len(shost)):
+    if "/* finishing up */" in shost[i]:
+      a2 = i
+      break
+  else:
+    print "cannot find the ending"
+    raise Exception
+
   ls1 = []
   ls2 = []
   for mod, macro in srcls:
     # determine if a module is an ANSI one
+    # e.g. the module `glez' is not an ANSI one
     ansi = 1
     readme = os.path.join(mod, "README")
     if os.path.exists(readme):
@@ -286,12 +296,22 @@ def mkanchors(shost, srcls):
         if not ansi: break
     # add to ZCOM_PICK block only for an ANSI block
     if ansi:
-      ls1 += ["  #ifndef %s\n" % macro, "  #define %s\n" % macro, "  #endif\n"]
-    ls2 += ["#ifdef  %s\n" % macro, "#ifndef %s__\n" % macro, "#define %s__\n" %macro,
-        "\n", "#endif /* %s__ */\n" % macro, "#endif /* %s */\n" % macro,
-        ]  + ["\n", ] * 5
+      ls1 += ["  #ifndef %s\n" % macro,
+              "  #define %s\n" % macro,
+              "  #endif\n"]
+    ls2 += ["#ifdef  %s\n" % macro,
+            "#ifndef %s__\n" % macro,
+            "#define %s__\n" %macro,
+            "\n",
+            "#endif /* %s__ */\n" % macro,
+            "#endif /* %s */\n" % macro,
+           ]  + ["\n", ] * 5
 
-  return shost[:a0] + ls1 + shost[a0:a1] + lsdeps + shost[a1:] + ls2, srcls
+  return (shost[   : a0] + ls1
+        + shost[a0 : a1] + lsdeps
+        + shost[a1 : a2] + ls2
+        + shost[a2 :   ],
+          srcls)
 
 
 
@@ -299,7 +319,7 @@ def integrate(srcls, lines):
   ''' integrate a list `srcls' of source code into
       the template `lines' '''
 
-  # 1. add anchors and dependencies
+  # 1. add anchors and dependencies to the template
   lines, srcls = mkanchors(lines, srcls)
 
   modcnt = 0
@@ -343,7 +363,7 @@ def integrate(srcls, lines):
     # 5. remove C++ (debug) commments
     src = remove_cpp_comments(src)
 
-    # 6. insert the source code into the host
+    # 6. insert the source code into the host template
     lines = insert_module(lines, modNM, src)
 
     modcnt += 1

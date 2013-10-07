@@ -52,7 +52,7 @@ INLINE real lj_force(lj_t *lj);
 
 
 /* initialize a fcc lattice */
-static void lj_initfcc2d(lj_t *lj)
+INLINE void lj_initfcc2d(lj_t *lj)
 {
   int i, j, id, n1, n = lj->n;
   real a;
@@ -71,7 +71,7 @@ static void lj_initfcc2d(lj_t *lj)
 
 
 /* initialize a fcc lattice */
-static void lj_initfcc3d(lj_t *lj)
+INLINE void lj_initfcc3d(lj_t *lj)
 {
   int i, j, k, id, n1, n = lj->n;
   real a;
@@ -512,7 +512,7 @@ INLINE real lj_potsw(lj_t *lj, real r, real *fscal, real *psi, real *xi)
 
 
 /* 3D energy for square, lj members are not altered */
-static int lj_energysq3d(lj_t *lj, rv3_t *x, real *rmin)
+INLINE int lj_energysq3d(lj_t *lj, rv3_t *x, real *rmin)
 {
   real dx[3], dr2, ra2 = lj->ra2, rb2 = lj->rb2, l = lj->l, rm2 = 1e30;
   int i, j, iu = 0, n = lj->n, col = 0;
@@ -567,7 +567,7 @@ INLINE real lj_energysw3d(lj_t *lj, rv3_t *x, real *virial, real *laplace)
 
 
 /* 3D compute force and virial, return energy */
-static real lj_energylj3d(lj_t *lj, rv3_t *x, real *virial, real *ep0, real *eps)
+INLINE real lj_energylj3d(lj_t *lj, rv3_t *x, real *virial, real *ep0, real *eps)
 {
   real dx[3], dr2, dr6, ep, vir, l = lj->l, rc2 = lj->rc2;
   int i, j, prcnt = 0, n = lj->n;
@@ -698,7 +698,7 @@ INLINE real lj_forcesw3d(lj_t *lj, rv3_t *x, rv3_t *f, ljpair_t *pr,
 
 
 /* 3D compute force and virial, return energy */
-static real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
+INLINE real lj_forcelj3d(lj_t *lj, rv3_t *x, rv3_t *f, real *virial,
     real *ep0, real *eps, real *f2, real *laplace)
 {
   real dx[3], fi[3], dr2, dr6, fs, tmp, ep, vir, lap, l = lj->l, rc2 = lj->rc2;

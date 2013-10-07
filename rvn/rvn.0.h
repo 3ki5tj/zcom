@@ -113,6 +113,11 @@ INLINE void rvn_swap(real * RESTRICT x, real * RESTRICT y)
 #define rvn_sqr(x) rvn_dot(x, x)
 #define rvn_norm(x) (real) sqrt(rvn_sqr(x))
 
+#if DM == 2
+#define rvn_dot(x, y) rv2_dot(x, y)
+#elif DM == 3
+#define rvn_dot(x, y) rv3_dot(x, y)
+#else
 INLINE real rvn_dot(const real *x, const real *y)
 {
   int i;
@@ -122,6 +127,7 @@ INLINE real rvn_dot(const real *x, const real *y)
   for (i = 0; i < DM; i++) dot += x[i] * y[i];
   return dot;
 }
+#endif
 
 
 
@@ -240,17 +246,17 @@ INLINE real *rvn_diff(real * RESTRICT c, const real *a, const real *b)
 
 
 /* distance^2 between a and b */
+#if DM == 2
+#define rvn_dist2(a, b) rv2_dist2(a, b)
+#elif DM == 3
+#define rvn_dist2(a, b) rv3_dist2(a, b)
+#else
 INLINE real rvn_dist2(const real *a, const real *b)
 {
-#if DM == 2
-  return rv2_dist2(a, b);
-#elif DM == 3
-  return rv3_dist2(a, b);
-#else
   rvn_t d;
   return rvn_sqr(rvn_diff(d, a, b));
-#endif
 }
+#endif
 
 
 
@@ -383,14 +389,14 @@ INLINE real *rvn_rnd(real *v, real a, real b)
 
 
 
+#if DM == 2
+#define rvn_rnddisp(x, x0, a) rv2_rnddisp(x, x0, a)
+#elif DM == 3
+#define rvn_rnddisp(x, x0, a) rv3_rnddisp(x, x0, a)
+#else
 /* displace `x0' by a random vector in [-a, a)^D */
 INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
 {
-#if DM == 2
-  return rv2_rnddisp(x, x0, a);
-#elif DM == 3
-  return rv3_rnddisp(x, x0, a);
-#else
   int i;
 
   for (i = 0; i < D; i++)
@@ -399,8 +405,8 @@ INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
   for (i = D; i < DM; i++) x[i] = (real) 0;
 #endif
   return x;
-#endif
 }
+#endif
 
 
 
@@ -435,13 +441,13 @@ INLINE real *rvn_grand(real *v, real c, real r)
 
 
 /* displace `x0' by a normally-distributed random vector */
+#if DM == 2
+#define rvn_granddisp(x, x0, a) rv2_granddisp(x, x0, a)
+#elif DM == 3
+#define rvn_granddisp(x, x0, a) rv3_granddisp(x, x0, a)
+#else
 INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 {
-#if DM == 2
-  return rv2_granddisp(x, x0, a);
-#elif DM == 3
-  return rv3_granddisp(x, x0, a);
-#else
   int i;
 
   for (i = 0; i < D; i++)
@@ -450,8 +456,8 @@ INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
   for (i = D; i < DM; i++) x[i] = (real) 0;
 #endif
   return x;
-#endif
 }
+#endif
 
 
 

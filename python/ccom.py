@@ -20,7 +20,20 @@ def getfunc(lines, funcname):
       break
     if (s.startswith("#define") and
         s[7:].strip().startswith(funcname + "(") ):
-      ismacro = 1
+      ''' detect a composite block
+        #if DM == 2
+        #define funcname()
+        #else ...
+        INLINE ... funcname()
+        {
+        }
+        #endif
+      '''
+      if i0 > 0 and lines[i0 - 1].startswith("#if"):
+        print "%s in a composite block" % funcname
+        ismacro = 2
+      else:
+        ismacro = 1
       break
   else:
     print "cannot find function start of %s" % funcname
@@ -28,8 +41,11 @@ def getfunc(lines, funcname):
 
   # 2. search the end of the function
   for i1 in range(i0, len(lines)):
-    if ismacro: # macro
+    if ismacro == 1: # regular macro
       if lines[i1].strip() == "" or lines[i1].strip()[-1] != "\\":
+        break
+    elif ismacro == 2:
+      if lines[i1].strip().startswith("#endif") and lines[i1 - 1].strip() == "}":
         break
     else:  #  function
       if lines[i1].rstrip() == '}':

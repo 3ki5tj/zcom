@@ -218,8 +218,8 @@ INLINE real *rv3_diff(real * RESTRICT c, const real *a, const real *b)
 /* distance^2 between a and b */
 INLINE real rv3_dist2(const real *a, const real *b)
 {
-  real d[3];
-  return rv3_sqr(rv3_diff(d, a, b));
+  real d0 = a[0] - b[0], d1 = a[1] - b[1], d2 = a[2] - b[2];
+  return d0*d0 + d1*d1 + d2*d2;
 }
 
 
@@ -227,7 +227,8 @@ INLINE real rv3_dist2(const real *a, const real *b)
 /* distance between a and b */
 INLINE real rv3_dist(const real *a, const real *b)
 {
-  return (real) sqrt(rv3_dist2(a, b));
+  real d0 = a[0] - b[0], d1 = a[1] - b[1], d2 = a[2] - b[2];
+  return (real) sqrt(d0*d0 + d1*d1 + d2*d2);
 }
 
 
