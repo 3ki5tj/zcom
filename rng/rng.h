@@ -59,8 +59,6 @@ mtrng_t *mr_ = &mrstock_;
 
 
 
-#define mtrng_open(seed) { mtrng_open0(); mtrng_scramble(seed); }
-
 INLINE mtrng_t *mtrng_open0(void)
 {
   mtrng_t *mr;
@@ -100,14 +98,22 @@ INLINE void mtrng_scramble(mtrng_t *mr, uint32_t seed)
 {
   int k;
 
-  if (seed == 0) seed = MTSEED;
-  mr->arr[0] = seed & 0xfffffffful;
+  mr->arr[0] = ((seed + MTSEED) * 314159265ul + 271828183ul) & 0xfffffffful;
   for (k = 1; k < MT_N; k++) { /* the final mask is for 64-bit machines */
     mr->arr[k] = 1812433253ul * (mr->arr[k - 1] ^ (mr->arr[k - 1] >> 30)) + k;
     /* mr->arr[k] = (mr->arr[k] + seed) * 22695477ul + 1ul; */
-    mr->arr[k] = ((mr->arr[k] + seed) * 1664525ul + 1013904223ul) & 0xfffffffful;
+    mr->arr[k] = ((mr->arr[k] + seed) * 314159265ul + 1ul) & 0xfffffffful;
   }
   mr->idx = MT_N; /* request for an update */
+}
+
+
+
+INLINE mtrng_t *mtrng_open(uint32_t seed)
+{
+  mtrng_t *mr = mtrng_open0();
+  mtrng_scramble(mr, seed);
+  return mr;
 }
 
 
@@ -154,6 +160,7 @@ INLINE int mtrng_load(mtrng_t *mr, const char *fn, uint32_t seed)
 INLINE uint32_t mtrng_rand(mtrng_t *mr)
 {
   static const uint32_t mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
+#pragma omp threadprivate(mag01)
   uint32_t x;
   int k;
 

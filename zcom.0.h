@@ -121,6 +121,11 @@
   #pragma warning(disable:177) /* unreferenced function */
   #pragma warning(disable:161) /* unrecognized #pragma, for omp */
 #elif defined(__GNUC__) && (__GNUC__ >= 4 && __GNUC_MINOR__ >= 2)
+  /* Note: intel compiler also defines __GNUC__ */
+  #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+    /* diagonistic push and pop are added in GCC 4.6 */
+    #pragma GCC diagnostic push
+  #endif
   #pragma GCC diagnostic ignored "-Wunknown-pragmas"
   #pragma GCC diagnostic ignored "-Wvariadic-macros"
 #endif
@@ -150,6 +155,9 @@
 /* finishing up */
 #ifdef __INTEL_COMPILER
   #pragma warning pop
+#elif defined(__GNUC__) && ( __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
+  /* diagonistic push and pop are added in GCC 4.6 */
+  #pragma GCC diagnostic pop
 #endif
 
 #ifdef _MSC_VER

@@ -200,9 +200,11 @@ INLINE void argopt_parse(argopt_t *ao, int argc, char **argv)
           argopt_version(ao);
       }
 
-      if (ol[k].flags & OPT_SWITCH) {
+      if (ol[k].flags & OPT_SWITCH) { /* handle switches "%b" */
         ol[k].flags |= OPT_SET;
-        *((int *) ol[k].ptr) = 1;
+        /* switch the default value, note this flag may be passed
+         * several times, so we don't want to flip around */
+        *((int *) ol[k].ptr) = !ol[k].ival;
         if (islong) break; /* go to the next argument argv[i+1] */
       } else { /* look for the additional argument for this */
         int hasv = 0;

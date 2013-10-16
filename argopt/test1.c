@@ -5,7 +5,7 @@ int main(int argc, char **argv)
   argopt_t *ao;
   const char *fn = NULL;
   char *str = NULL;
-  int n = 0, freq = -1, verbose = 0;
+  int n = 0, freq = -1, verbose = 0, turnedon = 1, nummax = 1000;
   double x = 1e-31;
   real y = 0;
   int nset, xset, yset, fset;
@@ -23,7 +23,9 @@ int main(int argc, char **argv)
 
   /* argopt_add() == argopt_regopt() */
   argopt_add(ao, "--verbose", "%b", &verbose, "verbose");
+  argopt_add(ao, "--off", "%b", &turnedon, "turn off");
   argopt_add(ao, "--freq", "%d", &freq, "frequency of saving files");
+  argopt_add(ao, "--num-max", "%d", &nummax, "maximal number");
   argopt_add(ao, "-n", "!%d", &n, "an integer n");
   argopt_add(ao, "-x", "%lf", &x, "a double x");
   argopt_add(ao, "-y", "%r", &y, "a real y");
@@ -36,8 +38,8 @@ int main(int argc, char **argv)
   xset = argopt_isset(ao, x);
   yset = argopt_isset(ao, y);
   fset = argopt_isset(ao, freq);
-  printf("fn %s, verbose %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d, str ``%s''\n",
-      fn, verbose, nset, n, xset, x, yset, y, fset, freq, str);
+  printf("fn %s, verbose %d, turnedon %d, nummax %d, n[%d] %d, x[%d] %g, y[%d] %g, freq[%d] %d, str ``%s''\n",
+      fn, verbose, turnedon, nummax, nset, n, xset, x, yset, y, fset, freq, str);
   argopt_close(ao);
   return 0;
 }

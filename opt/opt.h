@@ -17,6 +17,7 @@ typedef struct {
   const char *fmt; /* sscanf format */
   const char *pfmt; /* printf format, NULL: to guess */
   void *ptr; /* address to the target variable */
+  int ival; /* initial value, for switches */
   unsigned flags;
 } opt_t;
 
@@ -36,6 +37,10 @@ INLINE int opt_getval(opt_t *o)
     *((const char **) o->ptr) = o->val;
   } else if (strcmp(fmt, "%s") == 0) { /* copy the string */
     sscpy( *((char **) o->ptr), o->val);
+  } else if (strcmp(fmt, "%b") == 0) { /* switch */
+    /* switch the default value */
+    if (o->flags & OPT_SET) return !o->ival;
+    else return o->ival;
   } else { /* call sscanf */
     if (strcmp(fmt, "%r") == 0) /* real */
       fmt = (sizeof(real) == sizeof(float)) ? "%f" : "%lf";
@@ -91,6 +96,7 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
   if (strcmp(fmt, "%b") == 0) {
     fmt = "%d";
     o->flags |= OPT_SWITCH;
+    o->ival = *((int *) ptr); /* save the initial value */
   }
   o->fmt = fmt;
   o->pfmt = NULL;
