@@ -41,6 +41,8 @@ mtrng_t *mr_ = &mrstock_;
   if (mr_ == &mrstock_) mr_ = mtrng_open0(); \
   mtrng_scramble(mr_, seed); }
 
+/* free the default RNG */
+#define mtclosedef() { if (mr_ != &mrstock_) mtrng_close(mr_); }
 
 
 /* default versions */
@@ -160,7 +162,9 @@ INLINE int mtrng_load(mtrng_t *mr, const char *fn, uint32_t seed)
 INLINE uint32_t mtrng_rand(mtrng_t *mr)
 {
   static const uint32_t mag01[2] = {0, 0x9908b0dfUL}; /* MATRIX_A */
+#ifdef _OPENMP
 #pragma omp threadprivate(mag01)
+#endif
   uint32_t x;
   int k;
 

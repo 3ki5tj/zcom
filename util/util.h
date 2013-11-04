@@ -72,10 +72,12 @@
 
 
 /* constant 64-bit integer */
-#ifdef _MSC_VER
-#define CI64(x) (x ## i64)
+#if defined(_MSC_VER) || defined(__BORLANDC__)
+  #define CI64(x) (x ## i64)
+  #define CU64(x) (x ## ui64)
 #else
-#define CI64(x) (x ## ll)
+  #define CI64(x) (x ## ll)
+  #define CU64(x) (x ## ull)
 #endif
 
 

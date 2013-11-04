@@ -140,6 +140,11 @@
   #include <stdio.h>
 #endif
 
+#ifdef __BORLANDC__
+  #pragma warning(push)
+  #pragma warn -8027 /* not expanded inlined */
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
