@@ -89,63 +89,123 @@
   #ifndef PRId32
   #define PRId32 "I32d"
   #endif
+  #ifndef SCNd32
+  #define SCNd32 "I32d"
+  #endif
   #ifndef PRIi32
   #define PRIi32 "I32i"
+  #endif
+  #ifndef SCNi32
+  #define SCNi32 "I32i"
   #endif
   #ifndef PRIu32
   #define PRIu32 "I32u"
   #endif
+  #ifndef SCNu32
+  #define SCNu32 "I32u"
+  #endif
   #ifndef PRIo32
   #define PRIo32 "I32o"
+  #endif
+  #ifndef SCNo32
+  #define SCNo32 "I32o"
   #endif
   #ifndef PRIx32
   #define PRIx32 "I32x"
   #endif
+  #ifndef SCNx32
+  #define SCNx32 "I32x"
+  #endif
   #ifndef PRId64
   #define PRId64 "I64d"
+  #endif
+  #ifndef SCNd64
+  #define SCNd64 "I64d"
   #endif
   #ifndef PRIi64
   #define PRIi64 "I64i"
   #endif
+  #ifndef SCNi64
+  #define SCNi64 "I64i"
+  #endif
   #ifndef PRIu64
   #define PRIu64 "I64u"
+  #endif
+  #ifndef SCNu64
+  #define SCNu64 "I64u"
   #endif
   #ifndef PRIo64
   #define PRIo64 "I64o"
   #endif
+  #ifndef SCNo64
+  #define SCNo64 "I64o"
+  #endif
   #ifndef PRIx64
   #define PRIx64 "I64x"
+  #endif
+  #ifndef SCNx64
+  #define SCNx64 "I64x"
   #endif
 #else
   #ifndef PRId32
   #define PRId32 "d"
   #endif
+  #ifndef SCNd32
+  #define SCNd32 "d"
+  #endif
   #ifndef PRIi32
   #define PRIi32 "i"
+  #endif
+  #ifndef SCNi32
+  #define SCNi32 "i"
   #endif
   #ifndef PRIu32
   #define PRIu32 "u"
   #endif
+  #ifndef SCNu32
+  #define SCNu32 "u"
+  #endif
   #ifndef PRIo32
   #define PRIo32 "o"
+  #endif
+  #ifndef SCNo32
+  #define SCNo32 "o"
   #endif
   #ifndef PRIx32
   #define PRIx32 "x"
   #endif
+  #ifndef SCNx32
+  #define SCNx32 "x"
+  #endif
   #ifndef PRId64
   #define PRId64 "lld"
+  #endif
+  #ifndef SCNd64
+  #define SCNd64 "lld"
   #endif
   #ifndef PRIi64
   #define PRIi64 "lli"
   #endif
+  #ifndef SCNi64
+  #define SCNi64 "lli"
+  #endif
   #ifndef PRIu64
   #define PRIu64 "llu"
+  #endif
+  #ifndef SCNu64
+  #define SCNu64 "llu"
   #endif
   #ifndef PRIo64
   #define PRIo64 "llo"
   #endif
+  #ifndef SCNo64
+  #define SCNo64 "llo"
+  #endif
   #ifndef PRIx64
   #define PRIx64 "llx"
+  #endif
+  #ifndef SCNx64
+  #define SCNx64 "llx"
   #endif
 #endif
 
