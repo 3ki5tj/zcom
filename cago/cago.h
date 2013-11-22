@@ -7,6 +7,8 @@
 #ifndef CAGO_H__
 #define CAGO_H__
 
+
+
 /* alpha-carbon based Go-model */
 typedef struct {
   int n; /* number of residues */
@@ -33,6 +35,8 @@ typedef struct {
   rv3_t *x, *v, *f, *x1;
   real ekin, tkin, epot;
 } cago_t;
+
+
 
 #define CAGO_VERBOSE 0x1000
 
@@ -153,7 +157,7 @@ INLINE void cago_setfparam(cago_t *go, real kb, real ka, real kd1, real kd3,
 
 /* return a pointer to cago_t from PDB file `fnpdb'
  * cago_open1() + bond parameters */
-cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
+INLINE cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
     real nbe, real nbc, real rcc, int ctype, int nsexcl, unsigned flags)
 {
   cago_t *go = cago_open1(fnpdb, rcc, ctype, nsexcl, flags);
@@ -165,7 +169,7 @@ cago_t *cago_open(const char *fnpdb, real kb, real ka, real kd1, real kd3,
 
 
 /* destroy cago_t */
-void cago_close(cago_t *go)
+INLINE void cago_close(cago_t *go)
 {
   if (go->x) free(go->x);
   if (go->v) free(go->v);

@@ -3,16 +3,11 @@ LM=-lm
 CC=icc -O2 -Wall -Wremarks -Wcheck
 deps=util.h mds.h
 
-bin=test1
-all: $(bin)
+bins = $(patsubst %.c,%, $(wildcard test*.c))
+
+all: $(bins)
 
 test1: test1.c $(deps)
-	$(CC) -o $@ $< $(LM)
-
-testsqr: testsqr.c $(deps)
-	$(CC) -o $@ $< $(LM)
-
-testsvdsolve: testsvdsolve.c $(deps)
 	$(CC) -o $@ $< $(LM)
 
 clean:

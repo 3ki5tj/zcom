@@ -10,7 +10,7 @@ $(bin): %: %.c util.h util.c Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:
-	rm -f $(bin) *~ *.o
+	rm -f $(bin) *~ *.o *.bak
 
 .PHONY: all clean
 

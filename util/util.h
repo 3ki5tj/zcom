@@ -290,12 +290,50 @@ INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
   if ((fp = fopen(fn, fmt)) == NULL) { \
     fprintf(stderr, "cannot open file %s\n", fn); err; }
 
+
+
+/* check if file `fn' exists */
 INLINE int fexists(const char *fn)
 {
   FILE *fp;
   if ((fp = fopen(fn, "r")) == NULL) return 0;
   else { fclose(fp); return 1; }
 }
+
+
+
+/* copy file */
+INLINE int copyfile(const char *fninp, const char *fnout)
+{
+  FILE *fpinp, *fpout;
+#ifndef COPYFILE_BUFSZ
+#define COPYFILE_BUFSZ (64*1024)
+#endif
+  unsigned char buf[COPYFILE_BUFSZ];
+  size_t sz, tot = 0;
+
+  if ((fpinp = fopen(fninp, "rb")) == NULL) {
+    fprintf(stderr, "copyfile: cannot read file %s\n", fninp);
+    return -1;
+  }
+  if ((fpout = fopen(fnout, "wb")) == NULL) {
+    fprintf(stderr, "copyfile: cannot write file %s\n", fnout);
+    fclose(fpout);
+    return -2;
+  }
+  while ((sz = fread(buf, sizeof(buf[1]), COPYFILE_BUFSZ, fpinp)) != 0) {
+    tot += sz;
+    /* note: sz may differ from COPYFILE_BUFSZ */
+    if (sz != fwrite(buf, sizeof(buf[1]), sz, fpout))
+      fprintf(stderr, "copyfile: error writing %s, byte %.0f\n", fnout, 1.*tot);
+    if ( feof(fpinp) ) break;
+  }
+  fclose(fpinp);
+  fclose(fpout);
+  return 0;
+}
+
+
 
 /* swap two variables */
 #define xtpswap(tp, x, y) { tp dum_; dum_ = (x); (x) = (y); (y) = dum_; }
@@ -545,6 +583,8 @@ INLINE int strncmpnc(const char *s, const char *t, int n)
   }
   return cs - ct;
 }
+
+
 
 #endif
 

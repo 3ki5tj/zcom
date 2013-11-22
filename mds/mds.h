@@ -7,8 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-/* the main function for multidimensional scaling */
-real mds_min0(real *x, real *dm, int n, int dim, double tol);
+
 
 /* compute force and energy */
 INLINE real mds_force(real *x, real *f, real *dm, int n, int dim)
@@ -92,12 +91,15 @@ INLINE void mds_trim(real *x, int n, int dim)
   free(mmt);
 }
 
+
+
 /* multidimensional scaling - steepest descend
  * given a distance matrix dm[n x n],
  * return best mds position x[n x dim];
  * dim is the target dimensional, e.g. 2
- * return the total discrepancy */
-real mds_min0(real *x, real *dm, int n, int dim, double tol)
+ * return the total discrepancy
+ * sum_{i, j} (d(i, j) / dm(i, j) - 1)^2 */
+INLINE real mds_min0(real *x, real *dm, int n, int dim, double tol)
 {
   int i, j, it, itermax = 100000, npr;
   real *f, *fp, *xp, ene, enep;

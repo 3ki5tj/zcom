@@ -65,8 +65,6 @@ static void (*glez_user_reshapefunc)(int w, int h) = NULL;
 
 static void (*glez_user_menufunc)(int id) = NULL;
 static void (*glez_user_keyboardfunc)(unsigned char c, int x, int y) = NULL;
-void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
-    glez_menukey_t *mk);
 
 static void (*glez_user_mousefunc)(int button, int state, int w, int h) = NULL;
 #define glezMouseFunc(f)    { glez_user_mousefunc = f;  glutMouseFunc(glez_mousefunc); }
@@ -220,7 +218,9 @@ INLINE void glez_addmenu(glez_menukey_t *mk)
   }
 }
 
-void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
+
+
+INLINE void glezMenuKeyFunc(void (*menuf)(int), void (*keyf)(unsigned char, int, int),
     glez_menukey_t *mk)
 {
   glez_user_menufunc = menuf;

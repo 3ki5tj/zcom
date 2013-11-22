@@ -89,7 +89,8 @@ INLINE int mtrng_save(mtrng_t *mr, const char *fn)
   if (fn == NULL) fn = MTFILE;
   xfopen(fp, fn, "w", return -1);
   fprintf(fp, "MTSEED\n%d\n", mr->idx);
-  for (k = 0; k < MT_N; k++) fprintf(fp, "%"PRIu32"\n", mr->arr[k]);
+  for (k = 0; k < MT_N; k++)
+    fprintf(fp, "%" PRIu32 "\n", mr->arr[k]);
   fclose(fp);
   return 0;
 }
@@ -138,7 +139,7 @@ INLINE int mtrng_load(mtrng_t *mr, const char *fn, uint32_t seed)
     } else {
       if (mr->idx < 0) mr->idx = MT_N; /* request updating */
       for (z = 1, k = 0; k < MT_N; k++) {
-        if (fscanf(fp, "%"PRIu32, &mr->arr[k]) != 1) break;
+        if (fscanf(fp, "%" SCNu32, &mr->arr[k]) != 1) break;
         if (mr->arr[k] != 0) z = 0; /* a non-zero number */
       }
       if (k != MT_N) fprintf(stderr, "%s incomplete %d/%d\n", fn, k, MT_N);

@@ -36,8 +36,9 @@ cspacer.py      code beautifiers: cspacer.py, rstrip.py
 
 Modules
 -------
-def:            definition of `real' and M_PI
 util:           useful but unclassified routines
+bits:           bit operations
+blkmem:         block memory
 ss:             smart string
 endn:           handle endianness
 bio:            macros for read/write binary files

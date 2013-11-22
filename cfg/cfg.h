@@ -4,6 +4,8 @@
 #ifndef CFG_H__
 #define CFG_H__
 
+
+
 /* a line in the cfg file: `key = val'
  * `key' and `val' point to spaces allocated in cfg->buf
  * and no additional memory are allocated */
@@ -23,6 +25,7 @@ typedef struct {
 } cfg_t;
 
 typedef cfg_t cfgdata_t; /* old alias */
+
 
 
 #define cfg_set(cfg, var) opt_isset(cfg->opts, cfg->nopt, &var, #var)
@@ -53,8 +56,9 @@ INLINE int cfg_get(cfg_t *cfg, void *var, const char *key, const char *fmt)
 }
 
 
+
 /* load the whole configuration file into memory, parse it to entries */
-cfg_t *cfg_open(const char *fn)
+INLINE cfg_t *cfg_open(const char *fn)
 {
   cfg_t *cfg;
   cfgln_t *cln;
@@ -137,7 +141,7 @@ cfg_t *cfg_open(const char *fn)
 
 
 
-void cfg_close(cfg_t *cfg)
+INLINE void cfg_close(cfg_t *cfg)
 {
   ssdelete(cfg->buf);
   free(cfg->lns);
@@ -149,7 +153,7 @@ void cfg_close(cfg_t *cfg)
 
 
 /* register an option request, return the index */
-int cfg_add(cfg_t *cfg, const char *key, const char *fmt,
+INLINE int cfg_add(cfg_t *cfg, const char *key, const char *fmt,
             void *ptr, const char *desc)
 {
   /* if fmt == NULL, the memory space of (*ptr) will be invalid
@@ -212,6 +216,8 @@ INLINE int cfg_match(cfg_t *cfg, unsigned flags)
   }
   return ret;
 }
+
+
 
 /* dump the current values */
 INLINE void cfg_dump(const cfg_t *cfg)
