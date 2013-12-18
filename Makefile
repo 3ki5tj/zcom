@@ -32,14 +32,15 @@ pack: $(prj).zip
 	gnome-open $<
 
 usb: $(prj).h $(prj).zip
-	mv $(prj).zip $(usbdir)/
+	cp $(prj).zip $(usbdir)/
 	cp $(prj).h $(usbdir)/
 
 usball::
 	$(MAKE) clean
 	$(MAKE) usb
-	zip -r --symlinks --filesync -9 $(usbdir)/zcomall.zip * \
-	  --exclude "*.swp" "*~"
+	zip -r --symlinks --filesync -9 zcomall.zip * \
+	  --exclude "*.swp" "*~" "*.zip"
+	cp zcomall.zip $(usbdir)/
 
 # add symbolic links of header files that are referenced elsewhere
 dodep::
