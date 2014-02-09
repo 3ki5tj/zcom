@@ -24,7 +24,7 @@ def gcd(a, b):
 
 
 def lcm(a, b):
-  return a * b / gcd(a, b)
+  return a / gcd(a, b) * b
 
 
 
@@ -44,19 +44,19 @@ def xgcd(a, b):
 
 
 def getprimes(n):
-    """ return a list of primes <= n
-    http://stackoverflow.com/questions/2068372/fastest-way-to-list-all-primes-below-n-in-python
-    """
-    n += 1
-    corr = (n % 6 > 1)
-    n += [0, -1, 4, 3, 2, 1][n % 6]
-    s = [False] + [True]*(n/3 - 1)
-    for i in xrange(int(n**.5)/3 + 1):
-      if s[i]:
-        p = 3*i+1 | 1 # if i is odd, hence 3*i+1 is even, p = 3*i+2, otherwise p = 3*i+1
-        s[p*p/3                 : : 2*p] = [False]*((n/6-(p*p)/6-1)/p+1)
-        s[(p*p+4*p-2*p*(i&1))/3 : : 2*p] = [False]*((n/6-(p*p+4*p-2*p*(i&1))/6-1)/p+1)
-    return [2, 3] + [3*i+1 | 1 for i in xrange(1, n/3 - corr) if s[i]]
+  """ return a list of primes <= n
+  http://stackoverflow.com/questions/2068372/fastest-way-to-list-all-primes-below-n-in-python
+  """
+  n += 1
+  corr = (n % 6 > 1)
+  n += [0, -1, 4, 3, 2, 1][n % 6]
+  s = [False] + [True]*(n/3 - 1)
+  for i in xrange(int(n**.5)/3 + 1):
+    if s[i]:
+      p = 3*i+1 | 1 # if i is odd, hence 3*i+1 is even, p = 3*i+2, otherwise p = 3*i+1
+      s[p*p/3                 : : 2*p] = [False]*((n/6-(p*p)/6-1)/p+1)
+      s[(p*p+4*p-2*p*(i&1))/3 : : 2*p] = [False]*((n/6-(p*p+4*p-2*p*(i&1))/6-1)/p+1)
+  return [2, 3] + [3*i+1 | 1 for i in xrange(1, n/3 - corr) if s[i]]
 
 
 
@@ -65,6 +65,7 @@ def getisprime(n):
       isp = getisprime()
       if isp[n]: ...
   """
+  if n % 2: n += 1
   s = [False, False] + [True]*(n - 1)
   s[4 : : 2] = [False]*(n/2 - 1) # remove multiples of 2
   for p in xrange(3, int(n**.5) + 1, 2):
@@ -205,7 +206,7 @@ def modinv(a, m):
   if r > 1: # not invertible
     raise Exception
   return t if t > 0 else t + m
-  
+
 #print modinv0(3, 4), modinv(3, 4)
 
 
@@ -260,7 +261,7 @@ def chineseremainder2(a, m, b, n):
 
 def chineseremainder(a, m):
   ''' array case of the above
-      http://en.wikipedia.org/wiki/Chinese_remainder_theorem#General_case 
+      http://en.wikipedia.org/wiki/Chinese_remainder_theorem#General_case
   '''
   M = 1
   for mi in m: M *= mi
