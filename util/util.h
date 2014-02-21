@@ -288,7 +288,8 @@ INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
 
 #define xfopen(fp, fn, fmt, err) \
   if ((fp = fopen(fn, fmt)) == NULL) { \
-    fprintf(stderr, "cannot open file %s\n", fn); err; }
+    fprintf(stderr, "cannot open file %s with mode [%s]\n", fn, fmt); \
+    err; }
 
 
 
