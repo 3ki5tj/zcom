@@ -1,3 +1,4 @@
+#include "util.h" /* to define uint32_t etc. */
 #ifndef BITS_H__
 #define BITS_H__
 
@@ -49,22 +50,41 @@ uint32_t invbitsmask32_[33] = {0xffffffff,
 const unsigned char bits256_[256] = {
   BITB6_(0), BITB6_(1), BITB6_(1), BITB6_(2) };
 
+
+
 /* count the number of 1 bits in x
  * http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetTable */
-INLINE int bitcount32(uint32_t x)
-{
-  unsigned char *p = (unsigned char *) &x;
+#define BITCOUNT8(x) bits256_[ ((unsigned char *)&(x))[0] ]
 
-  return bits256_[p[0]] + bits256_[p[1]] + bits256_[p[2]] + bits256_[p[3]];
-}
+#define BITCOUNT16(x) ( BITCOUNT8(x) \
+  + bits256_[ ((unsigned char *)&(x))[1] ] )
+
+#define BITCOUNT24(x) ( BITCOUNT16(x) \
+  + bits256_[ ((unsigned char *)&(x))[2] ] )
+
+#define BITCOUNT32(x) ( BITCOUNT24(x) \
+  + bits256_[ ((unsigned char *)&(x))[3] ] )
+
+#define BITCOUNT40(x) ( BITCOUNT32(x) \
+  + bits256_[ ((unsigned char *)&(x))[4] ] )
+
+#define BITCOUNT48(x) ( BITCOUNT40(x) \
+  + bits256_[ ((unsigned char *)&(x))[5] ] )
+
+#define BITCOUNT56(x) ( BITCOUNT48(x) \
+  + bits256_[ ((unsigned char *)&(x))[6] ] )
+
+#define BITCOUNT64(x) ( BITCOUNT56(x) \
+  + bits256_[ ((unsigned char *)&(x))[7] ] )
+
+INLINE int bitcount32(uint32_t x) { return BITCOUNT32(x); }
 
 
+/* invert the lowest n bits */
+#define BITNINV32(x, n) ((x) ^ MKBITSMASK32(n))
 
-/* invert the lowest k bits */
-INLINE uint32_t bitinvert32(uint32_t x, int k)
-{
-  return x ^ ~(~0u << k);
-}
+INLINE uint32_t bitninv32(uint32_t x, int n)
+{ return BITNINV32(x, n); }
 
 
 
@@ -75,18 +95,16 @@ INLINE uint32_t bitinvert32(uint32_t x, int k)
 const unsigned char bitrev256_[256] = {
   BITR6_(0), BITR6_(2), BITR6_(1), BITR6_(3) };
 
-/* reverse bits */
+/* reverse bits a = rev(b) */
+#define BITREV32(a, b) { \
+  ((unsigned char *)&(a))[0] = bitrev256_[ ((unsigned char *)&(b))[3] ]; \
+  ((unsigned char *)&(a))[1] = bitrev256_[ ((unsigned char *)&(b))[2] ]; \
+  ((unsigned char *)&(a))[2] = bitrev256_[ ((unsigned char *)&(b))[1] ]; \
+  ((unsigned char *)&(a))[3] = bitrev256_[ ((unsigned char *)&(b))[0] ]; }
+
 INLINE uint32_t bitrev32(uint32_t x)
-{
-  uint32_t c;
-  unsigned char *p = (unsigned char *) &x;
-  unsigned char *q = (unsigned char *) &c;
-  q[3] = bitrev256_[p[0]];
-  q[2] = bitrev256_[p[1]];
-  q[1] = bitrev256_[p[2]];
-  q[0] = bitrev256_[p[3]];
-  return c;
-}
+{ uint32_t c; BITREV32(c, x) return c; }
+
 
 
 
@@ -117,20 +135,30 @@ INLINE int bitfirstlow32(uint32_t x, uint32_t *b)
 
 
 
+/* find the least significant nonzero bit
+ * http://en.wikipedia.org/wiki/Find_first_set#Tool_and_library_support
+ * http://chessprogramming.wikispaces.com/BitScan */
 #ifdef __INTEL_COMPILER
 
 /* directly map to the intrinsic function
- * use it only when you are sure x != 0 */
+ * use it only when you are sure x != 0
+ * the intrinsic for the most significant nonzero bit
+ * is _bit_scan_reverse(x) */
 #define BITFIRSTNZ32(x)  _bit_scan_forward(x)
+#define BITFIRST32(id, x) id = (x) ? BITFIRSTNZ32(x) : 0;
+#define bitfirst32(x) ((x) ? BITFIRSTNZ32(x) : 0)
 
-#define BITFIRST32(id, x) id = (x) ? _bit_scan_forward(x) : 0;
+#elif defined(__GNUC__) && !defined(__INTEL_COMPILER)
 
-#define bitfirst32(x) ((x) ? _bit_scan_forward(x) : 0)
+/* the intrinsic for the least significant nonzero bit
+ * is __builtin_clz */
+#define BITFIRSTNZ32(x)  __builtin_ctz(x)
+#define BITFIRST32(id, x) id = (x) ? BITFIRSTNZ32(x) : 0;
+#define bitfirst32(x)  ((x) ? BITFIRSTNZ32(x) : 0)
 
 #else /* general */
 
-#define BITFIRSTNZ32(x) bitfirst32(x)
-
+#define BITFIRSTNZ32(x)   bitfirst32(x)
 #define BITFIRST32(id, x) { uint32_t b32_; BITFIRSTLOW32(id, x, b32_) }
 
 /* index of nonzero bit */
@@ -140,7 +168,7 @@ INLINE int bitfirst32(uint32_t x)
   return bitfirstlow32(x, &b);
 }
 
-#endif /* defined(__INTEL_COMPILER) */
+#endif /* defined(__INTEL_COMPILER/__GNUC__) */
 
 
 
@@ -193,42 +221,31 @@ uint64_t invbitsmask64_[65] = {CU64(0xffffffffffffffff),
 
 
 
-/* count the number of 1 bits in x
- * http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetTable */
-INLINE int bitcount64(uint64_t x)
-{
-  unsigned char *p = (unsigned char *) &x;
-
-  return bits256_[p[0]] + bits256_[p[1]] + bits256_[p[2]] + bits256_[p[3]]
-       + bits256_[p[4]] + bits256_[p[5]] + bits256_[p[6]] + bits256_[p[7]];
-}
+INLINE int bitcount64(uint64_t x) { return BITCOUNT64(x); }
 
 
 
 /* invert the lowest k bits */
-INLINE uint64_t bitinvert64(uint64_t x, int k)
-{
-  return x ^ ~(~CU64(0) << k);
-}
+#define BITNINV64(x, n) ((x) ^ MKBITSMASK64(n))
+
+INLINE uint64_t bitninv64(uint64_t x, int n)
+{ return BITNINV64(x, n); }
 
 
 
-/* reverse bits */
+/* reverse bits a = rev(b) */
+#define BITREV64(a, b) { \
+  ((unsigned char *)&(a))[0] = bitrev256_[ ((unsigned char *)&(b))[7] ]; \
+  ((unsigned char *)&(a))[1] = bitrev256_[ ((unsigned char *)&(b))[6] ]; \
+  ((unsigned char *)&(a))[2] = bitrev256_[ ((unsigned char *)&(b))[5] ]; \
+  ((unsigned char *)&(a))[3] = bitrev256_[ ((unsigned char *)&(b))[4] ]; \
+  ((unsigned char *)&(a))[4] = bitrev256_[ ((unsigned char *)&(b))[3] ]; \
+  ((unsigned char *)&(a))[5] = bitrev256_[ ((unsigned char *)&(b))[2] ]; \
+  ((unsigned char *)&(a))[6] = bitrev256_[ ((unsigned char *)&(b))[1] ]; \
+  ((unsigned char *)&(a))[7] = bitrev256_[ ((unsigned char *)&(b))[0] ]; }
+
 INLINE uint64_t bitrev64(uint64_t x)
-{
-  uint64_t c;
-  unsigned char *p = (unsigned char *) &x;
-  unsigned char *q = (unsigned char *) &c;
-  q[7] = bitrev256_[p[0]];
-  q[6] = bitrev256_[p[1]];
-  q[5] = bitrev256_[p[2]];
-  q[4] = bitrev256_[p[3]];
-  q[3] = bitrev256_[p[4]];
-  q[2] = bitrev256_[p[5]];
-  q[1] = bitrev256_[p[6]];
-  q[0] = bitrev256_[p[7]];
-  return c;
-}
+{ uint64_t c; BITREV64(c, x) return c; }
 
 
 
@@ -274,13 +291,25 @@ INLINE int bitfirst64(uint64_t x)
 }
 
 
-#ifdef DEFAULT_BITS
-#if DEFAULT_BITS == 64
+#ifndef WORDBITS_
+#define WORDBITS_ 32
+#endif /* defined(WORDBITS_) */
 
+
+/* one word operations */
+#if WORDBITS_ == 64
+
+  #ifndef BITS_WORD_T
+  #define BITS_WORD_T uint64_t
+  #endif
   #define MKBIT(n)                MKBIT64(n)
   #define MKBITSMASK(n)           MKBITSMASK64(n)
   #define MKINVBITSMASK(n)        MKINVBITSMASK64(n)
+  #define BITCOUNT(x)             BITCOUNT64(x)
   #define bitcount(x)             bitcount64(x)
+  #define BITNINV(x, k)           BITNINV64(x, k)
+  #define bitninv(x, k)           bitninv64(x, k)
+  #define BITREV(x)               BITREV64(x)
   #define bitrev(x)               bitrev64(x)
   #define BIT2ID(b)               BIT2ID64(b)
   #define BITFIRSTLOW(id, x, b)   BITFIRSTLOW64(id, x, b)
@@ -289,12 +318,19 @@ INLINE int bitfirst64(uint64_t x)
   #define BITFIRST(id, x)         BITFIRST64(id, x)
   #define bitfirst(x)             bitfirst64(x)
 
-#elif DEFAULT_BITS == 32
+#elif WORDBITS_ == 32
 
+  #ifndef BITS_WORD_T
+  #define BITS_WORD_T uint32_t
+  #endif
   #define MKBIT(n)                MKBIT32(n)
   #define MKBITSMASK(n)           MKBITSMASK32(n)
   #define MKINVBITSMASK(n)        MKINVBITSMASK32(n)
+  #define BITCOUNT(x)             BITCOUNT32(x)
   #define bitcount(x)             bitcount32(x)
+  #define BITNINV(x, k)           BITNINV32(x, k)
+  #define bitninv(x, k)           bitninv32(x, k)
+  #define BITREV(x)               BITREV32(x)
   #define bitrev(x)               bitrev32(x)
   #define BIT2ID(b)               BIT2ID32(b)
   #define BITFIRSTLOW(id, x, b)   BITFIRSTLOW32(id, x, b)
@@ -303,8 +339,275 @@ INLINE int bitfirst64(uint64_t x)
   #define BITFIRST(id, x)         BITFIRST32(id, x)
   #define bitfirst(x)             bitfirst32(x)
 
-#endif /* DEFAULT_BITS == 32 */
-#endif /* defined(DEFAULT_BITS) */
+#else
+
+  #error bad WORDBITS_ definition
+
+#endif /* WORDBITS_ == 32 */
+
+
+
+/* multiple-word bit-set operations */
+
+#if WORDBITS_ == 32
+  #define BITS_GETNW(n)      (((n) + 31) >> 5)
+  #define BITS_GETNQ(n)      ((n) >> 5)            /* n / 32 */
+  #define BITS_GETNR(n)      ((n) & 0x1f)          /* n % 32 */
+#elif WORDBITS_ == 64
+  #define BITS_GETNW(n)      (((n) + 63) >> 6)
+  #define BITS_GETNQ(n)      ((n) >> 6)            /* n / 64 */
+  #define BITS_GETNR(n)      ((n) & 0x3f)          /* n % 64 */
+#else
+  /* get the number of words to represent n elements */
+  #define BITS_GETNW(n)      (((n) + WORDBITS_ - 1) / WORDBITS_)
+  #define BITS_GETNQ(n)      ((n) / WORDBITS_)
+  #define BITS_GETNR(n)      ((n) % WORDBITS_)
+#endif
+#define BITS_GETNB(n)      MKBIT( BITS_GETNR(n) )
+
+
+#define BITS_CPY(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    a[iw_] = b[iw_]; }
+
+#define BITS_CLEAR(bs, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) (bs)[iw_] = 0; }
+
+#define BITS_MKBIT(i, bi, iq) { iq = BITS_GETNQ(i), bi = MKBIT(DG_IR(i)); }
+/* construct the set `bs' with a single vertex */
+#define BITS_ONEBIT(bs, nw, bi, iq) { BITS_CLEAR(bs, nw); bs[iq] = bi; }
+
+/* make a mask for the lowest k elements, clear higher bits up to nw */
+#define BITS_MKBITSMASK(bs, k, nw) { int iw_; \
+  int kq_ = BITS_GETNQ(k), kr_ = BITS_GETNR(k); \
+  for (iw_ = 0; iw_ < kq_; iw_++) \
+    (bs)[iw_] = MKINVBITSMASK(0); \
+  if (kr_ != 0) (bs)[kq_++] = MKBITSMASK(kr_); \
+  for (iw_ = kq_; iw_ < nw; iw_++) \
+    (bs)[iw_] = 0; }
+
+INLINE BITS_WORD_T *bits_mkbitsmask(BITS_WORD_T *bs, int k, int nw)
+{ BITS_MKBITSMASK(bs, k, nw) return bs; }
+
+/* a similar set of macros BITS_MKINVSET() are defined later
+ * after we have defined BITS_REMOVE() */
+
+
+
+#define BITS_NONZERO(nz, bs, nw) { int iw_; \
+  for (nz = 0, iw_ = 0; iw_ < nw; iw_++) \
+    if ( (bs)[iw_] ) nz = 1; }
+
+INLINE int bits_nonzero(BITS_WORD_T *bs, int nw)
+{  int nz; BITS_NONZERO(nz, bs, nw) return nz; }
+
+#define bits_iszero(bs, nw) ( !bits_nonzero(bs, nw) )
+
+#define BITS_NOTEQUAL(ne, a, b, nw) { int iw_; \
+  for (ne = 0, iw_ = 0; iw_ < nw; iw_++) \
+    if ( (a)[iw_] != (b)[iw_] ) ne = 1; }
+
+INLINE int bits_notequal(BITS_WORD_T *a, BITS_WORD_T *b, int nw)
+{ int ne; BITS_NOTEQUAL(ne, a, b, nw) return ne; }
+
+#define bits_equal(a, b, nw) ( !bits_notequal(a, b, nw) )
+
+#define BITS_COUNT(cnt, bs, nw) { int iw_; \
+  for (cnt = 0, iw_ = 0; iw_ < nw; iw_++) \
+    cnt += bitcount( (bs)[iw_] ); }
+
+INLINE int bits_count(BITS_WORD_T *bs, int nw) \
+{ int cnt; BITS_COUNT(cnt, bs, nw) return cnt; }
+
+/* invert the lowest n bits of b, keep the rest */
+#define BITS_NINV(a, b, n, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw - 1; iw_++) (a)[iw_] = ~(b)[iw_]; \
+  (a)[iw_] = BITNINV((b)[iw_], n - iw_ * WORDBITS_); }
+
+
+
+/* save the bit of `bs' corresponding to the first element to `b'
+ * `bs' is a set, `b' is a word, `bq' is the word offset */
+#define BITS_FIRSTBIT(bs, nw, b, bq) { \
+  BITS_WORD_T w_; \
+  (b) = 0; \
+  for (bq = 0; bq < nw; bq++) { \
+    if ((w_ = (bs)[bq]) != 0) { \
+      (b) = w_ & (-w_); \
+      break; \
+    } } }
+
+/* save the index of the first element to `id'
+ * and the bit corresponding to `id' is `b'
+ * `bs' is a set, `b' is a word, `bq' is the word offset */
+#define BITS_FIRSTLOW(id, bs, nw, b, bq) { \
+  BITS_WORD_T w_; \
+  b = 0; id = 0; \
+  for (bq = 0; bq < nw; bq++) { \
+    if ((w_ = (bs)[bq]) != 0) { \
+      BITFIRSTLOW(id, w_, b); \
+      id += bq * WORDBITS_; \
+      break; \
+    } } }
+
+/* return the index of the first element in the set */
+INLINE int bits_first(BITS_WORD_T *bs, int nw)
+{
+  BITS_WORD_T b;
+  int id, bq;
+  BITS_FIRSTLOW(id, bs, nw, b, bq);
+  return id;
+}
+
+/* assuming `bs' contains a single bit, return the index */
+INLINE int bits_bit2id(BITS_WORD_T *bs, int nw)
+{
+  BITS_WORD_T b;
+  int bq;
+
+  for (bq = 0; bq < nw; bq++)
+    if ((b = bs[bq]) != 0)
+      return bq * WORDBITS_ * BIT2ID(b);
+  return 0;
+}
+
+
+
+/* bitwise/set operations */
+/* a ^= b */
+#define BITS_XOR(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) (a)[iw_] ^= (b)[iw_]; }
+
+#define BITS_XOR1(a, b, iq)     (a)[iq] ^= b;
+
+/* a = b ^ c */
+#define BITS_XOR2(a, b, c, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] = (b)[iw_] ^ (c)[iw_]; }
+
+INLINE BITS_WORD_T *bits_xor2(BITS_WORD_T *a, BITS_WORD_T *b, BITS_WORD_T *c, int nw)
+{ BITS_XOR2(a, b, c, nw); return a; }
+
+/* a |= b */
+#define BITS_OR(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) (a)[iw_] |= (b)[iw_]; }
+
+#define BITS_OR1(a, b, iq)      (a)[iq] |= b;
+
+/* a = b | c */
+#define BITS_OR2(a, b, c, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] = (b)[iw_] | (c)[iw_]; }
+
+INLINE BITS_WORD_T *bits_or2(BITS_WORD_T *a, BITS_WORD_T *b, BITS_WORD_T *c, int nw)
+{ BITS_OR2(a, b, c, nw); return a; }
+
+/* a &= b */
+#define BITS_AND(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] &= (b)[iw_]; }
+
+#define BITS_AND1(a, b, iq)     (a)[iq] &= b;
+
+/* a = b & c */
+#define BITS_AND2(a, b, c, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] = (b)[iw_] & (c)[iw_]; }
+
+INLINE BITS_WORD_T *bits_and2(BITS_WORD_T *a, BITS_WORD_T *b, BITS_WORD_T *c, int nw)
+{ BITS_AND2(a, b, c, nw); return a; }
+
+/* a &= ~b or a -= b */
+#define BITS_MINUS(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] &= ~(b)[iw_]; }
+
+#define BITS_MINUS1(a, b, iq)  (a)[iq] &= ~(b);
+
+/* a = b & ~c or a = b - c */
+#define BITS_MINUS2(a, b, c, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw; iw_++) \
+    (a)[iw_] = (b)[iw_] & ~(c)[iw_]; }
+
+/* a = b & ~c or a = b - c */
+INLINE BITS_WORD_T *bits_minus2(BITS_WORD_T *a, BITS_WORD_T *b, BITS_WORD_T *c, int nw)
+{ BITS_MINUS2(a, b, c, nw) return a; }
+
+
+/* add element `i' into the set `bs' */
+#define BITS_ADD(bs, i)         BITS_OR1(bs, BITS_GETNB(i), BITS_GETNQ(i))
+
+/* remove element `i' from the set `bs' */
+#define BITS_REMOVE(bs, i)      BITS_MINUS1(bs, BITS_GETNB(i), BITS_GETNQ(i))
+
+/* flip the state of element `i' in the set `bs' */
+#define BITS_FLIP(bs, i)        BITS_XOR1(bs, BITS_GETNB(i), BITS_GETNQ(i))
+
+/* test if the set `bs' has element `i' */
+#define BITS_HAS(bs, i)         (int) (((bs)[BITS_GETNQ(i)] >> BITS_GETNR(i)) & 0x1)
+
+/* test if the set `bs' has bit `bi' at offset `iq' */
+#define BITS_HASBIT(bs, bi, iq) (((bs)[iq] & (bi)) != 0)
+
+/* right shift one bit */
+#define BITS_RSHIFT1(a, b, nw) { int iw_; \
+  for (iw_ = 0; iw_ < nw - 1; iw_++) { \
+    a[iw_] = (b[iw_] >> 1) | (b[iw_ + 1] << (WORDBITS_ - 1)); \
+  } a[iw_] = b[iw_] >> 1; }
+
+/* left shift one bit */
+#define BITS_LSHIFT1(a, b, nw) { int iw_; \
+  for (iw_ = nw - 1; iw_ > 0; iw_--) { \
+    a[iw_] = (b[iw_] << 1) | ( b[iw_ - 1] >> (WORDBITS_ - 1) ); \
+  } a[0] = b[0] << 1; }
+
+
+
+/* make a set of lowest k - 1 bits, without the ith element */
+#define BITS_MKINVSET(bs, k, nw, i)  \
+  BITS_MKBITSMASK(bs, k, nw) BITS_REMOVE(bs, i)
+
+INLINE BITS_WORD_T *bits_mkinvset(BITS_WORD_T *bs, int n, int nw, int i)
+{ BITS_MKINVSET(bs, n, nw, i) return bs; }
+
+/* make a set of the lowest k - 2 bits, without the ith and jth elements */
+#define BITS_MKINVSET2(bs, k, nw, i, j)  \
+  BITS_MKBITSMASK(bs, k, nw) BITS_REMOVE(bs, i) BITS_REMOVE(bs, j)
+
+INLINE BITS_WORD_T *bits_mkinvset2(BITS_WORD_T *bs, int n, int nw, int i, int j)
+{ BITS_MKINVSET2(bs, n, nw, i, j) return bs; }
+
+
+
+#define bits_print(bs, n, name) bits_fprint(bs, n, stdout, name)
+
+/* print a set as star or blank pattern */
+INLINE void bits_fprint(BITS_WORD_T *bs, int n, FILE *fp, const char *name)
+{
+  int i;
+
+  if (name != NULL) fprintf(fp, "%-8s: [", name);
+  for (i = 0; i < n; i++)
+    fprintf(fp, "%c", BITS_HAS(bs, i) ? '*' : ' ');
+  fprintf(fp, "]\n");
+}
+
+
+
+#define bits_printn(bs, n, name) bits_fprintn(bs, n, stdout, name)
+
+/* print a set as numbers */
+INLINE void bits_fprintn(BITS_WORD_T *bs, int n, FILE *fp, const char *name)
+{
+  int i;
+
+  if (name != NULL) fprintf(fp, "%-8s:", name);
+  for (i = 0; i < n; i++)
+    if ( BITS_HAS(bs, i) )
+      fprintf(fp, " %d", i);
+  fprintf(fp, "\n");
+}
 
 
 #endif /* BITS_H__ */
+
