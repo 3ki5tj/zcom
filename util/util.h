@@ -278,10 +278,12 @@ INLINE void fatal(const char *fmt, ...) PERRMSG__(1)
 #ifndef xrenew
 #define xrenew(x, n) { \
   size_t num_ = (size_t) (n); \
+  char *xrenewptr__; \
   die_if (num_ <= 0, \
     "cannot allocate %d objects for %s\n", (int) num_, #x); \
-  die_if ((x = realloc(x, (num_)*sizeof(*(x)))) == NULL, \
-    "no memory for %s x %d\n", #x, (int) num_); }
+  die_if ((xrenewptr__ = realloc(x, (num_)*sizeof(*(x)))) == NULL, \
+    "no memory for %s x %d\n", #x, (int) num_); \
+  x = (void *) xrenewptr__; }
 #endif
 
 
@@ -319,7 +321,7 @@ INLINE int copyfile(const char *fninp, const char *fnout)
   }
   if ((fpout = fopen(fnout, "wb")) == NULL) {
     fprintf(stderr, "copyfile: cannot write file %s\n", fnout);
-    fclose(fpout);
+    fclose(fpinp);
     return -2;
   }
   while ((sz = fread(buf, sizeof(buf[1]), COPYFILE_BUFSZ, fpinp)) != 0) {

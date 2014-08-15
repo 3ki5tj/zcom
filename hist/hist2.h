@@ -352,11 +352,13 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
     }
   }
   if (verbose) fprintf(stderr, "%s loaded successfully\n", fn);
+  fclose(fp);
   return 0;
 EXIT:
   fprintf(stderr, "error occurs at file %s, line %d, s:%s\n", fn, nlin, s);
   if (sums) free(sums);
   for (i = 0; i < rows*nm; i++) hist[i] = 0.;
+  fclose(fp);
   return -1;
 }
 

@@ -1,6 +1,6 @@
 /*
   commonly-used routines
-  Copyright (c) 2006-2013 Cheng Zhang
+  Copyright (c) 2006-2014 Cheng Zhang
 
   This material is provided "as is", with absolutely no warranty expressed
   or implied. Any use is at your own risk.
@@ -120,6 +120,7 @@
   #endif
   #pragma GCC diagnostic ignored "-Wunknown-pragmas"
   #pragma GCC diagnostic ignored "-Wvariadic-macros"
+  #pragma GCC diagnostic ignored "-Wlong-long"
 #endif
 
 #ifdef _MSC_VER

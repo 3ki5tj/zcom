@@ -113,8 +113,6 @@ INLINE real mds_min0(real *x, real *dm, int n, int dim, double tol)
   xnew(f, n*dim);
   xnew(xp, n*dim);
   xnew(fp, n*dim);
-  for (i = 0; i < n*dim; i++)
-    x[i] = 1.f*rand()/RAND_MAX;
   ene = mds_force(x, f, dm, n, dim);
   for (it = 0; it < itermax; it++) {
     enep = ene;
@@ -130,6 +128,7 @@ INLINE real mds_min0(real *x, real *dm, int n, int dim, double tol)
         x[i] = xp[i];
         f[i] = fp[i];
       }
+      ene = enep;
     } else {
       if (fabs(ene-enep) < tol*npr*dt) break;
       dt *= 1.03f; /* attempt to increase time step */

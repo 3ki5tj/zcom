@@ -99,12 +99,12 @@ INLINE cago_t *cago_open1(const char *fnpdb, real rcc, int ctype, int nsexcl, un
   pdbmodel_t *pm;
   pdbaac_t *c;
 
-  xnew(go, 1);
   /* read all atoms from the .pdb file */
   if ((pm = pdbm_read(fnpdb, 0)) == NULL) {
     fprintf(stderr, "cannot open PDB file %s\n", fnpdb);
     return NULL;
   }
+  xnew(go, 1);
   go->iscont = pdbm_contact(pm, rcc, ctype, nsexcl, flags & CAGO_VERBOSE);
   c = pdbaac_parse(pm, 0); /* parse it into amino-acid residues */
   pdbm_free(pm);
@@ -250,12 +250,12 @@ INLINE int cago_initmd(cago_t *go, int open, double rndamp, double T0)
 INLINE real potbond(rv3_t a, rv3_t b, real r0, real k,
     rv3_t fa, rv3_t fb)
 {
-  real dx[3], r, dr, amp;
+  real dx[3], r, dr;
 
   r = rv3_norm( rv3_diff(dx, a, b) );
   dr = r - r0;
   if (fa != NULL) {
-    amp = k * dr / r;
+    real amp = k * dr / r;
     rv3_sinc(fa, dx, -amp);
     rv3_sinc(fb, dx,  amp);
   }

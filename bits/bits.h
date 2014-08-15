@@ -81,10 +81,16 @@ INLINE int bitcount32(uint32_t x) { return BITCOUNT32(x); }
 
 
 /* invert the lowest n bits */
-#define BITNINV32(x, n) ((x) ^ MKBITSMASK32(n))
+#define BITNINVL32(x, n) ((x) ^ MKBITSMASK32(n))
 
-INLINE uint32_t bitninv32(uint32_t x, int n)
-{ return BITNINV32(x, n); }
+INLINE uint32_t bitninvl32(uint32_t x, int n)
+{ return BITNINVL32(x, n); }
+
+/* invert the highest n bits */
+#define BITNINVH32(x, n) ((x) ^ MKINVBITSMASK32(32 - n))
+
+INLINE uint32_t bitninvh32(uint32_t x, int n)
+{ return BITNINVH32(x, n); }
 
 
 
@@ -226,10 +232,16 @@ INLINE int bitcount64(uint64_t x) { return BITCOUNT64(x); }
 
 
 /* invert the lowest k bits */
-#define BITNINV64(x, n) ((x) ^ MKBITSMASK64(n))
+#define BITNINVL64(x, n) ((x) ^ MKBITSMASK64(n))
 
-INLINE uint64_t bitninv64(uint64_t x, int n)
-{ return BITNINV64(x, n); }
+INLINE uint64_t bitninvl64(uint64_t x, int n)
+{ return BITNINVL64(x, n); }
+
+/* invert the highest k bits */
+#define BITNINVH64(x, n) ((x) ^ MKINVBITSMASK64(64 - n))
+
+INLINE uint64_t bitninvh64(uint64_t x, int n)
+{ return BITNINVH64(x, n); }
 
 
 
@@ -307,8 +319,10 @@ INLINE int bitfirst64(uint64_t x)
   #define MKINVBITSMASK(n)        MKINVBITSMASK64(n)
   #define BITCOUNT(x)             BITCOUNT64(x)
   #define bitcount(x)             bitcount64(x)
-  #define BITNINV(x, k)           BITNINV64(x, k)
-  #define bitninv(x, k)           bitninv64(x, k)
+  #define BITNINVL(x, k)          BITNINVL64(x, k)
+  #define bitninvl(x, k)          bitninvl64(x, k)
+  #define BITNINVH(x, k)          BITNINVH64(x, k)
+  #define bitninvh(x, k)          bitninvh64(x, k)
   #define BITREV(x)               BITREV64(x)
   #define bitrev(x)               bitrev64(x)
   #define BIT2ID(b)               BIT2ID64(b)
@@ -328,8 +342,10 @@ INLINE int bitfirst64(uint64_t x)
   #define MKINVBITSMASK(n)        MKINVBITSMASK32(n)
   #define BITCOUNT(x)             BITCOUNT32(x)
   #define bitcount(x)             bitcount32(x)
-  #define BITNINV(x, k)           BITNINV32(x, k)
-  #define bitninv(x, k)           bitninv32(x, k)
+  #define BITNINVL(x, k)          BITNINVL32(x, k)
+  #define bitninvl(x, k)          bitninvl32(x, k)
+  #define BITNINVH(x, k)          BITNINVH32(x, k)
+  #define bitninvh(x, k)          bitninvh32(x, k)
   #define BITREV(x)               BITREV32(x)
   #define bitrev(x)               bitrev32(x)
   #define BIT2ID(b)               BIT2ID32(b)
@@ -421,8 +437,9 @@ INLINE int bits_count(BITS_WORD_T *bs, int nw) \
 
 /* invert the lowest n bits of b, keep the rest */
 #define BITS_NINV(a, b, n, nw) { int iw_; \
-  for (iw_ = 0; iw_ < nw - 1; iw_++) (a)[iw_] = ~(b)[iw_]; \
-  (a)[iw_] = BITNINV((b)[iw_], n - iw_ * WORDBITS_); }
+  for (iw_ = 0; iw_ < nw - 1; iw_++) \
+    (a)[iw_] = ~(b)[iw_]; \
+  (a)[iw_] = BITNINVL((b)[iw_], n - iw_ * WORDBITS_); }
 
 
 

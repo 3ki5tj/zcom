@@ -178,12 +178,15 @@ INLINE void argopt_parse(argopt_t *ao, int argc, char **argv)
     for (j = 1; (ch = argv[i][j]) != '\0'; j++) {
       int islong = (j == 1 && argv[i][1] == '-') | (ao->flags & ARGOPT_LONGOPT);
 
-      if (islong) { /* compare against long options */
-        for (k = 0; k < ao->nopt; k++)
+      if (islong) { /* match against long options */
+        for (k = 0; k < ao->nopt; k++) {
+          int lenf = strlen(ol[k].sflag);
           if (ol[k].isopt &&
-              strncmp(argv[i], ol[k].sflag, strlen(ol[k].sflag)) == 0)
+              strncmp(argv[i], ol[k].sflag, lenf) == 0 &&
+              strchr("= ", argv[i][lenf])) /* followed by a space or "=" */
             break;
-      } else { /* compare against short options */
+        }
+      } else { /* match against short options */
         for (k = 0; k < ao->nopt; k++)
           if (ol[k].isopt && ch == ol[k].ch)
             break;

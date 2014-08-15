@@ -22,6 +22,23 @@ typedef struct {
 } opt_t;
 
 
+/* support __float128 for GCC
+ * Intel compiler defines __GNUC__, but it does not have __float128 */
+#if defined(__GNUC__) && !defined(__INTEL_COMPILER) \
+  && ( (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ > 4 )
+  #define HAVEFLOAT128 1
+  #include <quadmath.h>
+  /* ignore warnings for "%Qf"
+   * assume `diagnostic push' is available in this case */
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wformat"
+  #pragma GCC diagnostic ignored "-Wformat-extra-args"
+  #pragma GCC diagnostic ignored "-Wlong-long"
+#else
+  #define HAVEFLOAT128 0
+#endif
+
+
 
 #define OPT_MUST     0x0001  /* a mandatory argument or option */
 #define OPT_SWITCH   0x0002  /* an option is a switch */
@@ -33,6 +50,11 @@ INLINE int opt_getval(opt_t *o)
 {
   const char *fmt = o->fmt;
 
+  /* for a string argument, it can be obtained from NULL or "%s"
+   * NULL: string memory from command-line
+   * "%s":  string memory from sscpy()
+   * if the string is read-only, like a output file name,
+   * but the string is to be changed, use "%s" */
   if (fmt == NULL || fmt[0] == '\0') { /* raw string assignment */
     *((const char **) o->ptr) = o->val;
   } else if (strcmp(fmt, "%s") == 0) { /* copy the string */
@@ -41,6 +63,14 @@ INLINE int opt_getval(opt_t *o)
     /* switch the default value */
     if (o->flags & OPT_SET) return !o->ival;
     else return o->ival;
+#if HAVEFLOAT128
+  } else if (strcmp(fmt, "%Qf") == 0) {
+#if defined(QUAD) || defined(F128)
+    *((__float128 *) o->ptr) = strtoflt128(o->val, NULL);
+#else /* intrinsic hook, requires no -lquadmath if unnecessary */
+    sscanf(o->val, "%Qf", (__float128 *) o->ptr);
+#endif /* defined(QUAD) || defined(F128) */
+#endif
   } else { /* call sscanf */
     if (strcmp(fmt, "%r") == 0) /* real */
       fmt = (sizeof(real) == sizeof(float)) ? "%f" : "%lf";
@@ -123,15 +153,30 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
   ELIF_PF_("%u", "%u", unsigned);
   ELIF_PF_("%x", "0x%x", unsigned);
   ELIF_PF_("%ld", "%ld", long);
+  ELIF_PF_("%lo", "%lo", long);
   ELIF_PF_("%lu", "%lu", unsigned long);
   ELIF_PF_("%lx", "0x%lx", unsigned long);
-#if 0  /* C99 only */
+#if 1  /* C99 or GCC extension */
   ELIF_PF_("%lld", "%lld", long long);
+  ELIF_PF_("%llo", "%llo", long long);
   ELIF_PF_("%llu", "%llu", unsigned long long);
   ELIF_PF_("%llx", "0x%llx", unsigned long long);
 #endif
   ELIF_PF_("%f", "%g", float);
   ELIF_PF_("%lf", "%g", double);
+  ELIF_PF_("%Lf", "%Lg", long double);
+#if HAVEFLOAT128
+#if defined(QUAD) || defined(F128)
+  else if (strcmp(fmt, "%Qf") == 0) {
+    char buf[256];
+    quadmath_snprintf(buf, sizeof buf,
+        (o->pfmt ? o->pfmt : "%Qg"), *(__float128 *)o->ptr);
+    fprintf(fp, "%s", buf);
+  }
+#else /* intrinsic hook, requires no -lquadmath if unnecessary */
+  ELIF_PF_("%Qf", "%Qg", __float128);
+#endif /* defined(QUAD) || defined(F128) */
+#endif
   ELIF_PF_("%r", "%g", real);
   else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *) o->ptr);
 #undef ELIF_PF_
@@ -157,6 +202,11 @@ INLINE int opt_isset(opt_t *ls, int n, const void *p, const char *var)
   die_if (!o, "cannot find var %s, ptr %p\n", var, p);
   return o->flags & OPT_SET ? 1 : 0;
 }
+
+
+#if HAVEFLOAT128
+  #pragma GCC diagnostic pop
+#endif
 
 
 

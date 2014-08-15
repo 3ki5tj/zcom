@@ -1,16 +1,24 @@
-#CC=gcc -O0 -g3 -Wall -Wextra -pedantic
-LM=-lm
-CC=icc -O3 -Wall -Wremarks -Wcheck
+CX  = icc -O3 -Wall -Wremarks -Wcheck
+LMX =
 
-bin=$(patsubst %.c,%, $(wildcard test*.c))
+CC = gcc -O0 -g3 -Wall -Wextra -pedantic -Wno-long-long
+LM = -lm -lquadmath
 
-all: $(bin)
+bin = $(patsubst %.c, %, $(wildcard test*.c))
+bin_d = $(patsubst %, %_d, $(bin))
 
-$(bin) : % : %.c util.h argopt.h argopt.c opt.h Makefile
+src = argopt.h argopt.h opt.h util.h
+
+all: $(bin) $(bin_d)
+
+$(bin) : % : %.c $(src) Makefile
+	$(CX) -o $@ $< $(LMX)
+
+$(bin_d) : %_d : %.c $(src) Makefile
 	$(CC) -o $@ $< $(LM)
 
 clean:
-	rm -f $(bin) *~ *.o
+	rm -f $(bin) $(bin_d) *~ *.o
 
 .PHONY: all clean
 

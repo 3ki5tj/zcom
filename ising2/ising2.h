@@ -142,6 +142,7 @@ INLINE int is2_load(ising_t *is, const char *fname)
   xfopen(fp, fname, "r", return -1);
   if (fgets(s, sizeof s, fp) == NULL) {
     fprintf(stderr, "missing first line %s\n", fname);
+    fclose(fp);
     return -1;
   }
   if (4 != sscanf(s, "%d%d%d%d", &i, &lx, &ly, &n)

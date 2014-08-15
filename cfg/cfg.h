@@ -66,9 +66,8 @@ INLINE cfg_t *cfg_open(const char *fn)
   size_t i, j, n, size = 0;
   char *p, *q;
 
-  xnew(cfg, 1);
-
   xfopen(fp, fn, "r", return NULL);
+  xnew(cfg, 1);
   if (ssfgetall(cfg->buf, &size, fp) == NULL) {
     fprintf(stderr, "error reading file %s\n", fn);
     return NULL;

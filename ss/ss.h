@@ -149,7 +149,6 @@ INLINE int ssmanage(char *s, unsigned flags)
 {
   struct ssheader *hp, *head;
   unsigned opt = flags & 0xFF;
-  size_t i;
 
   if (flags & SSSINGLE) { /* working on a single string */
     if (s == NULL || (hp = sslistfind_(s)) == NULL) {
@@ -158,6 +157,7 @@ INLINE int ssmanage(char *s, unsigned flags)
     }
     ssmanage_low_(hp, opt);
   } else {
+    size_t i;
     for (i = 0; i < SSHASHSIZ; i++)
       for (hp = head = ssbase_ + i; hp->next && hp->next != head; hp = hp->next)
         /* we must not operate on h itself, which renders the iterator h invalid */
@@ -270,7 +270,7 @@ INLINE char **ssparse(char *s, int *pn, const char *delim)
 {
   const int capsz = 16;
   int cap, n;
-  char **sarr, *p, *q;
+  char **sarr, **sarr1, *p, *q;
   char delim0[8] = "\n\r"; /* default deliminators: new lines */
 
   if (pn) *pn = 0;
@@ -289,10 +289,11 @@ INLINE char **ssparse(char *s, int *pn, const char *delim)
       sarr[n++] = p;
       if (n >= cap) { /* expand the array */
         cap += capsz;
-        if ((sarr = realloc(sarr, cap * sizeof(sarr[0]))) == NULL) {
+        if ((sarr1 = realloc(sarr, cap * sizeof(sarr[0]))) == NULL) {
           fprintf(stderr, "no memory for sarr, %d\n", cap);
           return NULL;
         }
+        sarr = sarr1;
       }
     }
     if (*q == '\0') break; /* we are done */

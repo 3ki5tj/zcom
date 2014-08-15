@@ -22,6 +22,9 @@ int main(void)
 
   xnew(x, n*dim); /* coordinates */
   dm = mkdismat0();
+  for (i = 0; i < n*dim; i++) {
+    x[i] = 1.f*rand()/RAND_MAX;
+  }
   mds_min0(x, dm, n, dim, 1e-14);
   for (i = 0; i < n; i++) {
     printf("%d: ", i);
