@@ -3,11 +3,11 @@
 
 int n = 108;
 int d = 3;
-real rho = 0.6f; /* initial density, help set the rdf boundary */
+real rho = (real) 0.6; /* initial density, help set the rdf boundary */
 real rcdef = 1000.0f; /* since we change volume, use half-box cutoff */
-real tp = 1.5f;
-real pressure = 1.0f;
-real amp = 0.3f;
+real tp = (real) 1.5;
+real pressure = (real) 1.0;
+real amp = (real) 0.3;
 int nsteps = 100000, nstrdf = 1000;
 int usesq = 0;
 int nstvmove = 10; /* number of steps volume move */

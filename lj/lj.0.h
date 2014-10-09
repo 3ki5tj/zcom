@@ -91,10 +91,28 @@ INLINE void lj_initfcc3d(lj_t *lj)
 
 
 
+INLINE real lj_gettail(lj_t *lj, real rho, int n, real *ptail)
+{
+  real irc, irc3, irc6, utail;
+
+  irc = 1.0/lj->rc;
+  irc3 = irc * irc * irc;
+  irc6 = irc3 * irc3;
+  if (lj->d == 3) {
+    utail = (real)( 8*M_PI*rho*n/9*(irc6 - 3)*irc3 );
+    *ptail = (real)( 32*M_PI*rho*rho/9*(irc6 - 1.5)*irc3 );
+  } else if (lj->d == 2) {
+    utail = (real) (M_PI*rho*n*(.4*irc6 - 1)*irc3*irc);
+    *ptail = (real) (M_PI*rho*rho*(1.6*irc6 - 2)*irc3*irc);
+  }
+  return utail;
+}
+
+
+
 /* set density and compute tail corrections */
 INLINE void lj_setrho(lj_t *lj, real rho)
 {
-  double irc, irc3, irc6;
   int i;
 
   lj->rho = rho;
@@ -102,22 +120,12 @@ INLINE void lj_setrho(lj_t *lj, real rho)
   for (lj->vol = 1.f, i = 0; i < lj->d; i++) lj->vol *= lj->l;
   if ((lj->rc = lj->rcdef) > lj->l * .5f) lj->rc = lj->l * .5f;
   lj->rc2 = lj->rc * lj->rc;
-  irc = 1.0/lj->rc;
-  irc3 = irc * irc * irc;
-  irc6 = irc3 * irc3;
   if (lj->usesw) { /* assume u(L/2) = 0 */
     lj->epot_shift = 0.f;
     lj->epot_tail = 0.f;
     lj->p_tail = 0.f;
   } else {
-    lj->epot_shift = (real)( 4*irc6*(irc6 - 1) );
-    if (lj->d == 3) {
-      lj->epot_tail = (real)( 8*M_PI*rho*lj->n/9*(irc6 - 3)*irc3 );
-      lj->p_tail = (real)( 32*M_PI*rho*rho/9*(irc6 - 1.5)*irc3 );
-    } else if (lj->d == 2) {
-      lj->epot_tail = (real) (M_PI*rho*lj->n*(.4*irc6 - 1)*irc3*irc);
-      lj->p_tail = (real) (M_PI*rho*rho*(1.6*irc6 - 2)*irc3*irc);
-    }
+    lj->epot_tail = lj_gettail(lj, rho, lj->n, &lj->p_tail);
   }
 }
 
@@ -143,7 +151,8 @@ INLINE real lj_pbcdist2_3d(real *dx, const real *a, const real *b, real l)
 
 
 
-/* create an open structure */
+
+/* open an LJ system */
 INLINE lj_t *lj_open(int n, int d, real rho, real rcdef)
 {
   lj_t *lj;

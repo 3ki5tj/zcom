@@ -153,6 +153,7 @@ INLINE real lj_depotsw3d(lj_t *lj, int i, real *xi, real *vir)
 INLINE void lj_commitsw3d(lj_t *lj, int i, const real *xi, real du, real dvir)
 {
   rv3_copy(lj->x + i*3, xi);
+  lj->epot0 += du;
   lj->epot += du;
   lj->vir += dvir;
 }
@@ -221,6 +222,7 @@ INLINE real lj_depotlj3d(lj_t *lj, int i, real *xi, real *vir)
 INLINE void lj_commitlj3d(lj_t *lj, int i, const real *xi, real du, real dvir)
 {
   rv3_copy(lj->x + i*3, xi);
+  lj->epot0 += du;
   lj->epot += du;
   lj->vir += dvir;
 }
