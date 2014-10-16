@@ -91,6 +91,7 @@ def doargs():
               *.txt *.tex *.html *.htm
               *.cfg *.mdp
               *.sh *.csh
+              *.bib
               README* *akefile"""
     import zcom
     ls = zcom.argsglob(args, pats, recur = recur, links = links)

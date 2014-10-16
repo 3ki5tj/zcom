@@ -15,10 +15,18 @@ Files
 lj.0.h/lj.h       main source code, latter generate from add2d.py
 ljmc.0.h/ljmc.h   Monte Carlo algorithms
 ljmd.h            molecular dynamics algorithms
+ljeos.h           standard equations of state
 ljrdf.h           routines to compute RDF
-add2d.py         generate a version lj.h with 2d support from lj.0.h
+add2d.py          generate a version lj.h with 2d support from lj.0.h
                   similarly ljmc.0.h --> ljmc.h
-ljeos.gp          standard equation of states, gnuplot script
+
+ljeos.gp          standard Johnson et al. (JZG) equation of states, gnuplot script
+ljeosMBWRKN.gp    Kolafa & Nezbeda MBWR equation of states, gnuplot script
+
+KN.f              Kolafa & Nezbeda PVE-hBH equation of state
+
+ljeos.html        JavaScript equipped webpage for Lennard-Jones equation of states
+
 
 
 Test programs
@@ -70,3 +78,6 @@ The speed up of using a stack is > 10%.
 Interestingly, swapping xnew(x) and xnew(f) alleviates the problem
 
 
+Fortran code
+--------------
+gfortran ljeos.f KN.f

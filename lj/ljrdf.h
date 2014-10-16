@@ -24,7 +24,8 @@ INLINE ljrdf_t *ljrdf_open(lj_t *lj, double dr, double rmax)
   xnew(ljr, 1);
   ljr->nfr = 0;
   ljr->lj = lj;
-  if (rmax <= 0) rmax = lj->l * .5;
+  if (rmax <= 0)
+    rmax = (int) (lj->l * .5 / dr) * dr;
   av_clear(ljr->avn);
   ljr->rdf = hs_open(1, 0, rmax, dr);
   ljr->cfac = 1;
