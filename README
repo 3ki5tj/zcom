@@ -1,13 +1,12 @@
 Overview
 ---------
 
-This project collects commonly used into a single header file zcom.h.
+This project collects commonly-used routines into a single header file zcom.h.
 
-Individual module should have their separate directories, except
+Each individual module has a separate directory, except
   zcom.h, which is a combination of all frequently used ones.
 
-Code should be concise and limited in size,
-  module names should be short.
+Code should be concise and small, module names should be short.
 
 Use symbolic links to define inter-modular dependence,
 Use `_' to define the preceding module.

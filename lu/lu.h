@@ -11,17 +11,15 @@
  * the vector `b' will be `x' on return */
 INLINE int lusolve(real * RESTRICT a, real * RESTRICT b, int n)
 {
-  int i, j, k, imax = 0;
+  int i, j, k, ip = 0;
   real x, max;
-  const real mintol = 1e-16; /* absolute minimal value for a pivot */
+  const real tiny = 1e-20; /* absolute minimal value for a pivot */
 
   for (i = 0; i < n; i++) {  /* normalize each equation */
     for (max = 0.0, j = 0; j < n; j++)
       if ((x = fabs(a[i*n + j])) > max)
         max = x;
-    if (max < mintol) {
-      return 1;
-    }
+    if (max < tiny) return 1;
     for (x = 1.0/max, j = 0; j < n; j++)
       a[i*n + j] *= x;
     b[i] *= x;
@@ -37,24 +35,25 @@ INLINE int lusolve(real * RESTRICT a, real * RESTRICT b, int n)
     }
 
     /* matrix L, diagonal of L are 1 */
-    max = 0.0;
+    ip = j;
+    max = 0;
     for (i = j; i < n; i++) {
       for (x = a[i*n + j], k = 0; k < j; k++)
         x -= a[i*n + k] * a[k*n + j];
       a[i*n + j] = x;
       if (fabs(x) >= max) {
         max = fabs(x);
-        imax = i;
+        ip = i;
       }
     }
 
-    if (j != imax) { /* swap the pivot row with the jth row */
+    if (j != ip) { /* swap the pivot row with the jth row */
       for (k = 0; k < n; k++)
-        x = a[imax*n + k], a[imax*n + k] = a[j*n + k], a[j*n + k] = x;
-      x = b[imax], b[imax] = b[j], b[j] = x;
+        x = a[ip*n + k], a[ip*n + k] = a[j*n + k], a[j*n + k] = x;
+      x = b[ip], b[ip] = b[j], b[j] = x;
     }
-    if (fabs(a[j*n + j]) < mintol)
-      return 2;
+    if (fabs(a[j*n + j]) < tiny)
+      a[j*n + j] = tiny;
     /* divide by the pivot element, for the L matrix */
     if (j != n - 1)
       for (x = 1.0/a[j*n + j], i = j + 1; i < n; i++)
