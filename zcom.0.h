@@ -10,31 +10,31 @@
 
   Usage:
 
-  1.  It is designed for quick programming.
-      For simple use, include this file and all functions will be available.
+  1.  This header file is designed for rapid programming.
+      You can simply include this file and all functions will be available.
       But there might be many compiler warnings for unused functions.
 
   2.  You can include this file multiple times in a single file.
 
-  3.  Function are static by default. To export functions,
+  3.  All functions are static by default. To export functions,
       e.g., to make it easier to debug, or to avoid warnings of unused functions,
       define ZCOM_XFUNCS before the first inclusion.
 
-  4.  To hand-pick specific set of modules, e.g.,
+  4.  To hand-pick a specific set of modules, e.g.,
         #define ZCOM_PICK
         #define ZCOM_RNG
         #define ZCOM_ARGOPT
-      before including this file, so other modules are skipped.
+      before including this file.  In this way, other modules are skipped.
 
   5.  If the compiler supports keywords inline and restrict, write
         #define INLINE inline
         #define RESTRICT restrict
-      before including this file. Otherwise the two keywords are guessed
-      according to the compiler.
+      before including this file. Otherwise the default values,
+      according to the compiler, are used.
 
   6.  Define HAVEVAM if the compiler supports variable-argument macros.
 
-  7.  The def module defines `real' as a double, to override it, write
+  7.  The `util' module defines `real' as a double, to override it, write
         typedef float real;
         #define HAVEREAL 1
       before including this file (or equivalently define HAVE_REAL)

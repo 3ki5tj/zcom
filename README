@@ -4,7 +4,7 @@ Overview
 This project collects commonly-used routines into a single header file zcom.h.
 
 Each individual module has a separate directory, except
-  zcom.h, which is a combination of all frequently used ones.
+  zcom.h, which is a combination of all frequently-used ones.
 
 Code should be concise and small, module names should be short.
 
@@ -48,6 +48,7 @@ rv2:            real 2-vectors and 2x2 matrices
 rv3:            real 3-vectors and 3x3 matrices
 rvn:            real D-vectors and DxD matrices
 eig:            eigenvalues and eigenvectors
+cholesky:       Cholesky decomposition
 lu:             LU decomposition
 svd:            single value decomposition
 savgol:         compute Savitzky-Golay coefficients

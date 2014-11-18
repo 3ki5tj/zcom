@@ -3,6 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 <title>Lennard-Jones equation of state</title>
+<script type="text/javascript" src="dygraph-combined.js"></script>
 <script type="text/javascript">
 //<![CDATA[
 
@@ -308,6 +309,67 @@ function setnum(who, num)
 
 
 
+
+function mkplot()
+{
+  var rho, drho = 0.01;
+  var arr1, arr2, arr3;
+  var datU, datP, datF, datG, dat = "density,"
+    +"JZG1993,"
+    +"KN1994<sub>MBWR</sub>,"
+    +"KN1994<sub>PVE-hBH</sub>\n";
+
+  var temp = parseFloat( document.getElementById("temp").value );
+  if ( isNaN(temp) ) temp = 1;
+  var rhomax = parseFloat( document.getElementById("rho").value );
+  if ( isNaN(rhomax) ) {
+    rhomax = 1;
+  } else {
+    rhomax *= 1.2;
+  }
+
+  datU = datP = datF = datG = dat;
+  for ( var i = 1; i*drho <= rhomax; i++ ) {
+    rho = i * drho;
+    arr1 = lj_eos3dMBWR(rho, temp, ljparam_JZG1993);
+    arr2 = lj_eos3dMBWR(rho, temp, ljparam_KN1994);
+    arr3 = lj_eos3dPVEhBH(rho, temp);
+    datU += "" + rho + "," + arr1[0] + "," + arr2[0] + "," + arr3[0] + "\n";
+    datP += "" + rho + "," + arr1[1] + "," + arr2[1] + "," + arr3[1] + "\n";
+    datF += "" + rho + "," + arr1[2] + "," + arr2[2] + "," + arr3[2] + "\n";
+    datG += "" + rho + "," + arr1[3] + "," + arr2[3] + "," + arr3[3] + "\n";
+  }
+
+  var optionsU = {
+    showRoller: true,
+    ylabel: 'Internal energy per particle, <i>U</i>/<i>N</i>'
+  };
+
+  var optionsP = {
+    showRoller: true,
+    ylabel: 'Pressure, <i>P</i>'
+  };
+
+  var optionsF = {
+    showRoller: true,
+    xlabel: 'Density, <i>&rho;</i>',
+    ylabel: 'Helmholtz free energy per particle, <i>F</i><sup>ex</sup>/<i>N</i>'
+  };
+
+  var optionsG = {
+    showRoller: true,
+    xlabel: 'Density, <i>&rho;</i>',
+    ylabel: 'Excess chemical potential, <i>&mu;</i><sup>ex</sup>'
+  };
+
+  var gU = new Dygraph(document.getElementById("U_plot"), datU, optionsU);
+  var gP = new Dygraph(document.getElementById("P_plot"), datP, optionsP);
+  var gF = new Dygraph(document.getElementById("F_plot"), datF, optionsF);
+  var gG = new Dygraph(document.getElementById("G_plot"), datG, optionsG);
+}
+
+
+
 function getEOS()
 {
   var inpT = parseFloat( document.getElementById("temp").value );
@@ -332,20 +394,27 @@ function getEOS()
   setnum("P3",    arr3[1]);
   setnum("Fex3",  arr3[2]);
   setnum("muex3", arr3[3]);
+
+  mkplot();
 }
 //]]>
 </script>
 </head>
 <body>
 
+
+
 <h2>Lennard-Jones equation of states</h2>
 
-<div style="">
+
+
+<form id="my_form">
   <i>T</i>: <input type="text" id="temp" value="1" size="10" />
 
   <i>&rho;</i>: <input type="text" id="rho" value="0.7" size="10" />
 
-  <input type="submit" value="Compute" size="10" onClick="getEOS()" /> <br />
+  <input type="button" value="Compute" size="10" onClick="getEOS()" />
+  <br />
 
   <table style="text-align: center; margin: 2px; border: 2px solid">
   <tr>
@@ -389,9 +458,27 @@ function getEOS()
     <td id="muex2"></td>
     <td id="muex3"></td>
   </tr>
-</div>
+  </table>
 
+  <center>
+  <input type="button" value="Plot!"
+    onClick="mkplot()"
+    style="padding: 5px 20px; width: 400px; margin:auto; text-align:center;">
+  </center>
+  <table>
+    <tr>
+      <td> <div id="U_plot"></div> </td>
+      <td> <div id="P_plot"></div> </td>
+    </tr>
+    <tr>
+      <td> <div id="F_plot"></div> </td>
+      <td> <div id="G_plot"></div> </td>
+    </tr>
+  </table>
+
+</form>
 
 </body>
 </html>
+
 
