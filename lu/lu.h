@@ -83,7 +83,7 @@ INLINE int lusolve(real * RESTRICT a, real * RESTRICT b, int n)
 
 
 /* invert matrix `a' as b = a^(-1)
- * on return, matrix `a' is destroyed, and vector `b' becomes `x' */
+ * on return, matrix `a' is destroyed */
 INLINE int luinv(real * RESTRICT a, real * RESTRICT b, int n)
 {
   int i, j, k, ip = 0;

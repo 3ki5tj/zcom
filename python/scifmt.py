@@ -2,7 +2,7 @@
 
 
 
-''' write a number in scientific format '''
+''' write a number in scientific notation '''
 
 
 

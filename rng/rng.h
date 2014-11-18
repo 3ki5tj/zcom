@@ -224,29 +224,30 @@ INLINE double mtrng_grand0(mtrng_t *mr)
 INLINE double mtrng_randgam(mtrng_t *mr, int k)
 {
   int i;
-  double x, k1 = k - 1, r, y, v1, v2, s;
+  double x, k1 = k - 1, r, y, v1, v2, w;
 
   if (k < 0) { printf("mtrng_randgam: k %d must be positive\n", k); return 0.; }
   if (k == 0) return 0.; /* nothing */
   if (k <= 7) { /* adding numbers of exponential distribution */
     /* exp(- x1 - x2 - x3 - x4) dx1 dx2 dx3 dx4 */
     for (x = 1.0, i = 0; i < k; i++)
-      x *= mtrng_rnd0(mr);
+      x *= 1 - mtrng_rnd0(mr);
     return -log(x);
   }
 
   /* generate gamma distribution by the rejection method */
+  w = sqrt(2.0*k - 1);
   for (;;) {
-    /* generate Lorentz distribution, centered at k1, width is sqrt(2.0*k - 1)
-     p(y) = 1/pi/(1 + y^2), x = y*w + k1, w = sqrt(2.0*k - 1) */
+    /* generate a random number that satisifies the Lorentz distribution
+     * with the center being k1, and width being `w'
+     * p(y) = 1/pi/(1 + y^2), x = y*w + k1 */
     for (;;) { /* get a unit circle */
       v1 = 2.0 * mtrng_rnd0(mr) - 1.0;
       v2 = 2.0 * mtrng_rnd0(mr) - 1.0;
       if (v1*v1 + v2*v2 <= 1.0) {
-        y = v2/v1; /* tan */
-        s = sqrt(2.0*k - 1);
-        x = s*y + k1;
-        if (x > 0.0) break; /* drop the negative value */
+        y = v2/v1; /* y = v2/v1 = tan(theta) */
+        x = w*y + k1;
+        if (x > 0.0) break; /* drop a negative value */
       }
     }
     /* compare with the gamma distribution
@@ -260,7 +261,7 @@ INLINE double mtrng_randgam(mtrng_t *mr, int k)
 
 
 
-/* return the sum of the square of Gaussian random numbers  */
+/* return the sum of the squares of n Gaussian random numbers  */
 INLINE double mtrng_randgausssum(mtrng_t *mr, int n)
 {
   double x, r;
