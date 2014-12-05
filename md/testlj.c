@@ -21,11 +21,11 @@ int step = 0;
 av_t avU, avK, avp;
 
 /*  to the nearest image */
-INLINE double pbc(double x)
-  { return L * (x - ((int)((x)+1000.5) - 1000)); }
+INLINE double pbc(double a)
+  { return L * (a - ((int)((a)+1000.5) - 1000)); }
 
-INLINE double *vpbc(double v[])
-  { v[0] = pbc(v[0]); v[1] = pbc(v[1]); v[2] = pbc(v[2]); return v; }
+INLINE double *vpbc(double a[])
+  { a[0] = pbc(a[0]); a[1] = pbc(a[1]); a[2] = pbc(a[2]); return a; }
 
 INLINE double pbcdist2(double dx[], const double a[], const double b[])
   { return rv3_sqr(vpbc(rv3_diff(dx, a, b))); }

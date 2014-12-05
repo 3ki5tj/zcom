@@ -122,11 +122,17 @@ INLINE void lj_setrho(lj_t *lj, real rho)
   for (lj->vol = 1.f, i = 0; i < lj->d; i++) lj->vol *= lj->l;
   if ((lj->rc = lj->rcdef) > lj->l * .5f) lj->rc = lj->l * .5f;
   lj->rc2 = lj->rc * lj->rc;
+  lj->epot_shift = 0.f;
   if (lj->usesw) { /* assume u(L/2) = 0 */
-    lj->epot_shift = 0.f;
     lj->epot_tail = 0.f;
     lj->p_tail = 0.f;
   } else {
+    if ( lj->usesq ) {
+      real irc = 1/lj->rc;
+      irc *= irc * irc;
+      irc *= irc;
+      lj->epot_shift = 4*irc*(irc - 1);
+    }
     lj->epot_tail = lj_gettail(lj, rho, lj->n, &lj->p_tail);
   }
 }
@@ -271,7 +277,7 @@ INLINE void lj_close(lj_t *lj)
 
 
 
-/* write position (and velocity)
+/* write positions (and possibly velocities)
  * Note 1: *actual* position, not unit position is used
  * Note 2: coordinates are *not* wrapped back into the box */
 INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
@@ -290,7 +296,7 @@ INLINE int lj_writepos(lj_t *lj, const real *x, const real *v, const char *fn)
 
 #define LJ_LOADBOX 0x10
 
-/* read position file (which may include velocity) */
+/* read the position file (which may include velocities) */
 INLINE int lj_readpos(lj_t *lj, real *x, real *v, const char *fn, unsigned flags)
 {
   char s[1024];
@@ -505,19 +511,21 @@ INLINE real lj_energylj3d(lj_t *lj, rv3_t *x, real *virial, real *ep0, real *eps
 INLINE real lj_energyx3d(lj_t *lj, rv3_t *x, real *vir, int *iep, real *rmin,
     real *ep0, real *eps, real *lap)
 {
-  real u;
+  real u, u0 = 0, us = 0;
+  int iu = 0;
+
   if (lj->usesq) {
-    *iep = lj_energysq3d(lj, x, rmin);
-    u = (real) (*iep);
+    iu = lj_energysq3d(lj, x, rmin);
+    u0 = us = u = (real) iu;
   } else if (lj->usesw) {
     u = lj_energysw3d(lj, x, vir, lap);
+    u0 = us = u;
   } else {
-    u = lj_energylj3d(lj, x, vir, ep0, eps);
+    u = lj_energylj3d(lj, x, vir, &u0, &us);
   }
-  if (lj->usesq || lj->usesw) {
-    if (ep0) *ep0 = u;
-    if (eps) *eps = u;
-  }
+  if (iep) *iep = iu;
+  if (ep0) *ep0 = u0;
+  if (eps) *eps = us;
   return u;
 }
 

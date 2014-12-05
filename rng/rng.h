@@ -49,12 +49,12 @@ mtrng_t *mr_ = &mrstock_;
 #define mtsave(fn)          mtrng_save(mr_, fn)
 #define mtload(fn, seed)    mtrng_load(mr_, fn, seed)
 #define rand32()            mtrng_rand32(mr_)
-#define rnd0()              mtrng_rnd0(mr_) /* double, [0, 1) */
-#define rnd(a, b)           mtrng_rnd(mr_, a, b) /* double, [a, b) */
+#define rnd0()              mtrng_rand01(mr_) /* double, [0, 1) */
+#define rnd(a, b)           mtrng_randunif(mr_, a, b) /* double, [a, b) */
 #define mtrand()            mtrng_rand(mr_)
-#define grand0()            mtrng_grand0(mr_)
+#define grand0()            mtrng_randgaus(mr_)
 #define randgam(k)          mtrng_randgam(mr_, k)
-#define randgausssum(n)     mtrng_randgausssum(mr_, n)
+#define randchisqr(n)       mtrng_randchisqr(mr_, n)
 #define randpair(n, j)      mtrng_randpair(mr_, n, j)
 #define metroacc0(r)        mtrng_metroacc0(mr_, r)
 #define metroacc1(de, bet)  mtrng_metroacc1(mr_, de, bet)
@@ -156,8 +156,8 @@ INLINE int mtrng_load(mtrng_t *mr, const char *fn, uint32_t seed)
 
 #define mtrng_rand32(mr) mtrng_rand(mr)
 /* must be double to avoid the round-off error that gives >= 1 result */
-#define mtrng_rnd0(mr) (mtrng_rand32(mr) * (1./4294967296.0)) /* double, [0, 1) */
-#define mtrng_rnd(mr, a, b) ((a) + ((b) - (a)) * mtrng_rnd0(mr)) /* double, [a, b) */
+#define mtrng_rand01(mr) (mtrng_rand32(mr) * (1./4294967296.0)) /* double, [0, 1) */
+#define mtrng_randunif(mr, a, b) ((a) + ((b) - (a)) * mtrng_rand01(mr)) /* double, [a, b) */
 
 /* return an unsigned random number */
 INLINE uint32_t mtrng_rand(mtrng_t *mr)
@@ -203,12 +203,12 @@ INLINE uint32_t mtrng_rand(mtrng_t *mr)
 
 /* Gaussian distribution with zero mean and unit variance
  * using ratio method */
-INLINE double mtrng_grand0(mtrng_t *mr)
+INLINE double mtrng_randgaus(mtrng_t *mr)
 {
   double x, y, u, v, q;
   do {
-    u = 1 - mtrng_rnd0(mr);
-    v = 1.7156*(mtrng_rnd0(mr) - .5);  /* >= 2*sqrt(2/e) */
+    u = 1 - mtrng_rand01(mr);
+    v = 1.7156*(mtrng_rand01(mr) - .5);  /* >= 2*sqrt(2/e) */
     x = u - 0.449871;
     y = fabs(v) + 0.386595;
     q = x*x  + y*(0.196*y - 0.25472*x);
@@ -219,56 +219,49 @@ INLINE double mtrng_grand0(mtrng_t *mr)
 
 
 
-/* return a random number that satisfies a gamma distribution
-   p(x) = x^(k - 1) e^(-x) / (k - 1)! */
-INLINE double mtrng_randgam(mtrng_t *mr, int k)
+/* return a random number that satisfies the gamma distribution
+ * p(x) = x^(k - 1) exp(-x) / Gamma(k) */
+INLINE double mtrng_randgam(mtrng_t *mr, double k)
 {
-  int i;
-  double x, k1 = k - 1, r, y, v1, v2, w;
+  int lt1 = 0;
+  double a, b, x, v, u;
 
-  if (k < 0) { printf("mtrng_randgam: k %d must be positive\n", k); return 0.; }
-  if (k == 0) return 0.; /* nothing */
-  if (k <= 7) { /* adding numbers of exponential distribution */
-    /* exp(- x1 - x2 - x3 - x4) dx1 dx2 dx3 dx4 */
-    for (x = 1.0, i = 0; i < k; i++)
-      x *= 1 - mtrng_rnd0(mr);
-    return -log(x);
+  if (k <= 0) {
+    fprintf(stderr, "mtrng_randgam: k %g must be positive\n", k);
+    return 0.;
+  }
+  if ( k < 1 ) {
+    lt1 = 1;
+    k += 1;
+  }
+  a = k - 1./3;
+  b = 1./3/sqrt(a);
+
+  for ( ; ; ) {
+    do {
+      x = mtrng_randgaus(mr);
+      v = 1 + b * x;
+    } while ( v <= 0 );
+    v *= v * v;
+    x *= x;
+    u = mtrng_rand01(mr);
+    if ( u <= 1 - 0.331 * x * x ) break;
+    u = log(u);
+    if ( u <= 0.5 * x + a * (1 - v + log(v)) ) break;
   }
 
-  /* generate gamma distribution by the rejection method */
-  w = sqrt(2.0*k - 1);
-  for (;;) {
-    /* generate a random number that satisifies the Lorentz distribution
-     * with the center being k1, and width being `w'
-     * p(y) = 1/pi/(1 + y^2), x = y*w + k1 */
-    for (;;) { /* get a unit circle */
-      v1 = 2.0 * mtrng_rnd0(mr) - 1.0;
-      v2 = 2.0 * mtrng_rnd0(mr) - 1.0;
-      if (v1*v1 + v2*v2 <= 1.0) {
-        y = v2/v1; /* y = v2/v1 = tan(theta) */
-        x = w*y + k1;
-        if (x > 0.0) break; /* drop a negative value */
-      }
-    }
-    /* compare with the gamma distribution
-       r peaks at x = k1, where, y = 0 and r = 1 */
-    r = (1.0 + y*y) * exp(k1 * log(x/k1) - x + k1);
-    if (mtrng_rnd0(mr) <= r) break;
-  }
-
+  x = a * v;
+  if ( lt1 ) x *= pow(1 - mtrng_rand01(mr), 1./(k - 1));
   return x;
 }
 
 
 
-/* return the sum of the squares of n Gaussian random numbers  */
-INLINE double mtrng_randgausssum(mtrng_t *mr, int n)
+/* return a random number that satisfies the chi-squared distribution,
+ * which is the sum of the squares n Gaussian random numbers */
+INLINE double mtrng_randchisqr(mtrng_t *mr, double n)
 {
-  double x, r;
-  if (n <= 0) return 0.0;
-  x = 2.0 * mtrng_randgam(mr, n/2);
-  if (n % 2) { r = mtrng_grand0(mr); x += r*r; }
-  return x;
+  return 2 * mtrng_randgam(mr, n*.5);
 }
 
 
@@ -276,7 +269,7 @@ INLINE double mtrng_randgausssum(mtrng_t *mr, int n)
 /* random pair index (i, j) */
 INLINE int mtrng_randpair(mtrng_t *mr, int n, int *j)
 {
-  int pid = (int) (mtrng_rnd0(mr) * n * (n - 1)), i;
+  int pid = (int) (mtrng_rand01(mr) * n * (n - 1)), i;
   i = pid / (n - 1);
   *j = pid - i * (n - 1);
   if (*j >= i) (*j)++;
@@ -294,7 +287,7 @@ INLINE int mtrng_randpair(mtrng_t *mr, int n, int *j)
 INLINE int mtrng_metroacc0(mtrng_t *mr, double r)
 {
   r = exp(r);
-  return mtrng_rnd0(mr) < r;
+  return mtrng_rand01(mr) < r;
 }
 
 

@@ -218,7 +218,7 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
   if (dt < 10) c = (real) exp(-dt);
   ek1 = md_getekin(ekin, v, nd);
   r = (real) grand0();
-  r2 = (real) randgausssum(dof - 1);
+  r2 = (real) randchisqr(dof - 1);
   ek2 = (real)( ek1 + (1 - c) * (ekav*(r2 + r*r)/dof - ek1)
     + 2 * r * sqrt(c*(1 - c) * ekav/dof*ek1) );
   if (ek2 < 0) ek2 = 0;
