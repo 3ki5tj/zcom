@@ -5,9 +5,13 @@
 
 
 
+enum { OPT_ARGUMENT, OPT_OPTION, OPT_CFG, OPT_COUNT };
+
+
+
 /* option either from arguments or configuration */
 typedef struct {
-  int isopt; /* is option (1) or argument (0) or cfg file entry (2) */
+  int isopt; /* one of OPT_xxx values */
   char ch; /* single letter option flag */
   const char *sflag; /* long string flag */
   const char *key; /* key, for cfg files as in `key = val' */
@@ -17,9 +21,12 @@ typedef struct {
   const char *fmt; /* sscanf format */
   const char *pfmt; /* printf format, NULL: to guess */
   void *ptr; /* address to the target variable */
-  int ival; /* initial value, for switches */
+  int initval; /* initial value, for a switch option */
+  const char **sarr; /* array of string values, for a list option */
+  int scnt; /* length of the array, for a list option */
   unsigned flags;
 } opt_t;
+
 
 
 /* support __float128 for GCC
@@ -37,6 +44,29 @@ typedef struct {
 #else
   #define HAVEFLOAT128 0
 #endif
+
+
+
+/* return the index of string from a predefined array
+ * using fuzzy string comparison */
+INLINE int opt_select(const char *s, const char **sarr, int n)
+{
+  int i;
+  char ls[1024];
+
+  for ( i = 0; i < n; i++ )
+    if ( strcmpfuzzy(sarr[i], s) == 0 )
+      return i;
+  if ( isdigit(s[0]) ) {
+    i = atoi(s);
+    if ( i >= 0 && i < n ) return i;
+  }
+  strjoin(ls, sizeof ls, sarr, n, ", ");
+  fprintf(stderr, "Error: cannot select %s from the array of %d items: %s\n",
+      s, n, ls);
+  exit(1);
+  return 0;
+}
 
 
 
@@ -59,10 +89,17 @@ INLINE int opt_getval(opt_t *o)
     *((const char **) o->ptr) = o->val;
   } else if (strcmp(fmt, "%s") == 0) { /* copy the string */
     sscpy( *((char **) o->ptr), o->val);
+  } else if (strcmpnc(fmt, "%list") == 0
+          || strcmpnc(fmt, "%enum") == 0) {
+    *((int *) o->ptr) = opt_select(o->val, o->sarr, o->scnt);
   } else if (strcmp(fmt, "%b") == 0) { /* switch */
     /* switch the default value */
-    if (o->flags & OPT_SET) return !o->ival;
-    else return o->ival;
+    if (o->flags & OPT_SET) return !o->initval;
+    else return o->initval;
+  } else if (strcmp(fmt, "%+") == 0) { /* incremental, like -vv */
+    *((int *) o->ptr) += 1;
+  } else if (strcmp(fmt, "%-") == 0) { /* decremental, like -vv */
+    *((int *) o->ptr) -= 1;
 #if HAVEFLOAT128
   } else if (strcmp(fmt, "%Qf") == 0) {
 #if defined(QUAD) || defined(F128)
@@ -98,17 +135,21 @@ INLINE int opt_getval(opt_t *o)
  *  is directly assigned to `o->val' during opt_getval() in the
  *  former case, but extra memory is allocated to copy `o->val'
  *  in the latter case */
-INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
-    const char *fmt, void *ptr, const char *desc)
+#define opt_set(o, sflag, key, fmt, ptr, desc) \
+  opt_setx(o, sflag, key, fmt, ptr, desc, NULL, 0)
+
+INLINE void opt_setx(opt_t *o, const char *sflag, const char *key,
+    const char *fmt, void *ptr, const char *desc,
+    const char **sarr, int scnt)
 {
   o->ch = '\0';
   if (key) { /* cfg file `key = val', not a command-line argument */
-    o->isopt = 2;
+    o->isopt = OPT_CFG;
   } else if (sflag) { /* option */
-    o->isopt = 1;
+    o->isopt = OPT_OPTION;
     o->ch = (char) ( sflag[2] ? '\0' : sflag[1] ); /* no ch for a long flag */
   } else { /* argument */
-    o->isopt = 0;
+    o->isopt = OPT_ARGUMENT;
   }
   o->sflag = sflag;
   o->key = key;
@@ -124,13 +165,14 @@ INLINE void opt_set(opt_t *o, const char *sflag, const char *key,
       "unknown format (missing `%%') flag `%s\', fmt `%s', description: %s\n",
       sflag, fmt, desc);
   if (strcmp(fmt, "%b") == 0) {
-    fmt = "%d";
     o->flags |= OPT_SWITCH;
-    o->ival = *((int *) ptr); /* save the initial value */
+    o->initval = *((int *) ptr); /* save the initial value */
   }
   o->fmt = fmt;
   o->pfmt = NULL;
   o->desc = desc;
+  o->sarr = sarr;
+  o->scnt = scnt;
 }
 
 
@@ -142,29 +184,38 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
   const char *fmt;
 
   for (fmt = o->fmt; *fmt && *fmt != '%'; fmt++) ;
+
 #define ELIF_PF_(fm, fmp, type) \
   else if (strcmp(fmt, fm) == 0) \
-    fprintf(fp, (o->pfmt ? o->pfmt : fmp), *(type *)o->ptr)
+  { fprintf(fp, (o->pfmt ? o->pfmt : fmp), *(type *)o->ptr); }
 
-  if (fmt == NULL || *fmt == '\0' || strcmp(fmt, "%s") == 0)
+  if (fmt == NULL || *fmt == '\0' || strcmp(fmt, "%s") == 0) {
     fprintf(fp, "%s", (*(char **) o->ptr) ? (*(char **) o->ptr) : "NULL");
-  ELIF_PF_("%b", "%d", int); /* switch */
-  ELIF_PF_("%d", "%d", int);
-  ELIF_PF_("%u", "%u", unsigned);
-  ELIF_PF_("%x", "0x%x", unsigned);
-  ELIF_PF_("%ld", "%ld", long);
-  ELIF_PF_("%lo", "%lo", long);
-  ELIF_PF_("%lu", "%lu", unsigned long);
-  ELIF_PF_("%lx", "0x%lx", unsigned long);
+  } else if (strcmp(fmt, "%b") == 0) {
+    fprintf(fp, "%s", (*(int *)o->ptr) ? "true" : "false");
+  } else if (strcmpfuzzy(fmt, "%list") == 0
+          || strcmpfuzzy(fmt, "%enum") == 0) {
+    int ival = *((int *) o->ptr);
+    fprintf(fp, "%d (%s)", ival, o->sarr[ival]);
+  }
+  ELIF_PF_("%+", "%d", int)
+  ELIF_PF_("%-", "%d", int)
+  ELIF_PF_("%d", "%d", int)
+  ELIF_PF_("%u", "%u", unsigned)
+  ELIF_PF_("%x", "0x%x", unsigned)
+  ELIF_PF_("%ld", "%ld", long)
+  ELIF_PF_("%lo", "%lo", long)
+  ELIF_PF_("%lu", "%lu", unsigned long)
+  ELIF_PF_("%lx", "0x%lx", unsigned long)
 #if 1  /* C99 or GCC extension */
-  ELIF_PF_("%lld", "%lld", long long);
-  ELIF_PF_("%llo", "%llo", long long);
-  ELIF_PF_("%llu", "%llu", unsigned long long);
-  ELIF_PF_("%llx", "0x%llx", unsigned long long);
+  ELIF_PF_("%lld", "%lld", long long)
+  ELIF_PF_("%llo", "%llo", long long)
+  ELIF_PF_("%llu", "%llu", unsigned long long)
+  ELIF_PF_("%llx", "0x%llx", unsigned long long)
 #endif
-  ELIF_PF_("%f", "%g", float);
-  ELIF_PF_("%lf", "%g", double);
-  ELIF_PF_("%Lf", "%Lg", long double);
+  ELIF_PF_("%f", "%g", float)
+  ELIF_PF_("%lf", "%g", double)
+  ELIF_PF_("%Lf", "%Lg", long double)
 #if HAVEFLOAT128
 #if defined(QUAD) || defined(F128)
   else if (strcmp(fmt, "%Qf") == 0) {
@@ -174,11 +225,14 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
     fprintf(fp, "%s", buf);
   }
 #else /* intrinsic hook, requires no -lquadmath if unnecessary */
-  ELIF_PF_("%Qf", "%Qg", __float128);
+  ELIF_PF_("%Qf", "%Qg", __float128)
 #endif /* defined(QUAD) || defined(F128) */
-#endif
-  ELIF_PF_("%r", "%g", real);
-  else fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *) o->ptr);
+#endif /* HAVEFLOAT128 */
+  ELIF_PF_("%r", "%g", real)
+  else {
+    fprintf(fp, "unknown %s-->%%d: %d", fmt, *(int *) o->ptr);
+  }
+
 #undef ELIF_PF_
 }
 
@@ -202,6 +256,7 @@ INLINE int opt_isset(opt_t *ls, int n, const void *p, const char *var)
   die_if (!o, "cannot find var %s, ptr %p\n", var, p);
   return o->flags & OPT_SET ? 1 : 0;
 }
+
 
 
 #if HAVEFLOAT128

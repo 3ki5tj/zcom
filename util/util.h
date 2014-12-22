@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <limits.h>
 #include <float.h>
 
 
@@ -569,7 +570,7 @@ INLINE char *strcnv(char *s, const char *t, size_t len, unsigned flags)
 
 
 /* compare strings without case */
-#define strcmpnc(s, t) strncmpnc(s, t, -1)
+#define strcmpnc(s, t) strncmpnc(s, t, INT_MAX)
 INLINE int strncmpnc(const char *s, const char *t, int n)
 {
   int i, cs, ct;
@@ -585,6 +586,54 @@ INLINE int strncmpnc(const char *s, const char *t, int n)
     if (cs != ct) break;
   }
   return cs - ct;
+}
+
+
+
+#define strcmpfuzzy(s, t) strncmpfuzzy(s, t, INT_MAX)
+
+/* comparison, ignoring cases, spaces and punctuations */
+INLINE int strncmpfuzzy(const char *s, const char *t, int n)
+{
+  int is, it, i;
+  const char cset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()[]{}";
+
+  for ( i = 0; i < n; s++, t++, i++ ) {
+    while ( *s != '\0' && strchr(cset, *s) == NULL ) s++;
+    while ( *t != '\0' && strchr(cset, *t) == NULL ) t++;
+    is = tolower( (unsigned char) (*s) );
+    it = tolower( (unsigned char) (*t) );
+    if ( is != it ) return is - it;
+    if ( *s == '\0' ) return 0;
+  }
+  return 0;
+}
+
+
+
+/* check if `s' starts with `t' */
+#define strstartswith(s, t)       (strncmp(s, t, sizeof(t))       == 0)
+#define strstartswithnc(s, t)     (strncmpnc(s, t, sizeof(t))     == 0)
+#define strstartswithfuzzy(s, t)  (strncmpfuzzy(s, t, sizeof(t))  == 0)
+
+
+
+/* join strings */
+INLINE char *strjoin(char *s, int size,
+    const char **arr, int n, const char *com)
+{
+  int i, li, lc, sz = 0;
+
+  if ( com == NULL ) com = " ";
+  lc = strlen(com);
+  s[0] = '\0';
+  for ( i = 0; i < n; i++ ) {
+    li = strlen(arr[i]);
+    if ( (sz += li) < size ) strcat(s, arr[i]);
+    if ( i == n - 1 ) break;
+    if ( (sz += lc) < size ) strcat(s, com);
+  }
+  return s;
 }
 
 

@@ -56,7 +56,7 @@ INLINE argopt_t *argopt_open(unsigned flags)
 
 INLINE void argopt_close(argopt_t *ao)
 {
-  if (ao->opts) { free(ao->opts); ao->opts = NULL; }
+  if (ao->opts) free(ao->opts);
   free(ao);
 }
 
@@ -81,6 +81,7 @@ INLINE void argopt_help(argopt_t *ao)
   int i, len, maxlen;
   opt_t *o;
   const char *sysopt[2] = {"print help message", "print version"}, *desc;
+  char ls[1024];
 
   fprintf(stderr, "%s, version %d",
       ao->desc ? ao->desc : ao->prog, ao->version);
@@ -114,9 +115,11 @@ INLINE void argopt_help(argopt_t *ao)
       desc = sysopt[0];
     else if (strcmp(desc, "$VERSION") == 0)
       desc = sysopt[1];
-    fprintf(stderr, "  %-*s : %s%s%s", maxlen, o->sflag,
+    fprintf(stderr, "  %-*s : %s%s%s%s%s", maxlen, o->sflag,
         ((o->flags & OPT_MUST) ? "[MUST] " : ""),
-        (!(o->flags & OPT_SWITCH) ? "followed by " : ""), desc);
+        (!(o->flags & OPT_SWITCH) ? "followed by " : ""), desc,
+        (o->sarr != NULL ? ", options: " : ""),
+        (o->sarr != NULL ? strjoin(ls, sizeof ls, o->sarr, o->scnt, ", ") : ""));
     if (o->ptr && o->ptr != ao->dum_) { /* print default values */
       fprintf(stderr, ", default: ");
       opt_fprintptr(stderr, o);
@@ -135,13 +138,16 @@ INLINE void argopt_help(argopt_t *ao)
 #define argopt_regversion argopt_addversion
 #define argopt_addhelp(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$HELP")
 #define argopt_addversion(ao, sflag) argopt_add(ao, sflag, "%b", ao->dum_, "$VERSION")
+#define argopt_add(ao, sflag, fmt, ptr, desc) \
+  argopt_addx(ao, sflag, fmt, ptr, desc, NULL, 0)
 
 /* register an argument or option
  * sflag: string flag, or NULL for an argument
  * fmt: sscanf() format string, "%b" for a switch, "%r" for real
  * return the index */
-INLINE int argopt_add(argopt_t *ao, const char *sflag,
-    const char *fmt, void *ptr, const char *desc)
+INLINE int argopt_addx(argopt_t *ao, const char *sflag,
+    const char *fmt, void *ptr, const char *desc,
+    const char **sarr, int scnt)
 {
   opt_t *o;
   int n;
@@ -149,7 +155,7 @@ INLINE int argopt_add(argopt_t *ao, const char *sflag,
   n = ao->nopt++;
   xrenew(ao->opts, ao->nopt);
   o = ao->opts + n;
-  opt_set(o, sflag, NULL, fmt, ptr, desc);
+  opt_setx(o, sflag, NULL, fmt, ptr, desc, sarr, scnt);
   return n;
 }
 
@@ -180,10 +186,13 @@ INLINE void argopt_parse(argopt_t *ao, int argc, char **argv)
 
       if (islong) { /* match against long options */
         for (k = 0; k < ao->nopt; k++) {
-          int lenf = strlen(ol[k].sflag);
+          int lenf;
+          if (ol[k].sflag == NULL) continue;
+          lenf = strlen(ol[k].sflag);
           if (ol[k].isopt &&
               strncmp(argv[i], ol[k].sflag, lenf) == 0 &&
-              strchr("= ", argv[i][lenf])) /* followed by a space or "=" */
+              ( (ol[k].flags & OPT_SWITCH)
+              || strchr("= ", argv[i][lenf]) ) ) /* followed by a space or "=" */
             break;
         }
       } else { /* match against short options */
@@ -207,13 +216,16 @@ INLINE void argopt_parse(argopt_t *ao, int argc, char **argv)
         ol[k].flags |= OPT_SET;
         /* switch the default value, note this flag may be passed
          * several times, so we don't want to flip around */
-        *((int *) ol[k].ptr) = !ol[k].ival;
+        *((int *) ol[k].ptr) = !ol[k].initval;
         if (islong) break; /* go to the next argument argv[i+1] */
-      } else { /* look for the additional argument for this */
+      } else if (strcmp(ol[k].fmt, "%+") == 0
+              || strcmp(ol[k].fmt, "%-") == 0) {
+        if (0 != opt_getval(ol + k)) argopt_help(ao);
+      } else { /* look for the argument for this option */
         int hasv = 0;
         if (islong) { /* e.g., --version=11 */
           j = strlen(ol[k].sflag);
-          if (argv[i][ j ] == '=') {
+          if (argv[i][j] == '=') {
             ol[k].val = argv[i] + j + 1;
             hasv = 1;
           }
@@ -263,10 +275,16 @@ INLINE void argopt_dump(const argopt_t *ao)
   /* print values of all options */
   for (i = 0; i < ao->nopt; i++) {
     const char *sflag = ol[i].sflag;
+    char buf[1024];
+
     if (sflag == NULL) sflag = "arg";
     fprintf(stderr, "%*s: ", len + 1, sflag);
     opt_fprintptr(stderr, ol + i);
-    fprintf(stderr, ",  %s\n", ol[i].desc);
+    fprintf(stderr, ",  %s", ol[i].desc);
+    if (ol[i].sarr != NULL)
+      fprintf(stderr, ", options: %s",
+          strjoin(buf, sizeof buf, ol[i].sarr, ol[i].scnt, ", "));
+    fprintf(stderr, "\n");
   }
 }
 
