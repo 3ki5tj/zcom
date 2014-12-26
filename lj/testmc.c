@@ -1,3 +1,4 @@
+/* MC simulation in the isothermal-isobaric ensemble */
 #include "lj.c"
 #include "include/av.h"
 

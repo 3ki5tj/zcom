@@ -71,7 +71,7 @@ INLINE void md_shiftcomw(real * RESTRICT x, const real * RESTRICT w, int n, int 
 }
 
 
-/* annihilate angular momentum 2d */
+/* annihilate the total angular momentum, 2d */
 INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 {
   int i;
@@ -94,7 +94,7 @@ INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
 
 
 
-/* annihilate angular momentum 3d
+/* annihilate the total angular momentum, 3d
  * solve
  *   /  y^2 + z^2    -x y      -x y      \
  *   |  -x y       X^2 + z^2   -y z      |  c  =  I

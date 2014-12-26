@@ -105,7 +105,7 @@ INLINE real lj_gettail(lj_t *lj, real rho, int n, real *ptail)
   } else if (lj->d == 2) {
     utail = (real) (M_PI*rho*n*(.4*irc6 - 1)*irc3*irc);
     if (ptail != NULL)
-      *ptail = (real) (M_PI*rho*rho*(1.6*irc6 - 2)*irc3*irc);
+      *ptail = (real) (M_PI*rho*rho*(2.4*irc6 - 3)*irc3*irc);
   }
   return utail;
 }
@@ -750,13 +750,17 @@ INLINE real lj_vir2sw3d(lj_t *lj)
 
 /* compute pressure */
 INLINE real lj_calcp(lj_t *lj, real tp)
-{ return (lj->dof * tp + lj->vir) / (lj->d * lj->vol) + lj->p_tail; }
+{
+  return (lj->dof * tp + lj->vir) / (lj->d * lj->vol) + lj->p_tail;
+}
 
 
 
 /* compute pressure, ideal gas part from the kinetic energy  */
 INLINE real lj_calcpk(lj_t *lj)
-{ return (2.f * lj->ekin + lj->vir) / (lj->d * lj->vol) + lj->p_tail; }
+{
+  return (2.f * lj->ekin + lj->vir) / (lj->d * lj->vol) + lj->p_tail;
+}
 
 
 
