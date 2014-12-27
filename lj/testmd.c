@@ -57,9 +57,6 @@ int main(void)
 
   hsvol = hs_open(1, 0, 5.*lj->n/lj->rho, 2.f);
 
-  md_shiftcom(lj->v, lj->n, lj->d);
-  md_shiftang(lj->x, lj->v, lj->n, lj->d);
-
   for (t = 1; t <= nsteps; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);

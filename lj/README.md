@@ -38,6 +38,7 @@
 ----------------------|------------------------------------------------------------
   testmc0.c           | basic Monte Carlo simulation in the NVT ensemble
   testmc.c            | Monte Carlo simulation in the isothermal-isobaric ensemble
+  testmd0.c           | basic molecular dynamics simulation in the NVT ensemble
   testmd.c            | molecular dynamics with thermostat and barostat
   testctr.c           | prototype of the perturbation temperature
   testref.c           | reference equation of states

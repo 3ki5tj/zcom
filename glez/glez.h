@@ -265,8 +265,8 @@ INLINE void glez_motionfunc(int x, int y)
     float mat[4][4];
 
     glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *) mat);
-    glRotated(angx, mat[0][0], mat[1][0], mat[2][0]);
-    glRotated(angy, mat[0][1], mat[1][1], mat[2][1]);
+    glRotatef(angx, mat[0][0], mat[1][0], mat[2][0]);
+    glRotatef(angy, mat[0][1], mat[1][1], mat[2][1]);
     glutPostRedisplay();
   }
   glez_x = x;
