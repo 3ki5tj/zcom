@@ -1,5 +1,8 @@
 #ifndef LJMC_H__
 #define LJMC_H__
+
+
+
 /* Lennard-Jones system: Monte Carlo routines */
 
 
@@ -9,11 +12,11 @@ INLINE int lj_randmv3d(lj_t *lj, real *xi, real amp)
 {
   int i, d;
 
-  i = (int)(rnd0() * lj->n);
+  i = (int) (rand01() * lj->n);
   amp /= lj->l;
   rv3_copy(xi, lj->x + i*3);
   for (d = 0; d < 3; d++) /* displacement */
-    xi[d] += (real)(amp * (2.*rnd0() - 1.));
+    xi[d] += (real) randunif(-amp, amp);
   return i;
 }
 
@@ -336,7 +339,7 @@ INLINE real lj_dupertg3d(lj_t *lj, real amp)
   amp /= lj->l; /* convert to the reduced unit */
   for (i = 0; i < lj->n; i++)
     for (d = 0; d < 3; d++)
-      nx[i][d] = (real) (lj->x[i*3 + d] + amp * (2*rnd0() - 1));
+      nx[i][d] = lj->x[i*3 + d] + (real) randunif(-amp, amp);
   du = lj_energyx3d(lj, nx, &vir, &iep, &rmin, &ep0, &eps, &lap) - lj->epot;
   free(nx);
   return du;
@@ -356,7 +359,9 @@ INLINE real lj_duinsert3d(lj_t *lj, real *xt)
   int j, n = lj->n;
   real xt0[3], u, du, dvir;
 
-  if (xt == NULL) for (xt = xt0, j = 0; j < 3; j++) xt[j] = (real) rnd0();
+  if (xt == NULL)
+    for (xt = xt0, j = 0; j < 3; j++)
+      xt[j] = (real) rand01();
   for (u = 0.f, j = 0; j < n; j++) /* pair energy */
     if (lj_pair(lj, xt, lj->x + 3*j, &du, &dvir))
       u += du;

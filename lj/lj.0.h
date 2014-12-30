@@ -182,7 +182,7 @@ INLINE lj_t *lj_open(int n, int d, real rho, real rcdef)
   if (lj->d == 3) lj_initfcc3d(lj); else lj_initfcc2d(lj);
 
   /* init. random velocities */
-  for (i = 0; i < n * d; i++) lj->v[i] = (real) (rnd0() - .5);
+  for (i = 0; i < n * d; i++) lj->v[i] = (real) (rand01() - .5);
 
   lj_shiftcom(lj, lj->v);
   lj_shiftang(lj, lj->x, lj->v);

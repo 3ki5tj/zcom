@@ -1125,7 +1125,7 @@ INLINE int ab_brownian(abpro_t *ab, real T, real fscal, real dt, unsigned flags)
   real amp = (real) sqrt(2*dt*T);
 
   for (i = 0; i < nd; i++)
-    ab->x1[i] = ab->x[i] + fscal*ab->f[i]*dt + (real)(grand0()*amp);
+    ab->x1[i] = ab->x[i] + fscal*ab->f[i]*dt + (real)(randgaus() * amp);
 
   if (milc) {
     i = ab_milcshake(ab, ab->x, ab->x1, NULL, 0.f, 0, 0., verbose);

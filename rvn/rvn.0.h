@@ -316,6 +316,17 @@ INLINE real *rvn_lincomb2(real * RESTRICT c, const real *a, const real *b, real 
 
 
 
+/* a = a * s + c */
+INLINE real *rvn_fma(real *a, real s, real c)
+{
+  int i;
+
+  for (i = 0; i < DM; i++) a[i] = a[i] * s + c;
+  return a;
+}
+
+
+
 /* cosine of the angle of x1-x2-x3 */
 INLINE real rvn_cosang(const real *x1, const real *x2, const real *x3,
     real *g1, real *g2, real *g3)
@@ -371,16 +382,20 @@ INLINE real rvn_vdist(const real *x, const real *a, const real *b)
 
 
 
-#define rvn_rnd0() rvn_rnd(v, 0, 1)
+#define rvn_rnd0(v)           rvn_rand01(v)
 
-/* uniformly distributed random vector [a, a + b) */
-INLINE real *rvn_rnd(real *v, real a, real b)
+#define rvn_rnd(v, a, b)      rvn_randunif(v)
+
+/* uniformly distributed random vector in [a, b) */
+#define rvn_randunif(v, a, b) rvn_fma(rvn_rand01(v), b - a, -a)
+
+/* uniformly distributed random vector in [0, 1) */
+INLINE real *rvn_rand01(real *v)
 {
   int i;
 
-  b -= a;
   for (i = 0; i < D; i++)
-    v[i] = a + b * (real) rnd0();
+    v[i] = (real) rand01();
 #if D < DM
   for (i = D; i < DM; i++) v[i] = (real) 0;
 #endif
@@ -390,17 +405,17 @@ INLINE real *rvn_rnd(real *v, real a, real b)
 
 
 #if DM == 2
-#define rvn_rnddisp(x, x0, a) rv2_rnddisp(x, x0, a)
+#define rvn_randdisp(x, x0, a) rv2_randdisp(x, x0, a)
 #elif DM == 3
-#define rvn_rnddisp(x, x0, a) rv3_rnddisp(x, x0, a)
+#define rvn_randdisp(x, x0, a) rv3_randdisp(x, x0, a)
 #else
 /* displace `x0' by a random vector in [-a, a)^D */
-INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
+INLINE real *rvn_randdisp(real * RESTRICT x, const real *x0, real a)
 {
   int i;
 
   for (i = 0; i < D; i++)
-    x[i] = x0[i] + (real) rnd(-a, a);
+    x[i] = x0[i] + (real) randunif(-a, a);
 #if D < DM
   for (i = D; i < DM; i++) x[i] = (real) 0;
 #endif
@@ -410,28 +425,18 @@ INLINE real *rvn_rnddisp(real * RESTRICT x, const real *x0, real a)
 
 
 
+#define rvn_grand0(v)       rvn_randgaus(v)
+
+#define rvn_grand(v, a, b)  rvn_fma(rvn_randgaus(v), b - a, -a)
+
+
 /* normally distributed random vector */
-INLINE real *rvn_grand0(real *v)
+INLINE real *rvn_randgaus(real *v)
 {
   int i;
 
   for (i = 0; i < D; i++)
-    v[i] = (real) grand0();
-#if D < DM
-  for (i = D; i < DM; i++) v[i] = (real) 0;
-#endif
-  return v;
-}
-
-
-
-/* normally distributed random vector */
-INLINE real *rvn_grand(real *v, real c, real r)
-{
-  int i;
-
-  for (i = 0; i < D; i++)
-    v[i] = c + r * (real) grand0();
+    v[i] = (real) randgaus();
 #if D < DM
   for (i = D; i < DM; i++) v[i] = (real) 0;
 #endif
@@ -442,16 +447,16 @@ INLINE real *rvn_grand(real *v, real c, real r)
 
 /* displace `x0' by a normally-distributed random vector */
 #if DM == 2
-#define rvn_granddisp(x, x0, a) rv2_granddisp(x, x0, a)
+#define rvn_randgausdisp(x, x0, a) rv2_randgausdisp(x, x0, a)
 #elif DM == 3
-#define rvn_granddisp(x, x0, a) rv3_granddisp(x, x0, a)
+#define rvn_randgausdisp(x, x0, a) rv3_randgausdisp(x, x0, a)
 #else
-INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
+INLINE real *rvn_randgausdisp(real * RESTRICT x, const real *x0, real a)
 {
   int i;
 
   for (i = 0; i < D; i++)
-    x[i] = x0[i] + (real) grand0() * a;
+    x[i] = x0[i] + (real) randgaus() * a;
 #if D < DM
   for (i = D; i < DM; i++) x[i] = (real) 0;
 #endif
@@ -462,35 +467,35 @@ INLINE real *rvn_granddisp(real * RESTRICT x, const real *x0, real a)
 
 
 /* randomly oriented vector on the sphere of radius r */
-#define rvn_rnddir(v, r) rvn_smul(rvn_rnddir0(v), r)
+#define rvn_randdir(v, r) rvn_smul(rvn_randdir0(v), r)
 
 /* randomly oriented vector on the unit sphere */
-INLINE real *rvn_rnddir0(real *v)
+INLINE real *rvn_randdir0(real *v)
 {
 #if D < 5
-  while ( rvn_sqr(rvn_rnd(v, -1, 1)) >= 1 ) ;
+  while ( rvn_sqr(rvn_randunif(v, -1, 1)) >= 1 ) ;
   return rvn_normalize(v);
 #else
   /* if D >= 5, normal distribution is faster */
-  return rvn_normalize( rvn_grand0(v) );
+  return rvn_normalize( rvn_randgaus(v) );
 #endif
 }
 
 
 
 /* randomly oriented vector within the sphere of radius `r' */
-#define rvn_rndball(v, r) rvn_smul(rvn_rndball0(v), r)
+#define rvn_randball(v, r) rvn_smul(rvn_randball0(v), r)
 
 /* randomly vector within the unit sphere */
-INLINE real *rvn_rndball0(real *v)
+INLINE real *rvn_randball0(real *v)
 {
 #if D < 5
-  while ( rvn_sqr( rvn_rnd(v, -1, 1) ) >= 1 ) ;
+  while ( rvn_sqr( rvn_randunif(v, -1, 1) ) >= 1 ) ;
   return v;
 #else
-  real r = (real) pow(rnd0(), 1.0/D), nm;
+  real r = (real) pow(rand01(), 1.0/D), nm;
   /* first obtain a orientation */
-  while ( (nm = rvn_norm(rvn_grand0(v))) <= 1e-8 ) ;
+  while ( (nm = rvn_norm(rvn_randgaus(v))) <= 1e-8 ) ;
   /* the probability density rho(r) ~ r^(D - 1), so the cumulative
    * distribution P(r) = r^D, and r is obtained from P(r)^(1/D) */
   return rvn_smul(v, r/nm);

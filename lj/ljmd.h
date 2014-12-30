@@ -154,7 +154,7 @@ INLINE int lj_mctp(lj_t *lj, real lnvamp, real tp, real pext,
   vo = lj->vol;
   lo = lj->l;
   lnlo = (real) log(lo);
-  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  lnln = (real) (lnlo + lnvamp/d * randunif(-1, 1));
   ln = (real) exp(lnln);
   for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax)
@@ -198,7 +198,7 @@ INLINE int lj_mcpsq(lj_t *lj, real lnvamp, real tp, real pext,
   vo = lj->vol;
   lo = lj->l;
   lnlo = (real) log(lo);
-  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  lnln = (real) (lnlo + lnvamp/d * randunif(-1, 1));
   ln = (real) exp(lnln);
   for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax) return 0;
@@ -250,7 +250,7 @@ INLINE int lj_mcplj(lj_t *lj, real lnvamp, real tp, real pext,
   vo = lj->vol;
   lo = lj->l;
   lnlo = (real) log(lo);
-  lnln = (real) (lnlo + lnvamp/d * (2.f * rnd0() - 1.f));
+  lnln = (real) (lnlo + lnvamp/d * randunif(-1, 1));
   ln = (real) exp(lnln);
   for (vn = 1, i = 0; i < d; i++) vn *= ln;
   if (vn < vmin || vn >= vmax)

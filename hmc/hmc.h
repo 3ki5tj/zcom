@@ -95,7 +95,7 @@ INLINE int hmcgetredvflipr(double dem, double dep)
   if ( dem <= 0 ) return 1;
   xp1 = exp(dep - dem);
   xp2 = exp(dep);
-  return rnd0() < (xp1 - 1)/(xp2 - 1);
+  return rand01() < (xp1 - 1)/(xp2 - 1);
 }
 
 #endif

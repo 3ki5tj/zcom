@@ -77,7 +77,7 @@ INLINE int is2_pick(const ising_t *is, int *h)
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
-  id = (int)(rnd0() * n);
+  id = (int) (rand01() * n);
   iy = id / l, ix = id % l;
   p = is->s + id;
   *h = *p * ( ((ix != 0 ) ? *(p-1) : *(p+lm))   /* left  */

@@ -60,11 +60,11 @@ INLINE rv2_t *rm2_make(real x[2][2], real a00, real a01, real a10, real a11)
 
 
 /* generate a random orthonormal (unitary) 2x2 matrix */
-INLINE rv2_t *rm2_rnduni(real a[2][2])
+INLINE rv2_t *rm2_randuni(real a[2][2])
 {
-  rv2_rnddir0(a[0]);
+  rv2_randdir0(a[0]);
   rv2_make(a[1], a[0][1], -a[0][0]);
-  if (rnd0() > 0.5) rv2_neg(a[1]);
+  if (rand01() > 0.5) rv2_neg(a[1]);
   return a;
 }
 

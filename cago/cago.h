@@ -219,21 +219,21 @@ INLINE int cago_initmd(cago_t *go, int open, double rndamp, double T0)
   /* initialize position */
   if (open) { /* open chain */
     for (i = 0; i < n - 1; i++) {
-      rv3_normalize(rv3_make(dx, 1,
-            (real) (rndamp * (2 * rnd0() - 1)),
-            (real) (rndamp * (2 * rnd0() - 1)) ));
+      rv3_normalize( rv3_make(dx, 1,
+            (real) randunif(-rndamp, rndamp),
+            (real) randunif(-rndamp, rndamp) ) );
       /* x_{i+1} = x_i + dx * bref[i] */
       rv3_sadd(go->x[i + 1], go->x[i], dx, go->bref[i]);
     }
   } else { /* copy from xref, slightly disturb it */
     for (i = 0; i < n; i++)
-      rv3_sadd(go->x[i], go->xref[i], rv3_rnd(dx, -1, 2), rndamp);
+      rv3_sadd(go->x[i], go->xref[i], rv3_randunif(dx, -1, 1), rndamp);
   }
   go->epotref = cago_force(go, go->xref, go->f);
 
   /* initialize velocities */
   for (i = 0; i < n; i++)
-    rv3_rnd(go->v[i], -0.5f, 1);
+    rv3_randunif(go->v[i], -0.5f, 0.5f);
   cago_rmcom(go, go->x, go->v); /* remove center of mass motion */
   for (s = 0, i = 0; i < n; i++)
     s += rv3_sqr(go->v[i]);
@@ -483,10 +483,10 @@ INLINE int cago_metro(cago_t *go, real amp, real bet)
   rv3_t xi;
   real du;
 
-  i = (int) (go->n * rnd0());
-  rv3_inc(rv3_rnd(xi, -amp, 2.f*amp), go->x[i]);
+  i = (int) (go->n * rand01());
+  rv3_inc(rv3_randunif(xi, -amp, amp), go->x[i]);
   du = cago_depot(go, go->x, i, xi);
-  if (du < 0 || rnd0() < exp(-bet * du)) {
+  if (du < 0 || rand01() < exp(-bet * du)) {
     rv3_copy(go->x[i], xi);
     go->epot += du;
     return 1;

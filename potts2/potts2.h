@@ -53,7 +53,7 @@ typedef struct {
 
 /* change spin id from so to sn (use PT2_Q instead of pt->q) */
 #define PT2_NEWFACE(pt, id, so, sn) { \
-  so = pt->s[id]; sn = (so + 1 + (int)(rnd0()*(PT2_Q - 1))) % PT2_Q; }
+  so = pt->s[id]; sn = (so + 1 + (int) (rand01() * (PT2_Q - 1))) % PT2_Q; }
 
 /* change spin id from so to sn according to heat bath algorithm
  * local accprb is somehow faster */
@@ -61,7 +61,7 @@ typedef struct {
   static double accprb[PT2_Q+1] = {0.,}; double rs_; \
   so = pt->s[id]; \
   for (sn = 0; sn < PT2_Q; sn++) accprb[sn+1] = accprb[sn] + pt->dproba[4-h[sn]]; \
-  for (rs_ = accprb[PT2_Q]*rnd0(), sn = 0; sn < PT2_Q; sn++) if (accprb[sn+1] > rs_) break; \
+  for (rs_ = accprb[PT2_Q] * rand01(), sn = 0; sn < PT2_Q; sn++) if (accprb[sn+1] > rs_) break; \
 }
 
 #define PT2_FLIP(pt, id, so, sn, h) { \
@@ -74,7 +74,7 @@ typedef struct {
 
 #define PT2_PICK(pt, id, h)  id = pt2_pick(pt, h)
 #define PT2_NEWFACE(pt, id, so, sn) { \
-  so = pt->s[id]; sn = (so + 1 + (int)(rnd0()*(pt->q - 1))) % (pt->q); }
+  so = pt->s[id]; sn = (so + 1 + (int) (rand01() * (pt->q - 1))) % (pt->q); }
 #define PT2_HEATBATH(pt, id, so, sn, h) \
   pt2_heatbath(pt, id, &so, &sn, h)
 #define PT2_FLIP(pt, id, so, sn, h) {so = pt->s[id]; pt2_flip(pt, id, sn, h); }
@@ -86,7 +86,7 @@ INLINE int pt2_pick(const potts_t *pt, int h[])
 
   lm = (l = pt->l) - 1;
   nm = (n = pt->n) - l;
-  id = (int)(rnd0() * n);
+  id = (int) (rand01() * n);
   iy = id / l, ix = id % l;
   p = pt->s + id;
   for (i = 0; i < pt->q; i++) h[i] = 0;
@@ -107,7 +107,7 @@ INLINE int pt2_heatbath(potts_t *pt, int id, int *so, int *sn,
   *so = pt->s[id];
   for (i = 0; i < pt->q; i++)
     pt->accprb[i+1] = pt->accprb[i] + pt->dproba[mx_-h[i]];
-  for (rs_ = pt->accprb[pt->q]*rnd0(), i = 0; i < pt->q; i++)
+  for (rs_ = pt->accprb[pt->q] * rand01(), i = 0; i < pt->q; i++)
     if (pt->accprb[i+1] > rs_) break;
   die_if (i >= pt->q, "no suitable selection, i = %d\n", i);
   *sn = i;

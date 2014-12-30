@@ -278,6 +278,17 @@ INLINE real *rv3_lincomb2(real * RESTRICT c, const real *a, const real *b,
 
 
 
+/* a = a * s + c */
+INLINE real *rv3_fma(real *a, real s, real c)
+{
+  a[0] = a[0] * s + c;
+  a[1] = a[1] * s + c;
+  a[2] = a[2] * s + c;
+  return a;
+}
+
+
+
 /* angle and gradients of cos(x1-x2-x3) */
 INLINE real rv3_cosang(const real *x1, const real *x2, const real *x3,
     real * RESTRICT g1, real * RESTRICT g2, real * RESTRICT g3)
@@ -397,75 +408,74 @@ INLINE real rv3_dih(const real *xi, const real *xj, const real *xk, const real *
 
 
 
-#define rv3_rnd0(v) rv3_rnd(v, 0, 1)
+#define rv3_rnd0(v)           rv3_rand01(v)
 
-/* uniformly distributed random vector [a, b) */
-INLINE real *rv3_rnd(real *v, real a, real b)
+#define rv3_rnd(v, a, b)      rv3_randunif(v, a, b)
+
+/* uniformly distributed random vector in [a, b) */
+#define rv3_randunif(v, a, b) rv3_fma(rv3_rand01(v), b - a, -a)
+
+/* uniformly distributed random vector in [0, 1) */
+INLINE real *rv3_rand01(real *v)
 {
-  b -= a;
-  v[0] = a + b * (real) rnd0();
-  v[1] = a + b * (real) rnd0();
-  v[2] = a + b * (real) rnd0();
+  v[0] = (real) rand01();
+  v[1] = (real) rand01();
+  v[2] = (real) rand01();
   return v;
 }
 
 
 
 /* displace `x0' by a random vector in [-a, a)^3 */
-INLINE real *rv3_rnddisp(real * RESTRICT x, const real *x0, real a)
+INLINE real *rv3_randdisp(real * RESTRICT x, const real *x0, real a)
 {
-  x[0] = x0[0] + (real) rnd(-a, a);
-  x[1] = x0[1] + (real) rnd(-a, a);
-  x[2] = x0[2] + (real) rnd(-a, a);
+  x[0] = x0[0] + (real) randunif(-a, a);
+  x[1] = x0[1] + (real) randunif(-a, a);
+  x[2] = x0[2] + (real) randunif(-a, a);
   return x;
 }
 
 
 
+#define rv3_grand0(v)       rv3_randgaus(v)
+
+#define rv3_grand(v, c, r)  rv3_fma(rv3_randgaus(v), r, c)
+
 /* normally distributed random vector */
-INLINE real *rv3_grand0(real *v)
+INLINE real *rv3_randgaus(real *v)
 {
-  v[0] = (real) grand0();
-  v[1] = (real) grand0();
-  v[2] = (real) grand0();
+  v[0] = (real) randgaus();
+  v[1] = (real) randgaus();
+  v[2] = (real) randgaus();
   return v;
 }
 
 
 
-/* normally distributed random vector */
-INLINE real *rv3_grand(real *v, real c, real r)
-{
-  v[0] = c + r * (real) grand0();
-  v[1] = c + r * (real) grand0();
-  v[2] = c + r * (real) grand0();
-  return v;
-}
-
-
+#define rv3_granddisp(x, x0, a) rv3_randgausdisp(x, x0, a)
 
 /* displace `x0' by a normally-distributed random vector */
-INLINE real *rv3_granddisp(real * RESTRICT x, const real *x0, real a)
+INLINE real *rv3_randgausdisp(real * RESTRICT x, const real *x0, real a)
 {
-  x[0] = x0[0] + (real) grand0() * a;
-  x[1] = x0[1] + (real) grand0() * a;
-  x[2] = x0[2] + (real) grand0() * a;
+  x[0] = x0[0] + a * (real) randgaus();
+  x[1] = x0[1] + a * (real) randgaus();
+  x[2] = x0[2] + a * (real) randgaus();
   return x;
 }
 
 
 
 /* randomly oriented vector on the sphere of radius r */
-#define rv3_rnddir(v, r) rv3_smul(rv3_rnddir0(v), r)
+#define rv3_randdir(v, r) rv3_smul(rv3_randdir0(v), r)
 
 /* randomly oriented vector on the unit sphere */
-INLINE real *rv3_rnddir0(real *v)
+INLINE real *rv3_randdir0(real *v)
 {
   double a, b, sq, s;
 
   do { /* projection on the x-y plane */
-    a = 2 * rnd0() - 1;
-    b = 2 * rnd0() - 1;
+    a = randunif(-1, 1);
+    b = randunif(-1, 1);
     sq = a * a + b * b;
   } while (sq >= 1); /* avoid sin() and cos() */
 
@@ -477,13 +487,13 @@ INLINE real *rv3_rnddir0(real *v)
 
 
 /* randomly orientied vector within the sphere of radius `r' */
-#define rv3_rndball(v, r) rv3_smul(rv3_rndball0(v), r)
+#define rv3_randball(v, r) rv3_smul(rv3_randball0(v), r)
 
 /* randomly orientied vector within the unit sphere */
-INLINE real *rv3_rndball0(real *v)
+INLINE real *rv3_randball0(real *v)
 {
   do {
-    rv3_rnd(v, -1, 1);
+    rv3_randunif(v, -1, 1);
   } while (rv3_sqr(v) >= 1);
   return v;
 }

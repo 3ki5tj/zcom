@@ -197,8 +197,8 @@ INLINE void md_vrescale(real *v, int nd, int dof, real tp, real dt, real *ekin, 
   double amp;
 
   ek1 = md_getekin(ekin, v, nd);
-  amp = 2*sqrt(ek1*ekav*dt/dof);
-  ek2 = ek1 + (ekav - ek1)*dt + (real)(amp*grand0());
+  amp = 2 * sqrt(ek1 * ekav * dt / dof);
+  ek2 = ek1 + (ekav - ek1) * dt + (real) (amp * randgaus());
   if (ek2 < 0) ek2 = 0;
   s = (real) sqrt(ek2/ek1);
   for (i = 0; i < nd; i++)
@@ -217,7 +217,7 @@ INLINE void md_vrescalex(real *v, int nd, int dof, real tp, real dt, real *ekin,
 
   if (dt < 10) c = (real) exp(-dt);
   ek1 = md_getekin(ekin, v, nd);
-  r = (real) grand0();
+  r = (real) randgaus();
   r2 = (real) randchisqr(dof - 1);
   ek2 = (real)( ek1 + (1 - c) * (ekav*(r2 + r*r)/dof - ek1)
     + 2 * r * sqrt(c*(1 - c) * ekav/dof*ek1) );
@@ -240,13 +240,13 @@ INLINE int md_mcvrescale(real *v, int nd, int dof, real tp, real dt, real *ekin,
 
   ek1 = md_getekin(ekin, v, nd);
   logek1 = log(ek1);
-  logek2 = logek1 + dt*(2.f*rnd0() - 1);
+  logek2 = logek1 + dt*(2.f*rand01() - 1);
   ek2 = (real) exp(logek2);
   r = (ek2 - ek1)/tp - .5*dof*(logek2 - logek1);
   if (r <= 0) {
     acc = 1;
   } else {
-    r0 = rnd0();
+    r0 = rand01();
     acc = (r0 < exp(-r));
   }
   if ( acc ) {
@@ -384,7 +384,7 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
   amp = (real) sqrt(2*zeta2/Q*dt2);
   *zeta *= xp;
   *zeta += (2.f*ek1 - dof * tp)/Q*dt2;
-  *zeta += amp * (real) grand0(); /* white noise */
+  *zeta += amp * (real) randgaus(); /* white noise */
   *zeta *= xp;
 
   s = (real) exp(-(*zeta)*dt);
@@ -395,7 +395,7 @@ INLINE void md_vslang(real *v, int nd, int dof, real tp, real dt,
 
   *zeta *= xp;
   *zeta += (2.f*ek2 - dof * tp)/Q*dt2;
-  *zeta += amp * (real) grand0(); /* white noise */
+  *zeta += amp * (real) randgaus(); /* white noise */
   *zeta *= xp;
 }
 
@@ -417,9 +417,9 @@ INLINE void md_andersen(real *v, int n, int d, real tp)
   int i, j;
 
   tp = (real) sqrt(tp);
-  i = (int)(rnd0() * n);
+  i = (int)(rand01() * n);
   for (j = 0; j < d; j++)
-    v[i*d + j] = tp * (real) grand0();
+    v[i*d + j] = tp * (real) randgaus();
 }
 
 
@@ -432,7 +432,7 @@ INLINE void md_langevin(real *v, int n, int d, real tp, real dt)
 
   amp = (real) sqrt((1 - c*c) * tp);
   for (i = 0; i < n*d; i++)
-    v[i] = c*v[i] + amp * (real) grand0();
+    v[i] = c*v[i] + amp * (real) randgaus();
 }
 
 
@@ -576,7 +576,7 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
-  *eta += amp * (real) grand0(); /* random noise */
+  *eta += amp * (real) randgaus(); /* random noise */
   *eta *= xp;
 
   /* scaling velocity */
@@ -589,7 +589,7 @@ INLINE void md_langtp(real *v, int n, int d, real dt,
   *eta *= xp;
   pint = (vir + 2.f * (*ekin))/ (d * vol) + ptail;
   *eta += ((pint - pext)*vol + (1 - ensx) * tp)*d*dt2/W;
-  *eta += amp * (real) grand0(); /* random noise */
+  *eta += amp * (real) randgaus(); /* random noise */
   *eta *= xp;
 }
 
@@ -614,7 +614,7 @@ INLINE void md_langtp0(real *v, int n, int d, real barodt,
 
   amp = (real) sqrt(2.f * barodt);
   dlnv = ((pint - pext) * (*vol)/tp + 1 - ensx)*barodt
-       + amp * (real) grand0();
+       + amp * (real) randgaus();
   vn = *vol * (real) exp( dlnv );
 
   s = (real) exp( dlnv/d );
@@ -639,7 +639,7 @@ INLINE void md_langp0(int dof, int d, real barodt,
   pintv = (vir + dof * tp)/d + ptail * (*vol);
   amp = (real) sqrt(2 * barodt);
   dlnv = ((pintv - pext * (*vol))/tp + 1 - ensx)*barodt
-       + amp * (real) grand0();
+       + amp * (real) randgaus();
   *vol *= (real) exp( dlnv );
 }
 
@@ -694,8 +694,8 @@ INLINE int md_mutv(real *v, int nd, real tp, double r)
   real vamp = (real) sqrt(tp);
 
   for (i = 0; i < nd; i++)
-    if (rnd0() < r)
-      v[i] = vamp * (real) grand0();
+    if (rand01() < r)
+      v[i] = vamp * (real) randgaus();
   return 0;
 }
 
@@ -707,7 +707,7 @@ INLINE int md_unimatv3d(rv3_t *v, int n)
   int i;
   real mat[3][3], v1[3];
 
-  rm3_rnduni(mat);
+  rm3_randuni(mat);
   for (i = 0; i < n; i++) {
     rm3_mulvec(v1, mat, v[i]);
     rv3_copy(v[i], v1);

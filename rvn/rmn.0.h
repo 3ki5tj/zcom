@@ -78,14 +78,14 @@ INLINE rvn_t *rmn_one(real x[][DM])
 
 
 /* generate a random orthonormal (unitary) DxD matrix */
-INLINE rvn_t *rmn_rnduni(real a[][DM])
+INLINE rvn_t *rmn_randuni(real a[][DM])
 {
   int i, j;
   real dot;
 
-  rvn_rnddir0(a[0]);
+  rvn_randdir0(a[0]);
   for (i = 1; i < D; i++) {
-    rvn_rnddir0(a[i]);
+    rvn_randdir0(a[i]);
     /* normalize against previous vectors */
     for (j = 0; j < i; j++) {
       dot = rvn_dot(a[i], a[j]);

@@ -16,11 +16,12 @@ ccom.addfd(None, "rv3.h", [
   "rv3_inc", "rv3_dec", "rv3_sinc", "rv3_smul", "rv3_smul2",
   "rv3_normalize", "rv3_makenorm",
   "rv3_diff", "rv3_dist2", "rv3_dist", "rv3_add", "rv3_nadd",
-  "rv3_sadd", "rv3_lincomb2",
+  "rv3_sadd", "rv3_lincomb2", "rv3_fma",
   "rv3_cosang", "rv3_ang", "rv3_vdist", "rv3_vpdist",
   "rv3_dih",
-  "rv3_rnd", "rv3_rnd0", "rv3_grand", "rv3_grand0",
-  "rv3_rnddir0", "rv3_rnddir", "rv3_rndball0", "rv3_rndball",
+  "rv3_rnd0", "rv3_rnd", "rv3_grand0", "rv3_grand",
+  "rv3_rand01", "rv3_randunif", "rv3_randgaus", "rv3_randgausdisp",
+  "rv3_randdir0", "rv3_randdir", "rv3_randball0", "rv3_randball",
   ])
 
 ccom.addfd(None, "rm3.h", [
@@ -33,7 +34,7 @@ ccom.addfd(None, "rm3.h", [
   "rm3_eigvecs", "rm3_eigsys", "rm3_svd",
   "rm3_mkrot", "rv3_rot",
   "rv3_rmsd",
-  "rm3_rnduni",
+  "rm3_randuni",
   ])
 
 

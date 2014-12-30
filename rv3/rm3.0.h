@@ -707,13 +707,13 @@ INLINE real rv3_rmsd(rv3_t * RESTRICT x, rv3_t * RESTRICT xf,
 
 
 /* generate a random orthonormal (unitary) 3x3 matrix */
-INLINE rv3_t *rm3_rnduni(real a[3][3])
+INLINE rv3_t *rm3_randuni(real a[3][3])
 {
   real dot;
 
-  rv3_rnddir0(a[0]);
+  rv3_randdir0(a[0]);
 
-  rv3_rnd(a[1], -1, 1);
+  rv3_randunif(a[1], -1, 1);
   /* component of a[1] normal to a[0] */
   dot = rv3_dot(a[0], a[1]);
   rv3_normalize( rv3_sinc(a[1], a[0], -dot) );

@@ -29,7 +29,7 @@ mtrng_t *mr_ = &mrstock_;
  * by a thread private version by calling mtmkprivate(seed)
  * this trick allows the different random numbers generated
  * from different threads even by calling the default versions
- * of the functions, e.g., rnd0() */
+ * of the functions, e.g., rand01() */
 #ifdef _OPENMP
 #pragma omp threadprivate(mr_)
 #endif
@@ -48,16 +48,21 @@ mtrng_t *mr_ = &mrstock_;
 /* default versions */
 #define mtsave(fn)          mtrng_save(mr_, fn)
 #define mtload(fn, seed)    mtrng_load(mr_, fn, seed)
-#define rand32()            mtrng_rand32(mr_)
-#define rnd0()              mtrng_rand01(mr_) /* double, [0, 1) */
-#define rnd(a, b)           mtrng_randunif(mr_, a, b) /* double, [a, b) */
 #define mtrand()            mtrng_rand(mr_)
-#define grand0()            mtrng_randgaus(mr_)
+#define rand32()            mtrng_rand32(mr_)
+#define rand01()            mtrng_rand01(mr_) /* double, [0, 1) */
+#define randunif(a, b)      mtrng_randunif(mr_, a, b) /* double, [a, b) */
+#define randgaus()          mtrng_randgaus(mr_)
 #define randgam(k)          mtrng_randgam(mr_, k)
 #define randchisqr(n)       mtrng_randchisqr(mr_, n)
 #define randpair(n, j)      mtrng_randpair(mr_, n, j)
 #define metroacc0(r)        mtrng_metroacc0(mr_, r)
 #define metroacc1(de, bet)  mtrng_metroacc1(mr_, de, bet)
+
+/* old aliases */
+#define rnd0()              rand01()
+#define rnd(a, b)           randunif(a, b)
+#define grand0()            randgaus()
 
 
 
@@ -278,12 +283,12 @@ INLINE int mtrng_randpair(mtrng_t *mr, int n, int *j)
 
 
 
-/* Metropolis acceptance probability rnd0() < exp(- bet * de), assuming bet > 0
+/* Metropolis acceptance probability rand01() < exp(- bet * de), assuming bet > 0
  * defined as a macro, in case r is an integer */
 #define mtrng_metroacc1(mr, de, bet) \
   ((de <= 0) ? 1 : mtrng_metroacc0(mr, -bet * de))
 
-/* Metropolis acceptance probability rnd0() < exp(r), assuming r > 0 */
+/* Metropolis acceptance probability rand01() < exp(r), assuming r > 0 */
 INLINE int mtrng_metroacc0(mtrng_t *mr, double r)
 {
   r = exp(r);
