@@ -92,6 +92,7 @@ def doargs():
               *.cfg *.mdp
               *.sh *.csh
               *.bib
+              *.md
               README* *akefile"""
     import zcom
     ls = zcom.argsglob(args, pats, recur = recur, links = links)
