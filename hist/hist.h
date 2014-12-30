@@ -2,6 +2,8 @@
 #ifndef HIST_H__
 #define HIST_H__
 
+
+
 #define HIST_VERBOSE    0x0001
 #define HIST_ADDAHALF   0x0010
 #define HIST_NOZEROES   0x0020
@@ -334,8 +336,9 @@ EXIT:
 
 
 
-/* add x of weight w, into histogram h
- * return number of success */
+/* add x[r] into the rth row of the histogram, h
+ * with weight w r = 0..rows-1
+ * return the number of successful rows */
 INLINE int histadd(const double *xarr, double w, double *h, int rows,
     int n, double xmin, double dx, unsigned flags)
 {
@@ -343,14 +346,12 @@ INLINE int histadd(const double *xarr, double w, double *h, int rows,
   double x;
 
   for (r = 0; r < rows; r++) {
-    x = xarr[r];
-    if (x < xmin) {
+    if ( (x = xarr[r]) < xmin ) {
       if (verbose)
         fprintf(stderr, "histadd underflows %d: %g < %g\n", r, x, xmin);
       continue;
     }
-    ix = (int)((x - xmin)/dx);
-    if (ix >= n) {
+    if ( (ix = (int)((x - xmin)/dx)) >= n ) {
       if (verbose)
         fprintf(stderr, "histadd overflows %d: %g > %g\n", r, x, xmin+dx*n);
       continue;
@@ -374,10 +375,11 @@ typedef struct {
 
 typedef hist_t hs_t;
 
-#define hs_open1(x0, x1, dx) hs_open(1, x0, x1, dx)
 #define hs_clear(hs) dblcleararr(hs->arr, hs->rows * hs->n)
 
 
+
+#define hs_open1(x0, x1, dx) hs_open(1, x0, x1, dx)
 
 INLINE hist_t *hs_open(int rows, double xmin, double xmax, double dx)
 {
@@ -396,9 +398,7 @@ INLINE hist_t *hs_open(int rows, double xmin, double xmax, double dx)
 
 INLINE void hs_close(hist_t *hs)
 {
-  if (!hs) return;
-  if (hs->arr) free(hs->arr);
-  memset(hs, 0, sizeof(*hs));
+  free(hs->arr);
   free(hs);
 }
 

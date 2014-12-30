@@ -1,6 +1,7 @@
 /* molecular dynamics in the isothermal-isobaric ensemble */
 #include "lj.h"
 #include "ljmd.h"
+#include "ljeos.h"
 #include "include/av.h"
 
 const char *fnpos = "lj.pos";
@@ -14,7 +15,7 @@ real pressure = 1.0f;
 real mddt = 0.002f;
 real thermdt = 0.01f;
 int nequil = 20000;
-int nsteps = 200000;
+int nsteps = 100000;
 int barostat = 4;
 
 int usesw = 0;
@@ -26,7 +27,7 @@ int main(void)
 {
   lj_t *lj;
   int t, vtot = 0, vacc = 0, isrun;
-  real u, k, p, rho1, bc = 0.f;
+  real u, k, p, rhoav, bc = 0.f;
   static av_t avU, avK, avp, avbc, avrho;
   hist_t *hsvol;
 
@@ -44,10 +45,10 @@ int main(void)
   for (t = 1; t <= nequil + nsteps; t++) {
     lj_vv(lj, mddt);
     lj_shiftcom(lj, lj->v);
-    lj_vrescale(lj, tp, thermdt);
+    lj_vrescalex(lj, tp, thermdt);
 
     isrun = (t > nequil);
-    if (t % 5 == 0) {
+    if ( t % 5 == 0 ) {
       /* different barostats */
       if ( barostat == 1 ) {
         vacc += lj_mctp(lj, 0.05, tp, pressure, 0, 1e300, 0, 0);
@@ -79,9 +80,11 @@ int main(void)
   k = av_getave(&avK)/N;
   p = av_getave(&avp);
   bc = av_getave(&avbc);
-  rho1 = av_getave(&avrho);
-  printf("U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
-      u, k, p, bc, rho1, 100. * vacc / vtot);
+  rhoav = av_getave(&avrho);
+  printf("T %g, U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
+      tp, u, k, p, bc, rhoav, 100. * vacc / vtot);
+  u = lj_eos3dx(rhoav, tp, &p, NULL, NULL, LJEOS_PVEhBHKN);
+  printf("ref., u %6.3f, p %6.3f\n", u, p);
   hs_save(hsvol, "volmd.his", HIST_NOZEROES);
   hs_close(hsvol);
   lj_writepos(lj, lj->x, lj->v, fnpos);

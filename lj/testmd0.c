@@ -29,7 +29,7 @@ int main(void)
 
   for (t = 1; t <= nequil + nsteps; t++) {
     lj_vv(lj, mddt);
-    lj_vrescale(lj, tp, thermdt);
+    lj_vrescalex(lj, tp, thermdt);
 
     if ( t <= nequil ) continue;
     av_add(avU, lj->epot);
