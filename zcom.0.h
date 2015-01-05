@@ -1,6 +1,6 @@
 /*
   commonly-used routines
-  Copyright (c) 2006-2014 Cheng Zhang
+  Copyright (c) 2006-2015 Cheng Zhang
 
   This material is provided "as is", with absolutely no warranty expressed
   or implied. Any use is at your own risk.

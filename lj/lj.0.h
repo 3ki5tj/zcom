@@ -55,15 +55,19 @@ INLINE real lj_force(lj_t *lj);
 INLINE void lj_initfcc2d(lj_t *lj)
 {
   int i, j, id, n1, n = lj->n;
-  real a;
+  real a, noise;
 
   n1 = (int) (pow(2*n, 1.0/lj->d) + .999999); /* # of particles per side */
   a = 1.f/n1;
+  noise = a * 0.00001f;
   for (id = 0, i = 0; i < n1 && id < n; i++)
     for (j = 0; j < n1 && id < n; j++) {
       if ((i+j) % 2 != 0) continue;
-      lj->x[id*2 + 0] = (i + .5f) * a;
-      lj->x[id*2 + 1] = (j + .5f) * a;
+      /* add some noise to prevent two particles separated
+       * by precisely the cutoff distance, which can be
+       * half of the box size */
+      lj->x[id*2 + 0] = (i + .5f) * a + randunif(-noise, noise);
+      lj->x[id*2 + 1] = (j + .5f) * a + randunif(-noise, noise);
       id++;
     }
 }
@@ -74,17 +78,21 @@ INLINE void lj_initfcc2d(lj_t *lj)
 INLINE void lj_initfcc3d(lj_t *lj)
 {
   int i, j, k, id, n1, n = lj->n;
-  real a;
+  real a, noise;
 
   n1 = (int) (pow(2*n, 1.0/lj->d) + .999999); /* # of particles per side */
   a = 1.f/n1;
+  noise = a * 0.00001f;
   for (id = 0, i = 0; i < n1 && id < n; i++)
     for (j = 0; j < n1 && id < n; j++)
       for (k = 0; k < n1 && id < n; k++) {
         if ((i+j+k) % 2 != 0) continue;
-        lj->x[id*3 + 0] = (i + .5f) * a;
-        lj->x[id*3 + 1] = (j + .5f) * a;
-        lj->x[id*3 + 2] = (k + .5f) * a;
+        /* add some noise to prevent two particles separated
+         * by precisely the cutoff distance, which can be
+         * half of the box size */
+        lj->x[id*3 + 0] = (i + .5f) * a + randunif(-noise, noise);
+        lj->x[id*3 + 1] = (j + .5f) * a + randunif(-noise, noise);
+        lj->x[id*3 + 2] = (k + .5f) * a + randunif(-noise, noise);
         id++;
       }
 }
