@@ -12,6 +12,8 @@ import math
 
 class scifmt:
   def __init__(me, x, err = 0):
+    ''' sgn * mag * 10^exp '''
+
     me.x = x # value
 
     # the sign
@@ -95,18 +97,23 @@ class scifmt:
 
 
 
-  def html(me, fmtmag = "%s", errmax = 50):
+  def html(me, fmtmag = "%s", errmax = 50, xpmin = -2, xpmax = 2):
     ''' output to HTML format '''
-    if me.exp >= 0: myexp = str(me.exp)
-    else: myexp = "&minus;" + str(me.exp)
+    mag, nxp = me.shiftdigits(xpmin, xpmax)
+
+    if nxp >= 0:
+      myexp = str(nxp)
+    else:
+      myexp = "&minus;" + str(nxp)
+
     strsgn = ["&minus;", "&nbsp;", "+"][me.sgn + 1]
     if me.err == 0:
-      nxp = me.exp
-      s = strsgn + fmtmag % me.mag
+      s = strsgn + fmtmag % mag
     else:
-      nx, interr, nxp = me.getxerr(me.mag, me.exp, me.err, errmax)
+      nx, interr, nxp = me.getxerr(mag, nxp, me.err, errmax)
       s = strsgn + "%s(%s)" % (nx, interr)
-    if nxp != 0: s += "&times;10<sup>%s</sup>" % nxp
+    if nxp != 0:
+      s += ("&times;10<sup>%s</sup>" % nxp).replace("-", "&minus;")
     return s
 
 
