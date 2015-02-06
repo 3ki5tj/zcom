@@ -317,7 +317,7 @@ INLINE real pot1210(rv3_t a, rv3_t b, real rc2, real eps, rv3_t fa, rv3_t fb)
   invr6 = invr4 * invr2;
   invr10 = invr4 * invr6;
   if (fa) {
-    amp = 60 * eps * (invr2 - 1) * invr10 * (1/dr2);
+    amp = 60 * eps * (invr2 - 1) * invr10 / dr2;
     rv3_sinc(fa, dx,  amp);
     rv3_sinc(fb, dx, -amp);
   }
@@ -454,21 +454,15 @@ INLINE real cago_depot(cago_t *go, rv3_t *x, int i, rv3_t xi)
 
   /* non-bonded interaction */
   for (j = 0; j < n; j++) {
-    if (abs(i - j) < 4) continue;
+    if (j > i - 4 && j < i + 4) continue;
 
-    /* subtract the old energies */
     id = i*n + j;
     if ( go->iscont[id] ) { /* contact pair */
       ene -= pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
+      ene += pot1210(xn[i], xn[j], go->r2ref[id], nbe, NULL, NULL);
     } else { /* non-contact pair */
       ene -= potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
-    }
-
-    /* add the new energies */
-    if ( go->iscont[id] ) { /* contact pair */
-      ene += pot1210(x[i], x[j], go->r2ref[id], nbe, NULL, NULL);
-    } else { /* non-contact pair */
-      ene += potr12(x[i], x[j], nbc2, nbe, NULL, NULL);
+      ene += potr12(xn[i], xn[j], nbc2, nbe, NULL, NULL);
     }
   }
   return ene;
