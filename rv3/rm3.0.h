@@ -345,7 +345,7 @@ INLINE double rm3_pivot_(real m[3][3], int r0, int cmap[])
 #endif
 
   /* 2. put the pivot to the left-top corner */
-  /* swapping row r and r0, which doesn't affect the solution */
+  /* swap rows r and r0, which doesn't affect the solution */
   if (r != r0) rv3_swap(m[r], m[r0]);
 
   if (c != r0) { /* swap columns c and r0 */
@@ -441,7 +441,8 @@ INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
 
 
 
-/* given an eigenvalue, return the corresponding eigenvectors */
+/* given an eigenvalue, return the corresponding eigenvectors
+ * Note there might be multiple eigenvectors for the eigenvalue */
 INLINE int rm3_eigvecs(real (*vecs)[3], real mat[3][3], real val)
 {
   real m[3][3];

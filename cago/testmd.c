@@ -22,7 +22,7 @@ static void doargs(int argc, char **argv)
   argopt_addhelp(ao, "-h");
   argopt_add(ao, "-T", "%r", &tp, "Temperature");
   argopt_parse(ao, argc, argv);
-  if (argopt_set(ao, tp)) tps = tp;
+  if (argopt_isset(ao, tp)) tps = tp;
   argopt_close(ao);
 }
 
