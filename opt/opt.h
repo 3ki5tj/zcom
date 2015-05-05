@@ -207,7 +207,7 @@ INLINE void opt_fprintptr(FILE *fp, opt_t *o)
   ELIF_PF_("%lo", "%lo", long)
   ELIF_PF_("%lu", "%lu", unsigned long)
   ELIF_PF_("%lx", "0x%lx", unsigned long)
-#if 1  /* C99 or GCC extension */
+#if defined(HAVELONGLONG) /* C99 or GCC extension */
   ELIF_PF_("%lld", "%lld", long long)
   ELIF_PF_("%llo", "%llo", long long)
   ELIF_PF_("%llu", "%llu", unsigned long long)

@@ -19,8 +19,20 @@ def rtrimf(fn):
     print "cannot open %s" % fn
     return
 
+  # determine the end of line
+  endl = '\n'
+  lines = s0.splitlines()
+  if len(lines):
+    ln = lines[0]
+    if ln.endswith("\r\n"):
+      endl = "\r\n"
+    elif ln.endswith("\n\r"):
+      endl = "\n\r"
+    else:
+      endl = "\n"
+  
   # remove trailing spaces
-  s1 = [ln.rstrip() + '\n' for ln in s0.splitlines()]
+  s1 = [ln.rstrip() + endl for ln in lines]
   s1 = ''.join( s1 )
 
   bsaved = len(s0) - len(s1)
@@ -82,7 +94,7 @@ def doargs():
       usage()
 
   ls = args
-  try: # limit the dependence on fileglob
+  if not ls:
     # common text files
     pats = """*.c *.cpp *.h *.hpp *.java
               *.py *.pl *.rb *.php *.js
@@ -94,14 +106,22 @@ def doargs():
               *.bib
               *.md
               README* *akefile"""
-    import zcom
-    ls = zcom.argsglob(args, pats, recur = recur, links = links)
-  except ImportError: pass
+
+    try: # limit the dependence on zcom.py
+      import zcom
+      ls = zcom.argsglob(args, pats, recur = recur, links = links)
+    except ImportError:
+      import glob
+      ls = []
+      for pat in pats.split():
+        ls += glob.glob(pat)
   return ls
 
 
 
 if __name__ == "__main__":
   fns = doargs()
-  for fn in fns: rtrimf(fn)
+  for fn in fns:
+    rtrimf(fn)
   print "saved %s bytes" % bytessaved
+

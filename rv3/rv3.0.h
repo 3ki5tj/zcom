@@ -413,7 +413,7 @@ INLINE real rv3_dih(const real *xi, const real *xj, const real *xk, const real *
 #define rv3_rnd(v, a, b)      rv3_randunif(v, a, b)
 
 /* uniformly distributed random vector in [a, b) */
-#define rv3_randunif(v, a, b) rv3_fma(rv3_rand01(v), b - a, -a)
+#define rv3_randunif(v, a, b) rv3_fma(rv3_rand01(v), (b) - (a), -(a))
 
 /* uniformly distributed random vector in [0, 1) */
 INLINE real *rv3_rand01(real *v)

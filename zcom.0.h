@@ -107,6 +107,12 @@
   #endif
 #endif
 
+#ifndef HAVELONGLONG
+  #if !(defined(_MSC_VER) && (_MSC_VER <= 1200))
+    #define HAVELONGLONG 1
+  #endif
+#endif
+
 #ifdef __INTEL_COMPILER
   #pragma warning push
   #pragma warning(disable:981) /* unspecified order of operands */

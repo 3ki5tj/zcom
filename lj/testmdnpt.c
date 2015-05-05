@@ -83,7 +83,7 @@ int main(void)
   rhoav = av_getave(&avrho);
   printf("T %g, U/N %6.3f, K/N %6.3f, p %6.3f, bc %6.3f, rho %6.3f, vacc %g%%\n",
       tp, u, k, p, bc, rhoav, 100. * vacc / vtot);
-  u = lj_eos3dx(rhoav, tp, &p, NULL, NULL, LJEOS_PVEhBHKN);
+  u = ljeos3d_getx(rhoav, tp, &p, NULL, NULL, LJEOS_PVEhBHKN);
   printf("ref., u %6.3f, p %6.3f\n", u, p);
   hs_save(hsvol, "volmd.his", HIST_NOZEROES);
   hs_close(hsvol);

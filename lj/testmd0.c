@@ -39,7 +39,7 @@ int main(void)
   u = av_getave(avU)/n;
   k = av_getave(avK)/n;
   p = av_getave(avp);
-  uref = lj_eos3dx(rho, tp, &pref, NULL, NULL, LJEOS_PVEhBHKN);
+  uref = ljeos3d_getx(rho, tp, &pref, NULL, NULL, LJEOS_PVEhBHKN);
   printf("rho %g, tp %g, ep %6.3f/%g, ek %6.3f, p %6.3f/%g\n",
       rho, tp, u, uref, k, p, pref);
   lj_writepos(lj, lj->x, lj->v, "lj.pos");

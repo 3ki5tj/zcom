@@ -344,7 +344,7 @@ INLINE void rm2_inv(real b[2][2], real a[2][2])
 #define rv2_rnd(v, a, b)      rv2_randunif(v, a, b)
 
 /* uniformly distributed random vector in [a, b) */
-#define rv2_randunif(v, a, b) rv2_fma(rv2_rand01(v), b - a, -a)
+#define rv2_randunif(v, a, b) rv2_fma(rv2_rand01(v), (b) - (a), -(a))
 
 /* uniformly distributed random vector in [0, 1) */
 INLINE real *rv2_rand01(real *v)
