@@ -1,6 +1,6 @@
 CC = gcc -O0 -g3 -Wall -Wextra -pedantic -Wno-variadic-macros
 LM = -lm
-usbdir = /media/C3/code
+usbdir = /media/`whoami`/C3/code
 prj = zcom
 
 genhdrdirs = rc rv2 rv3 rvn lj abpro

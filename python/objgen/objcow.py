@@ -272,7 +272,7 @@ class CCodeWriter:
     if not var_: var_ = var;
     self.checktp(var, type)
     keystr, keyfmt, keyargs = self.getkeystr(key)
-    cond = '0 != cfgget(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
+    cond = '0 != cfg_get(cfg, &%s, %s, "%s")' % (var, keystr, fmt)
     if must in (1, "1"):
       # do not die if cfg is NULL, because this is the 'lazy' mode
       cond = 'cfg != NULL && ' + cond

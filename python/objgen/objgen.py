@@ -797,7 +797,7 @@ class Object:
     if cfgopen:
       cow.add_comment("open configuration file")
       cow.declare_var("cfgdata_t *cfg", "cfg")
-      scfg = "(cfg = cfgopen(cfgname)) == NULL"
+      scfg = "(cfg = cfg_open(cfgname)) == NULL"
       cow.die_if(scfg,
           "%s: cannot open config. file %%s." % objtp,
           "cfgname", onerr = "return NULL;")
@@ -822,7 +822,7 @@ class Object:
 
     if cfgopen:
       cow.add_comment("close handle to configuration file")
-      cow.addln("cfgclose(cfg);")
+      cow.addln("cfg_close(cfg);")
     cow.end_function("return %s;" % objptr)
     return cow.prototype, cow.function
 

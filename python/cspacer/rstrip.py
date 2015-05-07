@@ -30,7 +30,7 @@ def rtrimf(fn):
       endl = "\n\r"
     else:
       endl = "\n"
-  
+
   # remove trailing spaces
   s1 = [ln.rstrip() + endl for ln in lines]
   s1 = ''.join( s1 )

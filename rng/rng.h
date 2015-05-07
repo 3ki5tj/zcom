@@ -49,13 +49,6 @@ mtrng_t *mr_ = &mrstock_;
 #define mtsave(fn)          mtrng_save(mr_, fn)
 #define mtload(fn, seed)    mtrng_load(mr_, fn, seed)
 #define mtrand()            mtrng_rand(mr_)
-#define rand32()            mtrng_rand32(mr_)
-#define rand01()            mtrng_rand01(mr_) /* double, [0, 1) */
-#define randunif(a, b)      mtrng_randunif(mr_, a, b) /* double, [a, b) */
-#define randgaus()          mtrng_randgaus(mr_)
-#define randgam(k)          mtrng_randgam(mr_, k)
-#define randchisqr(n)       mtrng_randchisqr(mr_, n)
-#define randpair(n, j)      mtrng_randpair(mr_, n, j)
 #define metroacc0(r)        mtrng_metroacc0(mr_, r)
 #define metroacc1(de, bet)  mtrng_metroacc1(mr_, de, bet)
 
@@ -279,6 +272,46 @@ INLINE int mtrng_randpair(mtrng_t *mr, int n, int *j)
   *j = pid - i * (n - 1);
   if (*j >= i) (*j)++;
   return i;
+}
+
+
+
+/* the following are declared as functions instead of macros
+ * so they can be used as function pointers */
+
+INLINE uint32_t rand32(void)
+{
+  return mtrng_rand32(mr_);
+}
+
+INLINE double rand01(void)
+{
+  return mtrng_rand01(mr_);
+}
+
+INLINE double randunif(double a, double b)
+{
+  return mtrng_randunif(mr_, a, b);
+}
+
+INLINE double randgaus(void)
+{
+  return mtrng_randgaus(mr_);
+}
+
+INLINE double randgam(double k)
+{
+  return mtrng_randgam(mr_, k);
+}
+
+INLINE double randchisqr(double n)
+{
+  return mtrng_randchisqr(mr_, n);
+}
+
+INLINE int randpair(int n, int *j)
+{
+  return mtrng_randpair(mr_, n, j);
 }
 
 
