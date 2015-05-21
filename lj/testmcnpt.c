@@ -33,7 +33,7 @@ int main(void)
   }
   ljrdf = ljrdf_open(lj, 0.01, 0);
 
-  hsvol = hs_open(1, 0, 5.*lj->n/rho, 1.f);
+  hsvol = hist_open(1, 0, 5.*lj->n/rho, 1.f);
 
   for (t = 1; t <= nsteps; t++) {
     acc += lj_metro3d(lj, amp, 1.0f/tp);
@@ -45,7 +45,7 @@ int main(void)
       vacc += lj_mcp(lj, 0.01, tp, pressure, 0, 1e300, 0, 0);
       if (isrun) {
         av_add(&avrho, lj->n / lj->vol);
-        hs_add1ez(hsvol, lj->vol, HIST_VERBOSE);
+        hist_add1ez(hsvol, lj->vol, HIST_VERBOSE);
       }
     }
 
@@ -71,8 +71,8 @@ int main(void)
   printf("erg %g, p %g, rho %g, acc %.2f%%, vacc %.2f%%, rdfnfr %d, dof/d %g\n",
       u, p, rho1, 100.*acc/nsteps, 100.*vacc/(1e-6 + vtot), ljrdf->nfr,
       1.*lj->dof/lj->d);
-  hs_save(hsvol, "volmc.his", HIST_NOZEROES);
-  hs_close(hsvol);
+  hist_save(hsvol, "volmc.his", HIST_NOZEROES);
+  hist_close(hsvol);
   ljrdf_save(ljrdf, "rdfmc.dat", HIST_ADDAHALF | HIST_KEEPHIST | HIST_NOZEROES);
   ljrdf_close(ljrdf);
   lj_close(lj);

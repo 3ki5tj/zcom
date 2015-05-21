@@ -40,7 +40,7 @@ int main(void)
     fprintf(stderr, "error loading previous coordinates from %s\n", fnpos);
   }
 
-  hsvol = hs_open(1, 0, 5.*lj->n/lj->rho, 2.f);
+  hsvol = hist_open(1, 0, 5.*lj->n/lj->rho, 2.f);
 
   for (t = 1; t <= nequil + nsteps; t++) {
     lj_vv(lj, mddt);
@@ -62,7 +62,7 @@ int main(void)
       vtot++;
       if (isrun) {
         av_add(&avrho, lj->n / lj->vol);
-        hs_add1ez(hsvol, lj->vol, HIST_VERBOSE);
+        hist_add1ez(hsvol, lj->vol, HIST_VERBOSE);
       }
     }
 
@@ -85,8 +85,8 @@ int main(void)
       tp, u, k, p, bc, rhoav, 100. * vacc / vtot);
   u = ljeos3d_getx(rhoav, tp, &p, NULL, NULL, LJEOS_PVEhBHKN);
   printf("ref., u %6.3f, p %6.3f\n", u, p);
-  hs_save(hsvol, "volmd.his", HIST_NOZEROES);
-  hs_close(hsvol);
+  hist_save(hsvol, "volmd.his", HIST_NOZEROES);
+  hist_close(hsvol);
   lj_writepos(lj, lj->x, lj->v, fnpos);
   lj_close(lj);
   return 0;

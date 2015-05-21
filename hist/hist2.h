@@ -69,8 +69,9 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
 
   nm = n * m;
   xnew(sums, rows);
-  for ( r = 0; r < rows; r++ )
-    hist2getsums_(h + nm, n, xmin, dx, m, ymin, dy, sums[r]);
+  for ( r = 0; r < rows; r++ ) {
+    hist2getsums_(h + r * nm, n, xmin, dx, m, ymin, dy, sums[r]);
+  }
   /* print basic information */
   fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ",
       version, flags, rows, n, xmin, dx, m, ymin, dy);
@@ -155,11 +156,47 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
   fclose(fp);
   if (flags & HIST2_VERBOSE) {
     fprintf(stderr, "successfully wrote %s\n", fn);
-    for (r = 0; r < rows; r++)
+    for (r = 0; r < rows; r++) {
+      double stdx = sqrt(sums[r][3]);
+      double stdy = sqrt(sums[r][5]);
       fprintf(stderr, "%2d cnt: %20.4f xav: %10.4f(%10.4f) yav: %10.4f(%10.4f)\n",
-          r, sums[r][0], sums[r][1], sums[r][2], sums[r][3], sums[r][4]);
+          r, sums[r][0], sums[r][1], stdx, sums[r][2], stdy);
+    }
   }
   free(sums);
+  return 0;
+}
+
+
+
+/* fetch histogram information */
+INLINE int hist2getinfo(const char *fn, int *row,
+    double *xmin, double *xmax, double *xdel,
+    double *ymin, double *ymax, double *ydel,
+    int *version, unsigned *fflags)
+{
+  FILE *fp;
+  char s[1024];
+  int n, m;
+
+  if ((fp = fopen(fn, "r")) == NULL) {
+    fprintf(stderr, "cannot read %s\n", fn);
+    return -1;
+  }
+  if (fgets(s, sizeof s, fp) == NULL) {
+    fprintf(stderr, "%s: missing the first line\n", fn);
+    fclose(fp);
+    return -1;
+  }
+  if (9 != sscanf(s, "# %d 0x %X | %d %d %lf %lf %d %lf %lf ",
+        version, fflags, row, &n, xmin, xdel, &m, ymin, ydel)) {
+    fprintf(stderr, "%s: bad first line\n%s", fn, s);
+    fclose(fp);
+    return -1;
+  }
+  *xmax = *xmin + *xdel * n;
+  *ymax = *ymin + *ydel * m;
+  fclose(fp);
   return 0;
 }
 
@@ -293,7 +330,7 @@ INLINE int hist2add1(double x, double y, double w, double *h,
           x, xmin);
     return -1;
   }
-  if ( y < xmin ) {
+  if ( y < ymin ) {
     if ( verbose )
       fprintf(stderr, "hist2add underflows: y %g < %g\n",
           y, ymin);
@@ -369,14 +406,12 @@ typedef struct {
   double *arr, *dumptr;
 } hist2_t;
 
-typedef hist2_t hs2_t;
+#define hist2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->m)
 
-#define hs2_clear(hs2) dblcleararr(hs2->arr, hs2->rows * hs2->n * hs2->m)
+#define hist2_open1(xmin, xmax, dx, ymin, ymax, dy) \
+  hist2_open(1, xmin, xmax, dx, ymin, ymax, dy)
 
-#define hs2_open1(xmin, xmax, dx, ymin, ymax, dy) \
-  hs2_open(1, xmin, xmax, dx, ymin, ymax, dy)
-
-INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx,
+INLINE hist2_t *hist2_open(int rows, double xmin, double xmax, double dx,
     double ymin, double ymax, double dy)
 {
   hist2_t *hs2;
@@ -395,7 +430,7 @@ INLINE hist2_t *hs2_open(int rows, double xmin, double xmax, double dx,
 
 
 
-INLINE void hs2_close(hist2_t *hs2)
+INLINE void hist2_close(hist2_t *hs2)
 {
   free(hs2->arr);
   free(hs2);
@@ -403,7 +438,7 @@ INLINE void hs2_close(hist2_t *hs2)
 
 
 
-INLINE void hs2_check(const hist2_t *hs)
+INLINE void hist2_check(const hist2_t *hs)
 {
   die_if (hs == NULL, "hist2 is %p", (const void *) hs);
   die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0 || hs->m == 0,
@@ -413,43 +448,71 @@ INLINE void hs2_check(const hist2_t *hs)
 
 
 
-INLINE int hs2_save(const hist2_t *hs, const char *fn, unsigned flags)
+INLINE int hist2_save(const hist2_t *hs, const char *fn, unsigned flags)
 {
-  hs2_check(hs);
+  hist2_check(hs);
   return hist2save(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx,
       hs->m, hs->ymin, hs->dy, flags, fn);
 }
 
 
 
-INLINE int hs2_load(hist2_t *hs, const char *fn, unsigned flags)
+INLINE int hist2_load(hist2_t *hs, const char *fn, unsigned flags)
 {
-  hs2_check(hs);
+  hist2_check(hs);
   return hist2load(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx,
       hs->m, hs->ymin, hs->dy, flags, fn);
 }
 
 
 
-#define hs2_add1ez(hs, x, y, flags) hs2_add1(hs, 0, x, y, 1.0, flags)
+/* initialize a histogram from file */
+INLINE hist2_t *hist2_initf(const char *fn)
+{
+  int rows, version;
+  unsigned fflags;
+  double xmin, xmax, dx, ymin, ymax, dy;
+  hist2_t *hs;
 
-INLINE int hs2_add1(hist2_t *hs, int r, double x, double y,
+  if ( hist2getinfo(fn, &rows, &xmin, &xmax, &dx,
+        &ymin, &ymax, &dy, &version, &fflags) != 0 ) {
+    return NULL;
+  }
+
+  hs = hist2_open(rows, xmin, xmax, dx, ymin, ymax, dy);
+  if ( hs == NULL ) {
+    return NULL;
+  }
+
+  if ( hist2_load(hs, fn, HIST2_VERBOSE) != 0 ) {
+    hist2_close(hs);
+    return NULL;
+  }
+
+  return hs;
+}
+
+
+
+#define hist2_add1ez(hs, x, y, flags) hist2_add1(hs, 0, x, y, 1.0, flags)
+
+INLINE int hist2_add1(hist2_t *hs, int r, double x, double y,
     double w, unsigned flags)
 {
-  hs2_check(hs);
+  hist2_check(hs);
   return hist2add1(x, y, w, hs->arr+r*hs->n*hs->m,
       hs->n, hs->xmin, hs->dx, hs->m, hs->ymin, hs->dy, flags & HIST2_VERBOSE);
 }
 
 
 
-INLINE int hs2_add(hist2_t *hs, const double *x, const double *y, int stride,
+INLINE int hist2_add(hist2_t *hs, const double *x, const double *y, int stride,
     double w, unsigned flags)
 {
   int r, good = 0;
-  hs2_check(hs);
+  hist2_check(hs);
   for ( r = 0; r < hs->rows; r++ )
-    good += (hs2_add1(hs, r, x[stride*r], y[stride*r], w, flags) == 0);
+    good += (hist2_add1(hs, r, x[stride*r], y[stride*r], w, flags) == 0);
   return good;
 }
 

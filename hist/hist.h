@@ -373,15 +373,13 @@ typedef struct {
   double *arr;
 } hist_t;
 
-typedef hist_t hs_t;
-
-#define hs_clear(hs) dblcleararr(hs->arr, hs->rows * hs->n)
+#define hist_clear(hs) dblcleararr(hs->arr, hs->rows * hs->n)
 
 
 
-#define hs_open1(x0, x1, dx) hs_open(1, x0, x1, dx)
+#define hist_open1(x0, x1, dx) hist_open(1, x0, x1, dx)
 
-INLINE hist_t *hs_open(int rows, double xmin, double xmax, double dx)
+INLINE hist_t *hist_open(int rows, double xmin, double xmax, double dx)
 {
   hist_t *hs;
 
@@ -396,7 +394,7 @@ INLINE hist_t *hs_open(int rows, double xmin, double xmax, double dx)
 
 
 
-INLINE void hs_close(hist_t *hs)
+INLINE void hist_close(hist_t *hs)
 {
   free(hs->arr);
   free(hs);
@@ -404,7 +402,7 @@ INLINE void hs_close(hist_t *hs)
 
 
 
-INLINE void hs_check(const hist_t *hs)
+INLINE void hist_check(const hist_t *hs)
 {
   die_if (hs == NULL, "hs is %p", (const void *) hs);
   die_if (hs->arr == NULL || hs->rows == 0 || hs->n == 0,
@@ -412,47 +410,74 @@ INLINE void hs_check(const hist_t *hs)
 }
 
 
-#define hs_save(hs, fn, flags) hs_savex(hs, fn, NULL, NULL, NULL, flags)
+#define hist_save(hs, fn, flags) hist_savex(hs, fn, NULL, NULL, NULL, flags)
 
-INLINE int hs_savex(const hist_t *hs, const char *fn,
+INLINE int hist_savex(const hist_t *hs, const char *fn,
     int (*fwheader)(FILE *, void *),
     double (*fnorm)(int, int, double, double, void *),
     void *pdata, unsigned flags)
 {
-  hs_check(hs);
+  hist_check(hs);
   return histsavex(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, fn,
       fwheader, fnorm, pdata, flags);
 }
 
 
 
-#define hs_load(hs, fn, flags) hs_loadx(hs, fn, NULL, NULL, NULL, flags)
+#define hist_load(hs, fn, flags) hist_loadx(hs, fn, NULL, NULL, NULL, flags)
 
-INLINE int hs_loadx(hist_t *hs, const char *fn,
+INLINE int hist_loadx(hist_t *hs, const char *fn,
     int (frheader)(const char *, void *),
     double (*fnorm)(int, int, double, double, void *),
     void *pdata, unsigned flags)
 {
-  hs_check(hs);
+  hist_check(hs);
   return histloadx(hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, fn,
       frheader, fnorm, pdata, flags);
 }
 
 
 
-INLINE int hs_add(hist_t *hs, const double *x, double w, unsigned flags)
+/* initialize a histogram from file */
+INLINE hist_t *hist_initf(const char *fn)
 {
-  hs_check(hs);
+  int rows, version;
+  unsigned fflags;
+  double xmin, xmax, dx;
+  hist_t *hs;
+
+  if ( histgetinfo(fn, &rows, &xmin, &xmax, &dx, &version, &fflags) != 0 ) {
+    return NULL;
+  }
+
+  hs = hist_open(rows, xmin, xmax, dx);
+  if ( hs == NULL ) {
+    return NULL;
+  }
+
+  if ( hist_load(hs, fn, HIST_VERBOSE) != 0 ) {
+    hist_close(hs);
+    return NULL;
+  }
+
+  return hs;
+}
+
+
+
+INLINE int hist_add(hist_t *hs, const double *x, double w, unsigned flags)
+{
+  hist_check(hs);
   return histadd(x, w, hs->arr, hs->rows, hs->n, hs->xmin, hs->dx, flags);
 }
 
 
 
-#define hs_add1ez(hs, x, flags) hs_add1(hs, 0, x, 1, flags)
+#define hist_add1ez(hs, x, flags) hist_add1(hs, 0, x, 1, flags)
 
-INLINE int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
+INLINE int hist_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 {
-  hs_check(hs);
+  hist_check(hs);
   die_if (r >= hs->rows || r < 0, "bad row index %d\n", r);
   return histadd(&x, w, hs->arr + r*hs->n, 1, hs->n, hs->xmin, hs->dx, flags);
 }
@@ -460,7 +485,7 @@ INLINE int hs_add1(hist_t *hs, int r, double x, double w, unsigned flags)
 
 
 /* get average of a certain `row' */
-INLINE double hs_getave(const hist_t *hs, int row, double *sum, double *var)
+INLINE double hist_getave(const hist_t *hs, int row, double *sum, double *var)
 {
   double arr[3];
 

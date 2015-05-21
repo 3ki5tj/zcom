@@ -13,21 +13,21 @@ int main(void)
   hist_t *hs;
   const char *fnhs = "hs.dat", *fnhs2 = "hs2.dat";
 
-  hs = hs_open(LCNT, XMIN, XMAX, XDEL);
+  hs = hist_open(LCNT, XMIN, XMAX, XDEL);
   /* generate histogram */
   for (i = 0; i < n; i++) {
     for (j = 0; j < LCNT; j++)
       x[j] = lam[j]*x[j]*(1 - x[j]);
-    hs_add(hs, x, 1., HIST_VERBOSE);
+    hist_add(hs, x, 1., HIST_VERBOSE);
   }
-  hs_save(hs, fnhs, wflags);
+  hist_save(hs, fnhs, wflags);
 
   /* now try to load histogram */
-  die_if (hs_load(hs, fnhs, HIST_VERBOSE | HIST_ADDITION) != 0,
+  die_if (hist_load(hs, fnhs, HIST_VERBOSE | HIST_ADDITION) != 0,
     "cannot load histogram from %s\n", fnhs);
   /* write again */
-  hs_save(hs, fnhs2, wflags);
-  hs_close(hs);
+  hist_save(hs, fnhs2, wflags);
+  hist_close(hs);
   return 0;
 }
 

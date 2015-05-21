@@ -36,7 +36,7 @@ static void genhist(hist_t *hs, int nfr, double l, den_t *den)
           else if (dx[k] < -.5*l) dx[k] += l;
         }
         r = rv3_norm(dx);
-        hs_add(hs, &r, 1., HIST_VERBOSE);
+        hist_add(hs, &r, 1., HIST_VERBOSE);
       }
   }
   den->nfr = nfr;
@@ -86,21 +86,21 @@ int main(void)
   hist_t *hs;
   const char *fnrdf = "rdf.dat", *fnfrdf = "frdf.dat";
 
-  hs = hs_open(1, XMIN, XMAX, XDEL);
+  hs = hist_open(1, XMIN, XMAX, XDEL);
 
   /* generate histogram */
   genhist(hs, 17, 1., den);
 
-  hs_savex(hs, fnfrdf, fwheader, rdfnorm, den, HIST_ADDAHALF|HIST_KEEPHIST);
-  hs_savex(hs, fnrdf,  fwheader, rdfnorm, den, HIST_ADDAHALF);
+  hist_savex(hs, fnfrdf, fwheader, rdfnorm, den, HIST_ADDAHALF|HIST_KEEPHIST);
+  hist_savex(hs, fnrdf,  fwheader, rdfnorm, den, HIST_ADDAHALF);
 
   /* now try to load histogram */
-  die_if (hs_loadx(hs, fnfrdf, frheader, rdfnorm, den, HIST_VERBOSE) != 0,
+  die_if (hist_loadx(hs, fnfrdf, frheader, rdfnorm, den, HIST_VERBOSE) != 0,
     "cannot load histogram %s\n", fnfrdf);
   /* write again */
-  hs_savex(hs, "frdf2.dat", fwheader, rdfnorm, den, HIST_ADDAHALF | HIST_KEEPHIST);
-  hs_savex(hs, "rdf2.dat",  fwheader, rdfnorm, den, HIST_ADDAHALF);
-  hs_close(hs);
+  hist_savex(hs, "frdf2.dat", fwheader, rdfnorm, den, HIST_ADDAHALF | HIST_KEEPHIST);
+  hist_savex(hs, "rdf2.dat",  fwheader, rdfnorm, den, HIST_ADDAHALF);
+  hist_close(hs);
   return 0;
 }
 

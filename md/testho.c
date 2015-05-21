@@ -9,7 +9,7 @@ int main(void)
   int t;
   hist_t *hs;
 
-  hs = hs_open(1, -10.0, 10.0, 0.01);
+  hs = hist_open(1, -10.0, 10.0, 0.01);
   for (t = 1; t <= 1000000; t++) {
     v += f * dt * .5f;
     x += v * dt;
@@ -22,9 +22,9 @@ int main(void)
     if (t % 100 == 0) {
       printf("%g %g\n", x, v);
     }
-    hs_add1ez(hs, x, 0);
+    hist_add1ez(hs, x, 0);
   }
-  hs_save(hs, "x.his", HIST_ADDAHALF);
-  hs_close(hs);
+  hist_save(hs, "x.his", HIST_ADDAHALF);
+  hist_close(hs);
   return 0;
 }

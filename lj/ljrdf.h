@@ -27,7 +27,7 @@ INLINE ljrdf_t *ljrdf_open(lj_t *lj, double dr, double rmax)
   if (rmax <= 0)
     rmax = (int) (lj->l * .5 / dr) * dr;
   av_clear(ljr->avn);
-  ljr->rdf = hs_open(1, 0, rmax, dr);
+  ljr->rdf = hist_open(1, 0, rmax, dr);
   ljr->cfac = 1;
   return ljr;
 }
@@ -36,7 +36,7 @@ INLINE ljrdf_t *ljrdf_open(lj_t *lj, double dr, double rmax)
 
 INLINE void ljrdf_close(ljrdf_t *ljr)
 {
-  hs_close(ljr->rdf);
+  hist_close(ljr->rdf);
   free(ljr);
 }
 
@@ -60,7 +60,7 @@ INLINE int ljrdf_add(ljrdf_t *ljr, unsigned flags)
         dr2 = lj_pbcdist2_3d(dx, lj->x + 3*i, lj->x + 3*j, lj->l);
       if (dr2 >= rc2) continue;
       dr = sqrt(dr2);
-      hs_add(ljr->rdf, &dr, 1.0, flags);
+      hist_add(ljr->rdf, &dr, 1.0, flags);
     }
   }
   av_add(ljr->avn, lj->n);
@@ -143,7 +143,7 @@ INLINE double ljrdf_norm(int row, int i, double xmin, double dx, void *pdata)
 /* save rdf, flags can have HIST_NOZEROES */
 INLINE int ljrdf_save(ljrdf_t *ljr, const char *fn, unsigned flags)
 {
-  return hs_savex(ljr->rdf, fn, ljrdf_fwheader, ljrdf_norm, ljr, flags);
+  return hist_savex(ljr->rdf, fn, ljrdf_fwheader, ljrdf_norm, ljr, flags);
 }
 
 
@@ -151,7 +151,7 @@ INLINE int ljrdf_save(ljrdf_t *ljr, const char *fn, unsigned flags)
 /* load rdf, flags can have HIST_ADDITION and/or HIST_VERBOSE */
 INLINE int ljrdf_load(ljrdf_t *ljr, const char *fn, unsigned flags)
 {
-  return hs_loadx(ljr->rdf, fn, ljrdf_frheader, ljrdf_norm, ljr, flags);
+  return hist_loadx(ljr->rdf, fn, ljrdf_frheader, ljrdf_norm, ljr, flags);
 }
 
 

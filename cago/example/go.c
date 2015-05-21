@@ -70,9 +70,9 @@ static void domd(void)
   cago_initmd(go, fromrand ? -0.1 : 0.1, 0.0);
   printf("epot %.2f (ref %.2f)\n", go->epot, go->epotref);
 
-  hsep = hs_open1(go->epotref*2, fabs(go->epotref)*5, 0.1);
-  hsrmsd = hs_open1(0, 100.0, 0.1);
-  hscont = hs_open1(0, go->ncont + 1, 1);
+  hsep = hist_open1(go->epotref*2, fabs(go->epotref)*5, 0.1);
+  hsrmsd = hist_open1(0, 100.0, 0.1);
+  hscont = hist_open1(0, go->ncont + 1, 1);
 
   for (it = 1; it <= nsteps; it++) {
     cago_vv(go, 1.0f, mddt);
@@ -82,31 +82,31 @@ static void domd(void)
     nc = cago_ncontacts(go, go->x, ncgam, NULL, NULL);
 
     if (it >= nequil) {
-      hs_add1ez(hsep, go->epot, 0); /* add to histogram */
-      hs_add1ez(hsrmsd, rmsd, HIST_VERBOSE);
-      hs_add1ez(hscont, nc, HIST_VERBOSE);
+      hist_add1ez(hsep, go->epot, 0); /* add to histogram */
+      hist_add1ez(hsrmsd, rmsd, HIST_VERBOSE);
+      hist_add1ez(hscont, nc, HIST_VERBOSE);
 
       if (it % nevery == 0) {
         printf("t %d, T %.2f(%.2f), ep %.2f/%.2f, rmsd %.2f/%.2f Q %d/%d=%.2f(%.2f)\n",
           it, go->tkin, tp,
-          go->epot, hs_getave(hsep, 0, NULL, NULL),
-          rmsd, hs_getave(hsrmsd, 0, NULL, NULL),
+          go->epot, hist_getave(hsep, 0, NULL, NULL),
+          rmsd, hist_getave(hsrmsd, 0, NULL, NULL),
           nc, go->ncont, 1.0*nc/go->ncont,
-          hs_getave(hscont, 0, NULL, NULL)/go->ncont);
+          hist_getave(hscont, 0, NULL, NULL)/go->ncont);
       }
       if (it % nreport == 0 || it == nsteps) {
         printf("saving %s, %s, %s, %s\n", fnephis, fnrmsdhis, fnconthis, fnpos);
         cago_writepos(go, go->x, go->v, fnpos);
-        hs_save(hsep, fnephis, HIST_ADDAHALF);
-        hs_save(hsrmsd, fnrmsdhis, HIST_ADDAHALF);
-        hs_save(hscont, fnconthis, 0);
+        hist_save(hsep, fnephis, HIST_ADDAHALF);
+        hist_save(hsrmsd, fnrmsdhis, HIST_ADDAHALF);
+        hist_save(hscont, fnconthis, 0);
       }
     }
   }
   cago_close(go);
-  hs_close(hsep);
-  hs_close(hsrmsd);
-  hs_close(hscont);
+  hist_close(hsep);
+  hist_close(hsrmsd);
+  hist_close(hscont);
 }
 
 int main(int argc, char **argv)

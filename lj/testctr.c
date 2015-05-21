@@ -17,7 +17,7 @@ static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
 {
   int i, t;
   real du, du2, betp, vir, rmin, xi[3];
-  hist_t *hs = hs_open(1, -umax, umax, udel);
+  hist_t *hs = hist_open(1, -umax, umax, udel);
   av_t avdu[1];
 
   amp /= lj->l;
@@ -25,14 +25,14 @@ static real tcr3d_l(lj_t *lj, int tmax, real amp, real umax, real udel)
   for (t = 0; t < tmax; t++) {
     i = lj_randmv3d(lj, xi, amp*sqrt(lj->n));
     du = lj_depot3d(lj, i, xi, &vir, &rmin);
-    hs_add(hs, &du, 1.0, 0);
+    hist_add(hs, &du, 1.0, 0);
     av_add(avdu, du);
   }
   du = av_getave(avdu);
   du2 = av_getvar(avdu);
   betp = (du2 > 0.) ? 2.f*du/du2 : 0.;
   printf("local perturbation: du %g, du2 %g, betp %g, tp %g\n", du, du2, betp, 1.0/betp);
-  hs_save(hs, "de_l.his", HIST_ADDAHALF);
+  hist_save(hs, "de_l.his", HIST_ADDAHALF);
   return betp;
 }
 
@@ -42,7 +42,7 @@ static real tcr3d_g(lj_t *lj, int tmax, real amp, real umax, real udel)
   int i, t, d, n = lj->n;
   real du, ep = lj->epot, du2, betp;
   rv3_t *x0, *x = (rv3_t *) lj->x;
-  hist_t *hs = hs_open(1, -umax, umax, udel);
+  hist_t *hs = hist_open(1, -umax, umax, udel);
   av_t avdu[1];
 
   xnew(x0, n);
@@ -56,14 +56,14 @@ static real tcr3d_g(lj_t *lj, int tmax, real amp, real umax, real udel)
         x[i][d] = x0[i][d] + amp * (2 * rnd0() - 1);
     du = lj_energy3d(lj) - ep;
 
-    hs_add(hs, &du, 1.0, 0);
+    hist_add(hs, &du, 1.0, 0);
     av_add(avdu, du);
   }
   du = av_getave(avdu);
   du2 = av_getvar(avdu);
   betp = (du2 > 0.) ? 2.f*du/du2 : 0.;
   printf("global perturbation: du %g, du2 %g, betp %g, tp %g\n", du, du2, betp, 1.0/betp);
-  hs_save(hs, "de.his", HIST_ADDAHALF);
+  hist_save(hs, "de.his", HIST_ADDAHALF);
   free(x0);
   return betp;
 }
