@@ -14,6 +14,7 @@
 #define HIST_KEEPEDGE   (HIST_KEEPLEFT | HIST_KEEPRIGHT | HIST_KEEPLEFT2 | HIST_KEEPRIGHT2)
 #define HIST_KEEPHIST   0x0100
 #define HIST_OVERALL    0x0200
+#define HIST_INT        0x0400
 #define HIST_ADDITION   0x1000
 
 
@@ -97,7 +98,7 @@ INLINE int histsavex(const double *h, int rows, int n, double xmin, double dx,
   fprintf(fp, "# %d 0x%X | %d %d %g %g | ",
       version, flags, rows, n, xmin, dx);
   for (r = 0; r < rows; r++) /* number of visits */
-    fprintf(fp, "%g ", sums[r]);
+    fprintf(fp, "%20.14E ", sums[r]);
   fprintf(fp, "| ");
   for (r = 0; r < rows; r++) /* average, standard deviation */
     fprintf(fp, "%g %g ", sums[r+rows], sqrt(sums[r+rows*2]));
@@ -316,6 +317,7 @@ INLINE int histloadx(double *hist, int rows, int n, double xmin, double dx,
         }
         y = y2*fac;
       }
+      if (flags & HIST_INT) y = (long) (y + 0.5);
       if (add) arr[i1] += y;
       else arr[i1] = y;
     }
@@ -439,7 +441,7 @@ INLINE int hist_loadx(hist_t *hs, const char *fn,
 
 
 /* initialize a histogram from file */
-INLINE hist_t *hist_initf(const char *fn)
+INLINE hist_t *hist_initf(const char *fn, unsigned flags)
 {
   int rows, version;
   unsigned fflags;
@@ -455,7 +457,7 @@ INLINE hist_t *hist_initf(const char *fn)
     return NULL;
   }
 
-  if ( hist_load(hs, fn, HIST_VERBOSE) != 0 ) {
+  if ( hist_load(hs, fn, flags) != 0 ) {
     hist_close(hs);
     return NULL;
   }

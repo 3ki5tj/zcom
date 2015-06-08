@@ -19,6 +19,7 @@
 #define HIST2_KEEPEDGE   (HIST2_KEEPLEFT | HIST2_KEEPRIGHT | HIST2_KEEPLEFT2 | HIST2_KEEPRIGHT2)
 #define HIST2_KEEPHIST   0x0100
 #define HIST2_OVERALL    0x0200
+#define HIST2_INT        0x0400
 #define HIST2_ADDITION   0x1000
 
 
@@ -76,7 +77,7 @@ INLINE int hist2save(const double *h, int rows, int n, double xmin, double dx,
   fprintf(fp, "# %d 0x%X | %d %d %g %g %d %g %g | ",
       version, flags, rows, n, xmin, dx, m, ymin, dy);
   for (r = 0; r < rows; r++) /* number of visits */
-    fprintf(fp, "%g ", sums[r][0]);
+    fprintf(fp, "%20.14E ", sums[r][0]);
   fprintf(fp, " | ");
   for (r = 0; r < rows; r++) /* averages and covariance */
     fprintf(fp, "%g %g %g %g %g ", sums[r][1], sums[r][2],
@@ -299,6 +300,9 @@ INLINE int hist2load(double *hist, int rows, int n, double xmin, double dx,
       if (!hashist) {
         g = g2*fac;
       }
+      if (flags & HIST2_INT) {
+        g = (long) (g + 0.5);
+      }
       if (add) arr[i*m+j] += g;
       else arr[i*m+j] = g;
     }
@@ -448,6 +452,23 @@ INLINE void hist2_check(const hist2_t *hs)
 
 
 
+INLINE double hist2_getave(const hist2_t *hs, int r,
+    double *s, double *avy, double *sxx, double *sxy, double *syy)
+{
+  int n = hs->n, m = hs->m;
+  double sums[6];
+
+  hist2getsums_(hs->arr + r * n * m,
+      n, hs->xmin, hs->dx, m, hs->ymin, hs->dy, sums);
+  if ( s    != NULL )  *s    = sums[0];
+  if ( avy  != NULL )  *avy  = sums[2];
+  if ( sxx  != NULL )  *sxx  = sums[3];
+  if ( sxy  != NULL )  *sxy  = sums[4];
+  if ( syy  != NULL )  *syy  = sums[5];
+  return sums[1];
+}
+
+
 INLINE int hist2_save(const hist2_t *hs, const char *fn, unsigned flags)
 {
   hist2_check(hs);
@@ -467,7 +488,7 @@ INLINE int hist2_load(hist2_t *hs, const char *fn, unsigned flags)
 
 
 /* initialize a histogram from file */
-INLINE hist2_t *hist2_initf(const char *fn)
+INLINE hist2_t *hist2_initf(const char *fn, unsigned flags)
 {
   int rows, version;
   unsigned fflags;
@@ -484,7 +505,7 @@ INLINE hist2_t *hist2_initf(const char *fn)
     return NULL;
   }
 
-  if ( hist2_load(hs, fn, HIST2_VERBOSE) != 0 ) {
+  if ( hist2_load(hs, fn, flags) != 0 ) {
     hist2_close(hs);
     return NULL;
   }
