@@ -13,7 +13,48 @@ typedef struct {
   double *logdos; /* logarithmic density of states */
   /* helper vars */
   uint32_t *uproba; /* temporary probability for MC transitions */
+  /* for Wolff's algorithm */
+  int *queue;
+  char *used;
 } ising_t;
+
+
+
+/* initialize an lxl Ising model */
+INLINE ising_t *is2_open(int l)
+{
+  int i, n;
+  ising_t *is;
+
+  xnew(is, 1);
+  is->d = 2;
+  is->l = l;
+  is->n = n = l*l;
+  xnew(is->s, n);
+  for (i = 0; i < n; i++) is->s[i] = -1;
+  is->M = -n;
+  is->E = -2*n;
+  xnew(is->logdos, n + 1);
+  xnew(is->uproba, 2*is->d + 1);
+  is->uproba[0] = 0xffffffff;
+  xnew(is->queue, n);
+  xnew(is->used, n);
+  return is;
+}
+
+
+
+INLINE void is2_close(ising_t *is)
+{
+  if (is != NULL) {
+    free(is->s);
+    free(is->logdos);
+    free(is->uproba);
+    free(is->queue);
+    free(is->used);
+    free(is);
+  }
+}
 
 
 
@@ -28,17 +69,21 @@ typedef struct {
 /* compute total energy and magnetization */
 INLINE int is2_em(ising_t *is)
 {
-  int l, i, j, s, u, e, m, *p, *pu;
+  int l, n, i, j, e, m;
 
   e = m = 0;
-  p = is->s;
   l = is->l;
-  for (i = 0; i < l; ) {
-    pu = (++i == l) ? is->s : p+l;
-    for (j = 0; j < l; ) {
-      m += (s = *p++);
-      u = *pu++;
-      e += s*(u + ((++j == l) ? *(p-l) : *p));
+  n = l * l;
+  for ( i = 0; i < n; i += l ) {
+    for ( j = 0; j < l; j++ ) {
+      int id = i + j;
+      int idr = i + (j + 1) % l;
+      int idu = (i + l) % n + j;
+      int s = is->s[id];
+      int su = is->s[idu];
+      int sr = is->s[idr];
+      m += s;
+      e += s * (su + sr);
     }
   }
   is->M = m;
@@ -73,17 +118,18 @@ INLINE int is2_check(ising_t *is)
 /* pick a random site, count neighbors with different spins */
 INLINE int is2_pick(const ising_t *is, int *h)
 {
-  int id, ix, iy, l, lm, n, nm, *p;
+  int id, ix, iy, l, lm, n, nm, ssn;
 
   lm = (l = is->l) - 1;
   nm = (n = is->n) - l;
   id = (int) (rand01() * n);
-  iy = id / l, ix = id % l;
-  p = is->s + id;
-  *h = *p * ( ((ix != 0 ) ? *(p-1) : *(p+lm))   /* left  */
-            + ((ix != lm) ? *(p+1) : *(p-lm))   /* right */
-            + ((iy != 0 ) ? *(p-l) : *(p+nm))   /* down  */
-            + ((iy != lm) ? *(p+l) : *(p-nm))); /* up    */
+  ix = id % l;
+  iy = id / l;
+  ssn = ((ix != 0 ) ? is->s[id - 1] : is->s[id + lm])   /* left  */
+      + ((ix != lm) ? is->s[id + 1] : is->s[id - lm])   /* right */
+      + ((iy != 0 ) ? is->s[id - l] : is->s[id + nm])   /* down  */
+      + ((iy != lm) ? is->s[id + l] : is->s[id - nm]);  /* up    */
+  *h = is->s[id] * ssn; /* -(*h) is the energy before the flip */
   return id;
 }
 
@@ -107,12 +153,17 @@ INLINE int is2_flip(ising_t *is, int id, int h)
 #define IS2_N   (IS2_L * IS2_L)
 
 #define IS2_GETH(is, id, h) { \
-  unsigned ix, iy; \
-  iy = id / IS2_L, ix = id % IS2_L; \
-  h = is->s[id] * ( is->s[iy*IS2_L + (ix+1)%IS2_L] \
-                  + is->s[iy*IS2_L + (ix+IS2_L-1)%IS2_L] \
-                  + is->s[(iy+1)%IS2_L*IS2_L + ix] \
-                  + is->s[(iy-1+IS2_L)%IS2_L*IS2_L + ix] ); }
+  unsigned ix, ixp, ixm, iy, iyp, iym; \
+  ix = id % IS2_L; \
+  iy = id - ix; \
+  ixp = (ix + 1) % IS2_L; \
+  ixm = (ix + (IS2_L - 1)) % IS2_L; \
+  iyp = (iy + IS2_L) % IS2_N; \
+  iym = (iy + (IS2_N - IS2_L)) % IS2_N; \
+  h = is->s[id] * ( is->s[iy  + ixp] \
+                  + is->s[iy  + ixm] \
+                  + is->s[iyp + ix ] \
+                  + is->s[iym + ix ] ); }
 #define IS2_IRND(is, id)  id = rand32() >> (32 - 2*IS2_LB);
 /* random picking */
 #define IS2_PICK(is, id, h) { IS2_IRND(is, id); IS2_GETH(is, id, h); }
@@ -130,6 +181,93 @@ INLINE int is2_flip(ising_t *is, int id, int h)
 #define IS2_FLIP(is, id, h)  is2_flip(is, id, h)
 
 #endif
+
+
+
+/* add spin j to the queue if s[j] is different from s
+ * return the spin */
+INLINE int is2_addtoqueue(ising_t *is, int j, int s,
+    double r, int *cnt)
+{
+  int sj = is->s[j];
+
+  if ( sj == s && !is->used[j] && rand01() < r ) {
+    is->queue[ (*cnt)++ ] = j;
+    is->used[j] = (char) 1;
+  }
+  return sj;
+}
+
+
+
+/* Wolff algorithm */
+INLINE int is2_wolff(ising_t *is, double padd)
+{
+  int l = is->l, n = is->n, i, ix, iy, id, s, cnt = 0, h = 0;
+
+  /* randomly selected a seed */
+  id = (int) ( rand01() * n );
+  s = is->s[id];
+  is->queue[ cnt++ ] = id;
+  for ( i = 0; i < n; i++ ) {
+    is->used[i] = 0;
+  }
+  is->used[id] = (char) 1;
+
+  /* go through spins in the queue */
+  for ( i = 0; i < cnt; i++ ) {
+    id = is->queue[i];
+    /* flip the spin to correctly compute the local field,
+     * which is the total magnetization of all spins
+     * surrounding the cluster.
+     *
+     * consider a bond id-jd, with jd being a neighbor of id
+     * 1) if jd does not make it to the cluster, then it
+     *    lies on the border, and it contributes
+     *    s[jd] to the local field
+     * 2) if s[jd] == s, and will be included in the cluster
+     *    in the future, it should contribute zero to the
+     *    local field.  But we let it contribute s to the
+     *    local field for now.  Since jd is added to the
+     *    queue, when jd is considered in this loop, or
+     *    when the bond jd-id is reconsidered, it will
+     *    contribute an s[id] to the local field.  But at
+     *    that time, s[id] = -s due to the flip here,
+     *    so the total contribution would be s + (-s) = 0.
+     *  */
+    is->s[id] = -s;
+    /* add neighbors of i with the same spins */
+    ix = id % l;
+    iy = id - ix;
+    h += is2_addtoqueue(is, iy + (ix + 1) % l,     s, padd, &cnt);
+    h += is2_addtoqueue(is, iy + (ix + l - 1) % l, s, padd, &cnt);
+    h += is2_addtoqueue(is, (iy + l) % n + ix,     s, padd, &cnt);
+    h += is2_addtoqueue(is, (iy + n - l) % n + ix, s, padd, &cnt);
+  }
+
+  is->E += 2 * s * h;
+  is->M -= 2 * s * cnt;
+  return 0;
+}
+
+
+
+INLINE int is2_save(const ising_t *is, const char *fname)
+{
+  FILE *fp;
+  int i, j, l, *p;
+
+  xfopen(fp, fname, "w", return -1);
+  l = is->l;
+  fprintf(fp, "%d %d %d %d\n", is->d, l, l, is->n);
+  for (p = is->s, i = 0; i < l; i++) {
+    for (j = 0; j < l; j++, p++)
+      fprintf(fp, "%c", (*p > 0) ? '#' : ' ');
+    fprintf(fp, "\n");
+  }
+  fclose(fp);
+  return 0;
+}
 
 
 
@@ -160,59 +298,6 @@ INLINE int is2_load(ising_t *is, const char *fname)
   fclose(fp);
   is2_em(is);
   return 0;
-}
-
-
-
-INLINE int is2_save(const ising_t *is, const char *fname)
-{
-  FILE *fp;
-  int i, j, l, *p;
-
-  xfopen(fp, fname, "w", return -1);
-  l = is->l;
-  fprintf(fp, "%d %d %d %d\n", is->d, l, l, is->n);
-  for (p = is->s, i = 0; i < l; i++) {
-    for (j = 0; j < l; j++, p++)
-      fprintf(fp, "%c", (*p > 0) ? '#' : ' ');
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
-  return 0;
-}
-
-
-
-/* initialize an lxl Ising model */
-INLINE ising_t *is2_open(int l)
-{
-  int i, n;
-  ising_t *is;
-
-  xnew(is, 1);
-  is->d = 2;
-  is->l = l;
-  is->n = n = l*l;
-  xnew(is->s, n);
-  for (i = 0; i < n; i++) is->s[i] = -1;
-  is->M = -n;
-  is->E = -2*n;
-  xnew(is->logdos, n + 1);
-  xnew(is->uproba, 2*is->d+1);
-  is->uproba[0] = 0xffffffff;
-  return is;
-}
-
-
-
-INLINE void is2_close(ising_t *is)
-{
-  if (is != NULL) {
-    free(is->s);
-    free(is->logdos);
-    free(is->uproba);
-    free(is);
-  }
 }
 
 

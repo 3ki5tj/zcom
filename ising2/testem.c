@@ -9,12 +9,14 @@
 static void randflip(ising_t *is)
 {
   int id, h, E, M, E2, M2;
-/*
+
+#ifdef IS2FUNC
   id = is2_pick(is, &h);
   is2_flip(is, id, h);
-*/
+#else
   IS2_PICK(is, id, h);
   IS2_FLIP(is, id, h);
+#endif
   E = is->E;
   M = is->M;
   E2 = is2_em(is);
