@@ -6,6 +6,7 @@ typedef float real;
 #include "eig.h"
 #include <time.h>
 
+int special = 0;  /* special test case */
 int simple = 1;   /* simple test of a single matrix a */
 int sptest = 1;   /* random matrix speed test */
 int rndtest = 1;  /* random matrix test */
@@ -26,9 +27,28 @@ static void rm3_rndsym0(real m[3][3])
 }
 
 
+static void testspec(void)
+{
+  double mdbl[3][3] = {{0.087287783623, 0.959450602531, 0.178913801908}, {0.959450602531,
+     0.324731230736, 0.279799491167}, {0.178913801908, 0.279799491167, 0.219914108515}};
+  real v[3] = {0, 0, 0}, vecs[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, mat[3][3];
+  int i, j;
+
+  for ( i = 0; i < 3; i++ )
+    for ( j = 0; j < 3; j++ )
+      a[i][j] = mat[i][j] = (real) mdbl[i][j];
+
+  rm3_eigsys(v, vecs, mat, 1);
+  printf("eigenvalues:   %20.12f, %20.12f, %20.12f\n", v[0], v[1], v[2]);
+  for (j = 0; j < 3; j++)
+    printf("eigenvector %d: %20.12f, %20.12f, %20.12f\n", j, vecs[j][0], vecs[j][1], vecs[j][2]);
+  printf("Special case finished\n\n\n");
+}
+
+
 static void testsimp(void)
 {
-  real v[3] = {0, 0, 0}, vecs[3][3], mat[3][3];
+  real v[3] = {0, 0, 0}, vecs[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, mat[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
   int j;
 
   /* cheap 3x3 eigensystem */
@@ -92,6 +112,8 @@ static void testrnd(int nrands)
 
     /* compute the determinant of the matrix of eigenvectors */
     det = rm3_det(vecs);
+
+    /* the determinant should be far from 1.0 */
     del = (real) fabs(fabs(det) - 1);
     if (del > maxdet) maxdet = del;
     if (del > tol) {
@@ -101,11 +123,13 @@ static void testrnd(int nrands)
 
     /* accuracy of eigenvalues */
     for (i = 0; i < 3; i++) {
+      /* compute vs[i] = m . vecs[i], which should be
+       * equal to vals[i] times vecs[i] */
       rm3_mulvec(vs[i], m, vecs[i]);
 
       /* check the magnitude of vs */
-      vn = rv3_norm(vs[i]);
-      del = (real) fabs(vn - fabs(vals[i]));
+      vn = rv3_dot(vs[i], vecs[i]);
+      del = (real) fabs(vn - vals[i]);
       if (del > maxnorm) maxnorm = del;
       if (del > tol) {
         fprintf(stderr, "fatal: eigenvalue %d: norm(vs) = %g vs %g\n", i, vn, vals[i]);
@@ -131,8 +155,11 @@ ERR:
   return;
 }
 
+
+
 int main(void)
 {
+  if (special) testspec();
   if (simple) testsimp();
   if (sptest) testspeed(2000000);
   if (rndtest) testrnd(1000000);

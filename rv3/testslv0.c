@@ -14,7 +14,7 @@ static void foo(real a00, real a01, real a02,
   rm3_copy(as, a);
   rm3_print(a, "A", "%10.6f", 1);
 
-  n = rm3_solvezero(a, x);
+  n = rm3_solvezero(a, x, 1e-6);
 
   printf("%d solutions\n", n);
   for (i = 0; i < n; i++) {

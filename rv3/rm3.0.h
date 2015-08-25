@@ -360,10 +360,11 @@ INLINE double rm3_pivot_(real m[3][3], int r0, int cmap[])
 
 /* Solve matrix equation a x = 0 by Gaussian elimination (full-pivot)
  * The matrix 'a' is destroyed, solutions are saved as *row* vectors in 'x'
- * return the number of solutions */
-INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
+ * return the number of solutions
+ * Note that this routine assumes at least one solution */
+INLINE int rm3_solvezero(real a[3][3], real (*x)[3], real tol)
 {
-  double max, tol, tol1, tol2;
+  double max;
   int cmap[3] = {0, 1, 2};
   real a00;
 
@@ -376,7 +377,7 @@ INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
   printf("pivot %d, max %f\n", cmap[0], max);
 #endif
 
-  if (max <= 0) { /* matrix is zero */
+  if ( max <= tol ) { /* matrix is zero */
     rv3_make(x[0], 1, 0, 0);
     rv3_make(x[1], 0, 1, 0);
     rv3_make(x[2], 0, 0, 1);
@@ -385,40 +386,43 @@ INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
 
   /* normalize row 0 such that a[0][0] = 1 */
   a00 = a[0][0];
-  rv3_smul(a[0], 1/a00);
-  rv3_smul(a[1], 1/a00);
-  rv3_smul(a[2], 1/a00);
+  a[0][1] /= a00;
+  a[0][2] /= a00;
 #ifdef RV3_DEBUG
   rm3_print(a, "normalized a", "%20.12f", 1);
 #endif
   /* gaussian elimination */
   a[1][1] -= a[1][0] * a[0][1];
   a[1][2] -= a[1][0] * a[0][2];
+  /* we don't really need a[2], just for pivoting */
   a[2][1] -= a[2][0] * a[0][1];
   a[2][2] -= a[2][0] * a[0][2];
 #ifdef RV3_DEBUG
+  a[0][0] = 1;
   a[1][0] = 0;
   a[2][0] = 0;
   rm3_print(a, "after first gaussian elimination", "%20.12f", 1);
 #endif
 
   max = rm3_pivot_(a, 1, cmap); /* pivot for column 1 */
-  tol1 = 10.*(sizeof(double) == sizeof(real) ? DBL_EPSILON : FLT_EPSILON);
-  /* estimate intrinsic error: the determinant is supposed to
-   * be zero now; if not, use it as the intrinsic error */
-  tol2 = 3 * sqrt(fabs(a[1][1]*a[2][2] - a[1][2]*a[2][1]));
-  tol = tol1 > tol2 ? tol1 : tol2;
 #ifdef RV3_DEBUG
   rm3_print(a, "after second pivot", "%20.12f", 1);
-  printf("second pivot %d, max %g, tol1 %g, tol2 %g\n",
-      cmap[1], max, tol1, tol2);
+  printf("second pivot %d, max %g, tol %g\n",
+      cmap[1], max, tol);
 #endif
 
-  if (max <= tol) { /* zero */
-    a[1][ cmap[0] ] = a[0][0];
+  if ( max <= tol ) { /* zero */
+    a[1][ cmap[0] ] = 1; /* a[0][0] */
     a[1][ cmap[1] ] = a[0][1];
     a[1][ cmap[2] ] = a[0][2];
-    rv3_makenorm(x[0], a[1][1], -a[1][0], 0);
+    /* the first eigenvector x[0] is normal to a[1]
+     * since a[0][0] = 1 is the largest component, the
+     * following vector is not vanishing */
+    x[0][ cmap[0] ] = -a[0][1];
+    x[0][ cmap[1] ] = 1; /* a[0][0] */
+    x[0][ cmap[2] ] = 0;
+    rv3_normalize( x[0] );
+    /* the second eigenvector x[1] is normal to a[1] and x[0] */
     rv3_normalize( rv3_cross(x[1], a[1], x[0]) );
 #ifdef RV3_DEBUG
     rv3_print(a[1], "degen2. vector 0", "%20.12f", 1);
@@ -430,6 +434,7 @@ INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
 
   x[0][ cmap[1] ] = a[1][2];
   x[0][ cmap[2] ] = -a[1][1];
+  /* this component is used to make x[0] normalize to a[0] */
   x[0][ cmap[0] ] = - a[0][1] * a[1][2] - a[0][2] * (-a[1][1]);
   rv3_normalize(x[0]);
 #ifdef RV3_DEBUG
@@ -441,11 +446,33 @@ INLINE int rm3_solvezero(real a[3][3], real (*x)[3])
 
 
 
-/* given an eigenvalue, return the corresponding eigenvectors
- * Note there might be multiple eigenvectors for the eigenvalue */
-INLINE int rm3_eigvecs(real (*vecs)[3], real mat[3][3], real val)
+float fm3_eigtol = 10 * FLT_EPSILON;
+double dm3_eigtol = 10 * DBL_EPSILON;
+real rm3_eigtol = 10 * DBL_EPSILON;
+
+
+
+#define rm3_eigvecs(vecs, mat, val) \
+  rm3_eigvecs_(vecs, mat, val, rm3_eigtol)
+
+
+
+/* compute the eigenvector of a given eigvalue `val`
+ * no matter how small `reltol` is, this routine
+ * returns at least one eigenvector, whereas more
+ * eigenvectors are possible with a larger `reltol` */
+INLINE int rm3_eigvecs_(real (*vecs)[3], real mat[3][3], real val,
+    real reltol)
 {
-  real m[3][3];
+  real m[3][3], max = 0, x, tol;
+  int i, j;
+
+  /* find the maximal element of m */
+  for ( i = 0; i < 3; i++ )
+    for ( j = 0; j < 3; j++ )
+      if ( (x = (real) fabs(mat[i][j])) > max )
+        max = x;
+  tol = max * reltol;
 
   rm3_copy(m, mat); /* make a matrix */
   m[0][0] -= val;
@@ -454,76 +481,88 @@ INLINE int rm3_eigvecs(real (*vecs)[3], real mat[3][3], real val)
 #ifdef RV3_DEBUG
   printf("\n\nsolving eigenvector(s) for the eigenvalue %g\n", val);
 #endif
-  return rm3_solvezero(m, vecs);
+  return rm3_solvezero(m, vecs, tol);
 }
 
 
+
+#define rm3_eigsys(v, vecs, mat, nt) \
+  rm3_eigsys_(v, vecs, mat, nt, rm3_eigtol)
 
 /* given the matrix 'mat' and its eigenvalues 'v' return eigenvalues 'vecs'
  * ideally, eigenvalues should be sorted in magnitude-descending order
  * by default, vecs are transposed as a set of column vectors
  * set 'nt' != 0 to disable it: so vecs[0] is the first eigenvector  */
-INLINE rv3_t *rm3_eigsys(real v[3], real vecs[3][3], real mat[3][3], int nt)
+INLINE rv3_t *rm3_eigsys_(real v[3], real vecs[3][3], real mat[3][3],
+    int nt, real reltol)
 {
-  real vs[5][3] = {{0}}; /* for safety, vs needs 5 rows */
-  int n = 0, nn, i = 0;
+  real vs[5][3] = {{0}}, x; /* for safety, vs needs 5 rows */
+  int n;
 
+  /* 1. compute the eigenvalues from solving the cubic equation
+   * the eigenvectors are descending */
   rm3_eigval(v, mat);
 
-  for (nn = i = 0; i < 3; i++) {
-    n = rm3_eigvecs(vs + nn, mat, v[nn]);
-#ifdef RV3_DEBUG
-    rv3_print(vs[0], "eigenvector 0", " %20.12f", 1);
-    rv3_print(vs[1], "eigenvector 1", " %20.12f", 1);
-    rv3_print(vs[2], "eigenvector 2", " %20.12f", 1);
-    if (n == 0) goto ERR;
-#endif
-    if (n == 0) return NULL;
-    if ((nn += n) >= 3) break;
-  }
-#ifdef RV3_DEBUG
-  /* NOTE: the following code to ensure orthogonality
-   * is currently disabled, however, if the error `tol'
-   * in rv3_solvezero() is too small, which still can be,
-   * then the degenerated eigenvalues may need the step */
-/*
-  rv3_normalize( rv3_cross(vs[2], vs[0], vs[1]) );
-  rv3_normalize( rv3_cross(vs[1], vs[2], vs[0]) );
-*/
-  printf("==== END OF EIGENVECTORS ====\n\n\n");
-#endif
+  /* 2. solve the eigenvector of v[0]
+   * this routine returns at least one solution */
+  n = rm3_eigvecs_(vs, mat, v[0], reltol);
+
+  if ( n == 1 ) { /* we only got one vector */
+    /* 3. solve the eigenvector of v[1] */
+    /* swap the last two eigenvalues to avoid degeneracy
+     * with v[0] and v[1] well separated, degeneracy is less likely */
+    x = v[1], v[1] = v[2], v[2] = x;
+    n = rm3_eigvecs_(vs + 1, mat, v[1], reltol);
+
+    /* check if we get a degeneracy, i.e., the eigenvector is
+     * essentially the same as the previous one */
+    if ( (x = (real) fabs(rv3_dot(vs[0], vs[1]))) > 0.5 ) {
+      /* This happens only if the largest eigenvalue v[0]
+       * and smallest v[1] are essentially the same,
+       * and the tolerance is set too small
+       * which means all eigenvectors are degenerate
+       * 0.5 is a very loose threshold */
+      rv3_make(vs[0], 1, 0, 0);
+      rv3_make(vs[1], 0, 1, 0);
+      rv3_make(vs[2], 0, 0, 1);
+    } else {
+      /* compute the last eigenvector */
+      rv3_normalize( rv3_cross(vs[2], vs[0], vs[1]) );
+    }
+  } else if ( n == 2 ) {
+    /* we already have two vectors, deduce the last */
+    rv3_normalize( rv3_cross(vs[2], vs[0], vs[1]) );
+  } /* if n == 3, we are done */
 
   rm3_copy(vecs, vs);
 #ifdef RV3_DEBUG
-  for (i = 0; i < 3; i++) {
-    double tol = 1e-6, sq, nv;
-    int j;
-    nv = rv3_dot(rm3_mulvec(vs[i], mat, vecs[i]), vecs[i]);
-    if (sizeof(real) == sizeof(float)) tol = 1e-4;
-    for (sq = 0, j = 0; j < 3; j++) sq += rv3_sqr(mat[j]);
-    tol *= sqrt(sq)/3;
-    if (fabs(nv - v[i]) > tol) {
-      fprintf(stderr, "corrupted eigenvalue i %d, %g vs. %g (%g, %g, %g)\n",
-          i, nv, v[i], v[0], v[1], v[2]);
-      goto ERR;
+  {
+    int i;
+    for (i = 0; i < 3; i++) {
+      double tol = 1e-6, sq, nv;
+      int j;
+      nv = rv3_dot(rm3_mulvec(vs[i], mat, vecs[i]), vecs[i]);
+      if (sizeof(real) == sizeof(float)) tol = 1e-4;
+      for (sq = 0, j = 0; j < 3; j++) sq += rv3_sqr(mat[j]);
+      tol *= sqrt(sq)/3;
+      if (fabs(nv - v[i]) > tol) {
+        fprintf(stderr, "corrupted eigenvalue i %d, %g vs. %g (%g, %g, %g)\n",
+            i, nv, v[i], v[0], v[1], v[2]);
+        rm3_print(mat, "matrix", "%20.14f", 1);
+        rv3_print(v, "eigenvalues  ", "%20.14f", 1);
+        rv3_print(vecs[0], "eigenvector 0", "%20.14f", 1);
+        rv3_print(vecs[1], "eigenvector 1", "%20.14f", 1);
+        rv3_print(vecs[2], "eigenvector 2", "%20.14f", 1);
+        return NULL;
+      }
+      v[i] = nv;
     }
-    v[i] = nv;
+    printf("det(V) = %g\n", rm3_det(vecs));
   }
-  printf("det(V) = %g\n", rm3_det(vecs));
 #endif
   rv3_sort3(v, vecs, NULL);
 
   return nt ? vecs : rm3_trans(vecs);
-#ifdef RV3_DEBUG
-ERR:
-  fprintf(stderr, "rm3_eigsys() failed, i %d, n %d, nn %d\n", i, n, nn);
-  rm3_print(mat, "matrix", "%20.14f", 1);
-  rv3_print(v, "eigenvalues  ", "%20.14f", 1);
-  rv3_print(vecs[0], "eigenvector 0", "%20.14f", 1);
-  rv3_print(vecs[1], "eigenvector 1", "%20.14f", 1);
-  rv3_print(vecs[2], "eigenvector 2", "%20.14f", 1);
-  return NULL;
-#endif
 }
 
 
