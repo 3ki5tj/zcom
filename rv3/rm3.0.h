@@ -486,55 +486,55 @@ INLINE int rm3_eigvecs_(real (*vecs)[3], real mat[3][3], real val,
 
 
 
-#define rm3_eigsys(v, vecs, mat, nt) \
-  rm3_eigsys_(v, vecs, mat, nt, rm3_eigtol)
+#define rm3_eigsys(vals, vecs, mat, nt) \
+  rm3_eigsys_(vals, vecs, mat, nt, rm3_eigtol)
 
 /* given the matrix 'mat' and its eigenvalues 'v' return eigenvalues 'vecs'
  * ideally, eigenvalues should be sorted in magnitude-descending order
  * by default, vecs are transposed as a set of column vectors
  * set 'nt' != 0 to disable it: so vecs[0] is the first eigenvector  */
-INLINE rv3_t *rm3_eigsys_(real v[3], real vecs[3][3], real mat[3][3],
+INLINE rv3_t *rm3_eigsys_(real vals[3], real vecs[3][3], real mat[3][3],
     int nt, real reltol)
 {
-  real vs[5][3] = {{0}}, x; /* for safety, vs needs 5 rows */
+  real vs[3][3] = {{0}}, x;
   int n;
 
   /* 1. compute the eigenvalues from solving the cubic equation
    * the eigenvectors are descending */
-  rm3_eigval(v, mat);
+  rm3_eigval(vals, mat);
 
-  /* 2. solve the eigenvector of v[0]
+  /* 2. solve the eigenvector of vals[0]
    * this routine returns at least one solution */
-  n = rm3_eigvecs_(vs, mat, v[0], reltol);
+  n = rm3_eigvecs_(vecs, mat, vals[0], reltol);
 
   if ( n == 1 ) { /* we only got one vector */
-    /* 3. solve the eigenvector of v[1] */
+    /* 3. solve the eigenvector of vals[1] */
     /* swap the last two eigenvalues to avoid degeneracy
-     * with v[0] and v[1] well separated, degeneracy is less likely */
-    x = v[1], v[1] = v[2], v[2] = x;
-    n = rm3_eigvecs_(vs + 1, mat, v[1], reltol);
+     * with vals[0] and vals[1] well separated, degeneracy is less likely */
+    x = vals[1], vals[1] = vals[2], vals[2] = x;
+    n = rm3_eigvecs_(vs, mat, vals[1], reltol);
 
     /* check if we get a degeneracy, i.e., the eigenvector is
      * essentially the same as the previous one */
-    if ( (x = (real) fabs(rv3_dot(vs[0], vs[1]))) > 0.5 ) {
-      /* This happens only if the largest eigenvalue v[0]
-       * and smallest v[1] are essentially the same,
+    if ( (x = (real) fabs(rv3_dot(vs[0], vecs[0]))) > 0.5 ) {
+      /* This happens only if the largest eigenvalue vals[0]
+       * and smallest vals[1] are essentially the same,
        * and the tolerance is set too small
        * which means all eigenvectors are degenerate
        * 0.5 is a very loose threshold */
-      rv3_make(vs[0], 1, 0, 0);
-      rv3_make(vs[1], 0, 1, 0);
-      rv3_make(vs[2], 0, 0, 1);
+      rv3_make(vecs[0], 1, 0, 0);
+      rv3_make(vecs[1], 0, 1, 0);
+      rv3_make(vecs[2], 0, 0, 1);
     } else {
       /* compute the last eigenvector */
-      rv3_normalize( rv3_cross(vs[2], vs[0], vs[1]) );
+      rv3_copy( vecs[1], vs[0] );
+      rv3_normalize( rv3_cross(vecs[2], vecs[0], vecs[1]) );
     }
   } else if ( n == 2 ) {
     /* we already have two vectors, deduce the last */
-    rv3_normalize( rv3_cross(vs[2], vs[0], vs[1]) );
+    rv3_normalize( rv3_cross(vecs[2], vecs[0], vecs[1]) );
   } /* if n == 3, we are done */
 
-  rm3_copy(vecs, vs);
 #ifdef RV3_DEBUG
   {
     int i;
@@ -545,22 +545,22 @@ INLINE rv3_t *rm3_eigsys_(real v[3], real vecs[3][3], real mat[3][3],
       if (sizeof(real) == sizeof(float)) tol = 1e-4;
       for (sq = 0, j = 0; j < 3; j++) sq += rv3_sqr(mat[j]);
       tol *= sqrt(sq)/3;
-      if (fabs(nv - v[i]) > tol) {
+      if (fabs(nv - vals[i]) > tol) {
         fprintf(stderr, "corrupted eigenvalue i %d, %g vs. %g (%g, %g, %g)\n",
-            i, nv, v[i], v[0], v[1], v[2]);
+            i, nv, vals[i], vals[0], vals[1], vals[2]);
         rm3_print(mat, "matrix", "%20.14f", 1);
-        rv3_print(v, "eigenvalues  ", "%20.14f", 1);
+        rv3_print(vals, "eigenvalues  ", "%20.14f", 1);
         rv3_print(vecs[0], "eigenvector 0", "%20.14f", 1);
         rv3_print(vecs[1], "eigenvector 1", "%20.14f", 1);
         rv3_print(vecs[2], "eigenvector 2", "%20.14f", 1);
         return NULL;
       }
-      v[i] = nv;
+      vals[i] = nv;
     }
     printf("det(V) = %g\n", rm3_det(vecs));
   }
 #endif
-  rv3_sort3(v, vecs, NULL);
+  rv3_sort3(vals, vecs, NULL);
 
   return nt ? vecs : rm3_trans(vecs);
 }
