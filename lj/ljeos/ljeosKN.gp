@@ -1,6 +1,14 @@
+# Reference:
+# Jiri Kolafa and Ivo Nezbeda
+# The Lennard-Jones fluid: An accurate analytic
+#   and theoretically-based equation of state
+# Fluid Phase Equilibria (1994) Vol. 100, 1-34
+# TABLE 5
+# regressed from data with T <= 6
+
 gam = 1.92907278
 
-pfac(rho, T) = pi/6/rho*(dC(T))**3;
+pfac(rho, T) = pi/6*rho*(dC(T))**3;
 
 zhs(eta) = (1+eta*(1+eta*(1-eta/1.5*(1+eta)))) / (1-eta)**3;
 
