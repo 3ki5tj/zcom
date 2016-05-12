@@ -8,18 +8,25 @@ typedef float real;
 int main(void)
 {
   int i;
-  real x[N][3], y[N][3], tmp[3], dev;
+  real x[N][3], y[N][3], yc[3] = {0, 0, 0}, dev;
   real r0[3][3] = {{1, 0, 0}, {0, 0.8, 0.6}, {0, -.6, .8}},
        t0[3] = {0.75, .25, .5};
   real r[3][3], t[3];
 
-  /* initial configuration */
-  for (i = 0; i < N; i++) rv3_rnd0(y[i]);
-
-  /* construct a configuration */
+  /* initial configuration, y */
   for (i = 0; i < N; i++) {
-    rv3_diff(tmp, y[i], t0);
-    rm3_tmulvec(x[i], r0, tmp);
+    rv3_rnd0(y[i]);
+    rv3_inc(yc, y[i]);
+  }
+  rv3_smul(yc, (real) 1/N);
+  for ( i = 0; i < N; i++ ) {
+    rv3_dec(y[i], yc);
+  }
+
+  /* make x by rotating y and translation */
+  for (i = 0; i < N; i++) {
+    rm3_tmulvec(x[i], r0, y[i]);
+    rv3_dec(x[i], t0);
   }
 
 #define DUMP() \
@@ -33,19 +40,19 @@ int main(void)
   printf("dev = %g\n", dev);
   DUMP()
 
-  /* construct a configuration */
+  /* make x by rotating y and translation and reflection */
   for (i = 0; i < N; i++) {
-    rv3_diff(tmp, y[i], t0);
-    rm3_tmulvec(x[i], r0, tmp);
+    rm3_tmulvec(x[i], r0, y[i]);
     x[i][2] = -x[i][2];
+    rv3_dec(x[i], t0);
   }
 
-  printf("\n\n2. Fitting a rotated and reflected object using only rotation and translation\n");
+  printf("\n\n2. Fitting a rotated and _reflected_ object using only rotation and translation\n");
   dev = rv3_rmsd(x, NULL, y, NULL, N, 0, r, t);
   printf("dev = %g\n", dev);
   DUMP()
 
-  printf("\n\n3. Fitting a rotated and reflected object using rotation, translation and reflection\n");
+  printf("\n\n3. Fitting a rotated and _reflected_ object using rotation, translation and reflection\n");
   dev = rv3_rmsd(x, NULL, y, NULL, N, 1, r, t);
   printf("dev = %g\n", dev);
   DUMP()

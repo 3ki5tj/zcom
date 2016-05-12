@@ -673,6 +673,7 @@ INLINE real rv3_rmsd(rv3_t * RESTRICT x, rv3_t * RESTRICT xf,
   }
   rv3_smul(xc, 1.f/wtot);
   rv3_smul(yc, 1.f/wtot);
+  rv3_diff(t, yc, xc);
 
   /* 2. compute 3x3 asymmetric covariance matrix S = (x-xc) (y-yc)^T */
   for (i = 0; i < n; i++) {
@@ -728,14 +729,15 @@ INLINE real rv3_rmsd(rv3_t * RESTRICT x, rv3_t * RESTRICT xf,
     dev -= 2 * (sig[0] + sig[1] + sig[2]); /* -2 Tr(R x y^T) */
   }
   if (dev < 0) dev = 0;
-  rv3_diff(t, yc, rm3_mulvec(xs, r, xc)); /* t = yc - R xc */
 
   /* 5. compute the rotated structure */
   if (xf || dev < dev0*0.01) { /* if there's a large cancellation recompute the deviation */
     real xfi[3];
 
     for (dev = 0, i = 0; i < n; i++) {
-      rv3_add(xfi, rm3_mulvec(xs, r, x[i]), t); /* xfi = R x + t */
+      rv3_diff(xs, x[i], xc);
+      rm3_mulvec(ys, r, xs);
+      rv3_add(xfi, ys, yc); /* xfi = R (x - xc) + yc */
       sq = rv3_dist2(y[i], xfi);
       if (xf) rv3_copy(xf[i], xfi);
       dev +=  (w ? w[i]*sq : sq); /* recompute the deviation */
