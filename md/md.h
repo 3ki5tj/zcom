@@ -82,7 +82,7 @@ INLINE void md_shiftang2d(rv2_t * RESTRICT x, rv2_t * RESTRICT v, int n)
   for (am = r2 = 0.f, i = 0; i < n; i++) {
     rv2_diff(xi, x[i], xc);
     am += rv2_cross(xi, v[i]);
-    r2 += rv2_sqr(x[i]);
+    r2 += rv2_sqr(xi);
   }
   am = -am/r2;
   for (i = 0; i < n; i++) {
