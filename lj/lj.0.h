@@ -177,7 +177,7 @@ INLINE lj_t *lj_open(int n, int d, real rho, real rcdef)
   xnew(lj, 1);
   lj->n = n;
   lj->d = d;
-  lj->dof = n * d - d * (d+1)/2;
+  lj->dof = n * d - d; /* - d * (d+1)/2; */
   xnew(lj->f, n * d);
   xnew(lj->v, n * d);
   xnew(lj->x, n * d);
